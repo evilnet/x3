@@ -3718,6 +3718,7 @@ handle_account(struct userNode *user, const char *stamp)
     }
 #else
     hi = dict_find(nickserv_id_dict, stamp, NULL);
+    log_module(MAIN_LOG, LOG_WARNING, "Using non-P10 code in accounts, not tested at all!");
 #endif
 
     if (hi) {
