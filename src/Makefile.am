@@ -41,6 +41,7 @@ srvx_SOURCES = \
 	ioset.c ioset.h \
 	log.c log.h \
 	main.c common.h \
+	math.c \
 	md5.c md5.h \
 	modcmd.c modcmd.h \
 	modules.c modules.h \

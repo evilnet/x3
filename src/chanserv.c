@@ -5732,6 +5732,20 @@ static CHANSERV_FUNC(cmd_huggle)
     return 1;
 }
 
+static CHANSERV_FUNC(cmd_calc)
+{
+    char response[MAXLEN];
+
+    REQUIRE_PARAMS(2);
+    do_math(response, unsplit_string(argv + 1, argc - 1, NULL));
+
+    if(channel)
+        send_channel_message(channel, cmd->parent->bot, "%b%s%b: %s", user->nick, response);
+    else
+        send_message_type(4, user, cmd->parent->bot, "%s", response);
+    return 1;
+}
+
 static void
 chanserv_adjust_limit(void *data)
 {

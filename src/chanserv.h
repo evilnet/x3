@@ -173,4 +173,6 @@ unsigned short user_level_from_name(const char *name, unsigned short clamp_level
 struct do_not_register *chanserv_is_dnr(const char *chan_name, struct handle_info *handle);
 int check_user_level(struct chanNode *channel, struct userNode *user, enum levelOption opt, int allow_override, int exempt_owner);
 
+void do_math(char *Buffer, char *Math);
+
 #endif
