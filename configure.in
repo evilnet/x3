@@ -190,12 +190,12 @@ AC_ARG_WITH(protocol,
 if test "x$withval" = "xp10" ; then
   AC_MSG_RESULT(P10)
   AC_DEFINE(WITH_PROTOCOL_P10, 1, [Define if using the P10 dialect of IRC])
-  MODULE_OBJS="$MODULE_OBJS proto-p10.\$(OBJEXT)"
+  MODULE_OBJS="$MODULE_OBJS proto-p10.o"
   PROTO_FILES=proto-p10.c
 elif test "x$withval" = "xbahamut" ; then
   AC_MSG_RESULT(Bahamut)
   AC_DEFINE(WITH_PROTOCOL_BAHAMUT, 1, [Define if using the Bahamut dialect of IRC])
-  MODULE_OBJS="$MODULE_OBJS proto-bahamut.\$(OBJEXT)"
+  MODULE_OBJS="$MODULE_OBJS proto-bahamut.o"
 else
   AC_MSG_ERROR([Unknown IRC dialect $withval])
 fi
@@ -251,7 +251,7 @@ AC_ARG_ENABLE(modules,
   dnl Must use a separate file because autoconf can't stand newlines in an AC_SUBSTed variable.
   for module in $enableval ; do
     module=`echo $module | sed -e s/^mod-// -e s/\.c\$//`
-    EXTRA_MODULE_OBJS="$EXTRA_MODULE_OBJS mod-$module.\$(OBJEXT)"
+    EXTRA_MODULE_OBJS="$EXTRA_MODULE_OBJS mod-$module.o"
     module_list="$module_list $module"
     echo "WITH_MODULE($module)" >> $MODULE_DEFINES
   done
