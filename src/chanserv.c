@@ -319,8 +319,8 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BANS_REMOVED", "Removed all channel bans from $b%s$b." },
 
 /* Channel userlist */
-    { "CSMSG_ACCESS_ALL_HEADER", "%s users from level %d to %d:" },
-    { "CSMSG_ACCESS_SEARCH_HEADER", "%s users from level %d to %d matching %s:" },
+    { "CSMSG_ACCESS_ALL_HEADER", "=---- %s users from level %d to %d ----=" },
+    { "CSMSG_ACCESS_SEARCH_HEADER", "=-- %s users from level %d to %d matching %s --=" },
     { "CSMSG_INVALID_ACCESS", "$b%s$b is an invalid access level." },
     { "CSMSG_CHANGED_ACCESS", "%s now has access $b%d$b in %s." },
 
@@ -669,6 +669,17 @@ user_level_from_name(const char *name, unsigned short clamp_level)
         return 0;
     return level;
 }
+
+char *
+user_level_name_from_level(int level)
+{
+    unsigned int ii;
+    for(ii = 0; (ii < ArrayLength(accessLevels)); ii++)
+        if(level == accessLevels[ii].level)
+            return accessLevels[ii].title;
+    return("UNKNOWN");
+}
+
 
 int
 parse_level_range(unsigned short *minl, unsigned short *maxl, const char *arg)
@@ -3461,6 +3472,7 @@ static CHANSERV_FUNC(cmd_access)
     return 1;
 }
 
+/* This is never used... */
 static void
 zoot_list(struct listData *list)
 {
@@ -3556,8 +3568,10 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     lData.highest = highest;
     lData.search = (argc > 1) ? argv[1] : NULL;
     send_list = def_list;
+    /* What does the following line do exactly?? */
     (void)zoot_list; /* since it doesn't show user levels */
 
+    /* this does nothing!! -rubin
     if(user->handle_info)
     {
 	switch(user->handle_info->userlist_style)
@@ -3566,6 +3580,7 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
         case HI_STYLE_ZOOT: send_list = def_list; break;
 	}
     }
+    */
 
     lData.users = alloca(channel->channel_info->userCount * sizeof(struct userData *));
     matches = 0;
@@ -3596,7 +3611,10 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
 
         ary = malloc(lData.table.width*sizeof(**lData.table.contents));
         lData.table.contents[matches] = ary;
-        ary[0] = strtab(uData->access);
+        /* ary[0] = strtab(uData->access);*/
+        ary[0] = user_level_name_from_level(uData->access);
+        /* TODO: replace above with func that returns static string
+         * of userlevel for that level. eg OP/MANAGER etc. -rubin */
         ary[1] = uData->handle->handle;
         if(uData->present)
             ary[2] = "Here";

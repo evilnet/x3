@@ -3343,9 +3343,9 @@ trace_print_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
     if (match->handle_info) {
-        send_message_type(4, das->source, opserv, "%s!%s@%s %s", match->nick, match->ident, match->hostname, match->handle_info->handle);
+        send_message_type(4, das->source, opserv, "%-15s\002!\002%15s\002@\002%s %s", match->nick, match->ident, match->hostname, match->handle_info->handle);
     } else {
-        send_message_type(4, das->source, opserv, "%s!%s@%s", match->nick, match->ident, match->hostname);
+        send_message_type(4, das->source, opserv, "%-15s\002!\002%15s\002@\002%s", match->nick, match->ident, match->hostname);
     }
     return 0;
 }

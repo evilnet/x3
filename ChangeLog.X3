@@ -1,6 +1,16 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-03-17  Alex Schumann  <rubin@afternet.org>
+
+	* src/opserv.c: Improved readability of trace print output
+
+	* src/chanserv.c: Improved cmd_list_users output & cleaned it up
+	a little.
+
+	* src/helpfile.c: Improved table_send readability (used in lots
+	of listings including users and stats network etc)
+
 2005-03-15  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Improved some syntax error reporting for commands

@@ -261,11 +261,22 @@ const char *language_find_message(struct language *lang, const char *msgid) {
     return NULL;
 }
 
+int strlen_vis(char *str)
+{
+    int count;
+    for(count=0;*str;str++)
+        if(!iscntrl(*str))
+            count++;
+    return count;
+}
+
 void
 table_send(struct userNode *from, const char *to, unsigned int size, irc_send_func irc_send, struct helpfile_table table) {
     unsigned int ii, jj, len, nreps, reps, tot_width, pos, spaces, *max_width;
     char line[MAX_LINE_SIZE+1];
     struct handle_info *hi;
+    char *sepstr = NULL;
+    int sepsize = 0;
 
     if (IsChannelName(to) || *to == '$') {
         message_dest = NULL;
@@ -334,6 +345,7 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
         for (pos=ii=0; ii<((table.flags & TABLE_REPEAT_HEADERS)?nreps:1); ii++) {
             for (jj=0; 1; ) {
                 len = strlen(table.contents[0][jj]);
+                line[pos++] = '\02'; /* bold header */
                 spaces = max_width[jj] - len;
                 if (table.flags & TABLE_PAD_LEFT)
                     while (spaces--)
@@ -346,10 +358,16 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
                     while (spaces--)
                         line[pos++] = ' ';
                 line[pos++] = ' ';
+                line[pos++] = '\02'; /* end bold header */
             }
         }
         line[pos] = 0;
         irc_send(from, to, line);
+        sepsize = strlen_vis(line);
+        sepstr = malloc(sepsize + 1);
+        memset(sepstr, '-', sepsize);
+        sepstr[sepsize] = 0;
+        irc_send(from, to, sepstr);
         ii = 1;
     }
     /* Send the table. */
@@ -376,6 +394,18 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
             line[pos++] = ' ';
         }
     }
+    if (!(table.flags & TABLE_NO_HEADERS)) {
+        /* Send end bar & free its memory */
+        if(sepsize > 5)
+        {
+           sepstr[sepsize/2-1] = 'E';
+           sepstr[sepsize/2] = 'n';
+           sepstr[sepsize/2+1]= 'd';
+        }
+        irc_send(from, to, sepstr);
+        free(sepstr);
+    }
+
     if (!(table.flags & TABLE_NO_FREE)) {
         /* Deallocate table memory (but not the string memory). */
         for (ii=0; ii<table.length; ii++)
@@ -704,6 +734,7 @@ _send_help(struct userNode *dest, struct userNode *src, expand_func_t expand, co
 }
 
 
+/*
 int
 _send_help_breef(struct userNode *dest, struct userNode *src, expand_func_t expand, const char *format, ...)
 {
@@ -713,16 +744,16 @@ _send_help_breef(struct userNode *dest, struct userNode *src, expand_func_t expa
     va_list ap;
 
     buf = (char *) malloc(strlen(format) +1);
-    sprintf(buf, format);
+    strcpy(buf, format);
     ptr = strchr(buf, '\n');
     *ptr = '\0';
-    printf("buf is: %s", buf);
     va_start(ap, buf);
     res = vsend_message(dest->nick, src, dest->handle_info, 12, expand, buf, ap);
     va_end(ap);
     free(buf);
     return res;
 }
+*/
 
 
 int
@@ -777,7 +808,18 @@ send_help_breef(struct userNode *dest, struct userNode *src, struct helpfile *hf
             continue;
         rec = dict_find(lang_hf->db, topic, NULL);
         if (rec && rec->type == RECDB_QSTRING)
-            return _send_help_breef(dest, src, hf->expand, rec->d.qstring);
+        {
+            char* buf;
+            int res;
+
+            buf = malloc(strlen(rec->d.qstring) + 1);
+            strcpy(buf, rec->d.qstring);
+            *strchr(buf, '\n') = 0;
+
+            res = _send_help(dest, src, hf->expand, buf);
+            free(buf);
+            return res;
+        }
     }
     rec = dict_find(hf->db, "<missing>", NULL);
     if (!rec)
