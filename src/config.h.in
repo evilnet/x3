@@ -275,8 +275,14 @@
 /* Define if using the mpatrol malloc debugging package */
 #undef WITH_MALLOC_MPATROL
 
+/* Define if using the slab internal debug allocator */
+#undef WITH_MALLOC_SLAB
+
 /* Define if using the system's malloc */
 #undef WITH_MALLOC_SYSTEM
+
+/* Define if using the x3 internal debug allocator */
+#undef WITH_MALLOC_X3
 
 /* Define if using the Bahamut dialect of IRC */
 #undef WITH_PROTOCOL_BAHAMUT

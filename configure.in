@@ -153,7 +153,7 @@ dnl Optional features.
 AC_MSG_CHECKING(which malloc to use)
 AC_ARG_WITH(malloc,
 [  --with-malloc=type      Enables use of a special malloc library; one of:
-                          system (the default), boehm-gc, dmalloc, mpatrol, srvx, slab],
+                          system (the default), boehm-gc, dmalloc, mpatrol, x3, slab],
 [],
 [withval="system"])
 if test "x$withval" = "xsystem" ; then
@@ -177,10 +177,10 @@ elif test "x$withval" = "xboehm-gc" ; then
   AC_CHECK_LIB(dl, dlopen, , AC_MSG_ERROR([libdl library is missing.  boehm-gc build will fail.]))
   AC_CHECK_LIB(gc, GC_gcollect, , AC_MSG_ERROR([Boehm GC library is missing.  boehm-gc build will fail.]))
   AC_DEFINE(WITH_MALLOC_BOEHM_GC, 1, [Define if using the Boehm GC to garbage collect and check memory leaks])
-elif test "x$withval" = "xsrvx" ; then
-  AC_MSG_RESULT(srvx)
-  AC_DEFINE(WITH_MALLOC_SRVX, 1, [Define if using the srvx internal debug allocator])
-  MODULE_OBJS="$MODULE_OBJS alloc-srvx.\$(OBJEXT)"
+elif test "x$withval" = "xx3" ; then
+  AC_MSG_RESULT(x3)
+  AC_DEFINE(WITH_MALLOC_X3, 1, [Define if using the x3 internal debug allocator])
+  MODULE_OBJS="$MODULE_OBJS alloc-x3.\$(OBJEXT)"
 elif test "x$withval" = "xslab" ; then
   AC_MSG_RESULT(slab)
   AC_DEFINE(WITH_MALLOC_SLAB, 1, [Define if using the slab internal debug allocator])
