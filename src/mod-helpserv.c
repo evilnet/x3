@@ -2246,7 +2246,7 @@ static HELPSERV_FUNC(cmd_move) {
         }
 
         if (!(hs->helpchan = GetChannel(newchan))) {
-            hs->helpchan = AddChannel(newchan, now, NULL, NULL);
+            hs->helpchan = AddChannel(newchan, now, NULL, NULL, NULL);
             AddChannelUser(hs->helpserv, hs->helpchan)->modes |= MODE_CHANOP;
         } else if (!helpserv_in_channel(hs, old_helpchan)) {
             struct mod_chanmode change;
@@ -2607,7 +2607,7 @@ static struct helpserv_bot *register_helpserv(const char *nick, const char *help
     reg_privmsg_func(hs->helpserv, helpserv_botmsg);
 
     if (!(hs->helpchan = GetChannel(help_channel))) {
-        hs->helpchan = AddChannel(help_channel, now, NULL, NULL);
+        hs->helpchan = AddChannel(help_channel, now, NULL, NULL, NULL);
         AddChannelUser(hs->helpserv, hs->helpchan)->modes |= MODE_CHANOP;
     } else {
         struct mod_chanmode change;
@@ -2854,7 +2854,7 @@ static void set_page_target(struct helpserv_bot *hs, enum page_source idx, const
         }
         new_target = GetChannel(target);
         if (!new_target) {
-            new_target = AddChannel(target, now, NULL, NULL);
+            new_target = AddChannel(target, now, NULL, NULL, NULL);
             AddChannelUser(hs->helpserv, new_target);
         }
     } else {
