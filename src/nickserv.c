@@ -3711,7 +3711,7 @@ handle_account(struct userNode *user, const char *stamp)
         timestamp = atoi(colon+1);
     }
     hi = dict_find(nickserv_handle_dict, stamp, NULL);
-    if(hi && hi->registered != timestamp)
+    if(hi && timestamp && hi->registered != timestamp)
     {
         log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match %lu is not %lu.", user->nick, stamp, timestamp, hi->registered);
         return;
