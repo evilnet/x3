@@ -133,6 +133,10 @@
         "email_search_level" "600"; // minimum OpServ level to search based on email address
         "email_visible_level" "800"; // minimum OpServ level to see somebody's email address
         "sync_log" "1"; // Output password and email changes, plus registration to sync.log
+        "set_title_level" "900"; // min opserv level to set a title on an account
+        "set_fakehost_level" "1000"; //min opserv level to set a freeform fakehost
+        "titlehost_suffix" "AfterNET.Org"; // suffix to use with automatically generated fakehosts
+
     };
 
     "opserv" {
