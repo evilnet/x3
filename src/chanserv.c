@@ -7217,6 +7217,7 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(8ball, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(d, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(huggle, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
+    DEFINE_COMMAND(calc, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
 
     /* Channel options */
     DEFINE_CHANNEL_OPTION(defaulttopic);
