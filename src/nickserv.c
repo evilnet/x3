@@ -325,8 +325,10 @@ static const struct message_entry msgtab[] = {
         "If you did NOT request your password to be changed, you do not need to do anything.\n"
         "Please contact the %1$s staff if you have questions." },
     { "NSEMAIL_EMAIL_CHANGE_SUBJECT", "Email address change verification for %s" },
+#ifdef stupid_verify_old_email        
     { "NSEMAIL_EMAIL_CHANGE_BODY_NEW", "This email has been sent to verify that your email address belongs to the same person as account %5$s on %1$s.  The SECOND HALF of your cookie is %2$.*6$s.\nTo verify your address as associated with this account, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s ?????%2$.*6$s\n(Replace the ????? with the FIRST HALF of the cookie, as sent to your OLD email address.)\nIf you did NOT request this email address to be associated with this account, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
     { "NSEMAIL_EMAIL_CHANGE_BODY_OLD", "This email has been sent to verify that you want to change your email for account %5$s on %1$s from this address to %7$s.  The FIRST HALF of your cookie is %2$.*6$s\nTo verify your new address as associated with this account, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s %2$.*6$s?????\n(Replace the ????? with the SECOND HALF of the cookie, as sent to your NEW email address.)\nIf you did NOT request this change of email address, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
+#endif
     { "NSEMAIL_EMAIL_VERIFY_SUBJECT", "Email address verification for %s" },
     { "NSEMAIL_EMAIL_VERIFY_BODY", "This email has been sent to verify that this address belongs to the same person as %5$s on %1$s.  Your cookie is %2$s.\nTo verify your address as associated with this account, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s %2$s\nIf you did NOT request this email address to be associated with this account, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
     { "NSEMAIL_ALLOWAUTH_SUBJECT", "Authentication allowed for %s" },
@@ -1084,6 +1086,7 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
     case EMAIL_CHANGE:
         misc = hi->email_addr;
         hi->email_addr = cookie->data;
+#ifdef stupid_verify_old_email        
         if (misc) {
             send_message(user, nickserv, "NSMSG_USE_COOKIE_EMAIL_2");
             fmt = handle_find_message(hi, "NSEMAIL_EMAIL_CHANGE_SUBJECT");
@@ -1094,6 +1097,7 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
             fmt = handle_find_message(hi, "NSEMAIL_EMAIL_CHANGE_BODY_OLD");
             snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle, COOKIELEN/2, hi->email_addr);
         } else {
+#endif
             send_message(user, nickserv, "NSMSG_USE_COOKIE_EMAIL_1");
             fmt = handle_find_message(hi, "NSEMAIL_EMAIL_VERIFY_SUBJECT");
             snprintf(subject, sizeof(subject), fmt, netname);
@@ -1101,7 +1105,9 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
             snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle);
             sendmail(nickserv, hi, subject, body, 1);
             subject[0] = 0;
+#ifdef stupid_verify_old_email
         }
+#endif
         hi->email_addr = misc;
         break;
     case ALLOWAUTH:
