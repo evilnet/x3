@@ -1478,7 +1478,7 @@ static MODCMD_FUNC(cmd_god) {
 }
 
 static MODCMD_FUNC(cmd_joiner) {
-    char cmdname[80];
+    char cmdname[MAXLEN];
 
     if (argc < 2) {
         int len = sprintf(cmdname, "%s ", cmd->name);

@@ -430,13 +430,6 @@ register_nick(const char *nick, struct handle_info *owner)
 }
 
 static void
-free_nick_info(void *vni)
-{
-    struct nick_info *ni = vni;
-    free(ni);
-}
-
-static void
 delete_nick(struct nick_info *ni)
 {
     struct nick_info *last, *next;
@@ -3842,7 +3835,7 @@ init_nickserv(const char *nick)
     dict_set_free_keys(nickserv_id_dict, free);
 
     nickserv_nick_dict = dict_new();
-    dict_set_free_data(nickserv_nick_dict, free_nick_info);
+    dict_set_free_data(nickserv_nick_dict, free);
 
     nickserv_allow_auth_dict = dict_new();
 

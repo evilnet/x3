@@ -509,8 +509,6 @@ static struct
     unsigned int 	max_chan_bans;
     unsigned int        max_userinfo_length;
 
-    unsigned int	use_registered_mode;
-
     struct string_list  *set_shows;
     struct string_list  *eightball;
     struct string_list  *old_ban_names;
@@ -1302,7 +1300,7 @@ unregister_channel(struct chanData *channel, const char *reason)
 
     timeq_del(0, NULL, channel, TIMEQ_IGNORE_FUNC | TIMEQ_IGNORE_WHEN);
 
-    if(chanserv_conf.use_registered_mode)
+    if(off_channel > 0)
     {
       mod_chanmode_init(&change);
       change.modes_clear |= MODE_REGISTERED;
@@ -1527,14 +1525,14 @@ chanserv_add_dnr(const char *chan_name, const char *setter, const char *reason)
 }
 
 static struct dnrList
-chanserv_find_dnrs(const char *chan_name, struct handle_info *handle)
+chanserv_find_dnrs(const char *chan_name, const char *handle)
 {
     struct dnrList list;
     dict_iterator_t it;
     struct do_not_register *dnr;
 
     dnrList_init(&list);
-    if(handle && (dnr = dict_find(handle_dnrs, handle->handle, NULL)))
+    if(handle && (dnr = dict_find(handle_dnrs, handle, NULL)))
         dnrList_append(&list, dnr);
     if(chan_name && (dnr = dict_find(plain_dnrs, chan_name, NULL)))
         dnrList_append(&list, dnr);
@@ -1546,7 +1544,7 @@ chanserv_find_dnrs(const char *chan_name, struct handle_info *handle)
 }
 
 static unsigned int
-chanserv_show_dnrs(struct userNode *user, struct svccmd *cmd, const char *chan_name, struct handle_info *handle)
+chanserv_show_dnrs(struct userNode *user, struct svccmd *cmd, const char *chan_name, const char *handle)
 {
     struct dnrList list;
     struct do_not_register *dnr;
@@ -1661,7 +1659,7 @@ static CHANSERV_FUNC(cmd_noregister)
 
     reply("CSMSG_DNR_SEARCH_RESULTS");
     if(*target == '*')
-        matches = chanserv_show_dnrs(user, cmd, NULL, get_handle_info(target + 1));
+        matches = chanserv_show_dnrs(user, cmd, NULL, target + 1);
     else
         matches = chanserv_show_dnrs(user, cmd, target, NULL);
     if(!matches)
@@ -1783,7 +1781,7 @@ static CHANSERV_FUNC(cmd_register)
         if(!IsHelping(user))
             reply("CSMSG_DNR_CHANNEL", chan_name);
         else
-            chanserv_show_dnrs(user, cmd, chan_name, handle);
+            chanserv_show_dnrs(user, cmd, chan_name, handle->handle);
         return 0;
     }
 
@@ -1799,7 +1797,7 @@ static CHANSERV_FUNC(cmd_register)
     cData = register_channel(channel, user->handle_info->handle);
     scan_user_presence(add_channel_user(cData, handle, UL_OWNER, 0, NULL), NULL);
     cData->modes = chanserv_conf.default_modes;
-    if(chanserv_conf.use_registered_mode)
+    if(off_channel > 0)
       cData->modes.modes_set |= MODE_REGISTERED;
     change = mod_chanmode_dup(&cData->modes, 1);
     change->args[change->argc].mode = MODE_CHANOP;
@@ -1891,6 +1889,7 @@ static CHANSERV_FUNC(cmd_unregister)
 
 static CHANSERV_FUNC(cmd_move)
 {
+    struct mod_chanmode change;
     struct chanNode *target;
     struct modeNode *mn;
     struct userData *uData;
@@ -1926,12 +1925,13 @@ static CHANSERV_FUNC(cmd_move)
                 if(!IsHelping(user))
                     reply("CSMSG_DNR_CHANNEL_MOVE", argv[1]);
                 else
-                    chanserv_show_dnrs(user, cmd, argv[1], uData->handle);
+                    chanserv_show_dnrs(user, cmd, argv[1], uData->handle->handle);
                 return 0;
             }
         }
     }
 
+    mod_chanmode_init(&change);
     if(!(target = GetChannel(argv[1])))
     {
         target = AddChannel(argv[1], now, NULL, NULL, NULL);
@@ -1951,11 +1951,20 @@ static CHANSERV_FUNC(cmd_move)
     }
     else if(!IsSuspended(channel->channel_info))
     {
-        struct mod_chanmode change;
-        mod_chanmode_init(&change);
         change.argc = 1;
         change.args[0].mode = MODE_CHANOP;
         change.args[0].u.member = AddChannelUser(chanserv, target);
+        mod_chanmode_announce(chanserv, target, &change);
+    }
+
+    if(off_channel > 0)
+    {
+        /* Clear MODE_REGISTERED from old channel, add it to new. */
+        change.argc = 0;
+        change.modes_clear = MODE_REGISTERED;
+        mod_chanmode_announce(chanserv, channel, &change);
+        change.modes_clear = 0;
+        change.modes_set = MODE_REGISTERED;
         mod_chanmode_announce(chanserv, target, &change);
     }
 
@@ -5602,7 +5611,7 @@ static CHANSERV_FUNC(cmd_giveownership)
         if(!IsHelping(user))
             reply("CSMSG_DNR_ACCOUNT", new_owner_hi->handle);
         else
-            chanserv_show_dnrs(user, cmd, NULL, new_owner_hi);
+            chanserv_show_dnrs(user, cmd, NULL, new_owner_hi->handle);
         return 0;
     }
     if(new_owner->access >= UL_COOWNER)
@@ -6172,7 +6181,8 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
         struct banData *ban;
 
         if((user->channels.list[ii]->modes & (MODE_CHANOP|MODE_HALFOP|MODE_VOICE))
-           || !channel->channel_info)
+           || !channel->channel_info
+           || IsSuspended(channel->channel_info))
             continue;
         for(jj = 0; jj < channel->banlist.used; ++jj)
             if(user_matches_glob(user, channel->banlist.list[jj]->ban, 1))
@@ -6505,7 +6515,7 @@ chanserv_conf_read(void)
     str = database_get_data(conf_node, KEY_INFO_DELAY, RECDB_QSTRING);
     chanserv_conf.info_delay = str ? ParseInterval(str) : 180;
     str = database_get_data(conf_node, KEY_MAX_GREETLEN, RECDB_QSTRING);
-    chanserv_conf.greeting_length = str ? atoi(str) : 120;
+    chanserv_conf.greeting_length = str ? atoi(str) : 200;
     str = database_get_data(conf_node, KEY_ADJUST_THRESHOLD, RECDB_QSTRING);
     chanserv_conf.adjust_threshold = str ? atoi(str) : 15;
     str = database_get_data(conf_node, KEY_ADJUST_DELAY, RECDB_QSTRING);
@@ -6605,9 +6615,7 @@ chanserv_conf_read(void)
     /* the variable itself is actually declared in proto-common.c; this is equally 
      * parse issue. */
     str = database_get_data(conf_node, "off_channel", RECDB_QSTRING);
-    off_channel = (str && enabled_string(str)) ? 1 : 0;
-    str = database_get_data(conf_node, "use_registered_mode", RECDB_QSTRING);
-    chanserv_conf.use_registered_mode = (str && enabled_string(str)) ? 1 : 0;
+    off_channel = str ? atoi(str) : 0;
 }
 
 static void
@@ -6918,7 +6926,7 @@ chanserv_channel_read(const char *key, struct record_data *hir)
        && (argc = split_line(str, 0, ArrayLength(argv), argv))
        && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE))) {
         cData->modes = *modes;
-	if(chanserv_conf.use_registered_mode)
+	if(off_channel > 0)
           cData->modes.modes_set |= MODE_REGISTERED;
         if(cData->modes.argc > 1)
             cData->modes.argc = 1;
@@ -7409,7 +7417,7 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(ctcpusers);
     DEFINE_CHANNEL_OPTION(ctcpreaction);
     DEFINE_CHANNEL_OPTION(inviteme);
-    if(off_channel)
+    if(off_channel > 1)
         DEFINE_CHANNEL_OPTION(offchannel);
     modcmd_register(chanserv_module, "set defaults", chan_opt_defaults, 1, 0, "access", "owner", NULL);
 
@@ -7444,7 +7452,7 @@ init_chanserv(const char *nick)
         next_refresh = (now + chanserv_conf.refresh_period - 1) / chanserv_conf.refresh_period * chanserv_conf.refresh_period;
         timeq_add(next_refresh, chanserv_refresh_topics, NULL);
     }
-    
+
     reg_exit_func(chanserv_db_cleanup);
     message_register_table(msgtab);
 }
