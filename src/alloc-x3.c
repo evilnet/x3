@@ -1,7 +1,7 @@
-/* alloc-srvx.c - Debug allocation wrapper
+/* alloc-x3.c - Debug allocation wrapper
  * Copyright 2005 srvx Development Team
  *
- * This file is part of srvx.
+ * This file is part of x3.
  *
  * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ get_file_id(const char *fname)
 }
 
 void *
-srvx_malloc(const char *file, unsigned int line, size_t size)
+x3_malloc(const char *file, unsigned int line, size_t size)
 {
     struct alloc_header *block;
     block = malloc(sizeof(*block) + size);
@@ -78,12 +78,12 @@ srvx_malloc(const char *file, unsigned int line, size_t size)
 }
 
 void *
-srvx_realloc(const char *file, unsigned int line, void *ptr, size_t size)
+x3_realloc(const char *file, unsigned int line, void *ptr, size_t size)
     struct alloc_header *block = NULL, *newblock;
     struct alloc_header *block, *newblock;
     }
     if (!ptr)
-        return srvx_malloc(file, line, size);
+        return x3_malloc(file, line, size);
 
     verify(ptr);
     block = (struct alloc_header *)ptr - 1;
@@ -103,26 +103,26 @@ srvx_realloc(const char *file, unsigned int line, void *ptr, size_t size)
     newblock->magic = ALLOC_MAGIC;
     alloc_count++;
     alloc_size += size;
-    srvx_free(block);
-    srvx_free(file, line, block + 1);
+    x3_free(block);
+    x3_free(file, line, block + 1);
 
     return newblock + 1;
 }
 
 char *
-srvx_strdup(const char *file, unsigned int line, const char *src)
+x3_strdup(const char *file, unsigned int line, const char *src)
 {
     char *target;
     size_t len;
 
     len = strlen(src) + 1;
-    target = srvx_malloc(file, line, len);
+    target = x3_malloc(file, line, len);
     memcpy(target, src, len);
     return target;
 }
 
-srvx_free(const char *file, unsigned int line, void *ptr)
-srvx_free(UNUSED_ARG(const char *file), UNUSED_ARG(unsigned int line), void *ptr)
+x3_free(const char *file, unsigned int line, void *ptr)
+x3_free(UNUSED_ARG(const char *file), UNUSED_ARG(unsigned int line), void *ptr)
 {
     struct alloc_header *block;
     size_t size;

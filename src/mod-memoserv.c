@@ -1,7 +1,7 @@
 /* mod-memoserv.c - MemoServ module for srvx
  * Copyright 2003-2004 Martijn Smit and srvx Development Team
  *
- * This file is part of srvx.
+ * This file is part of x3.
  *
  * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -1,7 +1,7 @@
 /* heap.h - Abstract heap type
  * Copyright 2000-2001 srvx Development Team
  *
- * This file is part of srvx.
+ * This file is part of x3.
  *
  * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
