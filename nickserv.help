@@ -307,6 +307,9 @@
         "If no account is given, it will cancel the allowauth for the user (assuming the user has an allowauth).",
         "If the account is marked as a helper or oper, the STAFF qualifier must be given afterwards.  This reduces social engineering attacks.",
         "$uSee Also:$u addmask, auth");
+
+"LOGIN" ("See /MSG $N HELP AUTH");
+
 "AUTH" {
         "/services/nickserv/email_enabled" (
         "/msg $N@$s AUTH [account] <password>",

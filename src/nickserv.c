@@ -130,6 +130,7 @@ static char handle_inverse_flags[256];
 static unsigned int flag_access_levels[32];
 static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLE_EXISTS", "Account $b%s$b is already registered." },
+    { "NSMSG_HANDLE_TOLONG", "The account name %s is too long. Account names must be %lu charactors or less."},
     { "NSMSG_PASSWORD_SHORT", "Your password must be at least %lu characters long." },
     { "NSMSG_PASSWORD_ACCOUNT", "Your password may not be the same as your account name." },
     { "NSMSG_PASSWORD_DICTIONARY", "Your password should not be the word \"password\", or any other dictionary word." },
@@ -959,6 +960,12 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
 	return 0;
     }
 
+    if(strlen(handle) > 15)
+    {  
+        send_message(user, nickserv, "NSMSG_HANDLE_TOLONG", handle, 15);
+        return 0;
+    }
+
     if (!is_secure_password(handle, passwd, user))
         return 0;
 
@@ -1489,6 +1496,11 @@ static NICKSERV_FUNC(cmd_rename_handle)
     }
     if (get_handle_info(argv[2])) {
         reply("NSMSG_HANDLE_EXISTS", argv[2]);
+        return 0;
+    }
+    if(strlen(argv[2]) > 15)
+    {
+        reply("NMSG_HANDLE_TOLONG", argv[2], 15);
         return 0;
     }
 

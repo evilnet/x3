@@ -5806,6 +5806,11 @@ handle_join(struct modeNode *mNode)
      * full, see if they're on the banlist for the channel.  If so,
      * kickban them.
      */
+    /* This is really, really stupid. not all banned people are kicked. 
+     * sometimes we like to leave them unkicked. 
+     * I tried to explain this to the srvx developers and 
+     * got insulted.. hence one reason for this fork.
+     *
     if(user->uplink->burst && !mNode->modes)
     {
         unsigned int ii;
@@ -5813,12 +5818,13 @@ handle_join(struct modeNode *mNode)
         {
             if(user_matches_glob(user, channel->banlist.list[ii]->ban, 1))
             {
-                /* Riding a netburst.  Naughty. */
+                ** Riding a netburst.  Naughty. **
                 KickChannelUser(user, channel, chanserv, "User from far side of netsplit should have been banned - bye.");
                 return 1;
             }
         }
     }
+    */
 
     mod_chanmode_init(&change);
     change.argc = 1;

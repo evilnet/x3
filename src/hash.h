@@ -25,22 +25,29 @@
 #include "dict.h"
 #include "policer.h"
 
-#define MODE_CHANOP		0x0001 /* +o USER */
-#define MODE_VOICE		0x0002 /* +v USER */
-#define MODE_PRIVATE		0x0004 /* +p */
-#define MODE_SECRET		0x0008 /* +s */
-#define MODE_MODERATED		0x0010 /* +m */
-#define MODE_TOPICLIMIT		0x0020 /* +t */
-#define MODE_INVITEONLY		0x0040 /* +i */
-#define MODE_NOPRIVMSGS		0x0080 /* +n */
-#define MODE_KEY		0x0100 /* +k KEY */
-#define MODE_BAN		0x0200 /* +b BAN */
-#define MODE_LIMIT		0x0400 /* +l LIMIT */
-#define MODE_DELAYJOINS         0x0800 /* +D */
-#define MODE_REGONLY            0x1000 /* ircu +r, Bahamut +R */
-#define MODE_NOCOLORS           0x2000 /* +c */
-#define MODE_NOCTCPS            0x4000 /* +C */
-#define MODE_REGISTERED         0x8000 /* Bahamut +r */
+#define MODE_CHANOP		0x00000001 /* +o USER */
+#define MODE_VOICE		0x00000002 /* +v USER */
+#define MODE_PRIVATE		0x00000004 /* +p */
+#define MODE_SECRET		0x00000008 /* +s */
+#define MODE_MODERATED		0x00000010 /* +m */
+#define MODE_TOPICLIMIT		0x00000020 /* +t */
+#define MODE_INVITEONLY		0x00000040 /* +i */
+#define MODE_NOPRIVMSGS		0x00000080 /* +n */
+#define MODE_KEY		0x00000100 /* +k KEY */
+#define MODE_BAN		0x00000200 /* +b BAN */
+#define MODE_LIMIT		0x00000400 /* +l LIMIT */
+#define MODE_DELAYJOINS         0x00000800 /* +D */
+#define MODE_REGONLY            0x00001000 /* ircu +r, Bahamut +R */
+#define MODE_NOCOLORS           0x00002000 /* +c */
+#define MODE_NOCTCPS            0x00004000 /* +C */
+#define MODE_REGISTERED         0x00008000 /* Bahamut +r */
+#define MODE_STRIPCOLOR         0x00010000 /* +S Strip mirc color codes */
+#define MODE_MODUNREG           0x00020000 /* +M mod unregister */
+#define MODE_NONOTICE           0x00040000 /* +N no notices */
+#define MODE_OPERSONLY          0x00080000 /* +O Opers only */
+#define MODE_NOQUITMSGS         0x00100000 /* +Q suppress messages from quit notices */
+#define MODE_NOAMSG             0x00200000 /* +T no multi-target messages */
+#define MODE_SSLONLY            0x00400000 /* +z ssl only */
 #define MODE_REMOVE             0x80000000
 
 #define FLAGS_OPER		0x0001 /* Operator +O */

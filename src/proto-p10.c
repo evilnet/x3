@@ -548,8 +548,8 @@ irc_introduce(const char *passwd)
 void
 irc_gline(struct server *srv, struct gline *gline)
 {
-    putsock("%s " P10_GLINE " %s +%s %ld :%s",
-            self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, gline->reason);
+    putsock("%s " P10_GLINE " %s +%s %ld :<%s> %s",
+            self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, gline->issuer, gline->reason);
 }
 
 void
@@ -2114,6 +2114,14 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'r': do_chan_mode(MODE_REGONLY); break;
         case 's': do_chan_mode(MODE_SECRET); break;
         case 't': do_chan_mode(MODE_TOPICLIMIT); break;
+        case 'S': do_chan_mode(MODE_STRIPCOLOR); break;
+        case 'M': do_chan_mode(MODE_MODUNREG); break;
+        case 'N': do_chan_mode(MODE_NONOTICE); break;
+        case 'Q': do_chan_mode(MODE_NOQUITMSGS); break;
+        case 'T': do_chan_mode(MODE_NOAMSG); break;
+        case 'O': do_chan_mode(MODE_OPERSONLY); break;
+//   uncomment this when ssl is enabled on the network.
+//        case 'z': do_chan_mode(MODE_SSLONLY); break;
 #undef do_chan_mode
         case 'l':
             if (add) {
@@ -2257,6 +2265,14 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(REGONLY, 'r');
         DO_MODE_CHAR(NOCOLORS, 'c');
         DO_MODE_CHAR(NOCTCPS, 'C');
+        DO_MODE_CHAR(STRIPCOLOR, 'S');
+        DO_MODE_CHAR(MODUNREG, 'M');
+        DO_MODE_CHAR(NONOTICE, 'N');
+        DO_MODE_CHAR(NOQUITMSGS, 'Q');
+        DO_MODE_CHAR(NOAMSG, 'T');
+        DO_MODE_CHAR(OPERSONLY, 'O');
+        // uncomment this for ssl support
+        //DO_MODE_CHAR(SSLONLY, 'z');
 #undef DO_MODE_CHAR
         if (change->modes_clear & channel->modes & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', channel->key);
@@ -2295,6 +2311,14 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(REGONLY, 'r');
         DO_MODE_CHAR(NOCOLORS, 'c');
         DO_MODE_CHAR(NOCTCPS, 'C');
+        DO_MODE_CHAR(STRIPCOLOR, 'S');
+        DO_MODE_CHAR(MODUNREG, 'M');
+        DO_MODE_CHAR(NONOTICE, 'N');
+        DO_MODE_CHAR(NOQUITMSGS, 'Q');
+        DO_MODE_CHAR(NOAMSG, 'T');
+        DO_MODE_CHAR(OPERSONLY, 'O');
+        // uncomment this for ssl support
+        //DO_MODE_CHAR(SSLONLY, 'z');
 #undef DO_MODE_CHAR
         if(change->modes_set & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', change->new_key);
@@ -2350,6 +2374,14 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(REGONLY, 'r');
         DO_MODE_CHAR(NOCOLORS, 'c');
         DO_MODE_CHAR(NOCTCPS, 'C');
+        DO_MODE_CHAR(STRIPCOLOR, 'S');
+        DO_MODE_CHAR(MODUNREG, 'M');
+        DO_MODE_CHAR(NONOTICE, 'N');
+        DO_MODE_CHAR(NOQUITMSGS, 'Q');
+        DO_MODE_CHAR(NOAMSG, 'T');
+        DO_MODE_CHAR(OPERSONLY, 'O');
+        // uncomment this for ssl support
+        //DO_MODE_CHAR(SSLONLY, 'z');
 #undef DO_MODE_CHAR
     }
     if (change->modes_set) {
@@ -2365,6 +2397,14 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(REGONLY, 'r');
         DO_MODE_CHAR(NOCOLORS, 'c');
         DO_MODE_CHAR(NOCTCPS, 'C');
+        DO_MODE_CHAR(STRIPCOLOR, 'S');
+        DO_MODE_CHAR(MODUNREG, 'M');
+        DO_MODE_CHAR(NONOTICE, 'N');
+        DO_MODE_CHAR(NOQUITMSGS, 'Q');
+        DO_MODE_CHAR(NOAMSG, 'T');
+        DO_MODE_CHAR(OPERSONLY, 'O');
+        // uncomment this for ssl support
+        //DO_MODE_CHAR(SSLONLY, 'z');
 #undef DO_MODE_CHAR
         switch (change->modes_set & (MODE_KEY|MODE_LIMIT)) {
         case MODE_KEY|MODE_LIMIT:
@@ -2410,6 +2450,12 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'r': remove |= MODE_REGONLY; break;
         case 'c': remove |= MODE_NOCOLORS;
         case 'C': remove |= MODE_NOCTCPS; break;
+        case 'S': remove |= MODE_STRIPCOLOR; break;
+        case 'M': remove |= MODE_MODUNREG; break;
+        case 'N': remove |= MODE_NONOTICE; break;
+        case 'Q': remove |= MODE_NOQUITMSGS; break;
+        case 'T': remove |= MODE_NOAMSG; break;
+        case 'O': remove |= MODE_OPERSONLY; break;
         }
     }
 

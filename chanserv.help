@@ -157,6 +157,13 @@
             "=---------------------------------------="
 );
 
+"LOGIN" ("=-- Logging In --=",
+         " Please login using:",
+         "   /MSG $N AUTH <account> <password>",
+         " or the shortcut:",
+         "   /AUTH <account> <password>"
+         );
+
 "MYACCESS" ("/msg $S MYACCESS [<nick|*account>]",
         "Lists channels where you have access and infolines in each.",
         "Network staff may specify a nickname or *account to view the list for another user.",
