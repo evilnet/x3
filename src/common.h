@@ -83,21 +83,21 @@ extern struct tm *localtime_r(const time_t *clock, struct tm *res);
 # define free(p) GC_FREE(p)
 # undef  HAVE_STRDUP
 # undef strdup
-#elif defined(WITH_MALLOC_SRVX)
+#elif defined(WITH_MALLOC_X3)
 # undef malloc
-# define malloc(n) srvx_malloc(__FILE__, __LINE__, (n))
+# define malloc(n) x3_malloc(__FILE__, __LINE__, (n))
 # undef calloc
-# define calloc(m,n) srvx_malloc(__FILE__, __LINE__, (m)*(n))
+# define calloc(m,n) x3_malloc(__FILE__, __LINE__, (m)*(n))
 # undef realloc
-# define realloc(p,n) srvx_realloc(__FILE__, __LINE__, (p), (n))
+# define realloc(p,n) x3_realloc(__FILE__, __LINE__, (p), (n))
 # undef free
-# define free(p) srvx_free(__FILE__, __LINE__, (p))
+# define free(p) x3_free(__FILE__, __LINE__, (p))
 # undef strdup
-# define strdup(s) srvx_strdup(__FILE__, __LINE__, (s))
-extern void *srvx_malloc(const char *, unsigned int, size_t);
-extern void *srvx_realloc(const char *, unsigned int, void *, size_t);
-extern char *srvx_strdup(const char *, unsigned int, const char *);
-extern void srvx_free(const char *, unsigned int, void *);
+# define strdup(s) x3_strdup(__FILE__, __LINE__, (s))
+extern void *x3_malloc(const char *, unsigned int, size_t);
+extern void *x3_realloc(const char *, unsigned int, void *, size_t);
+extern char *x3_strdup(const char *, unsigned int, const char *);
+extern void x3_free(const char *, unsigned int, void *);
 # if !defined(NDEBUG)
 extern void verify(const void *ptr);
 #  define verify(x) verify(x)

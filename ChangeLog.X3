@@ -3,6 +3,8 @@
 
 2005-03-12  Alex Schumann   <rubin@afternet.org>
 
+	* src/common.h, src/opserv.h: more SRVX->X3 fixes
+
 	* opserv.c: fixed SRVX defines to X3
 
 	* src/nickserv.c: Applied patch to bring up to date with

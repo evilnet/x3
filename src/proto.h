@@ -23,7 +23,7 @@
 
 /* Warning for those looking at how this code does multi-protocol
  * support: It's an awful, nasty hack job.  It is intended for short
- * term use, not long term, since we are already developing srvx2,
+ * term use, not long term, since we are already developing x3,
  * which has much nicer interfaces that hide most of the ugly
  * differences between protocol dialects. */
 
@@ -234,7 +234,7 @@ int irc_make_chanmode(struct chanNode *chan, char *out);
 #define GENMASK_USENICK  2
 #define GENMASK_OMITNICK 4  /* Hurray for Kevin! */
 #define GENMASK_BYIP     8
-#define GENMASK_SRVXMASK 16
+#define GENMASK_X3MASK 16
 #define GENMASK_NO_HIDING 128
 char *generate_hostmask(struct userNode *user, int options);
 
