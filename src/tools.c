@@ -307,8 +307,51 @@ match_ircglob(const char *text, const char *glob)
 
 extern const char *hidden_host_suffix;
 
+int user_matches_glob(struct userNode *user, const char *orig_glob, int include_nick)
+{
+    /* based on IsSetHost(user) and include_nick, build a nick!user@host string
+     * from user and save it in a variable. Compare with match_ircglob() and 
+     * return the results
+     */
+    char *matchstr_nick;
+    char *matchstr_user;
+    char *matchstr_host;
+    char *matchstr_full;
+
+    matchstr_nick = user->nick;
+
+    if(IsSetHost(user))
+    {
+        /* Grab host and user from sethost instead of real host */
+        char *buff;
+        buff = alloca(strlen(user->sethost) + 1);
+        strcpy(buff, user->sethost);
+        matchstr_user = mysep(&buff, "@");
+        matchstr_host = mysep(&buff, "@");
+    }
+    else if(IsFakeHost(user))
+    {
+        matchstr_user = user->ident;
+        matchstr_host = user->fakehost;
+    }
+    else if(hidden_host_suffix && user->handle_info) 
+    {
+        matchstr_host = alloca(strlen(user->handle_info->handle) + strlen(hidden_host_suffix) + 2);
+        sprintf(matchstr_host, "%s.%s", user->handle_info->handle, hidden_host_suffix);
+        matchstr_user = user->ident;
+    }
+    else
+    {
+        matchstr_user = user->ident;
+        matchstr_host = user->hostname;
+    }
+    matchstr_full = alloca(strlen(matchstr_nick) + strlen(matchstr_user) + strlen(matchstr_host) + 4);
+    sprintf(matchstr_full, "%s!%s@%s", matchstr_nick, matchstr_user, matchstr_host);
+    return match_ircglob(matchstr_full, orig_glob);
+}
+
 int
-user_matches_glob(struct userNode *user, const char *orig_glob, int include_nick)
+user_matches_glob_broken(struct userNode *user, const char *orig_glob, int include_nick)
 {
     char *glob, *marker;
     char *setident = NULL, *sethostname = NULL; // sethost - reed/apples

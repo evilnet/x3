@@ -606,7 +606,7 @@ static MODCMD_FUNC(cmd_dehop)
             || !(mn->modes & MODE_HALFOP))
             continue;
         change->args[count].mode = MODE_REMOVE | MODE_HALFOP;
-        change->args[count++].member = mn;
+        change->args[count++].u.member = mn;
     }
     if (count) {
         change->argc = count;
@@ -650,7 +650,7 @@ static MODCMD_FUNC(cmd_dehopall)
         if (IsService(mn->user) || !(mn->modes & MODE_HALFOP))
             continue;
         change->args[count].mode = MODE_REMOVE | MODE_HALFOP;
-        change->args[count++].member = mn;
+        change->args[count++].u.member = mn;
     }
     if (count) {
         change->argc = count;
@@ -1215,7 +1215,7 @@ static MODCMD_FUNC(cmd_hop)
         if (mn->modes & MODE_HALFOP)
             continue;
         change->args[count].mode = MODE_HALFOP;
-        change->args[count++].member = mn;
+        change->args[count++].u.member = mn;
     }
     if (count) {
         change->argc = count;
@@ -1259,7 +1259,7 @@ static MODCMD_FUNC(cmd_hopall)
         if (mn->modes & MODE_HALFOP)
             continue;
         change->args[count].mode = MODE_HALFOP;
-        change->args[count++].member = mn;
+        change->args[count++].u.member = mn;
     }
     if (count) {
         change->argc = count;
@@ -2428,8 +2428,8 @@ static MODCMD_FUNC(cmd_clone)
         mod_chanmode_init(&change);
         change.argc = 1;
         change.args[0].mode = MODE_HALFOP;
-        change.args[0].member = GetUserMode(channel, clone);
-        if (!change.args[0].member) {
+        change.args[0].u.member = GetUserMode(channel, clone);
+        if (!change.args[0].u.member) {
             reply("OSMSG_NOT_ON_CHANNEL", clone->nick, channel->name);
             return 0;
         }
