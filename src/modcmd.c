@@ -18,7 +18,6 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-//#include "arch-version.h"
 #include "chanserv.h"
 #include "conf.h"
 #include "modcmd.h"
@@ -1866,8 +1865,6 @@ static MODCMD_FUNC(cmd_version) {
      * copyright information pertaining to changes you make to srvx.
      */
     send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"$b ("CODENAME"), Built: "__DATE__", "__TIME__".\nCopyright 2000-2004 srvx Development Team.\nThe srvx Development Team includes Paul Chang, Adrian Dewhurst, Miles Peterson, Michael Poole and others.\nThe srvx Development Team can be reached at http://sf.net/projects/srvx/ or in #srvx on irc.gamesurge.net.");
-    if ((argc > 1) && !irccasecmp(argv[1], "arch"))
-        send_message_type(4, user, cmd->parent->bot, "%s", "");
     return 1;
 }
 
