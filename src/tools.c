@@ -767,13 +767,13 @@ intervalString(char *output, time_t interval, struct handle_info *hi)
 
         if (words++ == 1) {
             msg = language_find_message(lang, "MSG_AND");
-            pos += sprintf(output + pos, " %s ", msg);
+            pos += sprintf(output + pos, "%s ", msg);
         }
         if (count == 1)
             msg = language_find_message(lang, unit[type].msg_single);
         else
             msg = language_find_message(lang, unit[type].msg_plural);
-        pos += sprintf(output + pos, "%d %s", count, msg);
+        pos += sprintf(output + pos, "%d%s", count, msg);
     }
 
     output[pos] = 0;

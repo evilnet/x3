@@ -1,6 +1,19 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-03-19  Alex Schumann  <rubin@afternet.org>
+
+	* chanserv.c: Changed style of command outputs, added userlevel back
+	to users list.
+
+	* opserv.c: Changed style of command outputs
+
+	* tools.c: shortened duration string lengths
+
+	* main.c: shortened duration string lengths
+
+	* sendmail.c: Changed style of stats email
+
 2005-03-18  Alex Schumann  <rubin@afternet.org>
 
 	* Changed breef to brief...

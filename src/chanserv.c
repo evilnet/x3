@@ -131,9 +131,9 @@ static const struct message_entry msgtab[] = {
 
 /* Do-not-register channels */
     { "CSMSG_NOT_DNR", "$b%s$b is not a valid channel name or *account." },
-    { "CSMSG_DNR_SEARCH_RESULTS", "The following do-not-registers were found:" },
-    { "CSMSG_DNR_INFO", "$b%s$b is do-not-register (by $b%s$b): %s" },
-    { "CSMSG_DNR_INFO_SET", "$b%s$b is do-not-register (set %s by $b%s$b): %s" },
+    { "CSMSG_DNR_SEARCH_RESULTS", "$bDo-Not-Register Channels$b" },
+    { "CSMSG_DNR_INFO", "$b%s$b (set by $b%s$b): %s" },
+    { "CSMSG_DNR_INFO_SET", "$b%s$b (set %s ago by $b%s$b): %s" },
     { "CSMSG_MORE_DNRS", "%d more do-not-register entries skipped." },
     { "CSMSG_DNR_CHANNEL", "Only network staff may register $b%s$b." },
     { "CSMSG_DNR_CHANNEL_MOVE", "Only network staff may move $b%s$b." },
@@ -184,7 +184,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_DELETED_YOU", "Your $b%d$b access has been deleted from $b%s$b." },
 
 /* User management */
-    { "CSMSG_ADDED_USER", "Added %s to the %s user list with access %d." },
+    { "CSMSG_ADDED_USER", "Added %s to the %s user list with access %s (%d)." },
     { "CSMSG_DELETED_USER", "Deleted %s (with access %d) from the %s user list." },
     { "CSMSG_BAD_RANGE", "Invalid access range; minimum (%d) must be greater than maximum (%d)." },
     { "CSMSG_DELETED_USERS", "Deleted accounts matching $b%s$b with access from $b%d$b to $b%d$b from the %s user list." },
@@ -319,10 +319,11 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BANS_REMOVED", "Removed all channel bans from $b%s$b." },
 
 /* Channel userlist */
-    { "CSMSG_ACCESS_ALL_HEADER", "%s users from level %s to %s" },
-    { "CSMSG_ACCESS_SEARCH_HEADER", "%s users from level %s to %s matching %s" },
+    { "CSMSG_ACCESS_ALL_HEADER", "$b%s Users From Level %s To %s$b" },
+    { "CSMSG_ACCESS_SEARCH_HEADER", "$b%s Users From Level %s To %s Matching %s$b" },
     { "CSMSG_INVALID_ACCESS", "$b%s$b is an invalid access level." },
-    { "CSMSG_CHANGED_ACCESS", "%s now has access $b%s$b in %s." },
+    { "CSMSG_CHANGED_ACCESS", "%s now has access $b%s$b (%u) in %s." },
+    { "CSMSG_BANS_HEADER", "$bBans in %s$b" },
 
 /* Channel note list */
     { "CSMSG_NOTELIST_HEADER", "Notes for $b%s$b:" },
@@ -356,9 +357,9 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SQUAT_ACCESS", "$b%s$b does not have access to any channels." },
     { "CSMSG_INFOLINE_LIST", "Showing all channel entries for account $b%s$b:" },
     { "CSMSG_USER_NO_ACCESS", "%s lacks access to %s." },
-    { "CSMSG_USER_HAS_ACCESS", "%s has $b%s$b access in %s." },
+    { "CSMSG_USER_HAS_ACCESS", "%s has $b%s$b access (%d) in %s." },
     { "CSMSG_HELPER_NO_ACCESS", "%s lacks access to %s but has $bsecurity override$b enabled." },
-    { "CSMSG_HELPER_HAS_ACCESS", "%s has $b%s$b access in %s and has $bsecurity override$b enabled." },
+    { "CSMSG_HELPER_HAS_ACCESS", "%s has $b%s$b access (%d) in %s and has $bsecurity override$b enabled." },
     { "CSMSG_LAZY_SMURF_TARGET", "%s is %s ($bIRCOp$b; not logged in)." },
     { "CSMSG_SMURF_TARGET", "%s is %s ($b%s$b)." },
     { "CSMSG_LAME_SMURF_TARGET", "%s is an IRC operator." },
@@ -374,7 +375,8 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_END_NAMES", "End of names in $b%s$b" },
 
 /* Channel information */
-    { "CSMSG_CHANNEL_INFO", "$b%s$b Information:" },
+    { "CSMSG_CHANNEL_INFO", "$bInformation About %s$b" },
+    { "CSMSG_BAR",  "----------------------------------------"},
     { "CSMSG_CHANNEL_TOPIC", "$bDefault Topic:       $b%s" },
     { "CSMSG_CHANNEL_MODES", "$bMode Lock:           $b%s" },
     { "CSMSG_CHANNEL_NOTE", "$b%s:%*s$b%s" },
@@ -395,13 +397,15 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_CHANNEL_SUSPENDED_7", " %s ago by %s; revoked %s ago: %s" },
     { "CSMSG_CHANNEL_REGISTERED", "$bRegistered:          $b%s ago." },
     { "CSMSG_CHANNEL_VISITED", "$bVisited:             $b%s ago." },
+    { "CSMSG_CHANNEL_END",  "---------------End of Info--------------"},
 
-    { "CSMSG_PEEK_INFO", "$b%s$b Status:" },
+    { "CSMSG_PEEK_INFO", "$bStatus of %s$b" },
     { "CSMSG_PEEK_TOPIC", "$bTopic:          $b%s" },
     { "CSMSG_PEEK_MODES", "$bModes:          $b%s" },
     { "CSMSG_PEEK_USERS", "$bTotal users:    $b%d" },
     { "CSMSG_PEEK_OPS", "$bOps:$b" },
     { "CSMSG_PEEK_NO_OPS", "$bOps:            $bNone present" },
+    { "CSMSG_PEEK_END", "-------------End of Status--------------" },
 
 /* Network information */
     { "CSMSG_NETWORK_INFO", "Network Information:" },
@@ -423,11 +427,12 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_ACTION_INVALID", "$b%s$b is not a recognized search action." },
     { "CSMSG_UNVISITED_HEADER", "Showing a maximum of %d channels unvisited for $b%s$b:" },
     { "CSMSG_UNVISITED_DATA", "%s: $b%s$b" },
-    { "CSMSG_CHANNEL_SEARCH_RESULTS", "The following channels were found:" },
+    { "CSMSG_CHANNEL_SEARCH_RESULTS", "$bChannels Found Matching Search$b" },
 
 /* Channel configuration */
     { "CSMSG_INVALID_OPTION", "$b%s$b is not a valid %s option." },
-    { "CSMSG_CHANNEL_OPTIONS", "Channel Options:" },
+    { "CSMSG_CHANNEL_OPTIONS", "$bChannel Options for %s$b" },
+    { "CSMSG_CHANNEL_OPTIONS_END", "-------------End of Options-------------" },
     { "CSMSG_GREETING_TOO_LONG", "Your greeting ($b%d$b characters) must be shorter than $b%d$b characters." },
 
 /* User settings */
@@ -447,7 +452,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_HUGGLES_YOU", "\001ACTION huggles you\001" },
 
 /* Other things */
-    { "CSMSG_EVENT_SEARCH_RESULTS", "The following channel events were found:" },
+    { "CSMSG_EVENT_SEARCH_RESULTS", "$bChannel Events for %s$b" },
     { NULL, NULL }
 };
 
@@ -1616,6 +1621,7 @@ static CHANSERV_FUNC(cmd_noregister)
         dict_iterator_t it;
 
         reply("CSMSG_DNR_SEARCH_RESULTS");
+        reply("CSMSG_BAR");
         matches = 0;
         for(it = dict_first(handle_dnrs); it; it = iter_next(it))
         {
@@ -1674,6 +1680,7 @@ static CHANSERV_FUNC(cmd_noregister)
     }
 
     reply("CSMSG_DNR_SEARCH_RESULTS");
+    reply("CSMSG_BAR");
     if(*target == '*')
         matches = chanserv_show_dnrs(user, cmd, NULL, target + 1);
     else
@@ -2301,7 +2308,7 @@ static CHANSERV_FUNC(cmd_adduser)
 
     actee = add_channel_user(channel->channel_info, handle, access, 0, NULL);
     scan_user_presence(actee, NULL);
-    reply("CSMSG_ADDED_USER", handle->handle, channel->name, access);
+    reply("CSMSG_ADDED_USER", handle->handle, channel->name, user_level_name_from_level(access), access);
     return 1;
 }
 
@@ -2353,7 +2360,7 @@ static CHANSERV_FUNC(cmd_clvl)
     }
 
     victim->access = new_access;
-    reply("CSMSG_CHANGED_ACCESS", handle->handle, user_level_name_from_level(new_access), channel->name);
+    reply("CSMSG_CHANGED_ACCESS", handle->handle, user_level_name_from_level(new_access), new_access, channel->name);
     return 1;
 }
 
@@ -3452,7 +3459,7 @@ static CHANSERV_FUNC(cmd_access)
         && ((target_handle->opserv_level >= chanserv_conf.nodelete_level) || !IsProtected(channel->channel_info));
     if((uData = GetTrueChannelAccess(channel->channel_info, target_handle)))
     {
-        reply((helping ? "CSMSG_HELPER_HAS_ACCESS" : "CSMSG_USER_HAS_ACCESS"), prefix, user_level_name_from_level(uData->access), channel->name);
+        reply((helping ? "CSMSG_HELPER_HAS_ACCESS" : "CSMSG_USER_HAS_ACCESS"), prefix, user_level_name_from_level(uData->access), uData->access, channel->name);
         /* To prevent possible information leaks, only show infolines
          * if the requestor is in the channel or it's their own
          * handle. */
@@ -3600,15 +3607,16 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     qsort(lData.users, matches, sizeof(lData.users[0]), userData_access_comp);
 
     lData.table.length = matches+1;
-    lData.table.width = 4;
+    lData.table.width = 5;
     lData.table.flags = TABLE_NO_FREE;
     lData.table.contents = malloc(lData.table.length*sizeof(*lData.table.contents));
     ary = malloc(lData.table.width*sizeof(**lData.table.contents));
     lData.table.contents[0] = ary;
     ary[0] = "Access";
-    ary[1] = "Account";
-    ary[2] = "Last Seen";
-    ary[3] = "Status";
+    ary[1] = "Level";
+    ary[2] = "Account";
+    ary[3] = "Last Seen";
+    ary[4] = "Status";
     for(matches = 1; matches < lData.table.length; ++matches)
     {
         struct userData *uData = lData.users[matches-1];
@@ -3620,25 +3628,26 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
         ary[0] = user_level_name_from_level(uData->access);
         /* TODO: replace above with func that returns static string
          * of userlevel for that level. eg OP/MANAGER etc. -rubin */
-        ary[1] = uData->handle->handle;
+        ary[1] = strtab(uData->access);
+        ary[2] = uData->handle->handle;
         if(uData->present)
-            ary[2] = "Here";
+            ary[3] = "Here";
         else if(!uData->seen)
-            ary[2] = "Never";
+            ary[3] = "Never";
         else
-            ary[2] = intervalString(seen, now - uData->seen, user->handle_info);
-        ary[2] = strdup(ary[2]);
+            ary[3] = intervalString(seen, now - uData->seen, user->handle_info);
+        ary[3] = strdup(ary[3]);
         if(IsUserSuspended(uData))
-            ary[3] = "Suspended";
+            ary[4] = "Suspended";
         else if(HANDLE_FLAGGED(uData->handle, FROZEN))
-            ary[3] = "Vacation";
+            ary[4] = "Vacation";
         else
-            ary[3] = "Normal";
+            ary[4] = "Normal";
     }
     send_list(&lData);
     for(matches = 1; matches < lData.table.length; ++matches)
     {
-        free((char*)lData.table.contents[matches][2]);
+        free((char*)lData.table.contents[matches][3]);
         free(lData.table.contents[matches]);
     }
     free(lData.table.contents[0]);
@@ -3694,6 +3703,7 @@ static CHANSERV_FUNC(cmd_bans)
     else
         search = NULL;
 
+    reply("CSMSG_BANS_HEADER", channel->name);
     bans = alloca(channel->channel_info->banCount * sizeof(struct banData *));
 
     for(ban = channel->channel_info->bans; ban; ban = ban->next)
@@ -3760,7 +3770,7 @@ static CHANSERV_FUNC(cmd_bans)
             tbl.contents[ii][3] = ban->reason;
     }
     table_send(cmd->parent->bot, user->nick, 0, NULL, tbl);
-    reply("MSG_MATCH_COUNT", matches);
+    /* reply("MSG_MATCH_COUNT", matches); */
     for(ii = 1; ii < tbl.length; ++ii)
     {
         free((char*)tbl.contents[ii][2]);
@@ -4025,6 +4035,7 @@ static CHANSERV_FUNC(cmd_info)
 
     cData = channel->channel_info;
     reply("CSMSG_CHANNEL_INFO", channel->name);
+    reply("CSMSG_BAR");
 
     uData = GetChannelUser(cData, user->handle_info);
     if(uData && (uData->access >= cData->lvlOpts[lvlGiveOps]))
@@ -4074,6 +4085,7 @@ static CHANSERV_FUNC(cmd_info)
         reply("CSMSG_CHANNEL_SUSPENDED", channel->name);
         show_suspension_info(cmd, user, cData->suspended);
     }
+    reply("CSMSG_CHANNEL_END");
     return 1;
 }
 
@@ -4160,6 +4172,7 @@ static CHANSERV_FUNC(cmd_peek)
     irc_make_chanmode(channel, modes);
 
     reply("CSMSG_PEEK_INFO", channel->name);
+    reply("CSMSG_BAR");
     reply("CSMSG_PEEK_TOPIC", channel->topic);
     reply("CSMSG_PEEK_MODES", modes);
     reply("CSMSG_PEEK_USERS", channel->members.used);
@@ -4184,6 +4197,7 @@ static CHANSERV_FUNC(cmd_peek)
     }
     else
         reply("CSMSG_PEEK_NO_OPS");
+    reply("CSMSG_PEEK_END");
     return 1;
 }
 
@@ -4516,7 +4530,8 @@ static CHANSERV_FUNC(cmd_events)
     discrim.severities = 1 << LOG_COMMAND;
     report.reporter = chanserv;
     report.user = user;
-    reply("CSMSG_EVENT_SEARCH_RESULTS");
+    reply("CSMSG_EVENT_SEARCH_RESULTS", channel->name);
+    reply("CSMSG_BAR");
     matches = log_entry_search(&discrim, log_report_entry, &report);
     if(matches)
 	reply("MSG_MATCH_COUNT", matches);
@@ -4851,7 +4866,10 @@ static CHANSERV_FUNC(cmd_search)
 	search->limit = INT_MAX;
 
     if(action == search_print)
+    {
 	reply("CSMSG_CHANNEL_SEARCH_RESULTS");
+        reply("CSMSG_BAR");
+    }
 
     matches = chanserv_channel_search(search, action, user);
 
@@ -5420,12 +5438,14 @@ static CHANSERV_FUNC(cmd_set)
 
     if(argc < 2)
     {
-	reply("CSMSG_CHANNEL_OPTIONS");
+	reply("CSMSG_CHANNEL_OPTIONS", channel->name);
+        reply("CSMSG_BAR");
         for(ii = 0; ii < set_shows_list.used; ii++)
         {
             subcmd = set_shows_list.list[ii];
             subcmd->command->func(user, channel, 1, argv+1, subcmd);
         }
+        reply("CSMSG_CHANNEL_OPTIONS_END");
 	return 1;
     }
 

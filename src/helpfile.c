@@ -345,14 +345,14 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
         for (pos=ii=0; ii<((table.flags & TABLE_REPEAT_HEADERS)?nreps:1); ii++) {
             for (jj=0; 1; ) {
                 len = strlen(table.contents[0][jj]);
-                line[pos++] = '\02'; /* bold header */
+                //line[pos++] = '\02'; /* bold header */
                 spaces = max_width[jj] - len;
                 if (table.flags & TABLE_PAD_LEFT)
                     while (spaces--)
                         line[pos++] = ' ';
                 memcpy(line+pos, table.contents[0][jj], len);
                 pos += len;
-                line[pos++] = '\02'; /* end bold header */
+                //line[pos++] = '\02'; /* end bold header */
                 if (++jj == table.width)
                     break;
                 if (!(table.flags & TABLE_PAD_LEFT))
@@ -362,12 +362,13 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
             }
         }
         line[pos] = 0;
-        irc_send(from, to, line);
         sepsize = strlen_vis(line);
         sepstr = malloc(sepsize + 1);
         memset(sepstr, '-', sepsize);
         sepstr[sepsize] = 0;
-        irc_send(from, to, sepstr);
+        irc_send(from, to, sepstr); /* ----------------- */
+        irc_send(from, to, line);   /* alpha  beta   roe */
+        irc_send(from, to, sepstr); /* ----------------- */
         ii = 1;
     }
     /* Send the table. */

@@ -86,6 +86,7 @@
 #define OSMSG_GAG_REQUESTED     "Gag requested by %s."
 
 static const struct message_entry msgtab[] = {
+    { "OSMSG_BAR", "----------------------------------------" },
     { "OSMSG_USER_ACCESS_IS", "$b%s$b (account $b%s$b) has %d access." },
     { "OSMSG_LEVEL_TOO_LOW", "You lack sufficient access to use this command." },
     { "OSMSG_NEED_CHANNEL", "You must specify a channel for $b%s$b." },
@@ -159,8 +160,12 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_MAX_CLIENTS", "Max clients: %d at %s" },
     { "OSMSG_NETWORK_INFO", "Total users: %d (%d invisible, %d opers)" },
     { "OSMSG_RESERVED_LIST", "List of reserved nicks:" },
-    { "OSMSG_TRUSTED_LIST", "List of trusted hosts:" },
-    { "OSMSG_HOST_IS_TRUSTED", "%s (%s; set %s ago by %s; expires %s: %s)" },
+    { "OSMSG_TRUSTED_LIST", "$bTrusted Hosts$b" },
+    { "OSMSG_TRUSTED_LIST_HEADER", "IP Address      Limit By        Time" },
+    { "OSMSG_HOST_IS_TRUSTED",      "%-15s %-5s %-10s set %s ago, expires %s" },
+    { "OSMSG_HOST_IS_TRUSTED_DESC", "  Reason: %s" },
+    { "OSMSG_TRUSTED_LIST_BAR", "----------------------------------------" },
+    { "OSMSG_TRUSTED_LIST_END", "----------End of Trusted Hosts----------" },
     { "OSMSG_HOST_NOT_TRUSTED", "%s does not have a special trust." },
     { "OSMSG_UPTIME_STATS", "Uptime: %s (%u lines processed, CPU time %.2fu/%.2fs)" },
     { "OSMSG_LINE_DUMPED", "Raw line sent." },
@@ -196,6 +201,9 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_SETTIME_SUCCESS", "Set time for servers named like $b%s$b." },
     { "OSMSG_BAD_ACTION", "Unrecognized trace action $b%s$b." },
     { "OSMSG_USER_SEARCH_RESULTS", "The following users were found:" },
+    { "OSMSG_USER_SEARCH_HEADER", "Nick                  User@Host   (Account)" },
+    { "OSMSG_USER_SEARCH_BAR",    "-------------------------------------------" },
+    { "OSMSG_USER_SEARCH_COUNT",  "------------ Found %4u matches -----------" },
     { "OSMSG_CHANNEL_SEARCH_RESULTS", "The following channels were found:" },
     { "OSMSG_GLINE_SEARCH_RESULTS", "The following glines were found:" },
     { "OSMSG_LOG_SEARCH_RESULTS", "The following log entries were found:" },
@@ -214,8 +222,12 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ADDED_ALERT", "Added alert named $b%s$b." },
     { "OSMSG_REMOVED_ALERT", "Removed alert named $b%s$b." },
     { "OSMSG_NO_SUCH_ALERT", "No alert named $b%s$b could be found." },
-    { "OSMSG_ALERT_IS", "%s (by %s, reaction %s): %s" },
-    { "OSMSG_ALERTS_LIST", "Current $O alerts:" },
+    { "OSMSG_ALERTS_LIST", "$bCurrent $O alerts$b" },
+    { "OSMSG_ALERTS_BAR",    "----------------------------------------------" },
+    { "OSMSG_ALERTS_HEADER", "Name                 Action (by Oper)" },
+    { "OSMSG_ALERTS_DESC",   "   Criteria: %s" },
+    { "OSMSG_ALERT_IS",      "$b%-20s$b %-6s (by %s)" },
+    { "OSMSG_ALERT_END",     "----------------End of Alerts-----------------" },
     { "OSMSG_REHASH_COMPLETE", "Completed rehash of configuration database." },
     { "OSMSG_REHASH_FAILED", "Rehash of configuration database failed, previous configuration is intact." },
     { "OSMSG_REOPEN_COMPLETE", "Closed and reopened all log files." },
@@ -263,7 +275,7 @@ typedef int (*discrim_search_func)(struct userNode *match, void *extra);
 
 struct userNode *opserv;
 
-static dict_t opserv_chan_warn; /* data is char* */
+/*static dict_t opserv_chan_warn; */ /* data is char* */
 static dict_t opserv_reserved_nick_dict; /* data is struct userNode* */
 static struct string_list *opserv_bad_words;
 static dict_t opserv_exempt_channels; /* data is not used */
@@ -495,6 +507,8 @@ static MODCMD_FUNC(cmd_chaninfo)
     return 1;
 }
 
+/* This command has been replaced by 'alert notice channel #foo' */
+/*
 static MODCMD_FUNC(cmd_warn) 
 {
     char *reason, *message;
@@ -535,6 +549,7 @@ static MODCMD_FUNC(cmd_unwarn)
     reply("OSMSG_WARN_DELETED", argv[1]);
     return 1;
 }
+*/
 
 static MODCMD_FUNC(cmd_clearbans)
 {
@@ -1393,8 +1408,10 @@ static MODCMD_FUNC(cmd_stats_bad) {
     char buffer[400];
 
     /* Show the bad word list.. */
+    /* TODO: convert nonprinting chars like bold to $b etc in a usable way */
     for (ii=end=0; ii<opserv_bad_words->used; ii++) {
         here_len = strlen(opserv_bad_words->list[ii]);
+        /* If the line is full output it & start again */
         if ((end + here_len + 2) > sizeof(buffer)) {
             buffer[end] = 0;
             reply("OSMSG_BADWORD_LIST", buffer);
@@ -1554,6 +1571,10 @@ static MODCMD_FUNC(cmd_stats_trusted) {
     struct trusted_host *th;
     char length[INTERVALLEN], issued[INTERVALLEN], limit[32];
 
+    reply("OSMSG_TRUSTED_LIST");
+    reply("OSMSG_TRUSTED_LIST_BAR");
+    reply("OSMSG_TRUSTED_LIST_HEADER");
+    reply("OSMSG_TRUSTED_LIST_BAR");
     if (argc > 1) {
         th = dict_find(opserv_trusted_hosts, argv[1], NULL);
         if (th) {
@@ -1562,19 +1583,18 @@ static MODCMD_FUNC(cmd_stats_trusted) {
             if (th->expires)
                 intervalString(length, th->expires - now, user->handle_info);
             if (th->limit)
-                sprintf(limit, "limit %lu", th->limit);
+                sprintf(limit, "%lu", th->limit);
             reply("OSMSG_HOST_IS_TRUSTED",
                   th->ipaddr,
-                  (th->limit ? limit : "no limit"),
-                  (th->issued ? issued : "some time"),
+                  (th->limit ? limit : "none"),
                   (th->issuer ? th->issuer : "<unknown>"),
-                  (th->expires ? length : "never"),
-                  (th->reason ? th->reason : "<unknown>"));
+                  (th->issued ? issued : "some time"),
+                  (th->expires ? length : "never"));
+            reply("OSMSG_HOST_IS_TRUSTED_DESC", (th->reason ? th->reason : "<unknown>"));
         } else {
             reply("OSMSG_HOST_NOT_TRUSTED", argv[1]);
         }
     } else {
-        reply("OSMSG_TRUSTED_LIST");
         for (it = dict_first(opserv_trusted_hosts); it; it = iter_next(it)) {
             th = iter_data(it);
             if (th->issued)
@@ -1582,15 +1602,16 @@ static MODCMD_FUNC(cmd_stats_trusted) {
             if (th->expires)
                 intervalString(length, th->expires - now, user->handle_info);
             if (th->limit)
-                sprintf(limit, "limit %lu", th->limit);
+                sprintf(limit, "%lu", th->limit);
             reply("OSMSG_HOST_IS_TRUSTED", iter_key(it),
-                  (th->limit ? limit : "no limit"),
-                  (th->issued ? issued : "some time"),
+                  (th->limit ? limit : "none"),
                   (th->issuer ? th->issuer : "<unknown>"),
-                  (th->expires ? length : "never"),
-                  (th->reason ? th->reason : "<unknown>"));
+                  (th->issued ? issued : "some time"),
+                  (th->expires ? length : "never"));
+            reply("OSMSG_HOST_IS_TRUSTED_DESC", (th->reason ? th->reason : "<unknown>"));
         }
     }
+    reply("OSMSG_TRUSTED_LIST_END");
     return 1;
 }
 
@@ -1636,6 +1657,9 @@ static MODCMD_FUNC(cmd_stats_alerts) {
     const char *reaction;
 
     reply("OSMSG_ALERTS_LIST");
+    reply("OSMSG_ALERTS_BAR");
+    reply("OSMSG_ALERTS_HEADER");
+    reply("OSMSG_ALERTS_BAR");
     for (it = dict_first(opserv_user_alerts); it; it = iter_next(it)) {
         alert = iter_data(it);
         switch (alert->reaction) {
@@ -1644,8 +1668,10 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_GLINE: reaction = "gline"; break;
         default: reaction = "<unknown>"; break;
         }
-        reply("OSMSG_ALERT_IS", iter_key(it), alert->owner, reaction, alert->text_discrim);
+        reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
+        reply("OSMSG_ALERTS_DESC", alert->text_discrim);
     }
+    reply("OSMSG_ALERT_END");
     return 1;
 }
 
@@ -1695,6 +1721,7 @@ static MODCMD_FUNC(cmd_stats_timeq) {
     return 1;
 }
 
+/*
 static MODCMD_FUNC(cmd_stats_warn) {
     dict_iterator_t it;
 
@@ -1704,6 +1731,7 @@ static MODCMD_FUNC(cmd_stats_warn) {
     reply("OSMSG_WARN_LISTEND");
     return 1;
 }
+*/
 
 #if defined(WITH_MALLOC_X3)
 static MODCMD_FUNC(cmd_stats_memory) {
@@ -1720,9 +1748,9 @@ static MODCMD_FUNC(cmd_stats_memory) {
     send_message_type(MSG_TYPE_NOXLATE, user, cmd->parent->bot,
                       "%u allocations in %u slabs totalling %u bytes.",
                       slab_alloc_count, slab_count, slab_alloc_size);
-    send_message_type(MSG_TYPE_NOXLATE, user, cmd->parent->bot,
+/*    send_message_type(MSG_TYPE_NOXLATE, user, cmd->parent->bot,
                       "%u big allocations totalling %u bytes.",
-  
+ */ 
     return 1;
 }
 #endif
@@ -1964,6 +1992,7 @@ opserv_shutdown_channel(struct chanNode *channel, const char *reason)
     timeq_add(now + opserv_conf.purge_lock_delay, opserv_part_channel, channel);
 }
 
+/*
 static void
 opserv_channel_check(struct chanNode *newchan)
 {
@@ -1979,9 +2008,10 @@ opserv_channel_check(struct chanNode *newchan)
         global_message(MESSAGE_RECIPIENT_OPERS, message);
     }
 
-    /* Wait until the join check to shut channels down. */
+    * Wait until the join check to shut channels down. *
     newchan->bad_channel = opserv_bad_channel(newchan->name);
 }
+*/
 
 static void
 opserv_channel_delete(struct chanNode *chan)
@@ -2712,19 +2742,21 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
     return alert;
 }
 
+/*
 static int
 add_chan_warn(const char *key, void *data, UNUSED_ARG(void *extra))
 {
     struct record_data *rd = data;
     char *reason = GET_RECORD_QSTRING(rd);
 
-    /* i hope this can't happen */
+    * i hope this can't happen *
     if (!reason)
         reason = "No Reason";
 
     dict_insert(opserv_chan_warn, strdup(key), strdup(reason));
     return 0;
 }
+*/
 
 static int
 add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
@@ -2842,8 +2874,10 @@ opserv_saxdb_read(struct dict *conf_db)
         dict_foreach(object, add_gag_helper, NULL);
     if ((object = database_get_data(conf_db, KEY_ALERTS, RECDB_OBJECT)))
         dict_foreach(object, add_user_alert, NULL);
+/*
     if ((object = database_get_data(conf_db, KEY_WARN, RECDB_OBJECT)))
         dict_foreach(object, add_chan_warn, NULL);
+*/
     return 0;
 }
 
@@ -2909,6 +2943,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
         saxdb_end_record(ctx);
     }
     /* channel warnings */
+    /*
     if (dict_size(opserv_chan_warn)) {
         saxdb_start_record(ctx, KEY_WARN, 0);
         for (it = dict_first(opserv_chan_warn); it; it = iter_next(it)) {
@@ -2916,6 +2951,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
         }
         saxdb_end_record(ctx);
     }
+    */
     /* alerts */
     if (dict_size(opserv_user_alerts)) {
         saxdb_start_record(ctx, KEY_ALERTS, 1);
@@ -3343,9 +3379,9 @@ trace_print_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
     if (match->handle_info) {
-        send_message_type(4, das->source, opserv, "%-15s\002!\002%15s\002@\002%s %s", match->nick, match->ident, match->hostname, match->handle_info->handle);
+        send_message_type(4, das->source, opserv, "%-15s\002 \002%10s\002@\002%s (%s)", match->nick, match->ident, match->hostname, match->handle_info->handle);
     } else {
-        send_message_type(4, das->source, opserv, "%-15s\002!\002%15s\002@\002%s", match->nick, match->ident, match->hostname);
+        send_message_type(4, das->source, opserv, "%-15s\002 \002%10s\002@\002%s", match->nick, match->ident, match->hostname);
     }
     return 0;
 }
@@ -3529,7 +3565,12 @@ static MODCMD_FUNC(cmd_trace)
         return 0;
 
     if (action == trace_print_func)
+    {
 	reply("OSMSG_USER_SEARCH_RESULTS");
+        reply("OSMSG_USER_SEARCH_BAR");
+        reply("OSMSG_USER_SEARCH_HEADER");
+        reply("OSMSG_USER_SEARCH_BAR");
+    }
     else if (action == trace_count_func)
 	das.discrim->limit = INT_MAX;
     else if ((action == trace_gline_func) && !das.discrim->duration)
@@ -3547,7 +3588,7 @@ static MODCMD_FUNC(cmd_trace)
         dict_foreach(das.dict, opserv_show_hostinfo, &das);
 
     if (matches)
-	reply("MSG_MATCH_COUNT", matches);
+	reply("OSMSG_USER_SEARCH_COUNT", matches);
     else
 	reply("MSG_NO_MATCHES");
 
@@ -4145,10 +4186,13 @@ opserv_db_init(void) {
     opserv_trusted_hosts = dict_new();
     dict_set_free_data(opserv_trusted_hosts, free_trusted_host);
     /* set up opserv_chan_warn dict */
+
+/* alert trace notice channel #x replaces warnings
     dict_delete(opserv_chan_warn);
     opserv_chan_warn = dict_new();
     dict_set_free_keys(opserv_chan_warn, free);
     dict_set_free_data(opserv_chan_warn, free);
+*/
     /* set up opserv_user_alerts */
     dict_delete(opserv_channel_alerts);
     opserv_channel_alerts = dict_new();
@@ -4172,7 +4216,7 @@ opserv_db_cleanup(void)
 {
     unsigned int nn;
 
-    dict_delete(opserv_chan_warn);
+/*    dict_delete(opserv_chan_warn); */
     dict_delete(opserv_reserved_nick_dict);
     free_string_list(opserv_bad_words);
     dict_delete(opserv_exempt_channels);
@@ -4277,7 +4321,7 @@ init_opserv(const char *nick)
     opserv_define_func("STATS TRUSTED", cmd_stats_trusted, 0, 0, 0);
     opserv_define_func("STATS UPLINK", cmd_stats_uplink, 0, 0, 0);
     opserv_define_func("STATS UPTIME", cmd_stats_uptime, 0, 0, 0);
-    opserv_define_func("STATS WARN", cmd_stats_warn, 0, 0, 0);
+/*    opserv_define_func("STATS WARN", cmd_stats_warn, 0, 0, 0); */
 #if defined(WITH_MALLOC_X3) || defined(WITH_MALLOC_SLAB)
     opserv_define_func("STATS MEMORY", cmd_stats_memory, 0, 0, 0);
 #endif
@@ -4294,9 +4338,9 @@ init_opserv(const char *nick)
     modcmd_register(opserv_module, "GTRACE UNGLINE", NULL, 0, 0, "template", "ungline", NULL);
     opserv_define_func("UNJUPE", cmd_unjupe, 900, 0, 2);
     opserv_define_func("UNRESERVE", cmd_unreserve, 800, 0, 2);
-    opserv_define_func("UNWARN", cmd_unwarn, 800, 0, 0);
+/*    opserv_define_func("UNWARN", cmd_unwarn, 800, 0, 0); */
     opserv_define_func("VOICEALL", cmd_voiceall, 300, 2, 0);
-    opserv_define_func("WARN", cmd_warn, 800, 0, 2);
+/*    opserv_define_func("WARN", cmd_warn, 800, 0, 2); */
     opserv_define_func("WHOIS", cmd_whois, 0, 0, 2);
 
     opserv_reserved_nick_dict = dict_new();
@@ -4307,7 +4351,7 @@ init_opserv(const char *nick)
     reg_new_user_func(opserv_new_user_check);
     reg_nick_change_func(opserv_alert_check_nick);
     reg_del_user_func(opserv_user_cleanup);
-    reg_new_channel_func(opserv_channel_check);
+/*    reg_new_channel_func(opserv_channel_check); */
     reg_del_channel_func(opserv_channel_delete);
     reg_join_func(opserv_join_check);
     reg_auth_func(opserv_staff_alert);

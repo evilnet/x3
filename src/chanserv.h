@@ -181,5 +181,7 @@ struct do_not_register *chanserv_is_dnr(const char *chan_name, struct handle_inf
 int check_user_level(struct chanNode *channel, struct userNode *user, enum levelOption opt, int allow_override, int exempt_owner);
 
 void do_math(char *Buffer, char *Math);
+char* user_level_name_from_level(int level);
+
 
 #endif

@@ -185,29 +185,30 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_TITLE_INVALID", "Titles cannot contain any dots; please choose another." },
     { "NSMSG_TITLE_TRUNCATED", "That title combined with the user's account name would result in a truncated host; please choose a shorter title." },
     { "NSMSG_FAKEHOST_INVALID", "Fake hosts must be shorter than %d characters and cannot start with a dot." },
-    { "NSMSG_HANDLEINFO_ON", "Account information for $b%s$b:" },
-    { "NSMSG_HANDLEINFO_ID", "  Account ID: %lu" },
-    { "NSMSG_HANDLEINFO_REGGED", "  Registered on: %s" },
-    { "NSMSG_HANDLEINFO_LASTSEEN", "  Last seen: %s" },
-    { "NSMSG_HANDLEINFO_LASTSEEN_NOW", "  Last seen: Right now!" },
-    { "NSMSG_HANDLEINFO_VACATION", "  On vacation." },
-    { "NSMSG_HANDLEINFO_EMAIL_ADDR", "  Email address: %s" },
-    { "NSMSG_HANDLEINFO_COOKIE_ACTIVATION", "  Cookie: There is currently an activation cookie issued for this account" },
-    { "NSMSG_HANDLEINFO_COOKIE_PASSWORD", "  Cookie: There is currently a password change cookie issued for this account" },
-    { "NSMSG_HANDLEINFO_COOKIE_EMAIL", "  Cookie: There is currently an email change cookie issued for this account" },
-    { "NSMSG_HANDLEINFO_COOKIE_ALLOWAUTH", "  Cookie: There is currently an allowauth cookie issued for this account" },
-    { "NSMSG_HANDLEINFO_COOKIE_UNKNOWN", "  Cookie: There is currently an unknown cookie issued for this account" },
-    { "NSMSG_HANDLEINFO_INFOLINE", "  Infoline: %s" },
-    { "NSMSG_HANDLEINFO_FLAGS", "  Flags: %s" },
-    { "NSMSG_HANDLEINFO_EPITHET", "  Epithet: %s" },
-    { "NSMSG_HANDLEINFO_FAKEHOST", "  Fake host: %s" },
-    { "NSMSG_HANDLEINFO_LAST_HOST", "  Last quit hostmask: %s" },
-    { "NSMSG_HANDLEINFO_LAST_HOST_UNKNOWN", "  Last quit hostmask: Unknown" },
-    { "NSMSG_HANDLEINFO_NICKS", "  Nickname(s): %s" },
-    { "NSMSG_HANDLEINFO_MASKS", "  Hostmask(s): %s" },
-    { "NSMSG_HANDLEINFO_CHANNELS", "  Channel(s): %s" },
-    { "NSMSG_HANDLEINFO_CURRENT", "  Current nickname(s): %s" },
-    { "NSMSG_HANDLEINFO_DNR", "  Do-not-register (by %s): %s" },
+    { "NSMSG_HANDLEINFO_ON", "$bAccount Information for %s$b" },
+    { "NSMSG_HANDLEINFO_END", "----------End of Account Info-----------" },
+    { "NSMSG_HANDLEINFO_ID", "Account ID: %lu" },
+    { "NSMSG_HANDLEINFO_REGGED", "Registered on: %s" },
+    { "NSMSG_HANDLEINFO_LASTSEEN", "Last seen: %s" },
+    { "NSMSG_HANDLEINFO_LASTSEEN_NOW", "Last seen: Right now!" },
+    { "NSMSG_HANDLEINFO_VACATION", "On vacation." },
+    { "NSMSG_HANDLEINFO_EMAIL_ADDR", "Email address: %s" },
+    { "NSMSG_HANDLEINFO_COOKIE_ACTIVATION", "Cookie: There is currently an activation cookie issued for this account" },
+    { "NSMSG_HANDLEINFO_COOKIE_PASSWORD", "Cookie: There is currently a password change cookie issued for this account" },
+    { "NSMSG_HANDLEINFO_COOKIE_EMAIL", "Cookie: There is currently an email change cookie issued for this account" },
+    { "NSMSG_HANDLEINFO_COOKIE_ALLOWAUTH", "Cookie: There is currently an allowauth cookie issued for this account" },
+    { "NSMSG_HANDLEINFO_COOKIE_UNKNOWN", "Cookie: There is currently an unknown cookie issued for this account" },
+    { "NSMSG_HANDLEINFO_INFOLINE", "Infoline: %s" },
+    { "NSMSG_HANDLEINFO_FLAGS", "Flags: %s" },
+    { "NSMSG_HANDLEINFO_EPITHET", "Epithet: %s" },
+    { "NSMSG_HANDLEINFO_FAKEHOST", "Fake host: %s" },
+    { "NSMSG_HANDLEINFO_LAST_HOST", "Last quit hostmask: %s" },
+    { "NSMSG_HANDLEINFO_LAST_HOST_UNKNOWN", "Last quit hostmask: Unknown" },
+    { "NSMSG_HANDLEINFO_NICKS", "Nickname(s): %s" },
+    { "NSMSG_HANDLEINFO_MASKS", "Hostmask(s): %s" },
+    { "NSMSG_HANDLEINFO_CHANNELS", "Channel(s): %s" },
+    { "NSMSG_HANDLEINFO_CURRENT", "Current nickname(s): %s" },
+    { "NSMSG_HANDLEINFO_DNR", "Do-not-register (by %s): %s" },
     { "NSMSG_USERINFO_AUTHED_AS", "$b%s$b is authenticated to account $b%s$b." },
     { "NSMSG_USERINFO_NOT_AUTHED", "$b%s$b is not authenticated to any account." },
     { "NSMSG_NICKINFO_OWNER", "Nick $b%s$b is owned by account $b%s$b." },
@@ -1384,6 +1385,7 @@ static NICKSERV_FUNC(cmd_handleinfo)
 
     nsmsg_none = handle_find_message(hi, "MSG_NONE");
     reply("NSMSG_HANDLEINFO_ON", hi->handle);
+    reply("MSG_BAR");
 #ifdef WITH_PROTOCOL_BAHAMUT
     reply("NSMSG_HANDLEINFO_ID", hi->id);
 #endif
@@ -1510,7 +1512,7 @@ static NICKSERV_FUNC(cmd_handleinfo)
 	    }
             if (IsUserSuspended(channel))
                 buff[pos++] = '-';
-            pos += sprintf(buff+pos, "%d:%s ", channel->access, name);
+            pos += sprintf(buff+pos, "%s:%s ", user_level_name_from_level(channel->access), name);
 	    if (next == NULL) {
 	      print_chans_buff:
 		buff[pos-1] = 0;
@@ -1540,6 +1542,7 @@ static NICKSERV_FUNC(cmd_handleinfo)
 	}
     }
 
+    reply("NSMSG_HANDLEINFO_END");
     return 1;
 }
 

@@ -34,7 +34,9 @@ static const struct message_entry msgtab[] = {
     { "MAILMSG_EMAIL_BANNED", "Email to %s has been forbidden." },
     { "MAILMSG_EMAIL_NOT_BANNED", "Email to %s was not forbidden." },
     { "MAILMSG_EMAIL_UNBANNED", "Email to %s is now allowed." },
+    { "MAILMSG_PROHIBITED_EMAIL_HEADER", "$bBanned Email Address Masks$b" },
     { "MAILMSG_PROHIBITED_EMAIL", "%s: %s" },
+    { "MAILMSG_PROHIBITED_EMAIL_END", "-------End of Banned Address Masks------" },
     { "MAILMSG_NO_PROHIBITED_EMAIL", "All email addresses are accepted." },
     { NULL, NULL }
 };
@@ -272,6 +274,8 @@ static MODCMD_FUNC(cmd_stats_email) {
     dict_iterator_t it;
     int found = 0;
 
+    reply("MAILMSG_PROHIBITED_EMAIL_HEADER");
+    reply("MSG_BAR");
     for (it=dict_first(prohibited_addrs); it; it=iter_next(it)) {
         reply("MAILMSG_PROHIBITED_EMAIL", iter_key(it), (const char*)iter_data(it));
         found = 1;
@@ -282,6 +286,8 @@ static MODCMD_FUNC(cmd_stats_email) {
     }
     if (!found)
         reply("MAILMSG_NO_PROHIBITED_EMAIL");
+    else
+        reply("MAILMSG_PROHIBITED_EMAIL_END");
     return 0;
 }
 

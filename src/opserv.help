@@ -52,9 +52,6 @@
             "  $bADDALERT$b  Make $O automatically do something",
             "            when users match a criteria.",
             "  $bDELALERT$b  Remove an alert.",
-            "  $bWARN$b      Cause activity on a channel to warn",
-            "  $b$b          ircops.",
-            "  $bUNWARN$b    Remove a channel activity warning.",
             "  $bSTATS ALERT$b See a listing of alerts. ",
             "=--------------- End of Help ----------------="
            );
@@ -318,7 +315,7 @@
 "ADDBAD" ("/msg $O ADDBAD <word>",
         "Adds a bad word to $b$O's$b bad word list. Bad words make any channel that has a bad word anywhere in a channel's name illegal. A list of current bad words can be displayed by $bstats bad$b.",
         "Access level: $b${level/addbad}$b",
-        "$uSee Also:$u addexempt, delbad, stats"
+        "$uSee Also:$u addexempt, delbad, stats bad, $C:noregister"
         );
 
 "ADDEXEMPT" ("/msg $O ADDEXEMPT <#channel>",
@@ -332,25 +329,13 @@
 "DELBAD" ("/msg $O DELBAD <keyword>",
         "Deletes a bad word from $b$O's$b bad word list. Bad words make any channel that has a bad word anywhere in a channel's name illegal. A list of current bad words can be displayed by $bstats bad$b.",
         "Access level: $b${level/delbad}$b",
-        "$uSee Also:$u addbad, delexempt, stats"
+        "$uSee Also:$u addbad, delexempt, stats bad, $C:allowregister"
         );
 
 "DELEXEMPT" ("/msg $O DELEXEMPT <#channel>",
         "Removes a channel from $O's bad-word-exempt channel list.",
         "Access level: $b${level/delexempt}$b",
         "$uSee Also:$u addexempt, delbad, stats"
-        );
-
-"UNWARN"  ("/msg $O UNWARN <#channel>",
-        "Deletes the activity warning for a channel.",
-        "Access level: $b${level/unwarn}$b",
-	"$uSee Also:$u warn, stats warn"
-        );
-
-"WARN"  ("/msg $O WARN <#channel> [reason]",
-        "Adds an activity warning for the channel.",
-        "Access level: $b${level/warn}$b",
-	"$uSee Also:$u unwarn, stats warn"
         );
 
 "BAN" ("/msg $O BAN <#channel> <nick|hostmask>",
@@ -621,9 +606,10 @@
         );
 
 "GAG" ("/msg $O GAG <mask> <duration> <reason>",
-        "Sets a complete services-wide ignore on all users matching the provided mask. All services will completely ignore all private messages or notices from gagged users, who are only notified when a gag goes into effect, or they sign onto the network. Gags have no effect on opers, and as a safety feature, only affect the first 250 matching users.  The gag will automatically expire after $b<duration>$b (or last forever if that is zero).",
+        "Sets a complete services-wide ignore on all users matching the provided mask. All services will completely ignore all private messages or notices from gagged users.",
+        "The gag will automatically expire after $b<duration>$b (or last forever if that is zero).",
         "Access level: $b${level/gag}$b",
-        "$uSee Also:$u ungag, trace"
+        "$uSee Also:$u ungag, trace, stats gags"
         );
 
 "HELPSERV" ("/msg $O HELPSERV <command>",
@@ -644,7 +630,7 @@
         );
 
 "UNGAG" ("/msg $O UNGAG <hostmask>",
-        "Ungags a gaged hostmask and displays how many users were affected by $bungag$b. You can get a list of gaged hostmasks from $bgags$b.",
+        "Ungags a gaged hostmask.",
         "Access level: $b${level/ungag}$b",
         "$uSee Also:$u gag, stats gags"
         );
@@ -685,7 +671,6 @@
         "$bTIMEQ$b:      The number of events in the timeq, and how long until the next one.",
         "$bTRUSTED$b:    The list of currently trusted IPs.",
         "$bUPTIME$b:     X3 uptime, lines processed, and CPU time.",
-        "$bWARN$b:       The list of channels with activity warnings.",
         "$bMODULES$b:    Shows loaded modules that implement commands.",
         "$bSERVICES$b:   Shows active service bots.",
         "Access level: $b${level/stats}$b",

@@ -205,8 +205,8 @@
         "$uFor assistance, please join #Help$u",
         "Example: *!*serv@*.afternet.org would ban anyone with ident 'serv' and an afternet.org hostname from joining the channel.",
         "$uSee Also:$u unban, unbanall, unbanme");
-"BANS" ("/msg $C BANS <#channel>",
-        "This command lists all permanent and timed bans in the channel.",
+"BANS" ("/msg $C BANS <#channel> [mask]",
+        "This command lists all permanent and timed bans in the channel matching mask.",
         "$uSee Also:$u addban, delban, mdelban");
 "CALC" ("/msg $C CALC <expression>",
         "CALC calculates a mathematical expression, and returns the answer.  It",
