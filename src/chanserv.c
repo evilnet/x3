@@ -2824,11 +2824,13 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 	    return 0;
 	}
 
+#ifdef entropy_lameness
         if((victimCount > 4) && ((victimCount * 3) > channel->members.used) && !IsOper(user))
         {
             reply("CSMSG_LAME_MASK", argv[1]);
             return 0;
         }
+#endif
 
         if((action == ACTION_KICK) && (victimCount == 0))
         {
