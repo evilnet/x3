@@ -136,7 +136,7 @@ snoop_conf_read(void) {
     str = database_get_data(node, "channel", RECDB_QSTRING);
     if (!str)
         return;
-    snoop_cfg.channel = AddChannel(str, now, "+sntim", NULL);
+    snoop_cfg.channel = AddChannel(str, now, "+sntim", NULL, NULL);
     if (!snoop_cfg.channel)
         return;
     str = database_get_data(node, "show_bursts", RECDB_QSTRING);
