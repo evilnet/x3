@@ -721,6 +721,7 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
     }
     if (argc < cmd->command->min_argc) {
         send_message(user, service->bot, "MSG_MISSING_PARAMS", cmd->name);
+        svccmd_send_help_breef(user, service->bot, cmd);
         return 0;
     }
     if (!cmd->command->func) {
@@ -782,6 +783,28 @@ svccmd_send_help(struct userNode *user, struct userNode *bot, struct svccmd *cmd
     }
     return r;
 }
+
+int
+svccmd_send_help_breef(struct userNode *user, struct userNode *bot, struct svccmd *cmd) {
+    char cmdname[MAXLEN];
+    unsigned int nn;
+    int r;
+    /* Show command name (in bold). */
+    for (nn=0; cmd->name[nn]; nn++)
+        cmdname[nn] = toupper(cmd->name[nn]);
+    cmdname[nn] = 0;
+
+    /* Show the help entry for the underlying command. */
+        /* Lets not show help for a parent command, thats not what
+         * they asked for!
+         * return send_help(user, bot, cmd->command->parent->helpfile, cmd->command->name);
+         * TODO: We actually DO want to show the parent IF there is no other help.
+         */
+    r = send_help_breef(user, bot, cmd->command->parent->helpfile, cmd->name);
+
+    return r;
+}
+
 
 int
 svccmd_send_help_2(struct userNode *user, struct service *service, const char *topic) {

@@ -703,6 +703,28 @@ _send_help(struct userNode *dest, struct userNode *src, expand_func_t expand, co
     return res;
 }
 
+
+int
+_send_help_breef(struct userNode *dest, struct userNode *src, expand_func_t expand, const char *format, ...)
+{
+    int res;
+    char*  buf;
+    char*  ptr;
+    va_list ap;
+
+    buf = (char *) malloc(strlen(format) +1);
+    sprintf(buf, format);
+    ptr = strchr(buf, '\n');
+    *ptr = '\0';
+    printf("buf is: %s", buf);
+    va_start(ap, buf);
+    res = vsend_message(dest->nick, src, dest->handle_info, 12, expand, buf, ap);
+    va_end(ap);
+    free(buf);
+    return res;
+}
+
+
 int
 send_help(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic)
 {
@@ -725,6 +747,37 @@ send_help(struct userNode *dest, struct userNode *src, struct helpfile *hf, cons
         rec = dict_find(lang_hf->db, topic, NULL);
         if (rec && rec->type == RECDB_QSTRING)
             return _send_help(dest, src, hf->expand, rec->d.qstring);
+    }
+    rec = dict_find(hf->db, "<missing>", NULL);
+    if (!rec)
+        return send_message(dest, src, "MSG_TOPIC_UNKNOWN");
+    if (rec->type != RECDB_QSTRING)
+	return send_message(dest, src, "HFMSG_HELP_NOT_STRING");
+    return _send_help(dest, src, hf->expand, rec->d.qstring);
+}
+
+int
+send_help_breef(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic)
+{
+    struct helpfile *lang_hf;
+    struct record_data *rec;
+    struct language *curr;
+
+    if (!topic)
+        topic = "<index>";
+    if (!hf) {
+        _send_help(dest, src, NULL, "HFMSG_MISSING_HELPFILE");
+        return 0;
+    }
+    for (curr = (dest->handle_info ? dest->handle_info->language : lang_C);
+         curr;
+         curr = curr->parent) {
+        lang_hf = dict_find(curr->helpfiles, hf->name, NULL);
+        if (!lang_hf)
+            continue;
+        rec = dict_find(lang_hf->db, topic, NULL);
+        if (rec && rec->type == RECDB_QSTRING)
+            return _send_help_breef(dest, src, hf->expand, rec->d.qstring);
     }
     rec = dict_find(hf->db, "<missing>", NULL);
     if (!rec)
