@@ -189,8 +189,8 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BAD_RANGE", "Invalid access range; minimum (%d) must be greater than maximum (%d)." },
     { "CSMSG_DELETED_USERS", "Deleted accounts matching $b%s$b with access from $b%d$b to $b%d$b from the %s user list." },
     { "CSMSG_TRIMMED_USERS", "Trimmed $b%d users$b with access from %d to %d from the %s user list who were inactive for at least %s." },
-    { "CSMSG_INCORRECT_ACCESS", "%s has access $b%d$b, not %s." },
-    { "CSMSG_USER_EXISTS", "%s is already on the $b%s$b user list (with access %d)." },
+    { "CSMSG_INCORRECT_ACCESS", "%s has access $b%s$b, not %s." },
+    { "CSMSG_USER_EXISTS", "%s is already on the $b%s$b user list (with %s access)." },
     { "CSMSG_CANNOT_TRIM", "You must include a minimum inactivity duration of at least 60 seconds to trim." },
 
     { "CSMSG_NO_SELF_CLVL", "You cannot change your own access." },
@@ -228,7 +228,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_TOPIC_SET", "Topic is now '%s'." },
     { "CSMSG_NO_TOPIC", "$b%s$b does not have a default topic." },
     { "CSMSG_TOPICMASK_CONFLICT1", "I do not know how to make that topic work with the current topic mask in $b%s$b, which is: %s" },
-    { "CSMSG_TOPICMASK_CONFLICT2", "Please make sure your topic at most %d characters and matches the topic mask pattern." },
+    { "CSMSG_TOPICMASK_CONFLICT2", "Please make sure your topic is at most %d characters and matches the topic mask pattern." },
     { "CSMSG_TOPIC_LOCKED", "The %s topic is locked." },
     { "CSMSG_MASK_BUT_NO_TOPIC", "Warning: $b%s$b does not have a default topic, but you just set the topic mask." },
     { "CSMSG_TOPIC_MISMATCH", "Warning: The default topic for $b%s$b does not match the topic mask; changing it anyway." },
@@ -319,10 +319,10 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BANS_REMOVED", "Removed all channel bans from $b%s$b." },
 
 /* Channel userlist */
-    { "CSMSG_ACCESS_ALL_HEADER", "=---- %s users from level %d to %d ----=" },
-    { "CSMSG_ACCESS_SEARCH_HEADER", "=-- %s users from level %d to %d matching %s --=" },
+    { "CSMSG_ACCESS_ALL_HEADER", "%s users from level %s to %s" },
+    { "CSMSG_ACCESS_SEARCH_HEADER", "%s users from level %s to %s matching %s" },
     { "CSMSG_INVALID_ACCESS", "$b%s$b is an invalid access level." },
-    { "CSMSG_CHANGED_ACCESS", "%s now has access $b%d$b in %s." },
+    { "CSMSG_CHANGED_ACCESS", "%s now has access $b%s$b in %s." },
 
 /* Channel note list */
     { "CSMSG_NOTELIST_HEADER", "Notes for $b%s$b:" },
@@ -356,9 +356,9 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SQUAT_ACCESS", "$b%s$b does not have access to any channels." },
     { "CSMSG_INFOLINE_LIST", "Showing all channel entries for account $b%s$b:" },
     { "CSMSG_USER_NO_ACCESS", "%s lacks access to %s." },
-    { "CSMSG_USER_HAS_ACCESS", "%s has access $b%d$b in %s." },
+    { "CSMSG_USER_HAS_ACCESS", "%s has $b%s$b access in %s." },
     { "CSMSG_HELPER_NO_ACCESS", "%s lacks access to %s but has $bsecurity override$b enabled." },
-    { "CSMSG_HELPER_HAS_ACCESS", "%s has access $b%d$b in %s and has $bsecurity override$b enabled." },
+    { "CSMSG_HELPER_HAS_ACCESS", "%s has $b%s$b access in %s and has $bsecurity override$b enabled." },
     { "CSMSG_LAZY_SMURF_TARGET", "%s is %s ($bIRCOp$b; not logged in)." },
     { "CSMSG_SMURF_TARGET", "%s is %s ($b%s$b)." },
     { "CSMSG_LAME_SMURF_TARGET", "%s is an IRC operator." },
@@ -575,7 +575,7 @@ static const struct {
     char *title;
     unsigned short level;
     char ch;
-} accessLevels[] = {
+} accessLevels[] = { /* MUST be orderd less to most! */
     { "peon", "Peon", UL_PEON, '+' },
     { "halfop", "HalfOp", UL_HALFOP, '%' },
     { "op", "Op", UL_OP, '@' },
@@ -674,10 +674,15 @@ char *
 user_level_name_from_level(int level)
 {
     unsigned int ii;
+    char* highest;
+
+    highest = "None";
+    if(level >= 1)
+        highest = "Peon";
     for(ii = 0; (ii < ArrayLength(accessLevels)); ii++)
-        if(level == accessLevels[ii].level)
-            return accessLevels[ii].title;
-    return("UNKNOWN");
+        if(level >= accessLevels[ii].level)
+            highest = accessLevels[ii].title;
+    return(highest);
 }
 
 
@@ -2290,7 +2295,7 @@ static CHANSERV_FUNC(cmd_adduser)
 
     if((actee = GetTrueChannelAccess(channel->channel_info, handle)))
     {
-	reply("CSMSG_USER_EXISTS", handle->handle, channel->name, actee->access);
+	reply("CSMSG_USER_EXISTS", handle->handle, channel->name, user_level_name_from_level(actee->access));
 	return 0;
     }
 
@@ -2348,7 +2353,7 @@ static CHANSERV_FUNC(cmd_clvl)
     }
 
     victim->access = new_access;
-    reply("CSMSG_CHANGED_ACCESS", handle->handle, new_access, channel->name);
+    reply("CSMSG_CHANGED_ACCESS", handle->handle, user_level_name_from_level(new_access), channel->name);
     return 1;
 }
 
@@ -2383,7 +2388,7 @@ static CHANSERV_FUNC(cmd_deluser)
         }
 	if(access != victim->access)
 	{
-	    reply("CSMSG_INCORRECT_ACCESS", handle->handle, victim->access, argv[1]);
+	    reply("CSMSG_INCORRECT_ACCESS", handle->handle, user_level_name_from_level(victim->access), argv[1]);
 	    return 0;
 	}
     }
@@ -3447,7 +3452,7 @@ static CHANSERV_FUNC(cmd_access)
         && ((target_handle->opserv_level >= chanserv_conf.nodelete_level) || !IsProtected(channel->channel_info));
     if((uData = GetTrueChannelAccess(channel->channel_info, target_handle)))
     {
-        reply((helping ? "CSMSG_HELPER_HAS_ACCESS" : "CSMSG_USER_HAS_ACCESS"), prefix, uData->access, channel->name);
+        reply((helping ? "CSMSG_HELPER_HAS_ACCESS" : "CSMSG_USER_HAS_ACCESS"), prefix, user_level_name_from_level(uData->access), channel->name);
         /* To prevent possible information leaks, only show infolines
          * if the requestor is in the channel or it's their own
          * handle. */
@@ -3484,9 +3489,9 @@ zoot_list(struct listData *list)
     if(list->table.length == 1)
     {
         if(list->search)
-            send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, list->lowest, list->highest, list->search);
+            send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest), list->search);
         else
-            send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, list->lowest, list->highest);
+            send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest));
         msg = user_find_message(list->user, "MSG_NONE");
         send_message_type(4, list->user, list->bot, "  %s", msg);
     }
@@ -3507,9 +3512,9 @@ zoot_list(struct listData *list)
         if((curr == list->table.length) || (list->users[curr-1]->access < lowest))
         {
             if(list->search)
-                send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, lowest, highest, list->search);
+                send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, user_level_name_from_level(lowest), user_level_name_from_level(highest), list->search);
             else
-                send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, lowest, highest);
+                send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, user_level_name_from_level(lowest), user_level_name_from_level(highest));
             temp = list->table.contents[--start];
             list->table.contents[start] = list->table.contents[0];
             tmp_table.contents = list->table.contents + start;
@@ -3528,9 +3533,9 @@ def_list(struct listData *list)
 {
     const char *msg;
     if(list->search)
-        send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, list->lowest, list->highest, list->search);
+        send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest), list->search);
     else
-        send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, list->lowest, list->highest);
+        send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest));
     table_send(list->bot, list->user->nick, 0, NULL, list->table);
     if(list->table.length == 1)
     {

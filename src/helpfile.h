@@ -82,7 +82,7 @@ int send_message(struct userNode *dest, struct userNode *src, const char *messag
 int send_message_type(int msg_type, struct userNode *dest, struct userNode *src, const char *message, ...);
 int send_target_message(int msg_type, const char *dest, struct userNode *src, const char *format, ...);
 int send_help(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic);
-int send_help_breef(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic);
+int send_help_brief(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic);
 /* size is maximum line width (up to MAX_LINE_SIZE); 0 means figure it out.
  * irc_send is either irc_privmsg or irc_notice; NULL means figure it out. */
 void table_send(struct userNode *from, const char *to, unsigned int size, irc_send_func irc_send, struct helpfile_table table);

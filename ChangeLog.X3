@@ -5,6 +5,8 @@
 
 	* Changed breef to brief...
 
+	* chanserv.c: Changed to access level names instead of numbers.
+
 2005-03-17  Alex Schumann  <rubin@afternet.org>
 
 
