@@ -102,7 +102,7 @@
         "$uSee Also:$u service add, service rename, service remove");
 
 "service remove" ("/msg $S SERVICE REMOVE <nick> [<quit reason>]",
-        "Destroys a service.  If a default service is named, it will be recreated when srvx restarts.",
+        "Destroys a service.  If a default service is named, it will be recreated when X3 restarts.",
         "$uSee Also:$u service add, service rename, service trigger");
 
 "version" ("/msg $S version",

@@ -18,7 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-#define PID_FILE "srvx.pid"
+#define PID_FILE "x3.pid"
 
 #include "conf.h"
 #include "gline.h"
@@ -63,7 +63,7 @@ struct log_type *MAIN_LOG;
 
 int quit_services, max_cycles;
 
-char *services_config = "srvx.conf";
+char *services_config = "x3.conf";
 
 char **services_argv;
 int services_argc;
@@ -644,7 +644,7 @@ void usage(char *self) {
     printf("Usage: %s [-c config] [-r log] [-d] [-f] [-v|-h]\n"
            "-c, --config                    selects a different configuration file.\n"
            "-d, --debug                     enables debug mode.\n"
-           "-f, --foreground                run srvx in the foreground.\n"
+           "-f, --foreground                run X3 in the foreground.\n"
            "-h, --help                      prints this usage message.\n"
            "-k, --check                     checks the configuration file's syntax.\n"
            "-r, --replay                    replay a log file (for debugging)\n"
@@ -654,8 +654,9 @@ void usage(char *self) {
 
 void version() {
     printf("    --------------------------------------------------\n"
-           "    - "PACKAGE_STRING" ("CODENAME"), Built: " __DATE__ ", " __TIME__".\n"
+           "    - "PACKAGE_STRING", Built: " __DATE__ ", " __TIME__".\n"
            "    - Copyright (C) 2000 - 2005, srvx Development Team\n"
+           "    - Copyright (C) 2004 - 2005, X3 Development Team\n"
            "    --------------------------------------------------\n");
 }
 
@@ -819,7 +820,7 @@ int main(int argc, char *argv[])
     reg_exit_func(main_shutdown);
 
     log_init();
-    MAIN_LOG = log_register_type("srvx", "file:main.log");
+    MAIN_LOG = log_register_type("x3", "file:main.log");
     if (debug)
         log_debug();
     timeq_init();

@@ -1550,7 +1550,7 @@ static void free_request(void *data) {
 
     /* Logging */
     if (shutting_down && (req->hs->persist_types[PERSIST_T_REQUEST] != PERSIST_CLOSE || !req->handle)) {
-        helpserv_log_request(req, "srvx shutdown");
+        helpserv_log_request(req, "X3 shutdown");
     }
 
     /* Clean up from the unhandled queue */

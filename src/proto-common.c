@@ -373,7 +373,7 @@ static CMD_FUNC(cmd_version)
         log_module(MAIN_LOG, LOG_ERROR, "Could not find VERSION origin user %s", origin);
         return 0;
     }
-    irc_numeric(user, 351, "%s.%s %s :%s", PACKAGE_TARNAME, PACKAGE_VERSION, self->name, CODENAME);
+    irc_numeric(user, 351, "%s %s %s", PACKAGE_TARNAME, PACKAGE_VERSION, self->name);
     return 1;
 }
 

@@ -1,4 +1,4 @@
-This file contains various development notes useful when coding srvx.
+This file contains various development notes useful when coding X3.
 
 HEADER FILES
 ------------
@@ -9,14 +9,14 @@ specifies that the following header files exist:
   <math.h> <setjmp.h> <signal.h> <stdarg.h> <stddef.h> <stdio.h>
   <stdlib.h> <string.h> <time.h>
 You may unconditionally include the above headers, or any that are
-shipped with srvx.  ALL other headers must be conditional.
+shipped with X3.  ALL other headers must be conditional.
 
 DEBUG MODE
 ----------
 Many libraries are in debug mode by default, and require the C
 preprocessor symbol NDEBUG to be set to disable the debug features
 (this is inspired by the behavior of assert() from the C standard).
-Code in srvx should follow this convention.
+Code in X3 should follow this convention.
 
 ASSERTIONS
 ----------

@@ -129,7 +129,7 @@
              "  $bDUMPMESSAGES$b  Writes messages to a .db file (for translators).",
              "  $b$b",
              "  $bREHASH$b        Re-read the config files.",
-             "  $bRESTART$b       Quit and re-run srvx.",
+             "  $bRESTART$b       Quit and re-run X3.",
              "  $bDIE$b           Make the bot quit.",
              "  $bJUMP$b          Change uplink servers.",
              "  $bRECONNECT$b     Reconnect to this uplink server.",
@@ -509,7 +509,7 @@
         );
 
 "GSYNC" ("/msg $O GSYNC [server]",
-	"Requests a list of GLINES from its uplink or the specified server.  This can be used in the event srvx is down for period and becomes desynced.",
+	"Requests a list of GLINES from its uplink or the specified server.  This can be used in the event X3 is down for period and becomes desynced.",
         "Access level: $b${level/gsync}$b",
 	"$uSee Also:$u refreshg, gline, ungline"
         );
@@ -545,19 +545,19 @@
         );
 
 "JUPE" ("/msg $O JUPE <srvname> <srvnum> <description>",
-	"Causes srvx to create a \"juped\" (dummy) server.  This can be used to prevent a poorly connected server from connecting.",
+	"Causes X3 to create a \"juped\" (dummy) server.  This can be used to prevent a poorly connected server from connecting.",
         "Access level: $b${level/jupe}$b",
 	"$uSee Also:$u unjupe, clone, reserve"
         );
 
 "RESERVE" ("/msg $O RESERVE <nickname> <user> <host> <comment>",
-        "Used to ban, protect, or jupe a given nick.  Unlike $bclone$b and $bcollide$b, reserved nicks are saved across restarts of srvx.",
+        "Used to ban, protect, or jupe a given nick.  Unlike $bclone$b and $bcollide$b, reserved nicks are saved across restarts of X3.",
         "Access level: $b${level/reserve}$b",
         "$uSee Also:$u unreserve, clone, jupe"
         );
 
 "UNJUPE" ("/msg $O UNJUPE <srvname>",
-	"Causes srvx to unjupe a jupe server.",
+	"Causes X3 to unjupe a jupe server.",
         "Access level: $b${level/unjupe}$b",
 	"$uSee Also:$u jupe, unreserve, clone"
         );
@@ -591,31 +591,31 @@
         );
 
 "DIE" ("/msg $O DIE <reason>",
-        "SQUIT srvx with the given reason and shuts it down.",
+        "SQUIT X3 with the given reason and shuts it down.",
         "Access level: $b${level/die}$b",
         "$uSee Also:$u restart, reconnect, jump"
         );
 
 "JUMP" ("/msg $O JUMP <uplink>",
-        "Causes srvx to connect to the specified uplink.",
+        "Causes X3 to connect to the specified uplink.",
         "Access level: $b${level/jump}$b",
         "$uSee Also:$u reconnect, restart, die"
         );
 
 "RECONNECT" ("/msg $O RECONNECT ",
-        "Causes srvx to reconnect to its current uplink.",
+        "Causes X3 to reconnect to its current uplink.",
         "Access level: $b${level/reconnect}$b",
         "$uSee Also:$u jump, rehash, restart, die"
         );
 
 "REHASH" ("/msg $O REHASH",
-        "Causes srvx to re-read its configuration file and update its state as much as possible.",
+        "Causes X3 to re-read its configuration file and update its state as much as possible.",
         "Access level: $b${level/rehash}$b",
         "$uSee Also:$u die, reconnect, jump, restart"
         );
 
 "RESTART" ("/msg $O RESTART <reason>",
-        "Causes srvx to SQUIT with the specified reason and restart.",
+        "Causes X3 to SQUIT with the specified reason and restart.",
         "Access level: $b${level/restart}$b",
         "$uSee Also:$u reconnect, rehash, die"
         );
@@ -662,9 +662,9 @@
         );
 
 "SETTIME" ("/msg $O SETTIME [servermask] [resync]",
-        "Sets the time on the named server(s) to match the time known to srvx.",
+        "Sets the time on the named server(s) to match the time known to X3.",
         "For example, using $b*$b as the mask sets the time on all servers; using a server's full name sets the time only on that one.",
-        "If the RESYNC argument is provided, sets the time to what srvx believes the local time is, rather than what it believes the network time is.",
+        "If the RESYNC argument is provided, sets the time to what X3 believes the local time is, rather than what it believes the network time is.",
         "Access level: $b${level/settime}$b",
         "$uSee Also:$u timecmd"
         );
@@ -680,11 +680,11 @@
         "$bNETWORK$b:    Displays network information such as total users and how many users are on each server.",
         "$bNETWORK2$b:   Additional information about the network, such as numerics and linked times.",
         "$bOPERS$b:      A list of users that are currently +o.",
-        "$bPROXYCHECK$b: Information about proxy checking in srvx.",
+        "$bPROXYCHECK$b: Information about proxy checking in X3.",
         "$bRESERVED$b:   The list of currently reserved nicks.",
         "$bTIMEQ$b:      The number of events in the timeq, and how long until the next one.",
         "$bTRUSTED$b:    The list of currently trusted IPs.",
-        "$bUPTIME$b:     Srvx uptime, lines processed, and CPU time.",
+        "$bUPTIME$b:     X3 uptime, lines processed, and CPU time.",
         "$bWARN$b:       The list of channels with activity warnings.",
         "$bMODULES$b:    Shows loaded modules that implement commands.",
         "$bSERVICES$b:   Shows active service bots.",

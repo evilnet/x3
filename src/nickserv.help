@@ -296,7 +296,7 @@
         "/services/nickserv/email_enabled" (
         "$bEMAIL POLICY",
         "AfterNET has utmost respect for the privacy of its users.  We will submit your email address to as many spam databases as we can find, and we will even post it on our web site.",
-        "(No, not really.  It looks like somebody forgot to edit nickserv.help or nickserv.help.m4 to remove this entry.  Make sure they edit the mail section of srvx.conf while they are at it.)"
+        "(No, not really.  It looks like somebody forgot to edit nickserv.help or nickserv.help.m4 to remove this entry.  Make sure they edit the mail section of x3.conf while they are at it.)"
         );
 };
 
@@ -379,7 +379,7 @@
 "OSET" {
         "/services/nickserv/disable_nicks" (
         "/msg $N OSET <nick|*account> [<setting> <value>]",
-        "Changes an account's settings for srvx. In addition to the normal $bset$b settings, you may set:",
+        "Changes an account's settings for X3. In addition to the normal $bset$b settings, you may set:",
         "$bPASSWORD$b: Sets user's password.",
         "$bFLAGS$b: Changes account flags for user.",
         "$bLEVEL$b: Sets $O access level.",
@@ -389,7 +389,7 @@
         );
         "!/services/nickserv/disable_nicks" (
         "/msg $N OSET <nick|*account> [<setting> <value>]",
-        "Changes an account's settings for srvx. In addition to the normal $bset$b settings, you may set:",
+        "Changes an account's settings for X3. In addition to the normal $bset$b settings, you may set:",
         "$bPASSWORD$b: Sets user's password.",
         "$bFLAGS$b: Changes account flags for user.",
         "$bLEVEL$b: Sets $O access level.",
@@ -431,55 +431,55 @@
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want srvx to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
+        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
-        "$bWIDTH$b: The width you want srvx to wrap text it sends you.  (Use 0 for the default.)",
+        "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, userinfo"
         );
         "/services/nickserv/email_enabled && !/services/nickserv/disable_nicks" (
         "/msg $N SET [<setting> [value]]",
-        "Changes your account settings for srvx. Settings are:",
+        "Changes your account settings for X3. Settings are:",
         "$bANNOUNCEMENTS$b: Indicates whether you wish to receive community announcements via the $G service.",
         "$bCOLOR$b: If set, $b$N$b and $b$C$b will use $bbold$b and $uunderlines$u in text they send you.",
         "$bEMAIL$b: Sets (or changes) your email address.",
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want srvx to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
+        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
-        "$bWIDTH$b: The width you want srvx to wrap text it sends you.  (Use 0 for the default.)",
+        "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, nickinfo, userinfo"
         );
         "!/services/nickserv/email_enabled && /services/nickserv/disable_nicks" (
         "/msg $N SET [<setting> [value]]",
-        "Changes your account settings for srvx. Settings are:",
+        "Changes your account settings for X3. Settings are:",
         "$bANNOUNCEMENTS$b: Indicates whether you wish to receive community announcements via the $G service.",
         "$bCOLOR$b: If set, $b$N$b and $b$C$b will use $bbold$b and $uunderlines$u in text they send you.",
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want srvx to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
+        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
-        "$bWIDTH$b: The width you want srvx to wrap text it sends you.  (Use 0 for the default.)",
+        "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, userinfo"
         );
         "!/services/nickserv/email_enabled && !/services/nickserv/disable_nicks" (
         "/msg $N SET [<setting> [value]]",
-        "Changes your account settings for srvx. Settings are:",
+        "Changes your account settings for X3. Settings are:",
         "$bANNOUNCEMENTS$b: Indicates whether you wish to receive community announcements via the $G service.",
         "$bCOLOR$b: If set, $b$N$b and $b$C$b will use $bbold$b and $uunderlines$u in text they send you.",
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want srvx to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
+        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
-        "$bWIDTH$b: The width you want srvx to wrap text it sends you.  (Use 0 for the default.)",
+        "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, nickinfo, userinfo"

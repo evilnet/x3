@@ -1,4 +1,4 @@
-There are different types of access within srvx.  This document
+There are different types of access within X3.  This document
 attempts to list the privileges and restrictions for each (in the
 default configuration -- OpServ and ChanServ may be changed at
 runtime, and the defaults can be changed in the source).

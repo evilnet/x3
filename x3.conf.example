@@ -39,7 +39,7 @@
     };
 };
 
-// The "services" section configures the services that make up srvx.
+// The "services" section configures the services that make up X3.
 "services" {
     "nickserv" {
         "nick" "NickServ";
@@ -84,7 +84,7 @@
         // What to do when someone uses the NickServ "reclaim" command?
         // This can be one of "none", "warn", "svsnick", or "kill", but
         // stock ircu does not support svsnick -- you need Bahamut or a
-        // patch for ircu.  no, don't ask srvx developers for the patch.
+        // patch for ircu.  no, don't ask X3 developers for the patch.
         "reclaim_action" "none";
         // What (else) to do when someone uses a registered nick?
         // This can be anything "reclaim_action" can be, but it makes
@@ -146,7 +146,7 @@
         // fullname for service
         "description" "Oper Service Bot";
         // hostname for service; only used if "description" is also set
-        "hostname" "dances-all-night-with.srvx.net";
+        "hostname" "dances-all-night-with.x3.net";
         // what channel should opserv send debug output to?
         "debug_channel" "#opserv";
         "debug_channel_modes" "+tinms";
@@ -185,8 +185,6 @@
     "chanserv" {
         // You may disable a service by removing its "nick" config item.
         // That means: SERVICES WILL ONLY WORK IF YOU DEFINE THEIR NICK.
-        // (This is changed relative srvx-1.0.x, which would use default
-        // unless you specified ".disabled".)
         "nick" "ChanServ";
 	// What user modes do you want this service to have? Please keep in
 	// mind which ircd software you are using here, and that all of the
@@ -267,7 +265,7 @@
         // details on when they were opened, closed, their contents,
         // helper, etc. The file is written in saxdb format for easy
         // parsing by external programs. Please note that you cannot
-        // use ?set to change this value while srvx is running.
+        // use ?set to change this value while X3 is running.
         "reqlogfile" "helpservreq.log";
         // How long should a helpserv be inactive (no requests assigned)
         // before it can be unregistered by the expire command?
@@ -314,7 +312,7 @@
     "network" "GenericNET";
     "hidden_host" "users.Generic.NET"; // set this if you enabled ircd/Undernet's +x mode
     /* hidden_host should match the F:HIDDEN_HOST: line in your ircu's ircd.conf;
-     * srvx does not set the host suffix for users, but must know it when making
+     * X3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
     "numeric" "10"; // hint: If you get collisions on link, CHANGE THIS.
     "max_users" "256"; // You can save a little memory by setting this to a lower value.
@@ -337,14 +335,13 @@
     "mailer" "/usr/sbin/sendmail";
     "from_address" "admin@poorly.configured.server";
     // These are not :>
-    "extra_headers" ("X-Ereet-Services: srvx r reet");
-    "body_prefix_first" ("Welcome to our network.  This prefix is used whenever srvx thinks this may be the first time we send email to your address.");
+    "extra_headers" ("X-Ereet-Services: X3 r reet");
+    "body_prefix_first" ("Welcome to our network.  This prefix is used whenever X3 thinks this may be the first time we send email to your address.");
     "body_prefix" ("This goes before the mail text.", "Each string here is treated as a separate \"paragraph\" for line wrapping.");
     "body_suffix_first" ("We care a lot about spam.  If you did not request this email, bitch and moan loudly at our opers, and tell our ISP to gank our connection.");
     "body_suffix" ("PLEASE DO NOT BE ALARMED.  CALMLY BOARD THE AIRCRAFT, STRAP YOUR ARMS ACROSS YOUR BODY, AND JUMP THE HELL OUT OF THE PLANE.", "Yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaatta!");
 };
 
-// New section in srvx-1.2 to control database locations, etc.
 // If you leave this section out, each database will be in its own file,
 // and they will be written out every half hour.
 "dbs" {
@@ -361,14 +358,13 @@
     // These are the options if you want a database to be in its own file.
     "mondo" {
         // Where to put it?
-        "filename" "srvx.db";
+        "filename" "x3.db";
         // How often should it be saved?
         // (You can disable automatic saves by setting this to 0.)
         "frequency" "30m";
     };
 };
 
-// New section in srvx-1.2 to control log destinations.
 // If you leave this section out, each service (technically, each log
 // facility) will be in its own file, just like before.
 "logs" {
@@ -376,10 +372,10 @@
 
     // One is a facility configuration subsection.  These have the
     // name of a log facility (one of "ChanServ", "Global",
-    // "HelpServ", "NickServ", "OpServ", "ProxyCheck", or "srvx") and
-    // the value is a subsection. The "srvx" log facility is a
+    // "HelpServ", "NickServ", "OpServ", "ProxyCheck", or "x3") and
+    // the value is a subsection. The "x3" log facility is a
     // catch-all/fall-back facility.
-    "srvx" {
+    "x3" {
         // The "max_age" option says how long to keep log audit entries.
         "max_age" "10m";
         // The "max_count" option says how many log audit entries to keep.

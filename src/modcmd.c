@@ -18,6 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
+#include "../ChangeLog.X3"
 #include "chanserv.h"
 #include "conf.h"
 #include "modcmd.h"
@@ -882,12 +883,12 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int serv
             irc_notice_user(bot, user, response);
         } else if (!irccasecmp(text, "VERSION")) {
             /* This function provides copyright management information
-             * to end users of srvx. You should not alter, disable or
+             * to end users of X3. You should not alter, disable or
              * remove this command or its accessibility to normal IRC
              * users, except to add copyright information pertaining
-             * to changes you make to srvx.
+             * to changes you make to X3.
              */
-            snprintf(response, sizeof(response), "\x01VERSION %s (%s) %s\x01", PACKAGE_STRING, CODENAME, "");
+            snprintf(response, sizeof(response), "\x01VERSION %s\x01", PACKAGE_STRING);
             irc_notice_user(bot, user, response);
         }
         return;
@@ -1861,11 +1862,17 @@ static MODCMD_FUNC(cmd_dump_messages) {
 
 static MODCMD_FUNC(cmd_version) {
     /* This function provides copyright management information to end
-     * users of srvx. You should not alter, disable or remove this
+     * users of X3. You should not alter, disable or remove this
      * command or its accessibility to normal IRC users, except to add
-     * copyright information pertaining to changes you make to srvx.
+     * copyright information pertaining to changes you make to X3.
      */
-    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"$b ("CODENAME"), Built: "__DATE__", "__TIME__".\nCopyright 2000-2004 srvx Development Team.\nThe srvx Development Team includes Paul Chang, Adrian Dewhurst, Miles Peterson, Michael Poole and others.\nThe srvx Development Team can be reached at http://sf.net/projects/srvx/ or in #srvx on irc.gamesurge.net.");
+    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"$b (Based on srvx 1.3), Built: "__DATE__", "__TIME__".");
+    send_message_type(4, user, cmd->parent->bot, "("CVS_VERSION")");
+    send_message_type(4, user, cmd->parent->bot, "Copyright 2000-2005 srvx Development Team.");
+    send_message_type(4, user, cmd->parent->bot, "Copyright 2004-2005 X3 Development Team.");
+    send_message_type(4, user, cmd->parent->bot, "The srvx 1.3 Development Team includes Paul Chang, Adrian Dewhurst, Miles Peterson, Michael Poole and others.");
+    send_message_type(4, user, cmd->parent->bot, "The X3 Development Team includes Alex Schumann, Reed Loden, Neil Spierling.");
+    send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at http://sf.net/projects/x2serv/ or in #evilnet on irc.afternet.org.");
     return 1;
 }
 

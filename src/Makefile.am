@@ -1,15 +1,15 @@
 AM_CPPFLAGS = @RX_INCLUDES@
 LIBS = @LIBS@ @RX_LIBS@
 
-noinst_PROGRAMS = srvx
+noinst_PROGRAMS = x3
 EXTRA_PROGRAMS = checkdb globtest
 noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help
 EXTRA_DIST = $(noinst_DATA)
 
-EXTRA_srvx_SOURCES = alloc-slab.c alloc-srvx.c proto-bahamut.c proto-common.c proto-p10.c mod-snoop.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
-srvx_LDADD = @MODULE_OBJS@
-srvx_DEPENDENCIES = @MODULE_OBJS@
-srvx_SOURCES = \
+EXTRA_x3_SOURCES = alloc-slab.c alloc-srvx.c proto-bahamut.c proto-common.c proto-p10.c mod-snoop.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
+x3_LDADD = @MODULE_OBJS@
+x3_DEPENDENCIES = @MODULE_OBJS@
+x3_SOURCES = \
 	chanserv.c chanserv.h \
 	compat.c compat.h \
 	conf.c conf.h \

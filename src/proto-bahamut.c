@@ -646,7 +646,7 @@ static CMD_FUNC(cmd_capab) {
         if (capabs[mm].name) {
             uplink_capab |= capabs[mm].mask;
         } else {
-            log_module(MAIN_LOG, LOG_INFO, "Saw unrecognized/unhandled capability %s.  Please notify srvx developers so they can add it.", argv[nn]);
+            log_module(MAIN_LOG, LOG_INFO, "Saw unrecognized/unhandled capability %s.  Please notify X3 developers so they can add it.", argv[nn]);
         }
     }
     return 1;

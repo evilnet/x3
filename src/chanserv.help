@@ -548,7 +548,7 @@
          "INFO:       Sets the infoline that $C sends when you join the channel.",
          "NOAUTOOP:   Enable or disable $C automatically opping you upon joining or authenticating.",
 	 "AUTOINVITE: $C will invite you to this channel if you have access to and are not in when you authenticate if this setting is on.",
-         "NOTE: The NoAutoOp setting is equivalent to the !togop command in previous versions of srvx.",
+         "NOTE: The NoAutoOp setting is equivalent to the !togop command in previous versions of X3.",
          "$uSee Also:$u set");
 "USET INFO" ("/msg $C USET <#channel> INFO <info>",
         "This command will set a user defined information message to be displayed when you join the channel. By setting the message to '*', you will clear your message.",
@@ -566,11 +566,11 @@
         "$uSee Also:$u addcoowner, delcoowner, mdelcoowner, users");
 
 "ME"	"I am at your service. /msg $C help command, or /join #help ";
-"thanks" ("AfterNET's own srvx2 is based on the hard work of the origional srvx developers.  They would like to thank the following people for their help in making the origional srvx:",
+"thanks" ("AfterNET's own X3 is based on the hard work of the origional srvx developers.  They would like to thank the following people for their help in making the origional srvx:",
         "     $bGameSurge IRC Network$b - All the users and staff there bear with our shortcomings and bugs and let us know what needs to be fixed.",
         "     $bIC5 Networks$b (and JohnM in particular) - Never afraid to critique things, even if we are the 800 pound gorilla.",
         "     $bMeeko, eraser, hock(ey), KilledInAction, MadEwokHerd, Milon and Shoat$b - Hardcore beta testing and bug finding on the testnet.",
         "     $bCrips and feigling$b - Reading through all the boring messages and finding ways to make them clearer.",
-        "Futher, the AfterNET srvx2 team would like to thank:",
+        "Futher, the X3 team would like to thank:",
         "     $breed$b - who tirelessly nagged us to upgrade our services",
         "$bAfterNET Users and Opers$b - who faught both for and against the change, for the better of Afternet.");
