@@ -9,3 +9,4 @@ configure
 p10
 stamp-h2.in
 {arch}
+src/modules-list.h
