@@ -311,6 +311,7 @@ int
 user_matches_glob(struct userNode *user, const char *orig_glob, int include_nick)
 {
     char *glob, *marker;
+    char *setident = NULL, *sethostname = NULL; // sethost - reed/apples
 
     /* Make a writable copy of the glob */
     glob = alloca(strlen(orig_glob)+1);
@@ -331,8 +332,16 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int include_nick
         return 0;
     }
     *marker = 0;
-    if (!match_ircglob(user->ident, glob))
-        return 0;
+
+    // sethost - reed/apples
+    if (IsSetHost(user)) {
+      setident = alloca(strcspn(user->sethost, "@")+2);
+      safestrncpy(setident, user->sethost, strcspn(user->sethost, "@")+1);
+      sethostname = strchr(user->sethost, '@') + 1;
+    }
+
+    if (!match_ircglob(user->ident, glob) && (IsSetHost(user) && !match_ircglob(setident, glob)))
+	return 0;
     glob = marker + 1;
     /* Now check the host part */
     if (isdigit(*glob) && !glob[strspn(glob, "0123456789./*?")]) {
@@ -340,6 +349,8 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int include_nick
         return match_ircglob(inet_ntoa(user->ip), glob);
     } else {
         /* The host part of the mask isn't IP-based */
+        if (IsSetHost(user) && match_ircglob(sethostname, glob))
+                return 1;
         if (IsFakeHost(user) && match_ircglob(user->fakehost, glob))
                 return 1;
         if (hidden_host_suffix && user->handle_info) {

@@ -1180,7 +1180,11 @@ static MODCMD_FUNC(cmd_whois)
 	if (IsOper(target)) buffer[bpos++] = 'o';
 	if (IsGlobal(target)) buffer[bpos++] = 'g';
 	if (IsServNotice(target)) buffer[bpos++] = 's';
-	if (IsHelperIrcu(target)) buffer[bpos++] = 'h';
+
+	// sethost - reed/apples
+	// if (IsHelperIrcu(target)) buffer[bpos++] = 'h';
+	if (IsSetHost(target)) buffer[bpos++] = 'h';
+
 	if (IsService(target)) buffer[bpos++] = 'k';
 	if (IsDeaf(target)) buffer[bpos++] = 'd';
         if (IsHiddenHost(target)) buffer[bpos++] = 'x';

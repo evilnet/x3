@@ -662,13 +662,26 @@ generate_hostmask(struct userNode *user, int options)
     else
         nickname = "*";
     if (options & GENMASK_STRICT_IDENT)
+        // sethost - reed/apples
+        if (IsSetHost(user)) {
+          ident = alloca(strcspn(user->sethost, "@")+2);
+          safestrncpy(ident, user->sethost, strcspn(user->sethost, "@")+1);
+        }
+        else
         ident = user->ident;
     else if (options & GENMASK_ANY_IDENT)
         ident = "*";
     else {
+        // sethost - reed/apples
+        if (IsSetHost(user)) {
+          ident = alloca(strcspn(user->sethost, "@")+3);
+          ident[0] = '*';
+          safestrncpy(ident+1, user->sethost, strcspn(user->sethost, "@")+1);
+        } else {
         ident = alloca(strlen(user->ident)+2);
         ident[0] = '*';
         strcpy(ident+1, user->ident + ((*user->ident == '~')?1:0));
+    }
     }
     hostname = user->hostname;
     if (IsFakeHost(user) && IsHiddenHost(user) && !(options & GENMASK_NO_HIDING)) {
@@ -727,6 +740,10 @@ generate_hostmask(struct userNode *user, int options)
             sprintf(hostname, "*.%s", user->hostname+ii+2);
         }
     }
+    // sethost - reed/apples
+    if (IsSetHost(user)) 
+      hostname = strchr(user->sethost, '@') + 1;
+
     /* Emit hostmask */
     len = strlen(ident) + strlen(hostname) + 2;
     if (nickname) {

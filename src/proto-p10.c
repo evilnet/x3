@@ -400,8 +400,12 @@ irc_user(struct userNode *user)
             modes[modelen++] = 'd';
         if (IsGlobal(user))
             modes[modelen++] = 'g';
-        if (IsHelperIrcu(user))
+        // sethost - reed/apples
+        // if (IsHelperIrcu(user))
+        if (IsSetHost(user))
             modes[modelen++] = 'h';
+        if (IsFakeHost(user))
+            modes[modelen++] = 'f';
         if (IsHiddenHost(user))
             modes[modelen++] = 'x';
         modes[modelen] = 0;
@@ -1099,6 +1103,8 @@ static CMD_FUNC(cmd_mode)
 {
     struct chanNode *cn;
     struct userNode *un;
+    char *sethost; // sethost - reed/apples
+    int i; // sethost - reed/apples
 
     if (argc < 3)
         return 0;
@@ -1108,7 +1114,19 @@ static CMD_FUNC(cmd_mode)
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose mode is changing.", argv[1]);
             return 0;
         }
+        // sethost - reed/apples
+        if (argc == 3)
         mod_usermode(un, argv[2]);
+        else {
+          sethost = malloc(strlen(argv[2]) + 1 + strlen(argv[3]) + 1);
+          i = 0;
+          while((sethost[i++] = *argv[2]++));
+          i--;
+         sethost[i++] = ' ';
+          while((sethost[i++] = *argv[3]++));
+          mod_usermode(un, sethost); // sethost - reed/apples
+        }
+
         return 1;
     }
 
@@ -2018,7 +2036,22 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	case 'd': do_user_mode(FLAGS_DEAF); break;
 	case 'k': do_user_mode(FLAGS_SERVICE); break;
 	case 'g': do_user_mode(FLAGS_GLOBAL); break;
-	case 'h': do_user_mode(FLAGS_HELPER); break;
+	// sethost - reed/apples
+	// case 'h': do_user_mode(FLAGS_HELPER); break;
+	// I check if there's an 'h' in the first part, and if there, 
+	// then everything after the space becomes their new host.
+	case 'h': do_user_mode(FLAGS_SETHOST);
+	    if (*word) {
+		char sethost[MAXLEN];
+		unsigned int ii;
+		for (ii=0; (*word != ' ') && (*word != '\0'); )
+		    sethost[ii++] = *word++;
+		sethost[ii] = 0;
+		while (*word == ' ')
+		    word++;
+		safestrncpy(user->sethost, sethost, sizeof(user->sethost));
+	    }
+	    break;
         case 'x': do_user_mode(FLAGS_HIDDEN_HOST); break;
         case 'r':
             if (*word) {

@@ -51,7 +51,11 @@
 #define FLAGS_DEAF		0x0020 /* deaf +d */
 #define FLAGS_SERVICE		0x0040 /* cannot be kicked, killed or deoped +k */
 #define FLAGS_GLOBAL		0x0080 /* receives global messages +g */
-#define FLAGS_HELPER		0x0100 /* (network?) helper +h */
+
+// sethost - reed/apples
+// #define FLAGS_HELPER		0x0100 /* (network?) helper +h */
+#define FLAGS_SETHOST		0x0100 /* sethost +h */
+
 #define FLAGS_PERSISTENT	0x0200 /* for reserved nicks, this isn't just one-shot */
 #define FLAGS_GAGGED		0x0400 /* for gagged users */
 #define FLAGS_AWAY		0x0800 /* for away users */
@@ -67,7 +71,11 @@
 #define IsGlobal(x)             ((x)->modes & FLAGS_GLOBAL)
 #define IsWallOp(x)             ((x)->modes & FLAGS_WALLOP)
 #define IsServNotice(x)         ((x)->modes & FLAGS_SERVNOTICE)
-#define IsHelperIrcu(x)         ((x)->modes & FLAGS_HELPER)
+
+// sethost - reed/apples
+// #define IsHelperIrcu(x)         ((x)->modes & FLAGS_HELPER)
+#define IsSetHost(x)		((x)->modes & FLAGS_SETHOST)
+
 #define IsGagged(x)             ((x)->modes & FLAGS_GAGGED)
 #define IsPersistent(x)         ((x)->modes & FLAGS_PERSISTENT) 
 #define IsAway(x)               ((x)->modes & FLAGS_AWAY)
@@ -110,6 +118,9 @@ struct userNode {
     unsigned int dead : 1;        /* Is user waiting to be recycled? */
     struct in_addr ip;            /* User's IP address */
     long modes;                   /* user flags +isw etc... */
+
+    // sethost - reed/apples
+    char sethost[USERLEN + HOSTLEN + 2]; /* 1 for '\0' and 1 for @ = 2 */
 
     time_t timestamp;             /* Time of last nick change */
     struct server *uplink;        /* Server that user is connected to */
