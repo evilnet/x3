@@ -238,6 +238,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_SERVER_JUPED", "Added new jupe server %s." },
     { "OSMSG_SERVER_NOT_JUPE", "That server is not a juped server." },
     { "OSMSG_SERVER_UNJUPED", "Server jupe removed." },
+    /*
     { "OSMSG_WARN_ADDED", "Added channel activity warning for $b%s$b (%s)" },
     { "OSMSG_WARN_EXISTS", "Channel activity warning for $b%s$b already exists." },
     { "OSMSG_WARN_DELETED", "Removed channel activity warning for $b%s$b" },
@@ -245,6 +246,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WARN_LISTSTART", "Channel activity warnings:" },
     { "OSMSG_WARN_LISTENTRY", "%s (%s)" },
     { "OSMSG_WARN_LISTEND", "End of activity warning list." },
+    */
     { "OSMSG_UPLINK_CONNECTING", "Establishing connection with %s (%s:%d)." },
     { "OSMSG_CURRENT_UPLINK", "$b%s$b is already the current uplink." },
     { "OSMSG_INVALID_UPLINK", "$b%s$b is not a valid uplink name." },
@@ -1992,26 +1994,26 @@ opserv_shutdown_channel(struct chanNode *channel, const char *reason)
     timeq_add(now + opserv_conf.purge_lock_delay, opserv_part_channel, channel);
 }
 
-/*
 static void
 opserv_channel_check(struct chanNode *newchan)
 {
-    char *warning;
+    /*char *warning; */
 
     if (!newchan->join_policer.params) {
         newchan->join_policer.last_req = now;
         newchan->join_policer.params = opserv_conf.join_policer_params;
     }
+    /*
     if ((warning = dict_find(opserv_chan_warn, newchan->name, NULL))) {
         char message[MAXLEN];
         snprintf(message, sizeof(message), "Channel activity warning for channel %s: %s", newchan->name, warning);
         global_message(MESSAGE_RECIPIENT_OPERS, message);
     }
+    */
 
-    * Wait until the join check to shut channels down. *
+    /* Wait until the join check to shut channels down. */
     newchan->bad_channel = opserv_bad_channel(newchan->name);
 }
-*/
 
 static void
 opserv_channel_delete(struct chanNode *chan)
@@ -4351,7 +4353,7 @@ init_opserv(const char *nick)
     reg_new_user_func(opserv_new_user_check);
     reg_nick_change_func(opserv_alert_check_nick);
     reg_del_user_func(opserv_user_cleanup);
-/*    reg_new_channel_func(opserv_channel_check); */
+    reg_new_channel_func(opserv_channel_check); 
     reg_del_channel_func(opserv_channel_delete);
     reg_join_func(opserv_join_check);
     reg_auth_func(opserv_staff_alert);

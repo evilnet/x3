@@ -6,7 +6,7 @@
 	* chanserv.c: Changed style of command outputs, added userlevel back
 	to users list.
 
-	* opserv.c: Changed style of command outputs
+	* opserv.c: Changed style of command outputs, removed warn feature
 
 	* tools.c: shortened duration string lengths
 
