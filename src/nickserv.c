@@ -1528,6 +1528,48 @@ reg_failpw_func(failpw_func_t func)
     failpw_func_list[failpw_func_used++] = func;
 }
 
+/*
+ * Return 1 if the handle/pass pair matches, 0 if it doesnt.
+ *
+ * called by nefariouses enhanced AC login-on-connect code
+ *
+ */
+int loc_auth(struct userNode *user, char *handle, char *password)
+{
+    int pw_arg, used, maxlogins;
+    struct handle_info *hi;
+    /*
+    struct userNode *other;
+    */
+
+    hi = dict_find(nickserv_handle_dict, handle, NULL);
+        pw_arg = 2;
+    if (!hi) {
+        return 0;
+    }
+    /* Responses from here on look up the language used by the handle they asked about. */
+    if (!checkpass(password, hi->passwd)) {
+        return 0;
+    }
+    if (HANDLE_FLAGGED(hi, SUSPENDED)) {
+        return 0;
+    }
+    maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
+    /*  Do we want to deny if they already have more logins? I dont see why but
+     *  someone else might? -Rubin
+    for (used = 0, other = hi->users; other; other = other->next_authed) {
+        if (++used >= maxlogins) {
+            send_message_type(4, user, cmd->parent->bot,
+                              handle_find_message(hi, "NSMSG_MAX_LOGINS"),
+                              maxlogins);
+            argv[pw_arg] = "MAXLOGINS";
+            return 1;
+        }
+    }
+    */
+    return 1;
+}
+
 static NICKSERV_FUNC(cmd_auth)
 {
     int pw_arg, used, maxlogins;

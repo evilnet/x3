@@ -128,6 +128,8 @@ int nickserv_modify_handle_flags(struct userNode *user, struct userNode *bot, co
 int oper_has_access(struct userNode *user, struct userNode *bot, unsigned int min_level, unsigned int quiet);
 void nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd);
 
+int loc_auth(struct userNode *user, char *handle, char *password);
+
 /* auth_funcs are called when a user gets a new handle_info.  They are
  * called *after* user->handle_info has been updated.  */
 typedef void (*auth_func_t)(struct userNode *user, struct handle_info *old_handle);

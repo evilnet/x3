@@ -427,7 +427,7 @@ irc_user(struct userNode *user)
 void
 irc_account(struct userNode *user, const char *stamp)
 {
-    putsock("%s " P10_ACCOUNT " %s %s", self->numeric, user->numeric, stamp);
+    putsock("%s " P10_ACCOUNT " %s R %s", self->numeric, user->numeric, stamp);
 }
 
 void
@@ -1042,13 +1042,35 @@ static CMD_FUNC(cmd_nick)
 static CMD_FUNC(cmd_account)
 {
     struct userNode *user;
+    struct server *server;
 
-    if ((argc < 3) || !origin || !GetServerH(origin))
+    if ((argc < 3) || !origin || !(server = GetServerH(origin)))
         return 0; /* Origin must be server. */
+    
+    /* This next line appears to tremple origin.. why? */
     user = GetUserN(argv[1]);
     if (!user)
         return 1; /* A QUIT probably passed the ACCOUNT. */
-    call_account_func(user, argv[2]);
+    
+    if(!strcmp(argv[2],"C"))
+    {
+        if(loc_auth(user, argv[4], argv[5]))
+        {
+            /* Return a AC A */
+            putsock("%s " P10_ACCOUNT " %s A %s", self->numeric, server->numeric , argv[3]);
+
+        }
+        else
+        {
+            /* Return a AC D */
+            putsock("%s " P10_ACCOUNT " %s D %s", self->numeric, server->numeric , argv[3]);
+        }
+        return 1;
+    }
+    else if(!strcmp(argv[2],"R"))
+       call_account_func(user, argv[3]);
+    else
+        call_account_func(user, argv[2]); /* For backward compatability */
     return 1;
 }
 
