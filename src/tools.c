@@ -424,7 +424,9 @@ user_matches_glob_broken(struct userNode *user, const char *orig_glob, int inclu
         return 1;
     /* Check for a fakehost match. */
     if (IsFakeHost(user) && match_ircglob(user->fakehost, glob))
-            return 1;
+        return 1;
+    if (IsSetHost(user) && match_ircglob(sethostname, glob))
+        return 1;
     /* Check for an account match. */
     if (hidden_host_suffix && user->handle_info) {
         char hidden_host[HOSTLEN+1];
