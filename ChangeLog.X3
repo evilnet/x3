@@ -1,7 +1,9 @@
 /***********************************************************************
  X3 ChangeLog
 
-2005-03-07  Alex Schumann   <rubin@afternet.org>
+2005-03-12  Alex Schumann   <rubin@afternet.org>
+
+	* opserv.c: fixed SRVX defines to X3
 
 	* src/nickserv.c: Applied patch to bring up to date with
 	local uncommitted changes on afternets srvx2 tree. improved

@@ -1705,7 +1705,7 @@ static MODCMD_FUNC(cmd_stats_warn) {
     return 1;
 }
 
-#if defined(WITH_MALLOC_SRVX)
+#if defined(WITH_MALLOC_X3)
 static MODCMD_FUNC(cmd_stats_memory) {
     extern unsigned long alloc_count, alloc_size;
     send_message_type(MSG_TYPE_NOXLATE, user, cmd->parent->bot,
@@ -4278,7 +4278,7 @@ init_opserv(const char *nick)
     opserv_define_func("STATS UPLINK", cmd_stats_uplink, 0, 0, 0);
     opserv_define_func("STATS UPTIME", cmd_stats_uptime, 0, 0, 0);
     opserv_define_func("STATS WARN", cmd_stats_warn, 0, 0, 0);
-#if defined(WITH_MALLOC_SRVX) || defined(WITH_MALLOC_SLAB)
+#if defined(WITH_MALLOC_X3) || defined(WITH_MALLOC_SLAB)
     opserv_define_func("STATS MEMORY", cmd_stats_memory, 0, 0, 0);
 #endif
     opserv_define_func("TRACE", cmd_trace, 100, 0, 3);

@@ -737,7 +737,7 @@ generate_hostmask(struct userNode *user, int options)
         mask = ~0 << masklen;
         masked_ip = ntohl(user->ip.s_addr) & mask;
         hostname = alloca(32);
-        if (options & GENMASK_SRVXMASK) {
+        if (options & GENMASK_X3MASK) {
             sprintf(hostname, "%d.%d.%d.%d/%d", (masked_ip>>24)&0xFF, (masked_ip>>16)&0xFF, (masked_ip>>8)&0xFF, masked_ip&0xFF, masklen);
         } else {
             int ofs = 0;
