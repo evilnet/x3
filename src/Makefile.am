@@ -5,28 +5,11 @@ noinst_PROGRAMS = srvx
 EXTRA_PROGRAMS = checkdb globtest
 noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help
 EXTRA_DIST = $(noinst_DATA)
-BUILT_SOURCES = arch-version.h
-noinst_HEADERS = arch-version.h
-
-.PHONY: checkversion
-arch-version.h: checkversion
-checkversion:
-	@tla logs -f >/dev/null || exit 0; \
-	TMPFILE=`mktemp arch-version.h.XXXXXX` || exit 1 ; \
-	echo "#define ARCH_VERSION \"`tla logs -f | tail -n 1`\"" >> $$TMPFILE ; \
-	if diff -q arch-version.h $$TMPFILE >/dev/null 2>&1 ; then \
-	    rm $$TMPFILE ; \
-        else \
-	    echo "Putting new arch version into arch-version.h" ; \
-	    rm -f arch-version.h ; \
-	    mv $$TMPFILE arch-version.h ; \
-	fi
 
 EXTRA_srvx_SOURCES = proto-bahamut.c proto-common.c proto-p10.c mod-snoop.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
 srvx_LDADD = @MODULE_OBJS@
 srvx_DEPENDENCIES = @MODULE_OBJS@
 srvx_SOURCES = \
-	arch-version.h \
 	chanserv.c chanserv.h \
 	compat.c compat.h \
 	conf.c conf.h \
