@@ -1276,7 +1276,12 @@ static NICKSERV_FUNC(cmd_register)
 
     if (nickserv_conf.sync_log) {
       cryptpass(password, syncpass);
-      SyncLog("REGISTER %s %s %s", hi->handle, syncpass, email_addr);
+      /*
+       * An 0 is only sent if theres no email address. Thios should only happen if email functions are
+       * disabled which they wont be for us. Email Required MUST be set on if you are using this.
+       * -SiRVulcaN
+       */
+      SyncLog("REGISTER %s %s %s %s", hi->handle, syncpass, email_addr ? email_addr : "0", user->info);
     }
 
     return 1;
@@ -1964,6 +1969,13 @@ static NICKSERV_FUNC(cmd_cookie)
           SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
         break;
     case EMAIL_CHANGE:
+        if (!hi->email_addr && nickserv_conf.sync_log) {
+          /*
+           * This should only happen if an OREGISTER was sent. Require
+           * email must be enabled! - SiRVulcaN
+           */
+          SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, hi->cookie->data, user->info);
+        }
         nickserv_set_email_addr(hi, hi->cookie->data);
         reply("NSMSG_EMAIL_CHANGED");
         if (nickserv_conf.sync_log)
