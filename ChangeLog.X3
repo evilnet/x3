@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-03-07  Alex Schumann   <rubin@afternet.org>
+
+	* src/*, src/Makefile*, Makefile.in: changed srvx to x3 in a
+	bunch more places.
+
 2005-03-07  Neil Spierling  <sirvulcan@gmail.com>
 
 	* nickserv.help: Added odelcookie section.
