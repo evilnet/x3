@@ -194,12 +194,21 @@
         "$uSee Also:$u register, noregister, unregister");
 "BAN" ("/msg $C BAN <#channel> <mask|nick>",
         "This command will temporarily add a ban for the user specified as the parameter. Masks are to be supplied in the format <Nick>!<Ident>@<Host> and usually contain wildcards. If a nick is specified, a mask is automatically generated (though not completely foolproof). This ban is removed either by removing it from the channel ban list using any irc client, or sending the UNBAN or UNBANALL commands. If you are banned with this method, the UNBANME command can be used.",
-        "$uFor assistance, please join to #support$u",
-        "Example: *!*serv@*.gamesurge.net would ban anyone with ident 'serv' and a gamesurge.net hostname from joining the channel.",
+        "$uFor assistance, please join #Help$u",
+        "Example: *!*serv@*.afternet.org would ban anyone with ident 'serv' and an afternet.org hostname from joining the channel.",
         "$uSee Also:$u unban, unbanall, unbanme");
 "BANS" ("/msg $C BANS <#channel>",
         "This command lists all permanent and timed bans in the channel.",
         "$uSee Also:$u addban, delban, mdelban");
+"CALC" ("/msg $C CALC <expression>",
+        "CALC calculates a mathematical expression, and returns the answer.  It",
+        "supports +, -, *, /, ^, and () and many other math operations, such as",
+        "sqrt[], tan[], etc.",
+        "For example: CALC sqrt [5 + .43 * (tan[75])] / 2",
+        "If you do not have access in the channel, the answer may be reported",
+        "to you privately (via MSG or NOTICE) instead of in the channel.",
+        "CALC can be used by all users.",
+        "$uSee Also:$u dice, 8ball");
 "CLIST" ("/msg $C CLIST <#channel> [mask]",
         "This command lists all users of level $bCoowner$b on a channel's userlist. If a mask is supplied, only coowners matching the mask will be shown.",
         "$uSee Also:$u addcoowner, delcoowner, mdelcoowner, users");

@@ -5740,7 +5740,7 @@ static CHANSERV_FUNC(cmd_calc)
     do_math(response, unsplit_string(argv + 1, argc - 1, NULL));
 
     if(channel)
-        send_channel_message(channel, cmd->parent->bot, "%b%s%b: %s", user->nick, response);
+        send_channel_message(channel, cmd->parent->bot, "$b%s$b: %s", user->nick, response);
     else
         send_message_type(4, user, cmd->parent->bot, "%s", response);
     return 1;

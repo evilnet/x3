@@ -23,11 +23,11 @@
 #include "modcmd.h"
 #include "saxdb.h"
 #include "timeq.h"
-#include <stdio.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+#include <tgmath.h>
 #include <time.h>
 
 #ifdef WIN32
