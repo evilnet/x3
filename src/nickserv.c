@@ -66,6 +66,7 @@
 #define KEY_EMAIL_VISIBLE_LEVEL "email_visible_level"
 #define KEY_EMAIL_ENABLED "email_enabled"
 #define KEY_EMAIL_REQUIRED "email_required"
+#define KEY_SYNC_LOG "sync_log"
 #define KEY_COOKIE_TIMEOUT "cookie_timeout"
 #define KEY_ACCOUNTS_PER_EMAIL "accounts_per_email"
 #define KEY_EMAIL_SEARCH_LEVEL "email_search_level"
@@ -354,6 +355,7 @@ static struct {
     unsigned int default_hostmask : 1;
     unsigned int warn_nick_owned : 1;
     unsigned int warn_clone_auth : 1;
+    unsigned int sync_log : 1;
     unsigned long nicks_per_handle;
     unsigned long password_min_length;
     unsigned long password_min_digits;
@@ -561,7 +563,10 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify)
         else
             send_message(notify, nickserv, "NSMSG_UNREGISTER_NICKS_SUCCESS", hi->handle);
     }
-    SyncLog("UNREGISTER %s", hi->handle);
+
+    if (nickserv_conf.sync_log)
+      SyncLog("UNREGISTER %s", hi->handle);
+
     dict_remove(nickserv_handle_dict, hi->handle);
 }
 
@@ -1269,8 +1274,10 @@ static NICKSERV_FUNC(cmd_register)
     /* Set registering flag.. */
     user->modes |= FLAGS_REGISTERING; 
 
-    cryptpass(password, syncpass);
-    SyncLog("REGISTER %s %s %s", hi->handle, syncpass, email_addr);
+    if (nickserv_conf.sync_log) {
+      cryptpass(password, syncpass);
+      SyncLog("REGISTER %s %s %s", hi->handle, syncpass, email_addr);
+    }
 
     return 1;
 }
@@ -1946,18 +1953,21 @@ static NICKSERV_FUNC(cmd_cookie)
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
         set_user_handle_info(user, hi, 1);
         reply("NSMSG_HANDLE_ACTIVATED");
-        SyncLog("ACCOUNTACC %s", hi->handle);
+        if (nickserv_conf.sync_log)
+          SyncLog("ACCOUNTACC %s", hi->handle);
         break;
     case PASSWORD_CHANGE:
         set_user_handle_info(user, hi, 1);
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
         reply("NSMSG_PASSWORD_CHANGED");
-        SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
+        if (nickserv_conf.sync_log)
+          SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
         break;
     case EMAIL_CHANGE:
         nickserv_set_email_addr(hi, hi->cookie->data);
         reply("NSMSG_EMAIL_CHANGED");
-        SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
+        if (nickserv_conf.sync_log)
+          SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
         break;
     case ALLOWAUTH:
         set_user_handle_info(user, hi, 1);
@@ -2038,7 +2048,8 @@ static NICKSERV_FUNC(cmd_pass)
 	return 0;
     }
     cryptpass(new_pass, hi->passwd);
-    SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
+    if (nickserv_conf.sync_log)
+      SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
     argv[1] = "****";
     reply("NSMSG_PASS_SUCCESS");
     return 1;
@@ -3670,6 +3681,8 @@ nickserv_conf_read(void)
     nickserv_conf.email_visible_level = str ? strtoul(str, NULL, 0) : 800;
     str = database_get_data(conf_node, KEY_EMAIL_ENABLED, RECDB_QSTRING);
     nickserv_conf.email_enabled = str ? enabled_string(str) : 0;
+    str = database_get_data(conf_node, KEY_SYNC_LOG, RECDB_QSTRING);
+    nickserv_conf.sync_log = str ? enabled_string(str) : 0;
     str = database_get_data(conf_node, KEY_COOKIE_TIMEOUT, RECDB_QSTRING);
     nickserv_conf.cookie_timeout = str ? ParseInterval(str) : 24*3600;
     str = database_get_data(conf_node, KEY_EMAIL_REQUIRED, RECDB_QSTRING);
