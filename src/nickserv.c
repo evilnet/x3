@@ -290,9 +290,39 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SET_TITLE", "$bTITLE:        $b%s" },
     { "NSMSG_SET_FAKEHOST", "$bFAKEHOST:    $b%s" },
     { "NSEMAIL_ACTIVATION_SUBJECT", "Account verification for %s" },
-    { "NSEMAIL_ACTIVATION_BODY", "This email has been sent to verify that this email address belongs to the person who tried to register an account on %1$s.  Your cookie is:\n    %2$s\nTo verify your email address and complete the account registration, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s %2$s\nThis command is only used once to complete your account registration, and never again. Once you have run this command, you will need to authenticate everytime you reconnect to the network. To do this, you will have to type this command every time you reconnect:\n    /msg %3$s@%4$s AUTH %5$s your-password\n Please remember to fill in 'your-password' with the actual password you gave to us when you registered.\n\nIf you did NOT request this account, you do not need to do anything.  Please contact the %1$s staff if you have questions, and be sure to check our website." },
+    { "NSEMAIL_ACTIVATION_BODY", 
+        "This email has been sent to verify that this email address belongs to the person who tried to register an account on %1$s.  Your cookie is:\n"
+        "%2$s\n"
+        "To verify your email address and complete the account registration, log on to %1$s and type the following command:\n"
+        "/msg %3$s@%4$s COOKIE %5$s %2$s\n"
+        "This command is only used once to complete your account registration, and never again. Once you have run this command, you will need to authenticate everytime you reconnect to the network. To do this, you will have to type this command every time you reconnect:\n"
+        "/msg %3$s@%4$s AUTH %5$s your-password\n"
+        "(Please remember to fill in 'your-password' with the actual password you gave to us when you registered.)\n"
+        "OR configure Login-On-Connect (see http://www.afternet.org/login-on-connect for instructions) to connect pre-logged in every time.\n"
+        "\n"
+        "If you did NOT request this account, you do not need to do anything.\n"
+        "Please contact the %1$s staff if you have questions, and be sure to check our website." },
+    { "NSEMAIL_ACTIVATION_BODY_WEB", 
+        "This email has been sent to verify that this email address belongs to the person who tried to register an account on %1$s.  Your cookie is:\n"
+        "%2$s\n"
+        "To verify your email address and complete the account registration, visit the following URL:\n"
+        "http://www.afternet.org/play/index.php?option=com_registration&task=activate&username=%5$s&cookie=%2$s\n"
+        "\n"
+        "If you did NOT request this account, you do not need to do anything.\n"
+        "Please contact the %1$s staff if you have questions, and be sure to check our website." },
     { "NSEMAIL_PASSWORD_CHANGE_SUBJECT", "Password change verification on %s" },
-    { "NSEMAIL_PASSWORD_CHANGE_BODY", "This email has been sent to verify that you wish to change the password on your account %5$s.  Your cookie is %2$s.\nTo complete the password change, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s %2$s\nIf you did NOT request your password to be changed, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
+    { "NSEMAIL_PASSWORD_CHANGE_BODY", 
+        "This email has been sent to verify that you wish to change the password on your account %5$s.  Your cookie is %2$s.\n"
+        "To complete the password change, log on to %1$s and type the following command:\n"
+        "/msg %3$s@%4$s COOKIE %5$s %2$s\n"
+        "If you did NOT request your password to be changed, you do not need to do anything.\n"
+        "Please contact the %1$s staff if you have questions." },
+    { "NSEMAIL_PASSWORD_CHANGE_BODY_WEB", 
+        "This email has been sent to verify that you wish to change the password on your account %5$s.  Your cookie is %2$s.\n"
+        "To complete the password change, click the following URL:\n"
+        "http://www.afternet.org/play/index.php?option=com_registration&task=passcookie&username=%5$s&cookie=%2$s\n"
+        "If you did NOT request your password to be changed, you do not need to do anything.\n"
+        "Please contact the %1$s staff if you have questions." },
     { "NSEMAIL_EMAIL_CHANGE_SUBJECT", "Email address change verification for %s" },
     { "NSEMAIL_EMAIL_CHANGE_BODY_NEW", "This email has been sent to verify that your email address belongs to the same person as account %5$s on %1$s.  The SECOND HALF of your cookie is %2$.*6$s.\nTo verify your address as associated with this account, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s ?????%2$.*6$s\n(Replace the ????? with the FIRST HALF of the cookie, as sent to your OLD email address.)\nIf you did NOT request this email address to be associated with this account, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
     { "NSEMAIL_EMAIL_CHANGE_BODY_OLD", "This email has been sent to verify that you want to change your email for account %5$s on %1$s from this address to %7$s.  The FIRST HALF of your cookie is %2$.*6$s\nTo verify your new address as associated with this account, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s %2$.*6$s?????\n(Replace the ????? with the SECOND HALF of the cookie, as sent to your NEW email address.)\nIf you did NOT request this change of email address, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
@@ -997,7 +1027,7 @@ nickserv_bake_cookie(struct handle_cookie *cookie)
 }
 
 static void
-nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_type type, const char *cookie_data)
+nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_type type, const char *cookie_data, int weblink)
 {
     struct handle_cookie *cookie;
     char subject[128], body[4096], *misc;
@@ -1026,7 +1056,12 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
         send_message(user, nickserv, "NSMSG_USE_COOKIE_REGISTER");
         fmt = handle_find_message(hi, "NSEMAIL_ACTIVATION_SUBJECT");
         snprintf(subject, sizeof(subject), fmt, netname);
-        fmt = handle_find_message(hi, "NSEMAIL_ACTIVATION_BODY");
+
+        if(weblink)
+            fmt = handle_find_message(hi, "NSEMAIL_ACTIVATION_BODY_WEB");
+        else
+            fmt = handle_find_message(hi, "NSEMAIL_ACTIVATION_BODY");
+
         snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle);
         first_time = 1;
         break;
@@ -1034,7 +1069,10 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
         send_message(user, nickserv, "NSMSG_USE_COOKIE_RESETPASS");
         fmt = handle_find_message(hi, "NSEMAIL_PASSWORD_CHANGE_SUBJECT");
         snprintf(subject, sizeof(subject), fmt, netname);
-        fmt = handle_find_message(hi, "NSEMAIL_PASSWORD_CHANGE_BODY");
+        if(weblink)
+            fmt = handle_find_message(hi, "NSEMAIL_PASSWORD_CHANGE_BODY_WEB");
+        else
+            fmt = handle_find_message(hi, "NSEMAIL_PASSWORD_CHANGE_BODY");
         snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle);
         break;
     case EMAIL_CHANGE:
@@ -1118,7 +1156,7 @@ static NICKSERV_FUNC(cmd_register)
 {
     struct handle_info *hi;
     const char *email_addr, *password;
-    int no_auth;
+    int no_auth, weblink;
 
     if (!IsOper(user) && !dict_size(nickserv_handle_dict)) {
 	/* Require the first handle registered to belong to someone +o. */
@@ -1150,6 +1188,7 @@ static NICKSERV_FUNC(cmd_register)
         reply("NSMSG_BAD_HANDLE", argv[1]);
         return 0;
     }
+
 
     if ((argc >= 4) && nickserv_conf.email_enabled) {
         struct handle_info_list *hil;
@@ -1193,6 +1232,13 @@ static NICKSERV_FUNC(cmd_register)
 
     password = argv[2];
     argv[2] = "****";
+    /* Webregister hack - send URL instead of IRC cookie 
+     * commands in email
+     */
+    if((argc >= 5) && !strcmp(argv[4],"WEBLINK"))
+        weblink = 1;
+    else
+        weblink = 0;
     if (!(hi = nickserv_register(user, user, argv[1], password, no_auth)))
         return 0;
     /* Add any masks they should get. */
@@ -1216,7 +1262,7 @@ static NICKSERV_FUNC(cmd_register)
 
     /* If they need to do email verification, tell them. */
     if (no_auth)
-        nickserv_make_cookie(user, hi, ACTIVATION, hi->passwd);
+        nickserv_make_cookie(user, hi, ACTIVATION, hi->passwd, weblink);
 
     /* Set registering flag.. */
     user->modes |= FLAGS_REGISTERING; 
@@ -1788,7 +1834,7 @@ static NICKSERV_FUNC(cmd_authcookie)
         reply("MSG_SET_EMAIL_ADDR");
         return 0;
     }
-    nickserv_make_cookie(user, hi, ALLOWAUTH, NULL);
+    nickserv_make_cookie(user, hi, ALLOWAUTH, NULL, 0);
     return 1;
 }
 
@@ -1818,8 +1864,13 @@ static NICKSERV_FUNC(cmd_resetpass)
 {
     struct handle_info *hi;
     char crypted[MD5_CRYPT_LENGTH];
+    int weblink;
 
     NICKSERV_MIN_PARMS(3);
+    if(argc >= 4 && !strcmp(argv[3], "WEBLINK"))
+        weblink = 1;
+    else
+        weblink = 0;
     if (user->handle_info) {
         reply("NSMSG_ALREADY_AUTHED", user->handle_info->handle);
         return 0;
@@ -1841,7 +1892,7 @@ static NICKSERV_FUNC(cmd_resetpass)
     }
     cryptpass(argv[2], crypted);
     argv[2] = "****";
-    nickserv_make_cookie(user, hi, PASSWORD_CHANGE, crypted);
+    nickserv_make_cookie(user, hi, PASSWORD_CHANGE, crypted, weblink);
     return 1;
 }
 
@@ -2378,7 +2429,7 @@ static OPTION_FUNC(opt_email)
         if (hi->email_addr && !irccasecmp(hi->email_addr, argv[1]))
             send_message(user, nickserv, "NSMSG_EMAIL_SAME");
         else if (!override)
-                nickserv_make_cookie(user, hi, EMAIL_CHANGE, argv[1]);
+                nickserv_make_cookie(user, hi, EMAIL_CHANGE, argv[1], 0);
         else {
             nickserv_set_email_addr(hi, argv[1]);
             if (hi->cookie)
