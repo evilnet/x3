@@ -55,6 +55,7 @@
             "  $bWARN$b      Cause activity on a channel to warn",
             "  $b$b          ircops.",
             "  $bUNWARN$b    Remove a channel activity warning.",
+            "  $bSTATS ALERT$b See a listing of alerts. ",
             "=--------------- End of Help ----------------="
            );
 
