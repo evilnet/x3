@@ -23,6 +23,7 @@
             " $bCLIST$b       Show all COOWNERs of a channel.",
             " $bMLIST$b       Show all MANAGERs of a channel.",
             " $bOLIST$b       Show all OPs of a channel.",
+            " $bHLIST$b       Show all HALFOPs of a channel.",
             " $bPLIST$b       Show all PEONs of a channel.",    
             " $bBANS$b        Show all  $ulasting$u bans in a channel.",
             " $bACCESS$b      Check someone's access level in a channel.",
@@ -31,6 +32,7 @@
             " $bSEEN$b        Find out the last time a user was in a channel.",
             "$b$b",
             " $bADDPEON$b     Add a user as a PEON in a channel.",
+            " $bADDHOP$b      Add a user as an HALFOP in a channel.",
             " $bADDOP$b       Add a user as an OP in a channel.",
             " $bADDMANAGER$b  Add a user as a MANAGER in a channel.",
             " $bADDCOOWNER$b  Add a user as COOWNER in a channel.",
@@ -42,6 +44,7 @@
             " $bMDELCOOWNER$b Mass-delete coowners with accounts matching a mask.",
             " $bMDELMANAGER$b Mass-delete managers with accounts matching a mask.",
             " $bMDELOP$b      Mass-delete ops with accounts matching a mask.",
+            " $bMDELHOP$b     Mass-delete halfops with accounts matching a mask.",
             " $bMDELPEON$b    Mass-delete peons with accounts matching a mask.",
             " $bDELBAN$b      Remove the specified $upermanent$u ban from memory.",
             " $bWIPEINFO$b    Remove a lower-ranked user's infoline.",
@@ -69,6 +72,8 @@
             " $bDOWNALL$b     Remove your ops in all channels.",
             " $bOP$b          Give ops to the specified user.",
             " $bDEOP$b        Remove ops from the specified user.",
+            " $bHOP$b         Give halfops to the specified user.",
+            " $bDEHOP$b       Remove halfops from the specified user.",
             " $bVOICE$b       Give voice to the specified user.",
             " $bDEVOICE$b     Remove voice from the specified user.",
             " $bRESYNC$b      Synchronize ops and voice with the channel userlist.",
@@ -186,6 +191,9 @@
 "ADDOP" ("/msg $C ADDOP <#channel> <nick|*account>",
         "This command adds someone to the channel user list with OP access level. (You may only add users to levels less than your own.)",
         "$uSee Also:$u adduser, deluser, users");
+"ADDHOP" ("/msg $C ADDHOP <#channel> <nick|*account>",
+        "This command adds someone to the channel user list with HALFOP access level. (You may only add users to levels less than your own.)",
+        "$uSee Also:$u adduser, deluser, users");
 "ADDTIMEDBAN" ("/msg $C ADDTIMEDBAN <#channel> <mask|nick> <Duration> [Reason]",
         "Adds an automatically expiring ban to the channel ban list. This command behaves in the exact same fashion as ADDBAN with the exception that the bans are automatically removed after the user-supplied duration. If it exactly matches an existing ban already in the list, the reason will be updated. If the existing ban was a timed ban, it will be extended. Timed bans can be removed with the DELBAN command, as with permanent bans.",
         "$uSee Also:$u addban, bans, delban, durations");
@@ -254,11 +262,14 @@
 "DEOP" ("/msg $C DEOP <#channel> <nick> [nick]...",
         "Deops the specified user[s].",
         "$uSee Also:$u down, op");
+"DEHOP" ("/msg $C DEHOP <#channel> <nick> [nick]...",
+        "Dehalfops the specified user[s].",
+        "$uSee Also:$u down, hop");
 "DEVOICE" ("/msg $C DEVOICE <#channel> <nick> [nick]...",
         "This command will make $C devoice the selected user[s].",
         "$uSee Also:$u addpeon, delpeon, deop, voice");
 "DOWN" ("/msg $C DOWN <#channel>",
-        "This command will devoice/deop you in the selected channel.",
+        "This command will devoice/dehalfop/deop you in the selected channel.",
         "$uSee Also:$u downall, up, upall");
 "DOWNALL" ("/msg $C DOWNALL",
         "Executes the $bdown$b command for each channel you have access to.",
@@ -281,6 +292,12 @@
 "HELPERS" ("/msg $C HELPERS",
         "Lists all the helpers currently online. Nicknames enclosed in parentheses are away, and likely unavailable.",
         "$uSee Also:$u staff");
+"HLIST" ("/msg $C HLIST <#channel> [mask]",
+        "This command lists all users of level $bHalfop$b on a channel's userlist. If a mask is supplied, only halfops matching the mask will be shown.",
+        "$uSee Also:$u addhop, delhop, mdelhop, users");
+"HOP" ("/msg $C HOP <#channel> <nick> [nick]...",
+        "This command makes $C halfop the specified user.",
+        "$uSee Also:$u addhop, delhop, dehop");
 "INFO" ("/msg $C INFO <#channel>",
         "This command responds with various pieces of information about a channel's users, status, and registration.");
 "INVITE" ("/msg $C INVITE <#channel> [nick [reason]]",
@@ -299,6 +316,8 @@
 "MDELCOOWNER" ("/msg $C MDELCOOWNER <#channel> <pattern>",
         "Deletes all coowners with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u clist, delcoowner");
+"MDELHOP" ("/msg $C MDELHOP <#channel> <pattern>",
+        "Deletes all halfops with accounts matching the given pattern from the channel user list.");
 "MDELMANAGER" ("/msg $C MDELMANAGER <#channel> <pattern>",
         "Deletes all managers with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u mdelban, mdelcoowner, mdelop, mdelowner, mdelpeon");
@@ -399,8 +418,10 @@
         "INVITEME:     Minimum level for users to use INVITEME or AUTOINVITE.",
         "USERINFO:     Minimum level for users to show an infoline on join.",
         "GIVEVOICE:    The users that $b$C$b will autovoice.",
+        "GIVEHOPS:     The users that $b$C$b will autohalfop.",
         "GIVEOPS:      The users that $b$C$b will autoop.",
         "ENFOPS:       Restrictions for opping users.",
+        "ENFHALFOPS:   Restrictions for halfopping users.",
         "ENFMODES:     Restrictions to change the default modes.",
         "ENFTOPIC:     Restrictions on changing the topic.",
         "TOPICSNARF:   Topics set manually (by /TOPIC #channel ...) by users this level and above change the default $b$C$b topic.",
@@ -414,7 +435,7 @@
         "$bIRCOP ONLY$b:",
         "NODELETE:  Prevents channel deletion.",
         "If you wish to reset your channel to the default settings, you can use the $bSET DEFAULTS$b command.",
-        "$uSee Also:$u set pubcmd, set giveops, set enfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpusers, set ctcpreaction, set defaults");
+        "$uSee Also:$u set pubcmd, set giveops, set givehalfops, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpusers, set ctcpreaction, set defaults");
 "SET DEFAULTTOPIC" ("/msg $C SET <#channel> DEFAULTTOPIC <New default topic>",
         "This changes the default topic for the channel.  $C will set the IRC topic to this value when the $btopic$b command is used with no arguments, when the topic refresh happens (if you have $bset topicrefresh$b), or when an unauthorized user changes the topic to something else.",
         "$uSee Also:$u set, set topicrefresh, set enftopic, set topicmask");
@@ -436,8 +457,14 @@
 "SET ENFOPS" ("/msg $C SET <#channel> ENFOPS <value>",
         "This setting restricts who may op users who are not at least ops on the userlist.  If $C sees someone with access below the specified access op someone not on the userlist (or who is a peon), it will deop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
         "$uSee Also:$u set");
+"SET ENFHALFOPS" ("/msg $C SET <#channel> ENFHALFOPS <value>",
+        "This setting restricts who may halfop users who are not at least halfops on the userlist.  If $C sees someone with access below the specified access halfop someone not on the userlist (or who is a peon), it will dehalfop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
+        "$uSee Also:$u set");
 "SET GIVEOPS" ("/msg $C SET <#channel> GIVEOPS <value>",
         "This setting restricts the minimum access someone must be to be automatically op'ed by $C.  It is a numeric user level.",
+        "$uSee Also:$u set");
+"SET GIVEHOPS" ("/msg $C SET <#channel> GIVEHOPS <value>",
+        "This setting restricts the minimum access someone must be to be automatically halfop'ed by $C.  It is a numeric user level.",
         "$uSee Also:$u set");
 "SET ENFMODES" ("/msg $C SET <#channel> ENFMODES <value>",
         "This setting restricts the minimum access someone must have to change the channel modes from what is specified in the channel settings.  It is a numeric user level, or 501 to mean no one may override the default modes.",
@@ -511,7 +538,7 @@
         "Displays up to a certain limit, all channels registered with $b$C$b that have not been visited within a certain duration. If a duration is not provided, a default will be used.",
         "$uSee Also:$u expire, search, durations");
 "UP" ("/msg $C UP <#channel>",
-        "Grants you your normal channel privileges.  If your access in the channel is less than the GiveVoice setting, this does nothing.  Otherwise, if your access is less than the GiveOps setting, $b$C$b will give you voice.  If your access is at least GiveOps, $b$C$b will give you ops.");
+        "Grants you your normal channel privileges.  If your access in the channel is less than the GiveVoice setting, this does nothing.  Otherwise, if your access is less than the GiveOps setting, $b$C$b will give you an halfop.  If your access is as GiveHalfOps, $b$C$b will give you halfops.  If your access is at least GiveOps, $b$C$b will give you ops.");
 "UPALL" ("/msg $C UPALL",
         "Executes the $bup$b command for each channel you have access in.",
         "$uSee Also:$u up, down, downall");

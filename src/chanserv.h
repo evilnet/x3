@@ -25,6 +25,7 @@
 
 enum UL_ALIASES {
     UL_PEON = 100,
+    UL_HALFOP = 150,
     UL_OP = 200,
     UL_MANAGER = 300,
     UL_PRESENT = UL_MANAGER,
@@ -35,8 +36,10 @@ enum UL_ALIASES {
 
 enum levelOption {
     lvlGiveVoice,
+    lvlGiveHalfOps,
     lvlGiveOps,
     lvlEnfOps,
+    lvlEnfHalfOps,
     lvlEnfModes,
     lvlEnfTopic,
     lvlPubCmd,
@@ -60,11 +63,14 @@ enum charOption {
 #define CHANNEL_SUSPENDED	0x00000002 /* (1 << 1) */
 #define CHANNEL_INFO_LINES	0x00000004 /* (1 << 2) - DEPRECATED */
 #define CHANNEL_VOICE_ALL    	0x00000008 /* (1 << 3) - DEPRECATED */
+
 /* No longer used. */                      /* (1 << 4) */
 #define CHANNEL_DYNAMIC_LIMIT	0x00000020 /* (1 << 5) */
 #define CHANNEL_TOPIC_SNARF	0x00000040 /* (1 << 6) - DEPRECATED */
 #define CHANNEL_PEON_INVITE     0x00000080 /* (1 << 7) - DEPRECATED */
 #define CHANNEL_OFFCHANNEL      0x00000100 /* (1 << 8) */
+#define CHANNEL_HOP_ALL         0x00000200 /* (1 << 9) */
+
 /* Flags with values over 0x20000000 or (1 << 29) will not work
  * because chanData.flags is a 30-bit field.
  */

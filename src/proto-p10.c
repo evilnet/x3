@@ -96,8 +96,10 @@
 #define CMD_VERSION             "VERSION"
 #define CMD_WALLCHOPS           "WALLCHOPS"
 #define CMD_WALLOPS             "WALLOPS"
+#define CMD_WALLHOPS            "WALLHOPS"
 #define CMD_WALLUSERS           "WALLUSERS"
 #define CMD_WALLVOICES          "WALLVOICES"
+#define CMD_WALLHOPS            "WALLHOPS"
 #define CMD_WHO                 "WHO"
 #define CMD_WHOIS               "WHOIS"
 #define CMD_WHOWAS              "WHOWAS"
@@ -178,8 +180,10 @@
 #define TOK_VERSION             "V"
 #define TOK_WALLCHOPS           "WC"
 #define TOK_WALLOPS             "WA"
+#define TOK_WALLHOPS            "WH"
 #define TOK_WALLUSERS           "WU"
 #define TOK_WALLVOICES          "WV"
+#define TOK_WALLHOPS            "WH"
 #define TOK_WHO                 "H"
 #define TOK_WHOIS               "W"
 #define TOK_WHOWAS              "X"
@@ -271,6 +275,7 @@
 #define P10_VERSION             TYPE(VERSION)
 #define P10_WALLCHOPS           TYPE(WALLCHOPS)
 #define P10_WALLOPS             TYPE(WALLOPS)
+#define P10_WALLHOPS            TYPE(WALLHOPS)
 #define P10_WALLUSERS           TYPE(WALLUSERS)
 #define P10_WALLVOICES          TYPE(WALLVOICES)
 #define P10_WHO                 TYPE(WHO)
@@ -600,6 +605,8 @@ irc_burst(struct chanNode *chan)
             burst_line[pos++] = ':';
             if (last_mode & MODE_CHANOP)
                 burst_line[pos++] = 'o';
+            if (last_mode & MODE_HALFOP)
+                burst_line[pos++] = 'h';
             if (last_mode & MODE_VOICE)
                 burst_line[pos++] = 'v';
         }
@@ -1051,9 +1058,10 @@ static CMD_FUNC(cmd_burst)
         case '+': {
             const char *pos;
             int n_modes;
-            for (pos=argv[next], n_modes = 1; *pos; pos++)
+            for (pos=argv[next], n_modes = 1; *pos; pos++) {
                 if ((*pos == 'k') || (*pos == 'l'))
                     n_modes++;
+            }
             unsplit_string(argv+next, n_modes, modes);
             next += n_modes;
             break;
@@ -1062,6 +1070,7 @@ static CMD_FUNC(cmd_burst)
         default: members = argv[next++]; break;
         }
     }
+
 
     in_timestamp = atoi(argv[2]);
     if ((cNode = dict_find(unbursted_channels, argv[1], NULL))) {
@@ -1080,6 +1089,8 @@ static CMD_FUNC(cmd_burst)
             while ((sep = *end++)) {
                 if (sep == 'o')
                     mode |= MODE_CHANOP;
+                else if (sep == 'h')
+                    mode |= MODE_HALFOP;
                 else if (sep == 'v')
                     mode |= MODE_VOICE;
                 else
@@ -1576,9 +1587,13 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_WALLCHOPS, cmd_dummy);
     dict_insert(irc_func_dict, CMD_WALLVOICES, cmd_dummy);
     dict_insert(irc_func_dict, TOK_WALLVOICES, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_WALLHOPS, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_WALLHOPS, cmd_dummy);
     /* Ignore opers being silly. */
     dict_insert(irc_func_dict, CMD_WALLOPS, cmd_dummy);
     dict_insert(irc_func_dict, TOK_WALLOPS, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_WALLHOPS, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_WALLHOPS, cmd_dummy);
     /* We have reliable clock!  Always!  Wraaa! */
     dict_insert(irc_func_dict, CMD_SETTIME, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SETTIME, cmd_dummy);
@@ -2159,14 +2174,21 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
                 change->args[ch_arg].mode |= MODE_REMOVE;
             change->args[ch_arg++].hostmask = modes[in_arg++];
             break;
-        case 'o': case 'v':
+        case 'o': case 'h': case 'v':
         {
             struct userNode *victim;
             if (!(flags & MCP_ALLOW_OVB))
                 goto error;
             if (in_arg >= argc)
                 goto error;
-            change->args[ch_arg].mode = (modes[0][ii] == 'o') ? MODE_CHANOP : MODE_VOICE;
+
+            if (modes[0][ii] == 'o')
+                change->args[ch_arg].mode = MODE_CHANOP;
+            else if (modes[0][ii] == 'h')
+                change->args[ch_arg].mode = MODE_HALFOP;
+            else if (modes[0][ii] == 'v')
+                change->args[ch_arg].mode = MODE_VOICE;
+
             if (!add)
                 change->args[ch_arg].mode |= MODE_REMOVE;
             if (flags & MCP_FROM_SERVER)
@@ -2289,6 +2311,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         default:
             if (change->args[arg].mode & MODE_CHANOP)
                 mod_chanmode_append(&chbuf, 'o', change->args[arg].member->user->numeric);
+            if (change->args[arg].mode & MODE_HALFOP)
+                mod_chanmode_append(&chbuf, 'h', change->args[arg].member->user->numeric);
             if (change->args[arg].mode & MODE_VOICE)
                 mod_chanmode_append(&chbuf, 'v', change->args[arg].member->user->numeric);
             break;
@@ -2339,6 +2363,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         default:
             if (change->args[arg].mode & MODE_CHANOP)
                 mod_chanmode_append(&chbuf, 'o', change->args[arg].member->user->numeric);
+            if (change->args[arg].mode & MODE_HALFOP)
+                mod_chanmode_append(&chbuf, 'h', change->args[arg].member->user->numeric);
             if (change->args[arg].mode & MODE_VOICE)
                 mod_chanmode_append(&chbuf, 'v', change->args[arg].member->user->numeric);
             break;
@@ -2430,6 +2456,7 @@ clear_chanmode(struct chanNode *channel, const char *modes)
     for (remove = 0; *modes; modes++) {
         switch (*modes) {
         case 'o': remove |= MODE_CHANOP; break;
+        case 'h': remove |= MODE_HALFOP; break;
         case 'v': remove |= MODE_VOICE; break;
         case 'p': remove |= MODE_PRIVATE; break;
         case 's': remove |= MODE_SECRET; break;
@@ -2474,8 +2501,8 @@ clear_chanmode(struct chanNode *channel, const char *modes)
     }
 
     /* Remove member modes. */
-    if ((remove & (MODE_CHANOP | MODE_VOICE)) && channel->members.used) {
-        int mask = ~(remove & (MODE_CHANOP | MODE_VOICE));
+    if ((remove & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE)) && channel->members.used) {
+        int mask = ~(remove & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE));
         unsigned int i;
 
         for (i = 0; i < channel->members.used; i++)

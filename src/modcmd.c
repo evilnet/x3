@@ -2325,6 +2325,7 @@ create_default_binds(void) {
             service_make_alias(service, "addcoowner", "*chanserv.adduser", "$1", "coowner", NULL);
             service_make_alias(service, "addmanager", "*chanserv.adduser", "$1", "manager", NULL);
             service_make_alias(service, "addop", "*chanserv.adduser", "$1", "op", NULL);
+            service_make_alias(service, "addhop", "*chanserv.adduser", "$1", "halfop", NULL);
             service_make_alias(service, "addpeon", "*chanserv.adduser", "$1", "peon", NULL);
             service_make_alias(service, "delowner", "*chanserv.deluser", "owner", "$1", NULL);
             service_make_alias(service, "delcoowner", "*chanserv.deluser", "coowner", "$1", NULL);

@@ -315,6 +315,7 @@ wipeout_channel(struct chanNode *cNode, time_t new_time, char **modes, unsigned 
         if ((mn->modes & MODE_CHANOP) && IsService(mn->user) && IsLocal(mn->user))
             argc++;
     }
+
     if (argc) {
         struct mod_chanmode *change;
 

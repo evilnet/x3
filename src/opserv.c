@@ -101,6 +101,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_NO_CHANNEL_MODES", "Channel $b%s$b had no modes to clear." },
     { "OSMSG_DEOP_DONE", "Deopped the requested lusers." },
     { "OSMSG_DEOPALL_DONE", "Deopped everyone on $b%s$b." },
+    { "OSMSG_DEHOP_DONE", "Dehalfopped the requested lusers." },
+    { "OSMSG_DEHOPALL_DONE", "Dehalfopped everyone on $b%s$b." },
     { "OSMSG_NO_DEBUG_CHANNEL", "No debug channel has been configured." },
     { "OSMSG_INVITE_DONE", "Invited $b%s$b to $b%s$b." },
     { "OSMSG_ALREADY_THERE", "You are already in $b%s$b." },
@@ -112,6 +114,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_MODE_SET", "I have set the modes for $b%s$b." },
     { "OSMSG_OP_DONE", "Opped the requested lusers." },
     { "OSMSG_OPALL_DONE", "Opped everyone on $b%s$b." },
+    { "OSMSG_HOP_DONE", "Halfopped the requested lusers." },
+    { "OSMSG_HOPALL_DONE", "Halfopped everyone on $b%s$b." },
     { "OSMSG_WHOIS_IDENT", "%s (%s@%s) from %d.%d.%d.%d" },
     { "OSMSG_WHOIS_NICK", "Nick    : %s" },
     { "OSMSG_WHOIS_HOST", "Host    : %s@%s" },
@@ -177,6 +181,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_CLONE_JOINED", "$b%s$b has joined $b%s$b." },
     { "OSMSG_CLONE_PARTED", "$b%s$b has left $b%s$b." },
     { "OSMSG_OPS_GIVEN", "I have given ops in $b%s$b to $b%s$b." },
+    { "OSMSG_HOPS_GIVEN", "I have given halfops in $b%s$b to $b%s$b." },
     { "OSMSG_CLONE_SAID", "$b%s$b has spoken to $b%s$b." },
     { "OSMSG_UNKNOWN_SUBCOMMAND", "$b%s$b is not a valid subcommand of $b%s$b." },
     { "OSMSG_UNKNOWN_OPTION", "$b%s$b has not been set." },
@@ -461,13 +466,18 @@ static MODCMD_FUNC(cmd_chaninfo)
             send_message_type(4, user, cmd->parent->bot, " @%s (%s@%s)", moden->user->nick, moden->user->ident, moden->user->hostname);
     }
     for (n=0; n<channel->members.used; n++) {
+        moden = channel->members.list[n];
+        if ((moden->modes & (MODE_CHANOP|MODE_HALFOP|MODE_VOICE)) == MODE_HALFOP)
+            send_message_type(4, user, cmd->parent->bot, " %s%s (%s@%s)", "%", moden->user->nick, moden->user->ident, moden->user->hostname);
+    }
+    for (n=0; n<channel->members.used; n++) {
 	moden = channel->members.list[n];
-	if ((moden->modes & (MODE_CHANOP|MODE_VOICE)) == MODE_VOICE)
+	if ((moden->modes & (MODE_CHANOP|MODE_HALFOP|MODE_VOICE)) == MODE_VOICE)
             send_message_type(4, user, cmd->parent->bot, " +%s (%s@%s)", moden->user->nick, moden->user->ident, moden->user->hostname);
     }
     for (n=0; n<channel->members.used; n++) {
 	moden = channel->members.list[n];
-	if ((moden->modes & (MODE_CHANOP|MODE_VOICE)) == 0)
+	if ((moden->modes & (MODE_CHANOP|MODE_HALFOP|MODE_VOICE)) == 0)
             send_message_type(4, user, cmd->parent->bot, "  %s (%s@%s)", moden->user->nick, moden->user->ident, moden->user->hostname);
     }
     return 1;
@@ -570,6 +580,31 @@ static MODCMD_FUNC(cmd_deop)
     return 1;
 }
 
+static MODCMD_FUNC(cmd_dehop)
+{
+    struct mod_chanmode *change;
+    unsigned int arg, count;
+
+    change = mod_chanmode_alloc(argc-1);
+    for (arg = 1, count = 0; arg < argc; ++arg) {
+        struct userNode *victim = GetUserH(argv[arg]);
+        struct modeNode *mn;
+        if (!victim || IsService(victim)
+            || !(mn = GetUserMode(channel, victim))
+            || !(mn->modes & MODE_HALFOP))
+            continue;
+        change->args[count].mode = MODE_REMOVE | MODE_HALFOP;
+        change->args[count++].member = mn;
+    }
+    if (count) {
+        change->argc = count;
+        modcmd_chanmode_announce(change);
+    }
+    mod_chanmode_free(change);
+    reply("OSMSG_DEHOP_DONE");
+    return 1;
+}
+
 static MODCMD_FUNC(cmd_deopall)
 {
     struct mod_chanmode *change;
@@ -589,6 +624,28 @@ static MODCMD_FUNC(cmd_deopall)
     }
     mod_chanmode_free(change);
     reply("OSMSG_DEOPALL_DONE", channel->name);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_dehopall)
+{
+    struct mod_chanmode *change;
+    unsigned int ii, count;
+
+    change = mod_chanmode_alloc(channel->members.used);
+    for (ii = count = 0; ii < channel->members.used; ++ii) {
+        struct modeNode *mn = channel->members.list[ii];
+        if (IsService(mn->user) || !(mn->modes & MODE_HALFOP))
+            continue;
+        change->args[count].mode = MODE_REMOVE | MODE_HALFOP;
+        change->args[count++].member = mn;
+    }
+    if (count) {
+        change->argc = count;
+        modcmd_chanmode_announce(change);
+    }
+    mod_chanmode_free(change);
+    reply("OSMSG_DEHOPALL_DONE", channel->name);
     return 1;
 }
 
@@ -856,6 +913,8 @@ opserv_ison(struct userNode *tell, struct userNode *target, const char *message)
 	}
 	if (mn->modes & MODE_CHANOP)
             buff[count++] = '@';
+        if (mn->modes & MODE_HALFOP)
+            buff[count++] = '%';
 	if (mn->modes & MODE_VOICE)
             buff[count++] = '+';
 	memcpy(buff+count, mn->channel->name, here_len);
@@ -1127,6 +1186,33 @@ static MODCMD_FUNC(cmd_op)
     return 1;
 }
 
+static MODCMD_FUNC(cmd_hop)
+{
+    struct mod_chanmode *change;
+    unsigned int arg, count;
+
+    change = mod_chanmode_alloc(argc-1);
+    for (arg = 1, count = 0; arg < argc; ++arg) {
+        struct userNode *victim;
+        struct modeNode *mn;
+        if (!(victim = GetUserH(argv[arg])))
+            continue;
+        if (!(mn =  GetUserMode(channel, victim)))
+            continue;
+        if (mn->modes & MODE_HALFOP)
+            continue;
+        change->args[count].mode = MODE_HALFOP;
+        change->args[count++].member = mn;
+    }
+    if (count) {
+        change->argc = count;
+        modcmd_chanmode_announce(change);
+    }
+    mod_chanmode_free(change);
+    reply("OSMSG_HOP_DONE");
+    return 1;
+}
+
 static MODCMD_FUNC(cmd_opall)
 {
     struct mod_chanmode *change;
@@ -1146,6 +1232,28 @@ static MODCMD_FUNC(cmd_opall)
     }
     mod_chanmode_free(change);
     reply("OSMSG_OPALL_DONE", channel->name);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_hopall)
+{
+    struct mod_chanmode *change;
+    unsigned int ii, count;
+
+    change = mod_chanmode_alloc(channel->members.used);
+    for (ii = count = 0; ii < channel->members.used; ++ii) {
+        struct modeNode *mn = channel->members.list[ii];
+        if (mn->modes & MODE_HALFOP)
+            continue;
+        change->args[count].mode = MODE_HALFOP;
+        change->args[count++].member = mn;
+    }
+    if (count) {
+        change->argc = count;
+        modcmd_chanmode_announce(change);
+    }
+    mod_chanmode_free(change);
+    reply("OSMSG_HOPALL_DONE", channel->name);
     return 1;
 }
 
@@ -1229,7 +1337,7 @@ static MODCMD_FUNC(cmd_voiceall)
     change = mod_chanmode_alloc(channel->members.used);
     for (ii = count = 0; ii < channel->members.used; ++ii) {
 	struct modeNode *mn = channel->members.list[ii];
-	if (mn->modes & (MODE_CHANOP|MODE_VOICE))
+	if (mn->modes & (MODE_CHANOP|MODE_HALFOP|MODE_VOICE))
             continue;
         change->args[count].mode = MODE_VOICE;
         change->args[count++].member = mn;
@@ -2298,6 +2406,24 @@ static MODCMD_FUNC(cmd_clone)
 	reply("OSMSG_OPS_GIVEN", channel->name, clone->nick);
 	return 1;
     }
+    if (!irccasecmp(argv[1], "HOP")) {
+        struct mod_chanmode change;
+        if (!channel) {
+            reply("MSG_CHANNEL_UNKNOWN", argv[3]);
+            return 0;
+        }
+        mod_chanmode_init(&change);
+        change.argc = 1;
+        change.args[0].mode = MODE_HALFOP;
+        change.args[0].member = GetUserMode(channel, clone);
+        if (!change.args[0].member) {
+            reply("OSMSG_NOT_ON_CHANNEL", clone->nick, channel->name);
+            return 0;
+        }
+        modcmd_chanmode_announce(&change);
+        reply("OSMSG_HOPS_GIVEN", channel->name, clone->nick);
+        return 1;
+    }
     if (argc < 5) {
 	reply("MSG_MISSING_PARAMS", argv[1]);
 	OPSERV_SYNTAX();
@@ -2958,11 +3084,17 @@ opserv_discrim_create(struct userNode *user, unsigned int argc, char *argv[], in
                 case '#':
                     goto find_channel;
                 case '-':
-                    discrim->chan_no_modes  |= MODE_CHANOP | MODE_VOICE;
+                    discrim->chan_no_modes  |= MODE_CHANOP | MODE_HALFOP | MODE_VOICE;
                     break;
                 case '+':
                     discrim->chan_req_modes |= MODE_VOICE;
                     discrim->chan_no_modes  |= MODE_CHANOP;
+                    discrim->chan_no_modes  |= MODE_HALFOP;
+                    break;
+                case '%':
+                    discrim->chan_req_modes |= MODE_HALFOP;
+                    discrim->chan_no_modes  |= MODE_CHANOP;
+                    discrim->chan_no_modes  |= MODE_VOICE;
                     break;
                 case '@':
                     discrim->chan_req_modes |= MODE_CHANOP;
@@ -4056,6 +4188,8 @@ init_opserv(const char *nick)
     opserv_define_func("DELTRUST", cmd_deltrust, 800, 0, 2);
     opserv_define_func("DEOP", cmd_deop, 100, 2, 2);
     opserv_define_func("DEOPALL", cmd_deopall, 400, 2, 0);
+    opserv_define_func("DEHOP", cmd_dehop, 100, 2, 2);
+    opserv_define_func("DEHOPALL", cmd_dehopall, 400, 2, 0);
     opserv_define_func("DEVOICEALL", cmd_devoiceall, 300, 2, 0);
     opserv_define_func("DIE", cmd_die, 900, 0, 2);
     opserv_define_func("DUMP", cmd_dump, 999, 0, 2);
@@ -4079,6 +4213,8 @@ init_opserv(const char *nick)
     opserv_define_func("MODE", cmd_mode, 100, 2, 2);
     opserv_define_func("OP", cmd_op, 100, 2, 2);
     opserv_define_func("OPALL", cmd_opall, 400, 2, 0);
+    opserv_define_func("HOP", cmd_hop, 100, 2, 2);
+    opserv_define_func("HOPALL", cmd_hopall, 400, 2, 0);
     opserv_define_func("PART", cmd_part, 601, 0, 2);
     opserv_define_func("QUERY", cmd_query, 0, 0, 0);
     opserv_define_func("RAW", cmd_raw, 999, 0, 2);
