@@ -1,0 +1,10 @@
+"god" ("/msg $C GOD [on|off]",
+        "Aktiviert und deaktiviert Security Override.");
+"help" ("/msg $S HELP [Befehl]",
+        "Zeigt die Hilfe des angegebenen Befehls an.",
+        "Alle Hilfedateien benutzen die gleiche Syntax. Optionale Argumente werden mit [] und benötigte Argumente mit <> angegeben.",
+        "Um zu sehen, welche Befehle du mit $S verwenden kannst, benutze /msg $S help commands. Um Hilfe für einen speziellen Befehl zu bekommen, benutze /msg $S help <command>.");
+"command" ("/msg $S COMMAND <Befehl>", 
+        "Zeigt die Einschränkungen, wer den Befehl wie verwenden darf.");
+"version" ("/msg $S version",
+        "Sendet dir Informationen über die Software und das Copyright.");

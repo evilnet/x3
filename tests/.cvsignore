@@ -1,0 +1,7 @@
+.arch-ids
+.arch-inventory
+coverage-2.cmd
+coverage.txt
+ircd.conf
+ircd.motd
+srvx.conf

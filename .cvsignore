@@ -1,0 +1,11 @@
+.arch-ids
+.arch-inventory
+Makefile.in
+TODO
+aclocal.m4
+autom4te.cache
+config.log
+configure
+p10
+stamp-h2.in
+{arch}
