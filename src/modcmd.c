@@ -55,6 +55,7 @@ static const struct message_entry msgtab[] = {
     { "MCMSG_NO_CHANNEL_BEFORE", "You may not give a channel name before this command." },
     { "MCMSG_NO_PLUS_CHANNEL", "You may not use a +channel with this command." },
     { "MCMSG_COMMAND_ALIASES", "%s is an alias for: %s" },
+    { "MCMSG_HELP_COMMAND_ALIAS", "$uAlias for:$u %s" },
     { "MCMSG_COMMAND_BINDING", "%s is a binding of: %s" },
     { "MCMSG_ALIAS_ERROR", "Error in alias expansion for %s; check the error log for details." },
     { "MCMSG_INTERNAL_COMMAND", "$b%s$b is an internal command and cannot be called directly; please check command bindings." },
@@ -757,19 +758,28 @@ int
 svccmd_send_help(struct userNode *user, struct userNode *bot, struct svccmd *cmd) {
     char cmdname[MAXLEN];
     unsigned int nn;
+    int r;
     /* Show command name (in bold). */
     for (nn=0; cmd->name[nn]; nn++)
         cmdname[nn] = toupper(cmd->name[nn]);
     cmdname[nn] = 0;
-    send_message_type(4, user, bot, "$b%s$b", cmdname);
+    send_message_type(4, user, bot, "=--- $b%s$b ---=", cmdname);
+
+    /* Show the help entry for the underlying command. */
+        /* Lets not show help for a parent command, thats not what
+         * they asked for!
+         * return send_help(user, bot, cmd->command->parent->helpfile, cmd->command->name);
+         * TODO: We actually DO want to show the parent IF there is no other help.
+         */
+    r = send_help(user, bot, cmd->command->parent->helpfile, cmd->name);
+
     /* If it's an alias, show what it's an alias for. */
     if (cmd->alias.used) {
         char alias_text[MAXLEN];
         unsplit_string((char**)cmd->alias.list, cmd->alias.used, alias_text);
-        send_message(user, bot, "MCMSG_COMMAND_ALIASES", cmd->name, alias_text);
+        send_message(user, bot, "MCMSG_HELP_COMMAND_ALIAS", alias_text);
     }
-    /* Show the help entry for the underlying command. */
-    return send_help(user, bot, cmd->command->parent->helpfile, cmd->command->name);
+    return r;
 }
 
 int
@@ -778,10 +788,14 @@ svccmd_send_help_2(struct userNode *user, struct service *service, const char *t
     struct svccmd *cmd;
     unsigned int ii;
 
+    /* If there is a command, send help for the command */
     if ((cmd = dict_find(service->commands, topic, NULL)))
         return svccmd_send_help(user, service->bot, cmd);
+
+    /* If there is no topic show the index */
     if (!topic)
         topic = "<index>";
+    /* look for the thing in the included help files */
     for (ii = 0; ii < service->modules.used; ++ii) {
         module = service->modules.list[ii];
         if (!module->helpfile)
@@ -789,6 +803,7 @@ svccmd_send_help_2(struct userNode *user, struct service *service, const char *t
         if (dict_find(module->helpfile->db, topic, NULL))
             return send_help(user, service->bot, module->helpfile, topic);
     }
+    /* Otherwise say we cant find it */
     send_message(user, service->bot, "MSG_TOPIC_UNKNOWN");
     return 0;
 }
@@ -2308,12 +2323,12 @@ create_default_binds(void) {
         if (!irccasecmp(def_binds[ii].svcname, "ChanServ")) {
             service_make_alias(service, "addowner", "*chanserv.adduser", "$1", "owner", NULL);
             service_make_alias(service, "addcoowner", "*chanserv.adduser", "$1", "coowner", NULL);
-            service_make_alias(service, "addmaster", "*chanserv.adduser", "$1", "master", NULL);
+            service_make_alias(service, "addmanager", "*chanserv.adduser", "$1", "manager", NULL);
             service_make_alias(service, "addop", "*chanserv.adduser", "$1", "op", NULL);
             service_make_alias(service, "addpeon", "*chanserv.adduser", "$1", "peon", NULL);
             service_make_alias(service, "delowner", "*chanserv.deluser", "owner", "$1", NULL);
             service_make_alias(service, "delcoowner", "*chanserv.deluser", "coowner", "$1", NULL);
-            service_make_alias(service, "delmaster", "*chanserv.deluser", "master", "$1", NULL);
+            service_make_alias(service, "delmanager", "*chanserv.deluser", "manager", "$1", NULL);
             service_make_alias(service, "delop", "*chanserv.deluser", "op", "$1", NULL);
             service_make_alias(service, "delpeon", "*chanserv.deluser", "peon", "$1", NULL);
             service_make_alias(service, "command", "*modcmd.command", NULL);

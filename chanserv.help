@@ -11,7 +11,7 @@
         "  ACCESS      Check someone's access in a channel.",
         "  MYACCESS    Show all channels where you have access.",
         "  ADDCOOWNER  Give another person coowner status in a channel.",
-        "  ADDMASTER                       master status in a channel.",
+        "  ADDMANAGER                       manager status in a channel.",
         "  ADDOP                           op status in a channel.",
         "  ADDPEON                         peon status in a channel.",
         "  GIVEOWNERSHIP    Give ownership to another user in the channel.",
@@ -20,7 +20,7 @@
         "  DELUSER     Remove a person's access from a channel.",
         "  DELETEME    Remove your own access from a channel.",
         "  MDELCOOWNER Remove coowners with accounts matching a mask.",
-        "  MDELMASTER         masters with accounts matching a mask.",
+        "  MDELMANAGER         managers with accounts matching a mask.",
         "  MDELOP             ops with accounts matching a mask.",
         "  MDELPEON           peons with accounts matching a mask.",
 	"  TRIM        Remove users inactive for a certain period.",
@@ -54,7 +54,7 @@
         "  OPEN        Remove +ilk channel modes and any bans on you from a channel.",
         "  USERS       List all users of a channel.",
         "  CLIST                coowners of a channel.",
-        "  MLIST                masters of a channel.",
+        "  MLIST                managers of a channel.",
         "  OLIST                ops of a channel.",
         "  PLIST                peons of a channel.",    
         "  BANS        List all the bans for a channel.",
@@ -117,7 +117,7 @@
         "$uSee Also:$u bans, delban, mdelban");
 "ADDUSER" ("/msg $C ADDUSER <#channel> <nick|*account> <level>",
         "This command adds someone to the channel user list with the specified access level.  (You may only add users to levels less than your own.)",
-        "The level may be one of $bpeon$b, $bop$b, $bmaster$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
+        "The level may be one of $bpeon$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
         "$uSee Also:$u deluser, users");
 "ADDTIMEDBAN" ("/msg $C ADDTIMEDBAN <#channel> <mask|nick> <Duration> [Reason]",
         "Adds an automatically expiring ban to the channel ban list. This command behaves in the exact same fashion as ADDBAN with the exception that the bans are automatically removed after the user-supplied duration. If it exactly matches an existing ban already in the list, the reason will be updated. If the existing ban was a timed ban, it will be extended. Timed bans can be removed with the DELBAN command, as with permanent bans.",
@@ -208,7 +208,7 @@
 "INFO" ("/msg $C INFO <#channel>",
         "This command responds with various pieces of information about a channel's users, status, and registration.");
 "INVITE" ("/msg $C INVITE <#channel> [nick [reason]]",
-        "Invites a user into the channel, sending them a reason if one is provided. However, unless you have at least $bmaster$b access, you can only invite yourself with this command. If no nick is provided, the user issuing the command will be invited.");
+        "Invites a user into the channel, sending them a reason if one is provided. However, unless you have at least $bmanager$b access, you can only invite yourself with this command. If no nick is provided, the user issuing the command will be invited.");
 "INVITEME" ("/msg $S INVITEME <#channel>",
         "Invites you into the channel.");
 "IRCOPS" ("/msg $C IRCOPS",
@@ -223,23 +223,23 @@
 "MDELCOOWNER" ("/msg $C MDELCOOWNER <#channel> <pattern>",
         "Deletes all coowners with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u clist, delcoowner");
-"MDELMASTER" ("/msg $C MDELMASTER <#channel> <pattern>",
-        "Deletes all masters with accounts matching the given pattern from the channel user list.",
+"MDELMANAGER" ("/msg $C MDELMANAGER <#channel> <pattern>",
+        "Deletes all managers with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u mdelban, mdelcoowner, mdelop, mdelowner, mdelpeon");
 "MDELOP" ("/msg $C MDELOP <#channel> <pattern>",
         "Deletes all ops with accounts matching the given pattern from the channel user list.");
 "MDELOWNER" ("/msg $C MDELOWNER <#channel> <pattern>",
         "Deletes all owners with accounts matching the given pattern from the channel user list.",
-        "$uSee Also:$u addowner, mdelcoowner, mdelmaster, mdelop, mdelpeon");
+        "$uSee Also:$u addowner, mdelcoowner, mdelmanager, mdelop, mdelpeon");
 "MDELPEON" ("/msg $C MDELPEON <#channel> <pattern>",
         "Deletes all peons with accounts matching the given pattern from the channel user list.",
-        "$uSee Also:$u addpeon, mdelcoowner, mdelmaster, mdelop");
+        "$uSee Also:$u addpeon, mdelcoowner, mdelmanager, mdelop");
 "MERGE" ("/msg $C MERGE <#channel> <destination>",
         "Merges the source channel's registration, users, bans, and other data into the target channel. Users with access to both the source and target channels will retain the higher access level; if the access levels are the same, the more recent seen time is kept. Bans are also merged, with bans expiring later taking precedence.",
         "$uSee Also:$u register, move, unregister");
 "MLIST" ("/msg $C MLIST <#channel> [mask]",
-        "This command lists all users of level $bMaster$b on a channel's userlist. If a mask is supplied, only masters matching the mask will be shown.",
-        "$uSee Also:$u addmaster, delmaster, mdelmaster, users");
+        "This command lists all users of level $bManager$b on a channel's userlist. If a mask is supplied, only managers matching the mask will be shown.",
+        "$uSee Also:$u addmanager, delmanager, mdelmanager, users");
 "MODE" ("/msg $C MODE <#channel>",
         "Resets the modes in the channel to their default.",
         "$uSee Also:$u open, set");
@@ -462,19 +462,12 @@
         "This command lists all users of level $bOwner$b on a channel's userlist. If a mask is supplied, only owners matching the mask will be shown.",
         "$uSee Also:$u addcoowner, delcoowner, mdelcoowner, users");
 
-"I'VE FALLEN AND I CAN'T GET UP" ("$bHelp, I've fallen and I can't get up$b!",
-        "If you drank your milk, you might not feel so vulnerable right now.",
-        "So next time you're sitting in front of a tall frosty glass of milk, just think how much it will help build up your bone structure.");
-"ME"	"Help you? You're beyond help.";
-"Zoot"	"Crash it again, please?";
-"Entrope" "C Code.  C Code Run.  Run, Code, Run!!    (please?)";
-"emacs" ("A novice of the temple once approached the Chief Priest with a question.",
-        "The novice asked, \"Master, does Emacs have the Buddha nature?\"",
-        "The Chief Priest had been in the temple for many years and could be relied upon to know these things.  He thought for several minutes before replying.",
-        "\"I don't see why not.  It's got bloody well everything else.\"",
-        "With that, the Chief Priest went to lunch.  The novice suddenly achieved enlightenment, several years later.");
-"thanks" ("The srvx developers would like to thank the following people for their help in making srvx as polished as it is today:",
-        "$bGameSurge IRC Network$b - All the users and staff there bear with our shortcomings and bugs and let us know what needs to be fixed.",
-        "$bIC5 Networks$b (and JohnM in particular) - Never afraid to critique things, even if we are the 800 pound gorilla.",
-        "$bMeeko, eraser, hock(ey), KilledInAction, MadEwokHerd, Milon and Shoat$b - Hardcore beta testing and bug finding on the testnet.",
-        "$bCrips and feigling$b - Reading through all the boring messages and finding ways to make them clearer.");
+"ME"	"I am at your service. /msg $C help command, or /join #help ";
+"thanks" ("AfterNET's own srvx2 is based on the hard work of the origional srvx developers.  They would like to thank the following people for their help in making the origional srvx:",
+        "     $bGameSurge IRC Network$b - All the users and staff there bear with our shortcomings and bugs and let us know what needs to be fixed.",
+        "     $bIC5 Networks$b (and JohnM in particular) - Never afraid to critique things, even if we are the 800 pound gorilla.",
+        "     $bMeeko, eraser, hock(ey), KilledInAction, MadEwokHerd, Milon and Shoat$b - Hardcore beta testing and bug finding on the testnet.",
+        "     $bCrips and feigling$b - Reading through all the boring messages and finding ways to make them clearer.",
+        "Futher, the AfterNET srvx2 team would like to thank:",
+        "     $breed$b - who tirelessly nagged us to upgrade our services",
+        "$bAfterNET Users and Opers$b - who faught both for and against the change, for the better of Afternet.");

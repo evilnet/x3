@@ -3749,17 +3749,21 @@ init_nickserv(const char *nick)
     dict_set_free_data(nickserv_email_dict, nickserv_free_email_addr);
 
     nickserv_module = module_register("NickServ", NS_LOG, "nickserv.help", NULL);
-    modcmd_register(nickserv_module, "AUTH", cmd_auth, 2, MODCMD_KEEP_BOUND, "flags", "+qualified,+loghostmask", NULL);
+/* Removed qualified_host as default requirement for AUTH, REGISTER, PASS, etc. nets 
+ * can enable it per command  using modcmd. (its a shitty default IMO, and now in 1.3 
+ * a big pain to disable  since its nolonger in the config file. )   -Rubin
+ */
+    modcmd_register(nickserv_module, "AUTH", cmd_auth, 2, MODCMD_KEEP_BOUND, "flags", "+loghostmask", NULL);
     nickserv_define_func("ALLOWAUTH", cmd_allowauth, 0, 1, 0);
-    nickserv_define_func("REGISTER", cmd_register, -1, 0, 1);
+    nickserv_define_func("REGISTER", cmd_register, -1, 0, 0);
     nickserv_define_func("OREGISTER", cmd_oregister, 0, 1, 0);
-    nickserv_define_func("UNREGISTER", cmd_unregister, -1, 1, 1);
+    nickserv_define_func("UNREGISTER", cmd_unregister, -1, 1, 0);
     nickserv_define_func("OUNREGISTER", cmd_ounregister, 0, 1, 0);
     nickserv_define_func("ADDMASK", cmd_addmask, -1, 1, 0);
     nickserv_define_func("OADDMASK", cmd_oaddmask, 0, 1, 0);
     nickserv_define_func("DELMASK", cmd_delmask, -1, 1, 0);
     nickserv_define_func("ODELMASK", cmd_odelmask, 0, 1, 0);
-    nickserv_define_func("PASS", cmd_pass, -1, 1, 1);
+    nickserv_define_func("PASS", cmd_pass, -1, 1, 0);
     nickserv_define_func("SET", cmd_set, -1, 1, 0);
     nickserv_define_func("OSET", cmd_oset, 0, 1, 0);
     nickserv_define_func("ACCOUNTINFO", cmd_handleinfo, -1, 0, 0);
@@ -3778,8 +3782,8 @@ init_nickserv(const char *nick)
     }
     if (nickserv_conf.email_enabled) {
         nickserv_define_func("AUTHCOOKIE", cmd_authcookie, -1, 0, 0);
-        nickserv_define_func("RESETPASS", cmd_resetpass, -1, 0, 1);
-        nickserv_define_func("COOKIE", cmd_cookie, -1, 0, 1);
+        nickserv_define_func("RESETPASS", cmd_resetpass, -1, 0, 0);
+        nickserv_define_func("COOKIE", cmd_cookie, -1, 0, 0);
         nickserv_define_func("DELCOOKIE", cmd_delcookie, -1, 1, 0);
         dict_insert(nickserv_opt_dict, "EMAIL", opt_email);
     }

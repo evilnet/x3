@@ -26,8 +26,8 @@
 enum UL_ALIASES {
     UL_PEON = 100,
     UL_OP = 200,
-    UL_MASTER = 300,
-    UL_PRESENT = UL_MASTER,
+    UL_MANAGER = 300,
+    UL_PRESENT = UL_MANAGER,
     UL_COOWNER = 400,
     UL_OWNER = 500,
     UL_HELPER = 600,

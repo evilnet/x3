@@ -569,7 +569,7 @@ static const struct {
 } accessLevels[] = {
     { "peon", "Peon", UL_PEON, '+' },
     { "op", "Op", UL_OP, '@' },
-    { "master", "Master", UL_MASTER, '%' },
+    { "manager", "Manager", UL_MANAGER, '%' },
     { "coowner", "Coowner", UL_COOWNER, '*' },
     { "owner", "Owner", UL_OWNER, '!' },
     { "helper", "BUG:", UL_HELPER, 'X' }
@@ -2359,9 +2359,9 @@ static CHANSERV_FUNC(cmd_mdelcoowner)
     return cmd_mdel_user(user, channel, UL_COOWNER, UL_COOWNER, argv[1], cmd);
 }
 
-static CHANSERV_FUNC(cmd_mdelmaster)
+static CHANSERV_FUNC(cmd_mdelmanager)
 {
-    return cmd_mdel_user(user, channel, UL_MASTER, UL_MASTER, argv[1], cmd);
+    return cmd_mdel_user(user, channel, UL_MANAGER, UL_MANAGER, argv[1], cmd);
 }
 
 static CHANSERV_FUNC(cmd_mdelop)
@@ -3116,7 +3116,7 @@ static CHANSERV_FUNC(cmd_unbanme)
     long flags = ACTION_UNBAN;
 
     /* remove permanent bans if the user has the proper access. */
-    if(uData->access >= UL_MASTER)
+    if(uData->access >= UL_MANAGER)
 	flags |= ACTION_DEL_BAN;
 
     argv[1] = user->nick;
@@ -3523,12 +3523,12 @@ static CHANSERV_FUNC(cmd_clist)
 
 static CHANSERV_FUNC(cmd_mlist)
 {
-    return cmd_list_users(CSFUNC_ARGS, UL_MASTER, UL_COOWNER-1);
+    return cmd_list_users(CSFUNC_ARGS, UL_MANAGER, UL_COOWNER-1);
 }
 
 static CHANSERV_FUNC(cmd_olist)
 {
-    return cmd_list_users(CSFUNC_ARGS, UL_OP, UL_MASTER-1);
+    return cmd_list_users(CSFUNC_ARGS, UL_OP, UL_MANAGER-1);
 }
 
 static CHANSERV_FUNC(cmd_plist)
@@ -6666,7 +6666,7 @@ chanserv_channel_read(const char *key, struct record_data *hir)
             else switch(((count <= levelOptions[lvlOpt].old_idx) ? str : CHANNEL_DEFAULT_OPTIONS)[levelOptions[lvlOpt].old_idx])
             {
             case 'c': lvl = UL_COOWNER; break;
-            case 'm': lvl = UL_MASTER; break;
+            case 'm': lvl = UL_MANAGER; break;
             case 'n': lvl = UL_OWNER+1; break;
             case 'o': lvl = UL_OP; break;
             case 'p': lvl = UL_PEON; break;
@@ -7115,21 +7115,21 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(unregister, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "flags", "+loghostmask", NULL);
     DEFINE_COMMAND(merge, 2, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "access", "owner", NULL);
 
-    DEFINE_COMMAND(adduser, 3, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
-    DEFINE_COMMAND(deluser, 2, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
-    DEFINE_COMMAND(suspend, 2, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
-    DEFINE_COMMAND(unsuspend, 2, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
+    DEFINE_COMMAND(adduser, 3, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
+    DEFINE_COMMAND(deluser, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
+    DEFINE_COMMAND(suspend, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
+    DEFINE_COMMAND(unsuspend, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(deleteme, 1, MODCMD_REQUIRE_CHANUSER, NULL);
 
     DEFINE_COMMAND(mdelowner, 2, MODCMD_REQUIRE_CHANUSER, "flags", "+helping", NULL);
     DEFINE_COMMAND(mdelcoowner, 2, MODCMD_REQUIRE_CHANUSER, "access", "owner", NULL);
-    DEFINE_COMMAND(mdelmaster, 2, MODCMD_REQUIRE_CHANUSER, "access", "coowner", NULL);
-    DEFINE_COMMAND(mdelop, 2, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
-    DEFINE_COMMAND(mdelpeon, 2, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
+    DEFINE_COMMAND(mdelmanager, 2, MODCMD_REQUIRE_CHANUSER, "access", "coowner", NULL);
+    DEFINE_COMMAND(mdelop, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
+    DEFINE_COMMAND(mdelpeon, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
 
-    DEFINE_COMMAND(trim, 3, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
+    DEFINE_COMMAND(trim, 3, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(opchan, 1, MODCMD_REQUIRE_REGCHAN|MODCMD_NEVER_CSUSPEND, "access", "1", NULL);
-    DEFINE_COMMAND(clvl, 3, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
+    DEFINE_COMMAND(clvl, 3, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(giveownership, 2, MODCMD_REQUIRE_CHANUSER, "access", "owner", "flags", "+loghostmask", NULL);
 
     DEFINE_COMMAND(up, 1, MODCMD_REQUIRE_CHANUSER, NULL);
@@ -7151,10 +7151,10 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(topic, 1, MODCMD_REQUIRE_REGCHAN, "template", "op", "flags", "+never_csuspend", NULL);
     DEFINE_COMMAND(mode, 1, MODCMD_REQUIRE_REGCHAN, "template", "op", NULL);
     DEFINE_COMMAND(inviteme, 1, MODCMD_REQUIRE_CHANNEL, "access", "1", NULL);
-    DEFINE_COMMAND(invite, 1, MODCMD_REQUIRE_CHANNEL, "access", "master", NULL);
+    DEFINE_COMMAND(invite, 1, MODCMD_REQUIRE_CHANNEL, "access", "manager", NULL);
     DEFINE_COMMAND(set, 1, MODCMD_REQUIRE_CHANUSER, "access", "op", NULL);
-    DEFINE_COMMAND(wipeinfo, 2, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
-    DEFINE_COMMAND(resync, 1, MODCMD_REQUIRE_CHANUSER, "access", "master", NULL);
+    DEFINE_COMMAND(wipeinfo, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
+    DEFINE_COMMAND(resync, 1, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
 
     DEFINE_COMMAND(events, 1, MODCMD_REQUIRE_REGCHAN, "flags", "+nolog", "access", "350", NULL);
     DEFINE_COMMAND(addban, 2, MODCMD_REQUIRE_REGCHAN, "access", "250", NULL);
