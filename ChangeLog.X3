@@ -1,6 +1,20 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-03-15  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Improved some syntax error reporting for commands
+	
+	* src/helpfile.c: Added a 'breef' help function
+	
+	* src/helpfile.h: Added a 'breef' help function
+	
+	* src/main.c: Improved some syntax error reporting for commands
+	
+	* src/modcmd.c: Improved some syntax error reporting for commands
+	
+	* src/modcmd.h: Improved some syntax error reporting for commands
+
 2005-03-15  Reed Loden  <reed@reedloden.com>
 
 	* Synchronization with srvx--devo--1.3--patch-19.
