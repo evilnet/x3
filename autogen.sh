@@ -1,6 +1,6 @@
 #! /bin/sh
 
-aclocal
-autoheader -Wall
-automake -a --gnu Makefile rx/Makefile src/Makefile
-autoconf -Wall
+~/compiled/bin/aclocal
+~/compiled/bin/autoheader -Wall
+~/compiled/bin/automake -a --gnu Makefile rx/Makefile src/Makefile
+~/compiled/bin/autoconf -Wall

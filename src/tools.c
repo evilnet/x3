@@ -418,24 +418,22 @@ user_matches_glob_broken(struct userNode *user, const char *orig_glob, int inclu
     if (!match_ircglob(user->ident, glob) && (IsSetHost(user) && !match_ircglob(setident, glob)))
 	return 0;
     glob = marker + 1;
-    /* Now check the host part */
-    if (isdigit(*glob) && !glob[strspn(glob, "0123456789./*?")]) {
-        /* Looks like an IP-based mask */
-        return match_ircglob(inet_ntoa(user->ip), glob);
-    } else {
-        /* The host part of the mask isn't IP-based */
-        if (IsSetHost(user) && match_ircglob(sethostname, glob))
+    /* If it might be an IP glob, test that. */
+    if (!glob[strspn(glob, "0123456789./*?")]
+        && match_ircglob(inet_ntoa(user->ip), glob))
+        return 1;
+    /* Check for a fakehost match. */
+    if (IsFakeHost(user) && match_ircglob(user->fakehost, glob))
             return 1;
-        if (IsFakeHost(user) && match_ircglob(user->fakehost, glob))
+    /* Check for an account match. */
+    if (hidden_host_suffix && user->handle_info) {
+        char hidden_host[HOSTLEN+1];
+        snprintf(hidden_host, sizeof(hidden_host), "%s.%s", user->handle_info->handle, hidden_host_suffix);
+        if (match_ircglob(hidden_host, glob))
             return 1;
-        if (hidden_host_suffix && user->handle_info) {
-            char hidden_host[HOSTLEN+1];
-            snprintf(hidden_host, sizeof(hidden_host), "%s.%s", user->handle_info->handle, hidden_host_suffix);
-            if (match_ircglob(hidden_host, glob))
-                return 1;
-        }
-        return match_ircglob(user->hostname, glob);
     }
+    /* None of the above; could only be a hostname match. */
+    return match_ircglob(user->hostname, glob);
 }
 
 int
@@ -464,7 +462,7 @@ is_gline(const char *text)
         return 0;
     if (!*text)
         return 0;
-    while (*text && (isalnum((char)*text) || strchr(".-?*", *text)))
+    while (*text && (isalnum((char)*text) || strchr(".-?*:", *text)))
         text++;
     return !*text;
 }
@@ -493,7 +491,7 @@ split_ircmask(char *text, char **nick, char **ident, char **host)
         *ident = start;
     
     start = ++text;
-    while (*text && (isalnum((char)*text) || strchr(".-?*", *text)))
+    while (*text && (isalnum((char)*text) || strchr(".-?*:", *text)))
         text++;
     if (host)
         *host = start;

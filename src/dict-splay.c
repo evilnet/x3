@@ -75,12 +75,15 @@ static struct dict_node*
 dict_splay(struct dict_node *node, const char *key)
 {
     struct dict_node N, *l, *r, *y;
+    int res;
+
     if (!node) return NULL;
     N.l = N.r = NULL;
     l = r = &N;
 
     while (1) {
-	int res = irccasecmp(key, node->key);
+        verify(node);
+        res = irccasecmp(key, node->key);
 	if (!res) break;
 	if (res < 0) {
 	    if (!node->l) break;
@@ -123,10 +126,18 @@ dict_splay(struct dict_node *node, const char *key)
 static void
 dict_dispose_node(struct dict_node *node, free_f free_keys, free_f free_data)
 {
-    if (free_keys && node->key)
-        free_keys((void*)node->key);
-    if (free_data && node->data)
-        free_data(node->data);
+    if (free_keys && node->key) {
+        if (free_keys == free)
+            free((void*)node->key);
+        else
+            free_keys((void*)node->key);
+    }
+    if (free_data && node->data) {
+        if (free_data == free)
+            free(node->data);
+        else
+            free_data(node->data);
+    }
     free(node);
 }
 
@@ -141,6 +152,7 @@ dict_insert(dict_t dict, const char *key, void *data)
     struct dict_node *new_node;
     if (!key)
         return;
+    verify(dict);
     new_node = malloc(sizeof(struct dict_node));
     new_node->key = key;
     new_node->data = data;
@@ -178,8 +190,18 @@ dict_insert(dict_t dict, const char *key, void *data)
 	    dict->root = new_node;
 	} else {
 	    /* maybe we don't want to overwrite it .. oh well */
-	    if (dict->free_data) dict->free_data(dict->root->data);
-            if (dict->free_keys) dict->free_keys((void*)dict->root->key);
+	    if (dict->free_data) {
+                if (dict->free_data == free)
+                    free(dict->root->data);
+                else
+                    dict->free_data(dict->root->data);
+            }
+            if (dict->free_keys) {
+                if (dict->free_keys == free)
+                    free((void*)dict->root->key);
+                else
+                    dict->free_keys((void*)dict->root->key);
+            }
             free(new_node);
             dict->root->key = key;
 	    dict->root->data = data;
@@ -206,6 +228,7 @@ dict_remove2(dict_t dict, const char *key, int no_dispose)
 
     if (!dict->root)
         return 0;
+    verify(dict);
     dict->root = dict_splay(dict->root, key);
     if (irccasecmp(key, dict->root->key))
         return 0;
@@ -246,6 +269,7 @@ dict_find(dict_t dict, const char *key, int *found)
             *found = 0;
 	return NULL;
     }
+    verify(dict);
     dict->root = dict_splay(dict->root, key);
     was_found = !irccasecmp(key, dict->root->key);
     if (found)
@@ -278,6 +302,7 @@ struct dict_sanity_struct {
 static int
 dict_sanity_check_node(struct dict_node *node, struct dict_sanity_struct *dss)
 {
+    verify(node);
     if (!node->key) {
         snprintf(dss->error, sizeof(dss->error), "Node %p had null key", node);
         return 1;
@@ -310,6 +335,7 @@ dict_sanity_check(dict_t dict)
     dss.node_count = 0;
     dss.bad_node = 0;
     dss.error[0] = 0;
+    verify(dict);
     if (dict->root && dict_sanity_check_node(dict->root, &dss)) {
         return strdup(dss.error);
     } else if (dss.node_count != dict->count) {

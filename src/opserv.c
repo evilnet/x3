@@ -233,6 +233,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WARN_LISTSTART", "Channel activity warnings:" },
     { "OSMSG_WARN_LISTENTRY", "%s (%s)" },
     { "OSMSG_WARN_LISTEND", "End of activity warning list." },
+    { "OSMSG_STATS_MEMORY", "%u allocations totalling %u bytes." },
     { "OSMSG_UPLINK_CONNECTING", "Establishing connection with %s (%s:%d)." },
     { "OSMSG_CURRENT_UPLINK", "$b%s$b is already the current uplink." },
     { "OSMSG_INVALID_UPLINK", "$b%s$b is not a valid uplink name." },
@@ -544,9 +545,11 @@ static MODCMD_FUNC(cmd_clearbans)
     change = mod_chanmode_alloc(channel->banlist.used);
     for (ii=0; ii<channel->banlist.used; ii++) {
         change->args[ii].mode = MODE_REMOVE | MODE_BAN;
-        change->args[ii].u.hostmask = channel->banlist.list[ii]->ban;
+        change->args[ii].u.hostmask = strdup(channel->banlist.list[ii]->ban);
     }
     modcmd_chanmode_announce(change);
+    for (ii=0; ii<change->argc; ++ii)
+        free((char*)change->args[ii].u.hostmask);
     mod_chanmode_free(change);
     reply("OSMSG_CLEARBANS_DONE", channel->name);
     return 1;
@@ -1702,6 +1705,14 @@ static MODCMD_FUNC(cmd_stats_warn) {
     reply("OSMSG_WARN_LISTEND");
     return 1;
 }
+
+#if defined(WITH_MALLOC_SRVX)
+static MODCMD_FUNC(cmd_stats_memory) {
+    extern unsigned long alloc_count, alloc_size;
+    reply("OSMSG_STATS_MEMORY", alloc_count, alloc_size);
+    return 1;
+}
+#endif
 
 static MODCMD_FUNC(cmd_dump)
 {
@@ -4254,6 +4265,9 @@ init_opserv(const char *nick)
     opserv_define_func("STATS UPLINK", cmd_stats_uplink, 0, 0, 0);
     opserv_define_func("STATS UPTIME", cmd_stats_uptime, 0, 0, 0);
     opserv_define_func("STATS WARN", cmd_stats_warn, 0, 0, 0);
+#if defined(WITH_MALLOC_SRVX)
+    opserv_define_func("STATS MEMORY", cmd_stats_memory, 0, 0, 0);
+#endif
     opserv_define_func("TRACE", cmd_trace, 100, 0, 3);
     opserv_define_func("TRACE PRINT", NULL, 0, 0, 0);
     opserv_define_func("TRACE COUNT", NULL, 0, 0, 0);

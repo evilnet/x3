@@ -64,25 +64,48 @@ extern struct tm *localtime_r(const time_t *clock, struct tm *res);
 #endif
 
 #if defined(WITH_MALLOC_DMALLOC)
-#define DMALLOC_FUNC_CHECK 1
-#include <string.h>
-#include <dmalloc.h>
+# define DMALLOC_FUNC_CHECK 1
+# include <string.h>
+# include <dmalloc.h>
 #elif defined(WITH_MALLOC_MPATROL)
-#include <string.h>
-#include <mpatrol.h>
+# include <string.h>
+# include <mpatrol.h>
 #elif defined(WITH_MALLOC_BOEHM_GC)
-#if !defined(NDEBUG)
-#define GC_DEBUG 1
+# if !defined(NDEBUG)
+#  define GC_DEBUG 1
+# endif
+# include <stdlib.h>
+# include <string.h>
+# include <gc/gc.h>
+# define malloc(n) GC_MALLOC(n)
+# define calloc(m,n) GC_MALLOC((m)*(n))
+# define realloc(p,n) GC_REALLOC((p),(n))
+# define free(p) GC_FREE(p)
+# undef  HAVE_STRDUP
+# undef strdup
+#elif defined(WITH_MALLOC_SRVX)
+# undef malloc
+# define malloc(n) srvx_malloc(__FILE__, __LINE__, (n))
+# undef calloc
+# define calloc(m,n) srvx_malloc(__FILE__, __LINE__, (m)*(n))
+# undef realloc
+# define realloc(p,n) srvx_realloc(__FILE__, __LINE__, (p), (n))
+# undef free
+# define free(p) srvx_free(__FILE__, __LINE__, (p))
+# undef strdup
+# define strdup(s) srvx_strdup(__FILE__, __LINE__, (s))
+extern void *srvx_malloc(const char *, unsigned int, size_t);
+extern void *srvx_realloc(const char *, unsigned int, void *, size_t);
+extern char *srvx_strdup(const char *, unsigned int, const char *);
+extern void srvx_free(const char *, unsigned int, void *);
+# if !defined(NDEBUG)
+extern void verify(const void *ptr);
+#  define verify(x) verify(x)
+# endif
 #endif
-#include <stdlib.h>
-#include <string.h>
-#include <gc/gc.h>
-#define malloc(n) GC_MALLOC(n)
-#define calloc(m,n) GC_MALLOC((m)*(n))
-#define realloc(p,n) GC_REALLOC((p),(n))
-#define free(p) GC_FREE(p)
-#undef  HAVE_STRDUP
-#undef strdup
+
+#ifndef verify
+# define verify(ptr) (void)(ptr)
 #endif
 
 extern time_t now;
@@ -141,6 +164,7 @@ void STRUCTNAME##_init(struct STRUCTNAME *list) {\
   list->list = malloc(list->size*sizeof(list->list[0]));\
 }\
 void STRUCTNAME##_append(struct STRUCTNAME *list, ITEMTYPE new_item) {\
+  verify(list->list);\
   if (list->used == list->size) {\
     list->size = list->size ? (list->size << 1) : 4;\
     list->list = realloc(list->list, list->size*sizeof(list->list[0]));\
@@ -149,6 +173,7 @@ void STRUCTNAME##_append(struct STRUCTNAME *list, ITEMTYPE new_item) {\
 }\
 int STRUCTNAME##_remove(struct STRUCTNAME *list, ITEMTYPE new_item) {\
     unsigned int n, found;\
+    verify(list->list);\
     for (found=n=0; n<list->used; n++) {\
 	if (list->list[n] == new_item) {\
 	    memmove(list->list+n, list->list+n+1, (list->used-n-1)*sizeof(list->list[n]));\
@@ -161,6 +186,7 @@ int STRUCTNAME##_remove(struct STRUCTNAME *list, ITEMTYPE new_item) {\
 void STRUCTNAME##_clean(struct STRUCTNAME *list) {\
   list->used = list->size = 0;\
   free(list->list);\
+  list->list = NULL;\
 }
 
 /* The longest string that is likely to be produced in English is "10

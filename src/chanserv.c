@@ -1212,7 +1212,7 @@ add_channel_ban(struct chanData *channel, const char *mask, char *owner, time_t 
     safestrncpy(bd->mask, mask, sizeof(bd->mask));
     if(owner)
         safestrncpy(bd->owner, owner, sizeof(bd->owner));
-    bd->reason = reason ? strdup(reason) : NULL;
+    bd->reason = strdup(reason);
 
     if(expires)
 	timeq_add(expires, expire_ban, bd);
@@ -1708,7 +1708,6 @@ chanserv_get_owned_count(struct handle_info *hi)
 
 static CHANSERV_FUNC(cmd_register)
 {
-    struct mod_chanmode *change;
     struct handle_info *handle;
     struct chanData *cData;
     struct modeNode *mn;
@@ -1799,12 +1798,19 @@ static CHANSERV_FUNC(cmd_register)
     cData->modes = chanserv_conf.default_modes;
     if(off_channel > 0)
       cData->modes.modes_set |= MODE_REGISTERED;
-    change = mod_chanmode_dup(&cData->modes, 1);
-    change->args[change->argc].mode = MODE_CHANOP;
-    change->args[change->argc].u.member = AddChannelUser(chanserv, channel);
-    change->argc++;
-    mod_chanmode_announce(chanserv, channel, change);
-    mod_chanmode_free(change);
+    if (IsOffChannel(cData))
+    {
+        mod_chanmode_announce(chanserv, channel, &cData->modes);
+    }
+    else
+    {
+        struct mod_chanmode *change = mod_chanmode_dup(&cData->modes, 1);
+        change->args[change->argc].mode = MODE_CHANOP;
+        change->args[change->argc].u.member = AddChannelUser(chanserv, channel);
+        change->argc++;
+        mod_chanmode_announce(chanserv, channel, change);
+        mod_chanmode_free(change);
+    }
 
     /* Initialize the channel's max user record. */
     cData->max = channel->members.used;
@@ -3119,8 +3125,9 @@ find_matching_bans(struct banList *bans, struct userNode *actee, const char *mas
         if(!match[ii])
             continue;
         change->args[count].mode = MODE_REMOVE | MODE_BAN;
-        change->args[count++].u.hostmask = bans->list[ii]->ban;
+        change->args[count++].u.hostmask = strdup(bans->list[ii]->ban);
     }
+    assert(count == change->argc);
     return change;
 }
 
@@ -3153,6 +3160,10 @@ unban_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
         change = find_matching_bans(&channel->banlist, actee, mask);
         if(change)
         {
+            unsigned int ii;
+
+            for(ii = 0; ii < change->argc; ++ii)
+                free((char*)change->args[ii].u.hostmask);
             modcmd_chanmode_announce(change);
             mod_chanmode_free(change);
             acted = 1;
@@ -3230,9 +3241,11 @@ static CHANSERV_FUNC(cmd_unbanall)
     for(ii=0; ii<channel->banlist.used; ii++)
     {
         change->args[ii].mode = MODE_REMOVE | MODE_BAN;
-        change->args[ii].u.hostmask = channel->banlist.list[ii]->ban;
+        change->args[ii].u.hostmask = strdup(channel->banlist.list[ii]->ban);
     }
     modcmd_chanmode_announce(change);
+    for(ii = 0; ii < change->argc; ++ii)
+        free((char*)change->args[ii].u.hostmask);
     mod_chanmode_free(change);
     reply("CSMSG_BANS_REMOVED", channel->name);
     return 1;
@@ -3241,6 +3254,7 @@ static CHANSERV_FUNC(cmd_unbanall)
 static CHANSERV_FUNC(cmd_open)
 {
     struct mod_chanmode *change;
+    unsigned int ii;
 
     change = find_matching_bans(&channel->banlist, user, NULL);
     if(!change)
@@ -3251,6 +3265,8 @@ static CHANSERV_FUNC(cmd_open)
         change->modes_clear &= ~channel->channel_info->modes.modes_set;
     modcmd_chanmode_announce(change);
     reply("CSMSG_CHANNEL_OPENED", channel->name);
+    for(ii = 0; ii < change->argc; ++ii)
+        free((char*)change->args[ii].u.hostmask);
     mod_chanmode_free(change);
     return 1;
 }
@@ -6366,7 +6382,7 @@ handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_ch
             if(!bounce)
                 bounce = mod_chanmode_alloc(change->argc + 1 - ii);
             bounce->args[bnc].mode = MODE_REMOVE | MODE_BAN;
-            bounce->args[bnc].u.hostmask = ban;
+            bounce->args[bnc].u.hostmask = strdup(ban);
             bnc++;
             send_message(user, chanserv, "CSMSG_MASK_PROTECTED", ban);
         }
@@ -6375,6 +6391,9 @@ handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_ch
     {
         if((bounce->argc = bnc) || bounce->modes_set || bounce->modes_clear)
             mod_chanmode_announce(chanserv, channel, bounce);
+        for(ii = 0; ii < change->argc; ++ii)
+            if(bounce->args[ii].mode == (MODE_REMOVE | MODE_BAN))
+                free((char*)bounce->args[ii].u.hostmask);
         mod_chanmode_free(bounce);
     }
 }
@@ -6612,8 +6631,6 @@ chanserv_conf_read(void)
     else
         strlist = alloc_string_list(2);
     chanserv_conf.old_ban_names = strlist;
-    /* the variable itself is actually declared in proto-common.c; this is equally 
-     * parse issue. */
     str = database_get_data(conf_node, "off_channel", RECDB_QSTRING);
     off_channel = str ? atoi(str) : 0;
 }
@@ -6740,7 +6757,7 @@ ban_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
     else
         expires_time = 0;
 
-    if(expires_time && (expires_time < now))
+    if(!reason || (expires_time && (expires_time < now)))
         return;
 
     bData = add_channel_ban(chan, key, owner, set_time, triggered_time, expires_time, reason);
