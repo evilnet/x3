@@ -440,8 +440,8 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
         mn->idle_since = now;
 
     /* Never send a NOTICE to a channel to one of the services */
-    if (!pd->is_notice && cf->func &&
-        ((cn->modes & MODE_REGISTERED) || GetUserMode(cn, cf->service)))
+    if (!pd->is_notice && cf->func
+        && ((cn->modes & MODE_REGISTERED) || GetUserMode(cn, cf->service)))
          cf->func(pd->user, cn, pd->text+1, cf->service);
 
     /* This catches *all* text sent to the channel that the services server sees */
@@ -450,7 +450,7 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
        if (!cf->func)
          break; /* end of list */
        else
-       cf->func(pd->user, cn, pd->text, cf->service);
+         cf->func(pd->user, cn, pd->text, cf->service);
     }
 }
 
@@ -570,9 +570,10 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
              * to be more specific than an existing ban.
              */
             for (jj=0; jj<channel->banlist.used; ++jj) {
-                if (match_ircglobs(change->args[ii].u.hostmask, channel->banlist.list[jj]->ban)) {
-                    banList_remove(&channel->banlist, channel->banlist.list[jj]);
-                    free(channel->banlist.list[jj]);
+                bn = channel->banlist.list[jj];
+                if (match_ircglobs(change->args[ii].u.hostmask, bn->ban)) {
+                    banList_remove(&channel->banlist, bn);
+                    free(bn);
                     jj--;
                 }
             }
@@ -587,10 +588,11 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
             break;
         case MODE_REMOVE|MODE_BAN:
             for (jj=0; jj<channel->banlist.used; ++jj) {
-                if (strcmp(channel->banlist.list[jj]->ban, change->args[ii].u.hostmask))
+                bn = channel->banlist.list[jj];
+                if (strcmp(bn->ban, change->args[ii].u.hostmask))
                     continue;
-                free(channel->banlist.list[jj]);
-                banList_remove(&channel->banlist, channel->banlist.list[jj]);
+                free(bn);
+                banList_remove(&channel->banlist, bn);
                 break;
             }
             break;
