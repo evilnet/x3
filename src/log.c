@@ -993,3 +993,31 @@ log_init(void)
     message_register_table(msgtab);
     log_inited = 1;
 }
+
+void SyncLog(char *fmt,...)
+{
+  va_list args;
+  char buff[MAXLEN*4];
+  char *tmp;
+  FILE *LogFile;
+
+  va_start(args, fmt);
+  vsnprintf(buff, MAXLEN, fmt, args);
+  buff[MAXLEN - 1] = '\0';
+  va_end(args);
+
+  for (tmp = buff; *tmp; tmp++)
+  {
+    if ((*tmp == '\n') || (*tmp == '\r'))
+      *tmp = '\0';
+    else if (*tmp == '\001')
+      *tmp = ' ';
+  }
+
+  if((LogFile = fopen("sync.log", "a")))
+  {
+    fprintf(LogFile, "%s: %s\n", time2str(time(NULL)), buff);
+    fclose(LogFile);
+  }
+
+}

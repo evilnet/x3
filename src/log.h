@@ -91,5 +91,6 @@ void log_report_entry(struct logEntry *match, void *extra);
 struct logSearch* log_discrim_create(struct userNode *service, struct userNode *user, unsigned int argc, char *argv[]);
 unsigned int log_entry_search(struct logSearch *discrim, entry_search_func esf, void *data);
 void report_entry(struct userNode *service, struct userNode *user, struct logEntry *entry);
+void SyncLog(char *fmt,...);
 
 #endif

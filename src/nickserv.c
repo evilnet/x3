@@ -561,6 +561,7 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify)
         else
             send_message(notify, nickserv, "NSMSG_UNREGISTER_NICKS_SUCCESS", hi->handle);
     }
+    SyncLog("UNREGISTER %s", hi->handle);
     dict_remove(nickserv_handle_dict, hi->handle);
 }
 
@@ -1156,6 +1157,7 @@ static NICKSERV_FUNC(cmd_register)
 {
     struct handle_info *hi;
     const char *email_addr, *password;
+    char syncpass[MD5_CRYPT_LENGTH];
     int no_auth, weblink;
 
     if (!IsOper(user) && !dict_size(nickserv_handle_dict)) {
@@ -1266,6 +1268,9 @@ static NICKSERV_FUNC(cmd_register)
 
     /* Set registering flag.. */
     user->modes |= FLAGS_REGISTERING; 
+
+    cryptpass(password, syncpass);
+    SyncLog("REGISTER %s %s %s", hi->handle, syncpass, email_addr);
 
     return 1;
 }
@@ -1941,15 +1946,18 @@ static NICKSERV_FUNC(cmd_cookie)
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
         set_user_handle_info(user, hi, 1);
         reply("NSMSG_HANDLE_ACTIVATED");
+        SyncLog("ACCOUNTACC %s", hi->handle);
         break;
     case PASSWORD_CHANGE:
         set_user_handle_info(user, hi, 1);
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
         reply("NSMSG_PASSWORD_CHANGED");
+        SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
         break;
     case EMAIL_CHANGE:
         nickserv_set_email_addr(hi, hi->cookie->data);
         reply("NSMSG_EMAIL_CHANGED");
+        SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
         break;
     case ALLOWAUTH:
         set_user_handle_info(user, hi, 1);
@@ -2030,6 +2038,7 @@ static NICKSERV_FUNC(cmd_pass)
 	return 0;
     }
     cryptpass(new_pass, hi->passwd);
+    SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
     argv[1] = "****";
     reply("NSMSG_PASS_SUCCESS");
     return 1;

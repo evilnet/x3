@@ -174,6 +174,7 @@ char *intervalString(char *output, time_t interval, struct handle_info *hi);
 int getipbyname(const char *name, unsigned long *ip);
 int set_policer_param(const char *param, void *data, void *extra);
 const char *strtab(unsigned int ii);
+char *time2str(time_t thetime);
 
 void tools_init(void);
 void tools_cleanup(void);

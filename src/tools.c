@@ -952,3 +952,13 @@ char *mysep(char **sepstr, char *delim)
   return(retstr);
 }
 
+char *time2str(time_t thetime)
+{
+    char *buf, *tmp;
+
+    buf = ctime(&thetime);
+    tmp = (char *)strchr(buf, '\n');
+    *tmp = '\0';
+    return(buf);
+}
+
