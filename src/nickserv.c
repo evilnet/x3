@@ -3700,28 +3700,27 @@ handle_account(struct userNode *user, const char *stamp)
 {
     struct handle_info *hi;
     char *colon;
-    time_t timestamp;
-
 
 #ifdef WITH_PROTOCOL_P10
+    time_t timestamp = 0;
+
+    colon = strchr(stamp, ':');
+    if(colon && colon[1])
+    {
+        *colon = 0;
+        timestamp = atoi(colon+1);
+    }
     hi = dict_find(nickserv_handle_dict, stamp, NULL);
+    if(hi && hi->registered != timestamp)
+    {
+        log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match %lu is not %lu.", user->nick, stamp, timestamp, hi->registered);
+        return;
+    }
 #else
     hi = dict_find(nickserv_id_dict, stamp, NULL);
 #endif
 
     if (hi) {
-        colon = strchr(stamp, ':');
-        if(colon && colon[1])
-        {
-            *colon = 0;
-            timestamp = atoi(colon+1);
-            if(hi->registered != timestamp)
-            {
-                log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match %lu is not %lu.", user->nick, stamp, timestamp, hi->registered);
-                return;
-            }
-        }
-
         if (HANDLE_FLAGGED(hi, SUSPENDED)) {
             return;
         }
