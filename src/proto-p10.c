@@ -1951,7 +1951,7 @@ AddService(const char *nick, const char *modes, const char *desc, const char *ho
     if (!hostname)
         hostname = self->name;
     make_numeric(self, local_num, numeric);
-    return AddUser(self, nick, nick, hostname, modes ? modes : "+oik", numeric, desc, now, "AAAAAA");
+    return AddUser(self, nick, nick, hostname, modes ? modes : "+doik", numeric, desc, now, "AAAAAA");
 }
 
 struct userNode *

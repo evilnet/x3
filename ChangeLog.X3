@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-04-04  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/proto-p10.c: Reinstated +d usermode.
+
 2005-03-30  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Fixed unban. 
