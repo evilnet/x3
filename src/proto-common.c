@@ -569,14 +569,14 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
              * to be more specific than an existing ban.
              */
             for (jj=0; jj<channel->banlist.used; ++jj) {
-                if (match_ircglobs(change->args[ii].hostmask, channel->banlist.list[jj]->ban)) {
+                if (match_ircglobs(change->args[ii].u.hostmask, channel->banlist.list[jj]->ban)) {
                     banList_remove(&channel->banlist, channel->banlist.list[jj]);
                     free(channel->banlist.list[jj]);
                     jj--;
                 }
             }
             bn = calloc(1, sizeof(*bn));
-            safestrncpy(bn->ban, change->args[ii].hostmask, sizeof(bn->ban));
+            safestrncpy(bn->ban, change->args[ii].u.hostmask, sizeof(bn->ban));
             if (who)
                 safestrncpy(bn->who, who->nick, sizeof(bn->who));
             else
@@ -586,7 +586,7 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
             break;
         case MODE_REMOVE|MODE_BAN:
             for (jj=0; jj<channel->banlist.used; ++jj) {
-                if (strcmp(channel->banlist.list[jj]->ban, change->args[ii].hostmask))
+                if (strcmp(channel->banlist.list[jj]->ban, change->args[ii].u.hostmask))
                     continue;
                 free(channel->banlist.list[jj]);
                 banList_remove(&channel->banlist, channel->banlist.list[jj]);
@@ -599,14 +599,14 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
              * to be more specific than an existing exempt.
              */
             for (jj=0; jj<channel->exemptlist.used; ++jj) {
-                if (match_ircglobs(change->args[ii].hostmask, channel->exemptlist.list[jj]->exempt)) {
+                if (match_ircglobs(change->args[ii].u.hostmask, channel->exemptlist.list[jj]->exempt)) {
                     exemptList_remove(&channel->exemptlist, channel->exemptlist.list[jj]);
                     free(channel->exemptlist.list[jj]);
                     jj--;
                 }
             }
             en = calloc(1, sizeof(*en));
-            safestrncpy(en->exempt, change->args[ii].hostmask, sizeof(en->exempt));
+            safestrncpy(en->exempt, change->args[ii].u.hostmask, sizeof(en->exempt));
             if (who)
                 safestrncpy(en->who, who->nick, sizeof(en->who));
             else
@@ -616,7 +616,7 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
             break;
         case MODE_REMOVE|MODE_EXEMPT:
             for (jj=0; jj<channel->exemptlist.used; ++jj) {
-                if (strcmp(channel->exemptlist.list[jj]->exempt, change->args[ii].hostmask))
+                if (strcmp(channel->exemptlist.list[jj]->exempt, change->args[ii].u.hostmask))
                     continue;
                 free(channel->exemptlist.list[jj]);
                 exemptList_remove(&channel->exemptlist, channel->exemptlist.list[jj]);
@@ -632,9 +632,9 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
         case MODE_REMOVE|MODE_VOICE:
         case MODE_REMOVE|MODE_VOICE|MODE_CHANOP|MODE_HALFOP:
             if (change->args[ii].mode & MODE_REMOVE)
-                change->args[ii].member->modes &= ~change->args[ii].mode;
+                change->args[ii].u.member->modes &= ~change->args[ii].mode;
             else
-                change->args[ii].member->modes |= change->args[ii].mode;
+                change->args[ii].u.member->modes |= change->args[ii].mode;
             break;
         default:
             assert(0 && "Invalid mode argument");
@@ -671,7 +671,8 @@ mod_chanmode(struct userNode *who, struct chanNode *channel, char **modes, unsig
 }
 
 int
-irc_make_chanmode(struct chanNode *chan, char *out) {
+irc_make_chanmode(struct chanNode *chan, char *out)
+{
     struct mod_chanmode change;
     mod_chanmode_init(&change);
     change.modes_set = chan->modes;

@@ -821,13 +821,11 @@ static CMD_FUNC(cmd_whois)
     }
     irc_numeric(from, RPL_WHOISUSER, "%s %s %s * :%s", who->nick, who->ident, who->hostname, who->info);
     if (his_servername && his_servercomment)
-      irc_numeric(from, RPL_WHOISSERVER, "%s %s :%s", who->nick, his_servername, his_servercomment);
+        irc_numeric(from, RPL_WHOISSERVER, "%s %s :%s", who->nick, his_servername, his_servercomment);
     else
-    irc_numeric(from, RPL_WHOISSERVER, "%s %s :%s", who->nick, who->uplink->name, who->uplink->description);
-
-    if (IsOper(who)) {
+        irc_numeric(from, RPL_WHOISSERVER, "%s %s :%s", who->nick, who->uplink->name, who->uplink->description);
+    if (IsOper(who))
         irc_numeric(from, RPL_WHOISOPERATOR, "%s :is a megalomaniacal power hungry tyrant", who->nick);
-    }
     irc_numeric(from, RPL_ENDOFWHOIS, "%s :End of /WHOIS list", who->nick);
     return 1;
 }
@@ -839,7 +837,7 @@ static CMD_FUNC(cmd_server)
 
     if (argc < 8)
         return 0;
-    if (origin) {
+    if (self->uplink) {
         /* another server introduced us */
         srv = AddServer(GetServerH(origin), argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[6], argv[argc-1]);
         if (!srv)
@@ -1071,8 +1069,7 @@ static CMD_FUNC(cmd_burst)
     extern int rel_age;
     char modes[MAXLEN], *members = "";
     static char exemptlist[MAXLEN], banlist[MAXLEN];
-    unsigned int next = 3;
-    unsigned int res = 1;
+    unsigned int next = 3, res = 1;
     int ctype = 0, echeck = 0, bcheck = 0;
     struct chanNode *cNode;
     struct userNode *un;
@@ -1094,10 +1091,9 @@ static CMD_FUNC(cmd_burst)
         case '+': {
             const char *pos;
             int n_modes;
-            for (pos=argv[next], n_modes = 1; *pos; pos++) {
+            for (pos=argv[next], n_modes = 1; *pos; pos++)
                 if ((*pos == 'k') || (*pos == 'l'))
                     n_modes++;
-            }
             unsplit_string(argv+next, n_modes, modes);
             next += n_modes;
             break;
@@ -1143,13 +1139,9 @@ static CMD_FUNC(cmd_burst)
             next++;
             break;
         }
-        default: {
-            members = argv[next++];
-            break;
-        }
+        default: members = argv[next++]; break;
       }
     }
-
 
     in_timestamp = atoi(argv[2]);
     if ((cNode = dict_find(unbursted_channels, argv[1], NULL))) {
@@ -1157,10 +1149,9 @@ static CMD_FUNC(cmd_burst)
         dict_remove(unbursted_channels, cNode->name);
         irc_burst(cNode);
     }
-
-    /* Burst channel members in now. */
     cNode = AddChannel(argv[1], in_timestamp, modes, banlist, exemptlist);
 
+    /* Burst channel members in now. */
     for (user = members, sep = *members, mode = 0; sep; user = end) {
         for (end = user + 3; isalnum(*end) || *end == '[' || *end == ']'; end++) ;
         sep = *end++; end[-1] = 0;
@@ -1914,7 +1905,7 @@ void DelServer(struct server* serv, int announce, const char *message)
 }
 
 struct userNode *
-AddService(const char *nick, const char *desc, const char *hostname)
+AddService(const char *nick, const char *modes, const char *desc, const char *hostname)
 {
     char numeric[COMBO_NUMERIC_LEN+1];
     int local_num = get_local_numeric();
@@ -1933,7 +1924,7 @@ AddService(const char *nick, const char *desc, const char *hostname)
     if (!hostname)
         hostname = self->name;
     make_numeric(self, local_num, numeric);
-    return AddUser(self, nick, nick, hostname, "+oik", numeric, desc, now, "AAAAAA");
+    return AddUser(self, nick, nick, hostname, modes ? modes : "+oik", numeric, desc, now, "AAAAAA");
 }
 
 struct userNode *
@@ -2102,8 +2093,8 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 
     if (!user || !mode_change)
         return;
-    while (*word != ' ' && *word) word++;\
-    while (*word == ' ') word++; \
+    while (*word != ' ' && *word) word++;
+    while (*word == ' ') word++;
     while (1) {
 #define do_user_mode(FLAG) do { if (add) user->modes |= FLAG; else user->modes &= ~FLAG; } while (0)
 	switch (*mode_change++) {
@@ -2252,7 +2243,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
             change->args[ch_arg].mode = MODE_BAN;
             if (!add)
                 change->args[ch_arg].mode |= MODE_REMOVE;
-            change->args[ch_arg++].hostmask = modes[in_arg++];
+            change->args[ch_arg++].u.hostmask = modes[in_arg++];
             break;
         case 'e':
             if (!(flags & MCP_ALLOW_OVB))
@@ -2262,7 +2253,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
             change->args[ch_arg].mode = MODE_EXEMPT;
             if (!add)
                 change->args[ch_arg].mode |= MODE_REMOVE;
-            change->args[ch_arg++].hostmask = modes[in_arg++];
+            change->args[ch_arg++].u.hostmask = modes[in_arg++];
             break;
         case 'o': case 'h': case 'v':
         {
@@ -2287,7 +2278,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
                 victim = GetUserH(modes[in_arg++]);
             if (!victim)
                 continue;
-            if ((change->args[ch_arg].member = GetUserMode(channel, victim)))
+            if ((change->args[ch_arg].u.member = GetUserMode(channel, victim)))
                 ch_arg++;
             break;
         }
@@ -2396,18 +2387,18 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
             chbuf.modes[chbuf.modes_used++] = mode = '-';
         switch (change->args[arg].mode & ~MODE_REMOVE) {
         case MODE_BAN:
-            mod_chanmode_append(&chbuf, 'b', change->args[arg].hostmask);
+            mod_chanmode_append(&chbuf, 'b', change->args[arg].u.hostmask);
             break;
         case MODE_EXEMPT:
-            mod_chanmode_append(&chbuf, 'e', change->args[arg].hostmask);
+            mod_chanmode_append(&chbuf, 'e', change->args[arg].u.hostmask);
             break;
         default:
             if (change->args[arg].mode & MODE_CHANOP)
-                mod_chanmode_append(&chbuf, 'o', change->args[arg].member->user->numeric);
+                mod_chanmode_append(&chbuf, 'o', change->args[arg].u.member->user->numeric);
             if (change->args[arg].mode & MODE_HALFOP)
-                mod_chanmode_append(&chbuf, 'h', change->args[arg].member->user->numeric);
+                mod_chanmode_append(&chbuf, 'h', change->args[arg].u.member->user->numeric);
             if (change->args[arg].mode & MODE_VOICE)
-                mod_chanmode_append(&chbuf, 'v', change->args[arg].member->user->numeric);
+                mod_chanmode_append(&chbuf, 'v', change->args[arg].u.member->user->numeric);
             break;
         }
     }
@@ -2451,18 +2442,18 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
             chbuf.modes[chbuf.modes_used++] = mode = '+';
         switch (change->args[arg].mode) {
         case MODE_BAN:
-            mod_chanmode_append(&chbuf, 'b', change->args[arg].hostmask);
+            mod_chanmode_append(&chbuf, 'b', change->args[arg].u.hostmask);
             break;
         case MODE_EXEMPT:
-            mod_chanmode_append(&chbuf, 'e', change->args[arg].hostmask);
+            mod_chanmode_append(&chbuf, 'e', change->args[arg].u.hostmask);
             break;
         default:
             if (change->args[arg].mode & MODE_CHANOP)
-                mod_chanmode_append(&chbuf, 'o', change->args[arg].member->user->numeric);
+                mod_chanmode_append(&chbuf, 'o', change->args[arg].u.member->user->numeric);
             if (change->args[arg].mode & MODE_HALFOP)
-                mod_chanmode_append(&chbuf, 'h', change->args[arg].member->user->numeric);
+                mod_chanmode_append(&chbuf, 'h', change->args[arg].u.member->user->numeric);
             if (change->args[arg].mode & MODE_VOICE)
-                mod_chanmode_append(&chbuf, 'v', change->args[arg].member->user->numeric);
+                mod_chanmode_append(&chbuf, 'v', change->args[arg].u.member->user->numeric);
             break;
         }
     }

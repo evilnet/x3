@@ -43,8 +43,13 @@
 "services" {
     "nickserv" {
         "nick" "NickServ";
-        // If you want to by have *@* as the default hostmask, set
-        // default_hostmask.  This is discouraged for security reasons.
+	// What user modes do you want this service to have? Please keep in
+	// mind which ircd software you are using here, and that all of the
+	// services need to be at least +o.
+	// "modes" "+iok";
+        // If you want to by have *@* as the default hostmask for all
+        // new accounts, set default_hostmask.  This is discouraged
+        // for security reasons.
         // "default_hostmask" "1";
         // do we warn users when someone new auths to their account?
         "warn_clone_auth" "1";
@@ -131,6 +136,10 @@
 
     "opserv" {
         "nick" "OpServ";
+	// What user modes do you want this service to have? Please keep in
+	// mind which ircd software you are using here, and that all of the
+	// services need to be at least +o.
+	// "modes" "+iok";
         // should use of this service be limited to global opers?
         "privileged" "1";
         // fullname for service
@@ -178,9 +187,16 @@
         // (This is changed relative srvx-1.0.x, which would use default
         // unless you specified ".disabled".)
         "nick" "ChanServ";
+	// What user modes do you want this service to have? Please keep in
+	// mind which ircd software you are using here, and that all of the
+	// services need to be at least +o.
+	// "modes" "+iok";
         // Does your ircd have off-channel services support?
         // Bahamut does; ircu2.10.11 does not.
         "off_channel" "no";
+	// Does your ircd have a mode for registered channels?
+	// Bahamut does; ircu2.10.11 does not.
+	"use_registered_mode" "no";
         // how long should a person be unseen before resending infoline?
         "info_delay" "120";
         // maximum greeting length
@@ -223,10 +239,16 @@
         "default_modes" "+nt";
         // minimum opserv access to set, clear or override nodelete setting?
         "nodelete_level" "1";
+        // how long before a new channel owner can give ownership away?
+        "giveownership_timeout" "1w";
     };
 
     "global" {
         "nick" "Global";
+	// What user modes do you want this service to have? Please keep in
+	// mind which ircd software you are using here, and that all of the
+	// services need to be at least +o.
+	// "modes" "+iok";
         // should users get community announcements by default or not?
         "announcements_default" "on";
     };

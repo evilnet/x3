@@ -169,7 +169,7 @@ void irc_numeric(struct userNode *user, unsigned int num, const char *format, ..
 /* stuff originally from other headers that is really protocol-specific */
 int IsChannelName(const char *name);
 int is_valid_nick(const char *nick);
-struct userNode *AddService(const char *nick, const char *desc, const char *hostname);
+struct userNode *AddService(const char *nick, const char *modes, const char *desc, const char *hostname);
 struct userNode *AddClone(const char *nick, const char *ident, const char *hostname, const char *desc);
 struct server* AddServer(struct server* uplink, const char *name, int hops, time_t boot, time_t link, const char *numeric, const char *description);
 void DelServer(struct server* serv, int announce, const char *message);
@@ -199,12 +199,13 @@ struct mod_chanmode {
         union {
             struct modeNode *member;
             const char *hostmask;
-        };
+        } u;
     } args[1];
 };
 #define MCP_ALLOW_OVB     0x0001 /* allow op, voice, ban manipulation */
 #define MCP_FROM_SERVER   0x0002 /* parse as from a server */
 #define MCP_KEY_FREE      0x0004 /* -k without a key argument */
+#define MCP_REGISTERED	  0x0008 /* chan is already registered; do not allow changes to MODE_REGISTERED */
 #define MC_ANNOUNCE       0x0100 /* send a mod_chanmode() change out */
 #define MC_NOTIFY         0x0200 /* make local callbacks to announce */
 #ifdef NDEBUG

@@ -24,7 +24,7 @@
 #include "hash.h"   /* for NICKLEN, etc., and common.h */
 struct svccmd;
 
-#define NICKSERV_HANDLE_LEN NICKLEN
+#define NICKSERV_HANDLE_LEN ACCOUNTLEN
 #define COOKIELEN 10
 
 /* HI_FLAG_* go into handle_info.flags */

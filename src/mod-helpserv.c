@@ -958,7 +958,7 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
     else
         send_message_type(4, user, hs->helpserv, "%s %s %s", lbuf[0], lbuf[1], lbuf[2]);
 
-    if (hs->req_on_join && req == hs->unhandled && hs->helpchan_empty) {
+    if (hs->req_on_join && req == hs->unhandled && hs->helpchan_empty && !user->uplink->burst) {
         timeq_del(0, run_empty_interval, hs, TIMEQ_IGNORE_WHEN);
         run_empty_interval(hs);
     }
@@ -1676,7 +1676,7 @@ static HELPSERV_FUNC(cmd_close) {
             mod_chanmode_init(&change);
             change.argc = 1;
             change.args[0].mode = MODE_REMOVE | MODE_VOICE;
-            change.args[0].member = mn;
+            change.args[0].u.member = mn;
             mod_chanmode_announce(hs->helpserv, hs->helpchan, &change);
         }
     }
@@ -1880,7 +1880,7 @@ static int helpserv_assign(int from_opserv, struct helpserv_bot *hs, struct user
         mod_chanmode_init(&change);
         change.argc = 1;
         change.args[0].mode = MODE_VOICE;
-        if ((change.args[0].member = GetUserMode(hs->helpchan, req->user)))
+        if ((change.args[0].u.member = GetUserMode(hs->helpchan, req->user)))
             mod_chanmode_announce(hs->helpserv, hs->helpchan, &change);
     }
 
@@ -1903,8 +1903,6 @@ static HELPSERV_FUNC(cmd_show) {
     int num_requests=0;
 
     REQUIRE_PARMS(2);
-
-    assert(hs_user);
 
     if (!(req = smart_get_request(hs, hs_user, argv[1], &num_requests))) {
         helpserv_notice(user, "HSMSG_REQ_INVALID", argv[1]);
@@ -1989,8 +1987,6 @@ static HELPSERV_FUNC(cmd_addnote) {
     int num_requests=0;
 
     REQUIRE_PARMS(3);
-
-    assert(hs_user);
 
     if (!(req = smart_get_request(hs, hs_user, argv[1], &num_requests))) {
         helpserv_notice(user, "HSMSG_REQ_INVALID", argv[1]);
@@ -2257,7 +2253,7 @@ static HELPSERV_FUNC(cmd_move) {
             mod_chanmode_init(&change);
             change.argc = 1;
             change.args[0].mode = MODE_CHANOP;
-            change.args[0].member = AddChannelUser(hs->helpserv, hs->helpchan);
+            change.args[0].u.member = AddChannelUser(hs->helpserv, hs->helpchan);
             mod_chanmode_announce(hs->helpserv, hs->helpchan, &change);
         }
 
@@ -2336,7 +2332,7 @@ static void helpserv_page_helper_gone(struct helpserv_bot *hs, struct helpserv_r
             mod_chanmode_init(&change);
             change.argc = 1;
             change.args[0].mode = MODE_REMOVE | MODE_VOICE;
-            change.args[0].member = mn;
+            change.args[0].u.member = mn;
             mod_chanmode_announce(hs->helpserv, hs->helpchan, &change);
         }
         if(req->handle)
@@ -2603,7 +2599,7 @@ static struct helpserv_bot *register_helpserv(const char *nick, const char *help
      * it's a harmless default */
     hs = calloc(1, sizeof(struct helpserv_bot));
 
-    if (!(hs->helpserv = AddService(nick, helpserv_conf.description, NULL))) {
+    if (!(hs->helpserv = AddService(nick, "+iok", helpserv_conf.description, NULL))) {
         free(hs);
         return NULL;
     }
@@ -2618,7 +2614,7 @@ static struct helpserv_bot *register_helpserv(const char *nick, const char *help
         mod_chanmode_init(&change);
         change.argc = 1;
         change.args[0].mode = MODE_CHANOP;
-        change.args[0].member = AddChannelUser(hs->helpserv, hs->helpchan);
+        change.args[0].u.member = AddChannelUser(hs->helpserv, hs->helpchan);
         mod_chanmode_announce(hs->helpserv, hs->helpchan, &change);
     }
 
@@ -2875,7 +2871,7 @@ static void set_page_target(struct helpserv_bot *hs, enum page_source idx, const
         mod_chanmode_init(&change);
         change.argc = 1;
         change.args[0].mode = MODE_CHANOP;
-        change.args[0].member = AddChannelUser(hs->helpserv, new_target);
+        change.args[0].u.member = AddChannelUser(hs->helpserv, new_target);
         mod_chanmode_announce(hs->helpserv, new_target, &change);
     }
     hs->page_targets[idx] = new_target;
@@ -3906,7 +3902,7 @@ static void associate_requests_bybot(struct helpserv_bot *hs, struct userNode *u
             mod_chanmode_init(&change);
             change.argc = 1;
             change.args[0].mode = MODE_VOICE;
-            if ((change.args[0].member = GetUserMode(hs->helpchan, user)))
+            if ((change.args[0].u.member = GetUserMode(hs->helpchan, user)))
                 mod_chanmode_announce(hs->helpserv, hs->helpchan, &change);
         }
     }

@@ -51,13 +51,12 @@ almost all our testing, and we recommend it for use with srvx.
 
 Quick Install:
 ----------
-$ ./autogen.sh
-$ ./configure --prefix='/path/to/install/to'
+$ ./configure
     NOTE: The protocol the resulting srvx binary will support is
     determined by the configure script. The P10 protocol is the
     default; if you would like to link to Bahamut, you must pass
     the --with-protocol=bahamut flag to the configure script:
-    $ ./configure --with-protocol=bahamut --prefix='/path/to/install/to'
+    $ ./configure --with-protocol=bahamut
 $ make
 $ ${EDITOR} srvx.conf
     NOTE: You may want to copy srvx.conf.example to srvx.conf and

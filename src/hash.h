@@ -98,6 +98,7 @@
 #define NICKLEN         30
 #define USERLEN         10
 #define HOSTLEN         63
+#define ACCOUNTLEN	15
 #define REALLEN         50
 #define TOPICLEN        250
 #define CHANNELLEN      200

@@ -171,7 +171,7 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
 }
 
 struct userNode *
-AddService(const char *nick, const char *desc, const char *hostname) {
+AddService(const char *nick, const char *modes, const char *desc, const char *hostname) {
     time_t timestamp = now;
     struct userNode *old_user = GetUserH(nick);
     struct in_addr ipaddr = { INADDR_LOOPBACK };
@@ -182,7 +182,7 @@ AddService(const char *nick, const char *desc, const char *hostname) {
     }
     if (!hostname)
         hostname = self->name;
-    return AddUser(self, nick, nick, hostname, "+oikr", desc, timestamp, ipaddr, 0);
+    return AddUser(self, nick, nick, hostname, modes ? modes : "+oikr", desc, timestamp, ipaddr, 0);
 }
 
 struct userNode *
@@ -1246,7 +1246,6 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
             break;
 #define do_chan_mode(FLAG) do { if (add) change->modes_set |= FLAG, change->modes_clear &= ~FLAG; else change->modes_clear |= FLAG, change->modes_set &= ~FLAG; } while(0)
         case 'R': do_chan_mode(MODE_REGONLY); break;
-        case 'r': do_chan_mode(MODE_REGISTERED); break;
         case 'D': do_chan_mode(MODE_DELAYJOINS); break;
         case 'c': do_chan_mode(MODE_NOCOLORS); break;
         case 'i': do_chan_mode(MODE_INVITEONLY); break;
@@ -1255,6 +1254,14 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'p': do_chan_mode(MODE_PRIVATE); break;
         case 's': do_chan_mode(MODE_SECRET); break;
         case 't': do_chan_mode(MODE_TOPICLIMIT); break;
+	case 'r':
+	    if (!(flags & MCP_REGISTERED)) {
+	     do_chan_mode(MODE_REGISTERED);
+	    } else {
+	     mod_chanmode_free(change);
+	     return NULL;
+	    }
+	    break;
 #undef do_chan_mode
         case 'l':
             if (add) {
@@ -1289,7 +1296,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
             change->args[ch_arg].mode = MODE_BAN;
             if (!add)
                 change->args[ch_arg].mode |= MODE_REMOVE;
-            change->args[ch_arg++].hostmask = modes[in_arg++];
+            change->args[ch_arg++].u.hostmask = modes[in_arg++];
             break;
         case 'o': case 'v':
         {
@@ -1304,7 +1311,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
             victim = GetUserH(modes[in_arg++]);
             if (!victim)
                 continue;
-            if ((change->args[ch_arg].member = GetUserMode(channel, victim)))
+            if ((change->args[ch_arg].u.member = GetUserMode(channel, victim)))
                 ch_arg++;
             break;
         }
@@ -1395,13 +1402,13 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
             continue;
         switch (change->args[arg].mode & ~MODE_REMOVE) {
         case MODE_BAN:
-            mod_chanmode_append(&chbuf, 'b', change->args[arg].hostmask);
+            mod_chanmode_append(&chbuf, 'b', change->args[arg].u.hostmask);
             break;
         default:
             if (change->args[arg].mode & MODE_CHANOP)
-                mod_chanmode_append(&chbuf, 'o', change->args[arg].member->user->nick);
+                mod_chanmode_append(&chbuf, 'o', change->args[arg].u.member->user->nick);
             if (change->args[arg].mode & MODE_VOICE)
-                mod_chanmode_append(&chbuf, 'v', change->args[arg].member->user->nick);
+                mod_chanmode_append(&chbuf, 'v', change->args[arg].u.member->user->nick);
             break;
         }
     }
@@ -1435,13 +1442,13 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
             continue;
         switch (change->args[arg].mode) {
         case MODE_BAN:
-            mod_chanmode_append(&chbuf, 'b', change->args[arg].hostmask);
+            mod_chanmode_append(&chbuf, 'b', change->args[arg].u.hostmask);
             break;
         default:
             if (change->args[arg].mode & MODE_CHANOP)
-                mod_chanmode_append(&chbuf, 'o', change->args[arg].member->user->nick);
+                mod_chanmode_append(&chbuf, 'o', change->args[arg].u.member->user->nick);
             if (change->args[arg].mode & MODE_VOICE)
-                mod_chanmode_append(&chbuf, 'v', change->args[arg].member->user->nick);
+                mod_chanmode_append(&chbuf, 'v', change->args[arg].u.member->user->nick);
             break;
         }
     }
