@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-03-30  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Fixed unban. 
+
 2005-03-22  Alex Schumann  <rubin@afternet.org>
 
 	* x3.conf.example: added sethost/fakehost settings to conf

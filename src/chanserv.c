@@ -3192,9 +3192,9 @@ unban_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
         {
             unsigned int ii;
 
+            modcmd_chanmode_announce(change);
             for(ii = 0; ii < change->argc; ++ii)
                 free((char*)change->args[ii].u.hostmask);
-            modcmd_chanmode_announce(change);
             mod_chanmode_free(change);
             acted = 1;
         }
