@@ -1,7 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
-2005-03-12  Alex Schumann   <rubin@afternet.org>
+2005-03-15  Reed Loden  <reed@reedloden.com>
+
+	* Synchronization with srvx--devo--1.3--patch-19.
+
+2005-03-12  Alex Schumann  <rubin@afternet.org>
 
 	* src/common.h, src/opserv.h: more SRVX->X3 fixes
 
