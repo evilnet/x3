@@ -309,18 +309,16 @@ extern const char *hidden_host_suffix;
 
 int user_matches_glob(struct userNode *user, const char *orig_glob, int include_nick)
 {
-    /* based on IsSetHost(user) and include_nick, build a nick!user@host string
+    /* A new glob function, the old one had many false positives.
+     * look at IsSetHost(user) etc and include_nick, build a nick!user@host string
      * from user and save it in a variable. Compare with match_ircglob() and 
-     * return the results
+     * return the results. Match any of the possible user@host combos (ugh) -Rubin
      */
-    char *matchstr_nick;
     char *matchstr_user;
     char *matchstr_host;
-    char *matchstr_full;
+    char *matchstr_full = NULL;
 
-    matchstr_nick = user->nick;
-
-    if(IsSetHost(user))
+    if(IsSetHost(user))   /* S: line sethosts */
     {
         /* Grab host and user from sethost instead of real host */
         char *buff;
@@ -328,26 +326,60 @@ int user_matches_glob(struct userNode *user, const char *orig_glob, int include_
         strcpy(buff, user->sethost);
         matchstr_user = mysep(&buff, "@");
         matchstr_host = mysep(&buff, "@");
+
+        matchstr_full = alloca(strlen(user->nick) + strlen(matchstr_user) + strlen(matchstr_host) + 4);
+        if(include_nick)
+            sprintf(matchstr_full, "%s!%s@%s", user->nick, matchstr_user, matchstr_host);
+        else
+            sprintf(matchstr_full, "%s@%s", matchstr_user, matchstr_host);
+        if(match_ircglob(matchstr_full, orig_glob))
+            return(1);
     }
-    else if(IsFakeHost(user))
+    else if(IsFakeHost(user))  /* Fakehost */
     {
-        matchstr_user = user->ident;
-        matchstr_host = user->fakehost;
+        matchstr_full = alloca(strlen(user->nick) + strlen(user->ident) + strlen(user->fakehost) + 4);
+        if(include_nick)
+            sprintf(matchstr_full, "%s!%s@%s", user->nick, user->ident, user->fakehost);
+        else
+            sprintf(matchstr_full, "%s@%s", user->ident, user->fakehost);
+        if(match_ircglob(matchstr_full, orig_glob))
+            return(1);
     }
-    else if(hidden_host_suffix && user->handle_info) 
+    else if(hidden_host_suffix && user->handle_info)  /* name.users.network.org  host */
     {
         matchstr_host = alloca(strlen(user->handle_info->handle) + strlen(hidden_host_suffix) + 2);
         sprintf(matchstr_host, "%s.%s", user->handle_info->handle, hidden_host_suffix);
         matchstr_user = user->ident;
+
+        matchstr_full = alloca(strlen(user->nick) + strlen(user->ident) + strlen(matchstr_host) + 4);
+        if(include_nick)
+            sprintf(matchstr_full, "%s!%s@%s", user->nick, user->ident, matchstr_host);
+        else
+            sprintf(matchstr_full, "%s@%s", user->ident, matchstr_host);
+        if(match_ircglob(matchstr_full, orig_glob))
+            return(1);
     }
+
+    /* Check normal hostname */
+    matchstr_full = alloca(strlen(user->nick) + strlen(user->ident) + strlen(user->hostname) + 4);
+    if(include_nick)
+        sprintf(matchstr_full, "%s!%s@%s", user->nick, user->ident, user->hostname);
     else
-    {
-        matchstr_user = user->ident;
-        matchstr_host = user->hostname;
-    }
-    matchstr_full = alloca(strlen(matchstr_nick) + strlen(matchstr_user) + strlen(matchstr_host) + 4);
-    sprintf(matchstr_full, "%s!%s@%s", matchstr_nick, matchstr_user, matchstr_host);
-    return match_ircglob(matchstr_full, orig_glob);
+        sprintf(matchstr_full, "%s@%s", user->ident, user->hostname);
+    if(match_ircglob(matchstr_full, orig_glob))
+            return(1);
+
+    /* Check IP hostname (could skip this if same as above?)*/
+    matchstr_host = inet_ntoa(user->ip);
+    matchstr_full = alloca(strlen(user->nick) + strlen(user->ident) + strlen(matchstr_host) + 4);
+    if(include_nick)
+        sprintf(matchstr_full, "%s!%s@%s", user->nick, user->ident, matchstr_host);
+    else
+        sprintf(matchstr_full, "%s@%s", user->ident, matchstr_host);
+    if(match_ircglob(matchstr_full, orig_glob))
+            return(1);
+
+    return(0); /* Didnt match anything */
 }
 
 int

@@ -2823,6 +2823,9 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 	    reply("CSMSG_MASK_PROTECTED", argv[1]);
 	    return 0;
 	}
+        /* We dont actually want a victem count if were banning a mask manually, IMO -Rubin*/
+        if(cmd)
+            victimCount = 0;  /* Dont deop etc ppl who match this */
 
 #ifdef entropy_lameness
         if((victimCount > 4) && ((victimCount * 3) > channel->members.used) && !IsOper(user))
@@ -2954,6 +2957,7 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
     }
     else if(ban)
     {
+        /* WHAT DOES THIS DO?? -Rubin */
         for(n = 0; n < chanserv_conf.old_ban_names->used; ++n)
         {
             extern const char *hidden_host_suffix;
