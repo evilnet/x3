@@ -123,7 +123,12 @@
             "=------------- End of Help ------------="
 );
 
-"GENERAL"  ("=--------------------------------------=",
+"GENERAL"  ("=----------- General Help -------------=",
+            " NOTE: Before using $C or being added   ",
+            " to channel userlists, users must       ",
+            " register  an account with $b$N$b.      ",
+            "  $b/MSG $N help$b for more information ",
+            "$b$b",
             " $C uses a standard interface for each  ",
             " command in its command list. Commands  ",
             " can be issued either in /MSG format or ",
@@ -142,10 +147,6 @@
             " don't require a channel. If one is      ",
             " supplied it will be ignored.",
             "$b$b",
-            " There are a couple of commands that you ",
-            " MUST do in /MSG format, for security    ",
-            " reasons. such as $bAUTH$b (since the    ",
-            " parameter is your password).            ",
             " If a command takes additional parameters",
             " asside from channel, they will be       ",
             " expected as well.                       ",
