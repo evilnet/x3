@@ -931,7 +931,7 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
                     }
                 }
             }
-            StampUser(user, id);
+            StampUser(user, id, hi->registered);
         }
 
         if ((ni = get_nick_info(user->nick)) && (ni->owner == hi))
@@ -1529,45 +1529,54 @@ reg_failpw_func(failpw_func_t func)
 }
 
 /*
- * Return 1 if the handle/pass pair matches, 0 if it doesnt.
+ * Return hi if the handle/pass pair matches, NULL if it doesnt.
  *
  * called by nefariouses enhanced AC login-on-connect code
  *
  */
-int loc_auth(struct userNode *user, char *handle, char *password)
+struct handle_info *loc_auth(char *handle, char *password)
 {
     int pw_arg, used, maxlogins;
+    unsigned int ii;
+    int wildmask = 0;
     struct handle_info *hi;
-    /*
     struct userNode *other;
-    */
 
     hi = dict_find(nickserv_handle_dict, handle, NULL);
         pw_arg = 2;
     if (!hi) {
-        return 0;
+        return NULL;
     }
+
+    /* We don't know the users hostname, or anything because they
+     * havn't registered yet. So we can only allow LOC if your
+     * account has *@* as a hostmask.
+     */
+    for (ii=0; ii<hi->masks->used; ii++)
+    {
+       if (!strcmp(hi->masks->list[ii], "*@*"))
+       {
+           wildmask++;
+           break;
+       }
+    }
+    if(wildmask < 1)
+        return NULL;
+
     /* Responses from here on look up the language used by the handle they asked about. */
     if (!checkpass(password, hi->passwd)) {
-        return 0;
+        return NULL;
     }
     if (HANDLE_FLAGGED(hi, SUSPENDED)) {
-        return 0;
+        return NULL;
     }
     maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
-    /*  Do we want to deny if they already have more logins? I dont see why but
-     *  someone else might? -Rubin
     for (used = 0, other = hi->users; other; other = other->next_authed) {
         if (++used >= maxlogins) {
-            send_message_type(4, user, cmd->parent->bot,
-                              handle_find_message(hi, "NSMSG_MAX_LOGINS"),
-                              maxlogins);
-            argv[pw_arg] = "MAXLOGINS";
-            return 1;
+            return NULL;
         }
     }
-    */
-    return 1;
+    return hi;
 }
 
 static NICKSERV_FUNC(cmd_auth)
@@ -3690,6 +3699,9 @@ void
 handle_account(struct userNode *user, const char *stamp)
 {
     struct handle_info *hi;
+    char *colon;
+    time_t timestamp;
+
 
 #ifdef WITH_PROTOCOL_P10
     hi = dict_find(nickserv_handle_dict, stamp, NULL);
@@ -3698,6 +3710,18 @@ handle_account(struct userNode *user, const char *stamp)
 #endif
 
     if (hi) {
+        colon = strchr(stamp, ':');
+        if(colon && colon[1])
+        {
+            *colon = 0;
+            timestamp = atoi(colon+1);
+            if(hi->registered != timestamp)
+            {
+                log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match %lu is not %lu.", user->nick, stamp, timestamp, hi->registered);
+                return;
+            }
+        }
+
         if (HANDLE_FLAGGED(hi, SUSPENDED)) {
             return;
         }

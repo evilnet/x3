@@ -225,7 +225,7 @@ call_account_func(struct userNode *user, const char *stamp)
 }
 
 void
-StampUser(struct userNode *user, const char *stamp)
+StampUser(struct userNode *user, const char *stamp, time_t timestamp)
 {
 #ifdef WITH_PROTOCOL_P10
     /* The P10 protocol says we can't stamp users who already
@@ -234,7 +234,7 @@ StampUser(struct userNode *user, const char *stamp)
         return;
 #endif
 
-    irc_account(user, stamp);
+    irc_account(user, stamp, timestamp);
     user->modes |= FLAGS_STAMPED;
 }
 

@@ -425,9 +425,9 @@ irc_user(struct userNode *user)
 }
 
 void
-irc_account(struct userNode *user, const char *stamp)
+irc_account(struct userNode *user, const char *stamp, time_t timestamp)
 {
-    putsock("%s " P10_ACCOUNT " %s R %s", self->numeric, user->numeric, stamp);
+    putsock("%s " P10_ACCOUNT " %s R %s %lu", self->numeric, user->numeric, stamp, timestamp);
 }
 
 void
@@ -1043,6 +1043,7 @@ static CMD_FUNC(cmd_account)
 {
     struct userNode *user;
     struct server *server;
+    struct handle_info *hi;
 
     if ((argc < 3) || !origin || !(server = GetServerH(origin)))
         return 0; /* Origin must be server. */
@@ -1054,10 +1055,10 @@ static CMD_FUNC(cmd_account)
     
     if(!strcmp(argv[2],"C"))
     {
-        if(loc_auth(user, argv[4], argv[5]))
+        if((hi = loc_auth(argv[4], argv[5])))
         {
             /* Return a AC A */
-            putsock("%s " P10_ACCOUNT " %s A %s", self->numeric, server->numeric , argv[3]);
+            putsock("%s " P10_ACCOUNT " %s A %s %lu", self->numeric, server->numeric , argv[3], hi->registered);
 
         }
         else

@@ -262,7 +262,7 @@ irc_user(struct userNode *user) {
 }
 
 void
-irc_account(struct userNode *user, const char *stamp)
+irc_account(struct userNode *user, const char *stamp, time_t timestamp)
 {
     if (IsReggedNick(user)) {
         irc_svsmode(user, "+rd", base64toint(stamp, IDLEN));
