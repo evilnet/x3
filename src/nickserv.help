@@ -144,6 +144,7 @@
 
 "OPER"         ("=---------- $bIRC Operator Help$b ---------=",
                 " $bSEARCH$b      Search accounts and apply an action.",
+                " $bOSET$b        Modify account details including password.",
                 " $bRENAME$b      Rename an account.",
                 " $bMERGE$b       Merge one account into another.",
                 " $bOREGISTER$b   Create an account for someone else.",
