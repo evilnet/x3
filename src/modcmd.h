@@ -167,8 +167,8 @@ struct svccmd *service_bind_modcmd(struct service *service, struct modcmd *cmd, 
 int svccmd_send_help(struct userNode *user, struct userNode *bot, struct svccmd *cmd);
 /* .. and if somebody doesn't have a modcmd handy .. */
 int svccmd_send_help_2(struct userNode *user, struct service *service, const char *topic);
-/* Send breef help for a command to a user. */
-int svccmd_send_help_breef(struct userNode *user, struct userNode *bot, struct svccmd *cmd);
+/* Send brief help for a command to a user. */
+int svccmd_send_help_brief(struct userNode *user, struct userNode *bot, struct svccmd *cmd);
 /* Check whether a user may invoke a command or not.  If they can,
  * return non-zero.  If they cannot (and noisy is non-zero), tell them
  * why not and return 0.

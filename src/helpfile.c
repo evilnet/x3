@@ -352,13 +352,13 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
                         line[pos++] = ' ';
                 memcpy(line+pos, table.contents[0][jj], len);
                 pos += len;
+                line[pos++] = '\02'; /* end bold header */
                 if (++jj == table.width)
                     break;
                 if (!(table.flags & TABLE_PAD_LEFT))
                     while (spaces--)
                         line[pos++] = ' ';
                 line[pos++] = ' ';
-                line[pos++] = '\02'; /* end bold header */
             }
         }
         line[pos] = 0;
@@ -733,29 +733,6 @@ _send_help(struct userNode *dest, struct userNode *src, expand_func_t expand, co
     return res;
 }
 
-
-/*
-int
-_send_help_breef(struct userNode *dest, struct userNode *src, expand_func_t expand, const char *format, ...)
-{
-    int res;
-    char*  buf;
-    char*  ptr;
-    va_list ap;
-
-    buf = (char *) malloc(strlen(format) +1);
-    strcpy(buf, format);
-    ptr = strchr(buf, '\n');
-    *ptr = '\0';
-    va_start(ap, buf);
-    res = vsend_message(dest->nick, src, dest->handle_info, 12, expand, buf, ap);
-    va_end(ap);
-    free(buf);
-    return res;
-}
-*/
-
-
 int
 send_help(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic)
 {
@@ -788,7 +765,7 @@ send_help(struct userNode *dest, struct userNode *src, struct helpfile *hf, cons
 }
 
 int
-send_help_breef(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic)
+send_help_brief(struct userNode *dest, struct userNode *src, struct helpfile *hf, const char *topic)
 {
     struct helpfile *lang_hf;
     struct record_data *rec;

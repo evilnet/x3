@@ -467,7 +467,7 @@ static const struct message_entry msgtab[] = {
 #define CSFUNC_ARGS		user, channel, argc, argv, cmd
 
 #define CHANSERV_FUNC(NAME) MODCMD_FUNC(NAME)
-#define CHANSERV_SYNTAX() 	svccmd_send_help_breef(user, chanserv, cmd)
+#define CHANSERV_SYNTAX() 	svccmd_send_help_brief(user, chanserv, cmd)
 #define REQUIRE_PARAMS(N)	if(argc < (N)) {            \
 	reply("MSG_MISSING_PARAMS", argv[0]); \
 	CHANSERV_SYNTAX(); \
@@ -1756,7 +1756,7 @@ static CHANSERV_FUNC(cmd_register)
         if(argc < 2)
         {
           reply("MSG_MISSING_PARAMS", cmd->name);
-          svccmd_send_help_breef(user, chanserv, cmd);
+          svccmd_send_help_brief(user, chanserv, cmd);
           return 0;
         }
         if(!IsChannelName(argv[1]))

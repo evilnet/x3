@@ -1,7 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-03-18  Alex Schumann  <rubin@afternet.org>
+
+	* Changed breef to brief...
+
 2005-03-17  Alex Schumann  <rubin@afternet.org>
+
 
 	* src/opserv.c: Improved readability of trace print output
 
