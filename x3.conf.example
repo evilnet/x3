@@ -285,7 +285,7 @@
     "snoop" {
         // Where to send snoop messages?
         "channel" "#wherever";
-        // Which bot?
+        // Which bot? If this is not set to your bots nick, X3 will Segfault...
         "bot" "OpServ";
         // Show new users and joins from net joins?  (off by default)
         "show_bursts" "0";

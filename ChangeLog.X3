@@ -5,6 +5,9 @@
 
 	* src/chanserv.c: Fixed unban. 
 
+	* x3.conf.example: added note in snoop config that improper
+	setting for bots nick will cause segfault.
+
 2005-03-22  Alex Schumann  <rubin@afternet.org>
 
 	* x3.conf.example: added sethost/fakehost settings to conf
