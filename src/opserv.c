@@ -249,6 +249,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_CHANINFO_TOPIC_UNKNOWN", "Topic: (none / not gathered)" },
     { "OSMSG_CHANINFO_BAN_COUNT", "Bans (%d):" },
     { "OSMSG_CHANINFO_BAN", "%%s by %%s (%a %b %d %H:%M:%S %Y)" },
+    { "OSMSG_CHANINFO_EXEMPT_COUNT", "Exempts (%d):" },
+    { "OSMSG_CHANINFO_EXEMPT", "%%s by %%s (%a %b %d %H:%M:%S %Y)" },
     { "OSMSG_CHANINFO_MANY_USERS", "%d users (\"/msg $S %s %s users\" for the list)" },
     { "OSMSG_CHANINFO_USER_COUNT", "Users (%d):" },
     { "OSMSG_CSEARCH_CHANNEL_INFO", "%s [%d users] %s %s" },
@@ -425,6 +427,7 @@ static MODCMD_FUNC(cmd_chaninfo)
     char buffer[MAXLEN];
     const char *fmt;
     struct banNode *ban;
+    struct exemptNode *exempt;
     struct modeNode *moden;
     unsigned int n;
 
@@ -453,6 +456,15 @@ static MODCMD_FUNC(cmd_chaninfo)
 	    strftime(buffer, sizeof(buffer), fmt, localtime(&ban->set));
 	    send_message_type(4, user, cmd->parent->bot, buffer, ban->ban, ban->who);
 	}
+    }
+    if (channel->exemptlist.used) {
+        reply("OSMSG_CHANINFO_EXEMPT_COUNT", channel->exemptlist.used);
+        fmt = user_find_message(user, "OSMSG_CHANINFO_EXEMPT");
+        for (n = 0; n < channel->exemptlist.used; n++) {
+            exempt = channel->exemptlist.list[n];
+            strftime(buffer, sizeof(buffer), fmt, localtime(&exempt->set));
+            send_message_type(4, user, cmd->parent->bot, buffer, exempt->exempt, exempt->who);
+        }
     }
     if ((argc < 2) && (channel->members.used >= 50)) {
         /* early out unless they ask for users */
@@ -972,7 +984,7 @@ static MODCMD_FUNC(cmd_join)
         reply("MSG_NOT_CHANNEL_NAME");
         return 0;
     } else if (!(channel = GetChannel(argv[1]))) {
-        channel = AddChannel(argv[1], now, NULL, NULL);
+        channel = AddChannel(argv[1], now, NULL, NULL, NULL);
         AddChannelUser(bot, channel)->modes |= MODE_CHANOP;
     } else if (GetUserMode(channel, bot)) {
         reply("OSMSG_ALREADY_JOINED", channel->name);
@@ -2367,7 +2379,7 @@ static MODCMD_FUNC(cmd_clone)
     channel = GetChannel(argv[3]);
     if (!irccasecmp(argv[1], "JOIN")) {
 	if (!channel
-	    && !(channel = AddChannel(argv[3], now, NULL, NULL))) {
+	    && !(channel = AddChannel(argv[3], now, NULL, NULL, NULL))) {
 	    reply("MSG_CHANNEL_UNKNOWN", argv[3]);
 	    return 0;
 	}
@@ -3113,7 +3125,7 @@ opserv_discrim_create(struct userNode *user, unsigned int argc, char *argv[], in
                     send_message(user, opserv, "MSG_CHANNEL_UNKNOWN", argv[i]);
                     goto fail;
                 } else {
-                    discrim->channel = AddChannel(argv[i]+j, now, NULL, NULL);
+                    discrim->channel = AddChannel(argv[i]+j, now, NULL, NULL, NULL);
                 }
 	    }
             LockChannel(discrim->channel);
@@ -4039,7 +4051,7 @@ opserv_conf_read(void)
         str2 = database_get_data(conf_node, KEY_DEBUG_CHANNEL_MODES, RECDB_QSTRING);
         if (!str2)
             str2 = "+tinms";
-	opserv_conf.debug_channel = AddChannel(str, now, str2, NULL);
+	opserv_conf.debug_channel = AddChannel(str, now, str2, NULL, NULL);
         AddChannelUser(opserv, opserv_conf.debug_channel)->modes |= MODE_CHANOP;
     } else {
 	opserv_conf.debug_channel = NULL;
@@ -4049,7 +4061,7 @@ opserv_conf_read(void)
         str2 = database_get_data(conf_node, KEY_ALERT_CHANNEL_MODES, RECDB_QSTRING);
         if (!str2)
             str2 = "+tns";
-	opserv_conf.alert_channel = AddChannel(str, now, str2, NULL);
+	opserv_conf.alert_channel = AddChannel(str, now, str2, NULL, NULL);
         AddChannelUser(opserv, opserv_conf.alert_channel)->modes |= MODE_CHANOP;
     } else {
 	opserv_conf.alert_channel = NULL;
@@ -4059,7 +4071,7 @@ opserv_conf_read(void)
         str2 = database_get_data(conf_node, KEY_STAFF_AUTH_CHANNEL_MODES, RECDB_QSTRING);
         if (!str2)
             str2 = "+timns";
-        opserv_conf.staff_auth_channel = AddChannel(str, now, str2, NULL);
+        opserv_conf.staff_auth_channel = AddChannel(str, now, str2, NULL, NULL);
         AddChannelUser(opserv, opserv_conf.staff_auth_channel)->modes |= MODE_CHANOP;
     } else {
         opserv_conf.staff_auth_channel = NULL;

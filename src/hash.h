@@ -49,6 +49,7 @@
 #define MODE_NOAMSG             0x00200000 /* +T no multi-target messages */
 #define MODE_SSLONLY            0x00400000 /* +z ssl only */
 #define MODE_HALFOP             0x00800000 /* +h USER */
+#define MODE_EXEMPT             0x01000000 /* +e exempt */
 #define MODE_REMOVE             0x80000000
 
 #define FLAGS_OPER		0x0001 /* Operator +O */
@@ -103,6 +104,7 @@
 
 #define MAXMODEPARAMS	6
 #define MAXBANS		45
+#define MAXEXEMPTS	45
 
 /* IDLEN is 6 because it takes 5.33 Base64 digits to store 32 bytes. */
 #define IDLEN           6
@@ -110,6 +112,7 @@
 DECLARE_LIST(userList, struct userNode*);
 DECLARE_LIST(modeList, struct modeNode*);
 DECLARE_LIST(banList, struct banNode*);
+DECLARE_LIST(exemptList, struct exemptNode*);
 DECLARE_LIST(channelList, struct chanNode*);
 DECLARE_LIST(serverList, struct server*);
 
@@ -152,6 +155,7 @@ struct chanNode {
 
     struct modeList members;
     struct banList banlist;
+    struct exemptList exemptlist;
     struct policer join_policer;
     unsigned int join_flooded : 1;
     unsigned int bad_channel : 1;
@@ -165,6 +169,12 @@ struct banNode {
     char ban[NICKLEN + USERLEN + HOSTLEN + 3]; /* 1 for '\0', 1 for ! and 1 for @ = 3 */
     char who[NICKLEN + 1]; /* who set ban */
     time_t set; /* time ban was set */
+};
+
+struct exemptNode {
+    char exempt[NICKLEN + USERLEN + HOSTLEN + 3]; /* 1 for '\0', 1 for ! and 1 for @ = 3 */
+    char who[NICKLEN + 1]; /* who set exempt */
+    time_t set; /* time exempt was set */
 };
 
 struct modeNode {
@@ -236,7 +246,7 @@ void reg_join_func(join_func_t handler);
 typedef void (*del_channel_func_t) (struct chanNode *chan);
 void reg_del_channel_func(del_channel_func_t handler);
 
-struct chanNode* AddChannel(const char *name, time_t time_, const char *modes, char *banlist);
+struct chanNode* AddChannel(const char *name, time_t time_, const char *modes, char *banlist, char *exemptlist);
 void LockChannel(struct chanNode *channel);
 void UnlockChannel(struct chanNode *channel);
 
@@ -253,6 +263,7 @@ void reg_kick_func(kick_func_t handler);
 void ChannelUserKicked(struct userNode* kicker, struct userNode* victim, struct chanNode* channel);
 
 int ChannelBanExists(struct chanNode *channel, const char *ban);
+int ChannelExemptExists(struct chanNode *channel, const char *exempt);
 
 typedef int (*topic_func_t)(struct userNode *who, struct chanNode *chan, const char *old_topic);
 void reg_topic_func(topic_func_t handler);

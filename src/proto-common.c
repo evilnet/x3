@@ -552,6 +552,7 @@ void
 mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_chanmode *change)
 {
     struct banNode *bn;
+    struct exemptNode *en;
     unsigned int ii, jj;
 
     assert(change->argc <= change->alloc_argc);
@@ -589,6 +590,36 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
                     continue;
                 free(channel->banlist.list[jj]);
                 banList_remove(&channel->banlist, channel->banlist.list[jj]);
+                break;
+            }
+            break;
+        case MODE_EXEMPT:
+            /* If any existing exempt is a subset of the new exempt,
+             * silently remove it.  The new exempt is not allowed
+             * to be more specific than an existing exempt.
+             */
+            for (jj=0; jj<channel->exemptlist.used; ++jj) {
+                if (match_ircglobs(change->args[ii].hostmask, channel->exemptlist.list[jj]->exempt)) {
+                    exemptList_remove(&channel->exemptlist, channel->exemptlist.list[jj]);
+                    free(channel->exemptlist.list[jj]);
+                    jj--;
+                }
+            }
+            en = calloc(1, sizeof(*en));
+            safestrncpy(en->exempt, change->args[ii].hostmask, sizeof(en->exempt));
+            if (who)
+                safestrncpy(en->who, who->nick, sizeof(en->who));
+            else
+                safestrncpy(en->who, "<unknown>", sizeof(en->who));
+            en->set = now;
+            exemptList_append(&channel->exemptlist, en);
+            break;
+        case MODE_REMOVE|MODE_EXEMPT:
+            for (jj=0; jj<channel->exemptlist.used; ++jj) {
+                if (strcmp(channel->exemptlist.list[jj]->exempt, change->args[ii].hostmask))
+                    continue;
+                free(channel->exemptlist.list[jj]);
+                exemptList_remove(&channel->exemptlist, channel->exemptlist.list[jj]);
                 break;
             }
             break;

@@ -854,3 +854,26 @@ tools_cleanup(void)
         free(str_tab.list[ii]);
     free(str_tab.list);
 }
+
+/* mysep() is my answer to the strtok/strsep
+ * issue. strsep is nice but doesn't skip
+ * multiple dilimiters, which can really
+ * offset tokens and cause huge corruption
+ * so this function will use strsep but
+ * act like strtok in that sence.
+ */
+char *mysep(char **sepstr, char *delim)
+{
+  static char *retstr;
+
+  if(!*sepstr || !**sepstr)
+    return(NULL);
+
+  do
+  {
+      retstr = strsep(sepstr, delim);
+  }while (retstr && !(*retstr));
+
+  return(retstr);
+}
+

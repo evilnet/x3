@@ -579,6 +579,7 @@ irc_burst(struct chanNode *chan)
     int pos, base_len, len;
     struct modeNode *mn;
     struct banNode *bn;
+    struct exemptNode *en;
     long last_mode=-1;
     unsigned int n;
 
@@ -635,6 +636,33 @@ irc_burst(struct chanNode *chan)
                 pos = base_len;
             }
             memcpy(burst_line+pos, bn->ban, len);
+            pos += len;
+            burst_line[pos++] = ' ';
+        }
+    }
+    if (chan->exemptlist.used) {
+        /* dump the exempt */
+        if (pos+2+strlen(chan->exemptlist.list[0]->exempt) > 505) {
+            burst_line[pos-1] = 0;
+            putsock("%s", burst_line);
+            pos = base_len;
+        } else {
+            burst_line[pos++] = ' ';
+        }
+
+        burst_line[pos++] = ' ';
+        burst_line[pos++] = '~';
+        burst_line[pos++] = ' ';
+        base_len = pos;
+        for (n=0; n<chan->exemptlist.used; n++) {
+            en = chan->exemptlist.list[n];
+            len = strlen(en->exempt);
+            if (pos+len+1 > 510) {
+                burst_line[pos-1] = 0; /* -1 to back up over the space or comma */
+                putsock("%s", burst_line);
+                pos = base_len;
+            }
+            memcpy(burst_line+pos, en->exempt, len);
             pos += len;
             burst_line[pos++] = ' ';
         }
@@ -944,7 +972,7 @@ create_helper(char *name, void *data)
         return;
     }
 
-    AddChannelUser(cd->user, AddChannel(name, cd->when, NULL, NULL));
+    AddChannelUser(cd->user, AddChannel(name, cd->when, NULL, NULL, NULL));
 }
 
 static CMD_FUNC(cmd_create)
@@ -1041,18 +1069,26 @@ static CMD_FUNC(cmd_fakehost)
 static CMD_FUNC(cmd_burst)
 {
     extern int rel_age;
-    char modes[MAXLEN], *members = "", *banlist = NULL;
-    unsigned int next = 3, res = 1;
+    char modes[MAXLEN], *members = "";
+    static char exemptlist[MAXLEN], banlist[MAXLEN];
+    unsigned int next = 3;
+    unsigned int res = 1;
+    int ctype = 0, echeck = 0, bcheck = 0;
     struct chanNode *cNode;
     struct userNode *un;
     struct modeNode *mNode;
     long mode;
     char *user, *end, sep;
     time_t in_timestamp;
+    char* parm = NULL;
 
     if (argc < 3)
         return 0;
     modes[0] = 0;
+
+    exemptlist[0] = 0;
+    banlist[0] = 0;
+
     while (next < argc) {
         switch (argv[next][0]) {
         case '+': {
@@ -1066,9 +1102,52 @@ static CMD_FUNC(cmd_burst)
             next += n_modes;
             break;
         }
-        case '%': banlist = argv[next++]+1; break;
-        default: members = argv[next++]; break;
+        case '%': {
+            for(parm = mysep(&argv[next], " "); /* parm = first param */
+                  parm;   /* While param is not null */
+                  parm = mysep(&argv[next], " ")  /* parm = next param */
+               )
+            {
+              switch (parm[0]) {
+                case '%': {
+                  ctype = 1;
+                  break;
+                }
+                case '~': {
+                  ctype = 2;
+                  break;
+                }
+                default: {
+                  break;
+                }
+              }
+              if (ctype == 1) {
+                if (bcheck == 0) {
+                  /* strip % char off start of very first ban */
+                  strncat(banlist, strtok(parm, "%"), sizeof(banlist) - 1 - strlen(banlist));
+                  strncat(banlist, " ", sizeof(banlist) - 1 - strlen(banlist));
+                  bcheck = 1;
+                } else {
+                  strncat(banlist, parm, sizeof(banlist) - 1 - strlen(banlist));
+                  strncat(banlist, " ", sizeof(banlist) - 1 - strlen(banlist));
+                }
+              } else if (ctype == 2) {
+                if (echeck == 0) {
+                   echeck = 1;
+                } else {
+                  strncat(exemptlist, parm, sizeof(exemptlist) - 1 - strlen(exemptlist));
+                  strncat(exemptlist, " ", sizeof(exemptlist) - 1 - strlen(exemptlist));
+                }
+              }
+            }
+            next++;
+            break;
         }
+        default: {
+            members = argv[next++];
+            break;
+        }
+      }
     }
 
 
@@ -1078,9 +1157,10 @@ static CMD_FUNC(cmd_burst)
         dict_remove(unbursted_channels, cNode->name);
         irc_burst(cNode);
     }
-    cNode = AddChannel(argv[1], in_timestamp, modes, banlist);
 
     /* Burst channel members in now. */
+    cNode = AddChannel(argv[1], in_timestamp, modes, banlist, exemptlist);
+
     for (user = members, sep = *members, mode = 0; sep; user = end) {
         for (end = user + 3; isalnum(*end) || *end == '[' || *end == ']'; end++) ;
         sep = *end++; end[-1] = 0;
@@ -2174,6 +2254,16 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
                 change->args[ch_arg].mode |= MODE_REMOVE;
             change->args[ch_arg++].hostmask = modes[in_arg++];
             break;
+        case 'e':
+            if (!(flags & MCP_ALLOW_OVB))
+                goto error;
+            if (in_arg >= argc)
+                goto error;
+            change->args[ch_arg].mode = MODE_EXEMPT;
+            if (!add)
+                change->args[ch_arg].mode |= MODE_REMOVE;
+            change->args[ch_arg++].hostmask = modes[in_arg++];
+            break;
         case 'o': case 'h': case 'v':
         {
             struct userNode *victim;
@@ -2308,6 +2398,9 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         case MODE_BAN:
             mod_chanmode_append(&chbuf, 'b', change->args[arg].hostmask);
             break;
+        case MODE_EXEMPT:
+            mod_chanmode_append(&chbuf, 'e', change->args[arg].hostmask);
+            break;
         default:
             if (change->args[arg].mode & MODE_CHANOP)
                 mod_chanmode_append(&chbuf, 'o', change->args[arg].member->user->numeric);
@@ -2359,6 +2452,9 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         switch (change->args[arg].mode) {
         case MODE_BAN:
             mod_chanmode_append(&chbuf, 'b', change->args[arg].hostmask);
+            break;
+        case MODE_EXEMPT:
+            mod_chanmode_append(&chbuf, 'e', change->args[arg].hostmask);
             break;
         default:
             if (change->args[arg].mode & MODE_CHANOP)
@@ -2473,6 +2569,7 @@ clear_chanmode(struct chanNode *channel, const char *modes)
             channel->limit = 0;
             break;
         case 'b': remove |= MODE_BAN; break;
+        case 'e': remove |= MODE_EXEMPT; break;
         case 'D': remove |= MODE_DELAYJOINS; break;
         case 'r': remove |= MODE_REGONLY; break;
         case 'c': remove |= MODE_NOCOLORS;
@@ -2498,6 +2595,14 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         for (i=0; i<channel->banlist.used; i++)
             free(channel->banlist.list[i]);
         channel->banlist.used = 0;
+    }
+
+    /* If removing exempts, kill 'em all. */
+    if ((remove & MODE_EXEMPT) && channel->exemptlist.used) {
+        unsigned int i;
+        for (i=0; i<channel->exemptlist.used; i++)
+            free(channel->exemptlist.list[i]);
+        channel->exemptlist.used = 0;
     }
 
     /* Remove member modes. */

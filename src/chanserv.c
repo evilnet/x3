@@ -1786,7 +1786,7 @@ static CHANSERV_FUNC(cmd_register)
     }
 
     if(new_channel)
-        channel = AddChannel(argv[1], now, NULL, NULL);
+        channel = AddChannel(argv[1], now, NULL, NULL, NULL);
 
     cData = register_channel(channel, user->handle_info->handle);
     scan_user_presence(add_channel_user(cData, handle, UL_OWNER, 0, NULL), NULL);
@@ -1924,7 +1924,7 @@ static CHANSERV_FUNC(cmd_move)
 
     if(!(target = GetChannel(argv[1])))
     {
-        target = AddChannel(argv[1], now, NULL, NULL);
+        target = AddChannel(argv[1], now, NULL, NULL, NULL);
         if(!IsSuspended(channel->channel_info))
             AddChannelUser(chanserv, target);
     }
@@ -6460,7 +6460,7 @@ chanserv_conf_read(void)
             const char *str2 = database_get_data(conf_node, KEY_SUPPORT_CHANNEL_MODES, RECDB_QSTRING);
             if(!str2)
                 str2 = "+nt";
-            chan = AddChannel(strlist->list[ii], now, str2, NULL);
+            chan = AddChannel(strlist->list[ii], now, str2, NULL, NULL);
             LockChannel(chan);
             channelList_append(&chanserv_conf.support_channels, chan);
         }
@@ -6471,7 +6471,7 @@ chanserv_conf_read(void)
         str2 = database_get_data(conf_node, KEY_SUPPORT_CHANNEL_MODES, RECDB_QSTRING);
         if(!str2)
             str2 = "+nt";
-        chan = AddChannel(str, now, str2, NULL);
+        chan = AddChannel(str, now, str2, NULL, NULL);
         LockChannel(chan);
         channelList_append(&chanserv_conf.support_channels, chan);
     }
@@ -6746,7 +6746,7 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     str = database_get_data(channel, KEY_REGISTRAR, RECDB_QSTRING);
     if(!str)
         str = "<unknown>";
-    cNode = AddChannel(key, now, NULL, NULL);
+    cNode = AddChannel(key, now, NULL, NULL, NULL);
     if(!cNode)
     {
         log_module(CS_LOG, LOG_ERROR, "Unable to create registered channel %s.", key);

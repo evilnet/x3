@@ -309,6 +309,11 @@ wipeout_channel(struct chanNode *cNode, time_t new_time, char **modes, unsigned 
         free(cNode->banlist.list[nn]);
     cNode->banlist.used = 0;
 
+    /* remove our old exe,[t list, replace it with the new one */
+    for (nn=0; nn<cNode->exemptlist.used; nn++)
+        free(cNode->exemptlist.list[nn]);
+    cNode->exemptlist.used = 0;
+
     /* deop anybody in the channel now, but count services to reop */
     for (nn=argc=0; nn<cNode->members.used; nn++) {
         struct modeNode *mn = cNode->members.list[nn];
@@ -340,7 +345,7 @@ wipeout_channel(struct chanNode *cNode, time_t new_time, char **modes, unsigned 
 }
 
 struct chanNode *
-AddChannel(const char *name, time_t time_, const char *modes, char *banlist)
+AddChannel(const char *name, time_t time_, const char *modes, char *banlist, char *exemptlist)
 {
     struct chanNode *cNode;
     char new_modes[MAXLEN], *argv[MAXNUMPARAMS];
@@ -359,6 +364,7 @@ AddChannel(const char *name, time_t time_, const char *modes, char *banlist)
         cNode = calloc(1, sizeof(*cNode) + strlen(name));
         strcpy(cNode->name, name);
         banList_init(&cNode->banlist);
+        exemptList_init(&cNode->exemptlist);
         modeList_init(&cNode->members);
         mod_chanmode(NULL, cNode, argv, nn, 0);
         dict_insert(channels, cNode->name, cNode);
@@ -397,6 +403,23 @@ AddChannel(const char *name, time_t time_, const char *modes, char *banlist)
             safestrncpy(bn->who, "<unknown>", sizeof(bn->who));
             bn->set = now;
             banList_append(&cNode->banlist, bn);
+        }
+    }
+
+    /* go through list of exempts and add each one */
+    if (exemptlist && (rel_age >= 0)) {
+        for (nn=0; exemptlist[nn];) {
+            char *exempt = exemptlist + nn;
+            struct exemptNode *en;
+            while (exemptlist[nn] != ' ' && exemptlist[nn])
+                nn++;
+            while (exemptlist[nn] == ' ')
+                exemptlist[nn++] = 0;
+            en = calloc(1, sizeof(*en));
+            safestrncpy(en->exempt, exempt, sizeof(en->exempt));
+            safestrncpy(en->who, "<unknown>", sizeof(en->who));
+            en->set = now;
+            exemptList_append(&cNode->exemptlist, en);
         }
     }
 
@@ -441,11 +464,17 @@ DelChannel(struct chanNode *channel)
         free(channel->banlist.list[--n]);
     channel->banlist.used = 0;
 
+    /* delete all channel exempts */
+    for (n=channel->exemptlist.used; n>0; )
+        free(channel->exemptlist.list[--n]);
+    channel->exemptlist.used = 0;
+
     for (n=0; n<dcf_used; n++)
         dcf_list[n](channel);
 
     modeList_clean(&channel->members);
     banList_clean(&channel->banlist);
+    exemptList_clean(&channel->exemptlist);
     free(channel);
 }
 
@@ -633,6 +662,16 @@ int ChannelBanExists(struct chanNode *channel, const char *ban)
     return 0;
 }
 
+int ChannelExemptExists(struct chanNode *channel, const char *exempt)
+{
+    unsigned int n;
+
+    for (n = 0; n < channel->exemptlist.used; n++)
+        if (match_ircglobs(channel->exemptlist.list[n]->exempt, exempt))
+            return 1;
+    return 0;
+}
+
 static topic_func_t *tf_list;
 static unsigned int tf_size = 0, tf_used = 0;
 
@@ -713,6 +752,7 @@ GetUserMode(struct chanNode *channel, struct userNode *user)
 DEFINE_LIST(userList, struct userNode*)
 DEFINE_LIST(modeList, struct modeNode*)
 DEFINE_LIST(banList, struct banNode*)
+DEFINE_LIST(exemptList, struct exemptNode*)
 DEFINE_LIST(channelList, struct chanNode*)
 DEFINE_LIST(serverList, struct server*)
 

@@ -96,6 +96,7 @@ typedef void (*exit_func_t)(void);
 void reg_exit_func(exit_func_t handler);
 void call_exit_funcs(void);
 
+char *mysep(char **sepstr, char *delim);
 const char *inttobase64(char *buf, unsigned int v, unsigned int count);
 unsigned long base64toint(const char *s, int count);
 int split_line(char *line, int irc_colon, int argv_size, char *argv[]);
