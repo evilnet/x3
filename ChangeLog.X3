@@ -3,6 +3,10 @@
 
 2005-03-07  Alex Schumann   <rubin@afternet.org>
 
+	* src/nickserv.c: Applied patch to bring up to date with
+	local uncommitted changes on afternets srvx2 tree. improved
+	cookie gen code and removed /play from cookie messages.
+
 	* src/all, src/Makefile*, Makefile.in: changed srvx to x3 in a
 	bunch more places.
 

@@ -309,7 +309,7 @@ static const struct message_entry msgtab[] = {
         "This email has been sent to verify that this email address belongs to the person who tried to register an account on %1$s.  Your cookie is:\n"
         "%2$s\n"
         "To verify your email address and complete the account registration, visit the following URL:\n"
-        "http://www.afternet.org/play/index.php?option=com_registration&task=activate&username=%5$s&cookie=%2$s\n"
+        "http://www.afternet.org/index.php?option=com_registration&task=activate&username=%5$s&cookie=%2$s\n"
         "\n"
         "If you did NOT request this account, you do not need to do anything.\n"
         "Please contact the %1$s staff if you have questions, and be sure to check our website." },
@@ -323,7 +323,7 @@ static const struct message_entry msgtab[] = {
     { "NSEMAIL_PASSWORD_CHANGE_BODY_WEB", 
         "This email has been sent to verify that you wish to change the password on your account %5$s.  Your cookie is %2$s.\n"
         "To complete the password change, click the following URL:\n"
-        "http://www.afternet.org/play/index.php?option=com_registration&task=passcookie&username=%5$s&cookie=%2$s\n"
+        "http://www.afternet.org/index.php?option=com_registration&task=passcookie&username=%5$s&cookie=%2$s\n"
         "If you did NOT request your password to be changed, you do not need to do anything.\n"
         "Please contact the %1$s staff if you have questions." },
     { "NSEMAIL_EMAIL_CHANGE_SUBJECT", "Email address change verification for %s" },
@@ -1036,6 +1036,27 @@ nickserv_bake_cookie(struct handle_cookie *cookie)
     timeq_add(cookie->expires, nickserv_free_cookie, cookie);
 }
 
+/* Contributed by the great sneep of afternet ;) */
+/* Since this gets used in a URL, we want to avoid stuff that confuses
+ * email clients such as ] and ?. a-z, 0-9 only.
+ */
+void genpass(char *str, int len)
+{
+        int i = 0;
+        char c = 0;
+
+        for(i = 0; i < len; i++)
+        {
+                do
+                {
+                        c = (char)((float)rand() / (float)RAND_MAX * (float)256);
+                } while(!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')));
+                str[i] = c;
+        }
+        str[i] = '\0';
+        return;
+}
+
 static void
 nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_type type, const char *cookie_data, int weblink)
 {
@@ -1053,9 +1074,14 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
     cookie->hi = hi;
     cookie->type = type;
     cookie->data = cookie_data ? strdup(cookie_data) : NULL;
+
     cookie->expires = now + nickserv_conf.cookie_timeout;
-    inttobase64(cookie->cookie, rand(), 5);
-    inttobase64(cookie->cookie+5, rand(), 5);
+    /* Adding dedicated password gen function for more control -Rubin */
+    genpass(cookie->cookie, 10);
+    /*
+     *inttobase64(cookie->cookie, rand(), 5);
+     *inttobase64(cookie->cookie+5, rand(), 5);
+     */
 
     netname = nickserv_conf.network_name;
     subject[0] = 0;
