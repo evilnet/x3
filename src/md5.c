@@ -439,6 +439,7 @@ void md5_process( md5_context *ctx, uint8 data[64] )
     C = ctx->state[2];
     D = ctx->state[3];
 
+#undef F
 #define F(x,y,z) (z ^ (x & (y ^ z)))
 
     P( A, B, C, D,  0,  7, 0xD76AA478 );

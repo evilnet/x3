@@ -1,9 +1,16 @@
 /***********************************************************************
  X3 ChangeLog
 
-2005-02-22  Neil Spierling  <sirvulcan@gmail.com>
+2005-03-07  Neil Spierling  <sirvulcan@gmail.com>
 
-	* stuff
+	* nickserv.help: Added odelcookie section.
+
+	* src/nickserv.c: Added odelcookie for deleting auth cookies and email
+	cookies.
+
+	* src/md5.c: Cleaned up compile warnings.
+
+	* src/nickserv.help: Added odelcookie section.
 
 ***********************************************************************/
 

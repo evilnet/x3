@@ -398,6 +398,14 @@
         "$uSee Also:$u accountinfo, account flags, nickinfo, set, userinfo"
         );
 };
+
+"ODELCOOKIE" {
+        "/services/nickserv/email_enabled" (
+        "/msg $N ODELCOOKIE <nick|*account>",
+        "Requests that $N cancels the cookie of the specified account.",
+        );
+};
+
 "PASS" ("/msg $N@$s PASS <oldpass> <newpass>",
         "Changes your $b$N$b password.",
         "$uSee Also:$u auth");

@@ -151,6 +151,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_COOKIE_LIVE", "Account $b%s$b already has a cookie active.  Please either finish using that cookie, wait for it to expire, or auth to the account and use the $bdelcookie$b command." },
     { "NSMSG_EMAIL_UNACTIVATED", "That email address already has an unused cookie outstanding.  Please use the cookie or wait for it to expire." },
     { "NSMSG_NO_COOKIE", "Your account does not have any cookie issued right now." },
+    { "NSMSG_NO_COOKIE_FOREIGN", "The account $b%s$b does not have any cookie issued right now." },
     { "NSMSG_CANNOT_COOKIE", "You cannot use that kind of cookie when you are logged in." },
     { "NSMSG_BAD_COOKIE", "That cookie is not the right one.  Please make sure you are copying it EXACTLY from the email; it is case-sensitive, so $bABC$b is different from $babc$b." },
     { "NSMSG_HANDLE_ACTIVATED", "Your account is now activated (with the password you entered when you registered).  You are now authenticated to your account." },
@@ -162,6 +163,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_BAD_COOKIE_TYPE", "Your account had bad cookie type %d; sorry.  I am confused.  Please report this bug." },
     { "NSMSG_MUST_TIME_OUT", "You must wait for cookies of that type to time out." },
     { "NSMSG_ATE_COOKIE", "I ate the cookie for your account.  You may now have another." },
+    { "NSMSG_ATE_FOREIGN_COOKIE", "I ate the cookie for account $b%s$b.  It may now have another." },
     { "NSMSG_USE_RENAME", "You are already authenticated to account $b%s$b -- contact the support staff to rename your account." },
     { "NSMSG_ALREADY_REGISTERING", "You have already used $bREGISTER$b once this session; you may not use it again." },
     { "NSMSG_REGISTER_BAD_NICKMASK", "Could not recognize $b%s$b as either a current nick or a hostmask." },
@@ -1880,6 +1882,26 @@ static NICKSERV_FUNC(cmd_delcookie)
         reply("NSMSG_ATE_COOKIE");
         break;
     }
+    return 1;
+}
+
+static NICKSERV_FUNC(cmd_odelcookie)
+{
+    struct handle_info *hi;
+
+    NICKSERV_MIN_PARMS(2);
+
+    if (!(hi = get_victim_oper(user, argv[1])))
+        return 0;
+
+    if (!hi->cookie) {
+        reply("NSMSG_NO_COOKIE_FOREIGN", hi->handle);
+        return 0;
+    }
+
+    nickserv_eat_cookie(hi->cookie);
+    reply("NSMSG_ATE_FOREIGN_COOKIE", hi->handle);
+
     return 1;
 }
 
@@ -3961,6 +3983,7 @@ init_nickserv(const char *nick)
         nickserv_define_func("RESETPASS", cmd_resetpass, -1, 0, 0);
         nickserv_define_func("COOKIE", cmd_cookie, -1, 0, 0);
         nickserv_define_func("DELCOOKIE", cmd_delcookie, -1, 1, 0);
+        nickserv_define_func("ODELCOOKIE", cmd_odelcookie, 0, 1, 0);
         dict_insert(nickserv_opt_dict, "EMAIL", opt_email);
     }
     nickserv_define_func("GHOST", cmd_ghost, -1, 1, 0);
