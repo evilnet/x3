@@ -1,6 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-04-15  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-common.c: Temp fix for x3 not seeing -hv modes being set
+	at the same time. The whole block needs to be if/else instead of
+	switch though, to be cleaner.
+
+	* src/nickserv.help: added fakehost and title options to  help oset.
+
+	* src/nickserv.c: removed 'style' setting. (was not being used in
+	code anyway)
+
 2005-04-04  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/proto-p10.c: Reinstated +d usermode.

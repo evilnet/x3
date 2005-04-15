@@ -376,28 +376,19 @@
         "$uSee Also:$u oregnick, ounregister, ounregnick"
         );
 };
-"OSET" {
-        "/services/nickserv/disable_nicks" (
-        "/msg $N OSET <nick|*account> [<setting> <value>]",
-        "Changes an account's settings for X3. In addition to the normal $bset$b settings, you may set:",
-        "$bPASSWORD$b: Sets user's password.",
-        "$bFLAGS$b: Changes account flags for user.",
-        "$bLEVEL$b: Sets $O access level.",
-        "$bEPITHET$b: The description $C shows for the user's access.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
-        "$uSee Also:$u accountinfo, account flags, set, userinfo"
-        );
-        "!/services/nickserv/disable_nicks" (
-        "/msg $N OSET <nick|*account> [<setting> <value>]",
-        "Changes an account's settings for X3. In addition to the normal $bset$b settings, you may set:",
-        "$bPASSWORD$b: Sets user's password.",
-        "$bFLAGS$b: Changes account flags for user.",
-        "$bLEVEL$b: Sets $O access level.",
-        "$bEPITHET$b: The description $C shows for the user's access.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
-        "$uSee Also:$u accountinfo, account flags, nickinfo, set, userinfo"
-        );
-};
+"OSET" (
+          "/msg $N OSET <nick|*account> [<setting> <value>]",
+          "Allows opers/helpers to change a users account settings. You may set:",
+          "$bPASSWORD$b: Sets user's password.",
+          "$bFLAGS$b: Changes account flags (SphHdscfn) for user (see $uaccount flags$u).",
+          "$bLEVEL$b: Sets $O access level.",
+          "$bEPITHET$b: The description $C shows for the user's access.",
+          "$bTITLE$b: The title the user will get (in there hostname) when +x.",
+          "$bFAKEHOST$b: The fake hostname the user will get when +x.",
+          "..or anything $bset$b can change.",
+          "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+          "$uSee Also:$u accountinfo, account flags, set, userinfo"
+);
 
 "ODELCOOKIE" {
         "/services/nickserv/email_enabled" (

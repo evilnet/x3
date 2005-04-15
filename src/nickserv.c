@@ -134,7 +134,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLE_TOLONG", "The account name %s is too long. Account names must be %lu charactors or less."},
     { "NSMSG_PASSWORD_SHORT", "Your password must be at least %lu characters long." },
     { "NSMSG_PASSWORD_ACCOUNT", "Your password may not be the same as your account name." },
-    { "NSMSG_PASSWORD_DICTIONARY", "Your password should not be the word \"password\", or any other dictionary word." },
+    { "NSMSG_PASSWORD_DICTIONARY", "Your password is too simple. You must choose a password that is not just a word or name." },
     { "NSMSG_PASSWORD_READABLE", "Your password must have at least %lu digit(s), %lu capital letter(s), and %lu lower-case letter(s)." },
     { "NSMSG_PARTIAL_REGISTER", "Account has been registered to you; nick was already registered to someone else." },
     { "NSMSG_OREGISTER_VICTIM", "%s has registered a new account for you (named %s)." },
@@ -274,7 +274,9 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_RECLAIMED_SVSNICK", "Forcibly changed %s's nick." },
     { "NSMSG_RECLAIMED_KILL",  "Disconnected %s from the network." },
     { "NSMSG_CLONE_AUTH", "Warning: %s (%s@%s) authed to your account." },
-    { "NSMSG_SETTING_LIST", "$b$N account settings:$b" },
+    { "NSMSG_SETTING_LIST", "$b$N account settings$b" },
+    { "NSMSG_SETTING_LIST_HEADER", "----------------------------------------" },
+    { "NSMSG_SETTING_LIST_END",    "-------------End Of Settings------------" },
     { "NSMSG_INVALID_OPTION", "$b%s$b is an invalid account setting." },
     { "NSMSG_INVALID_ANNOUNCE", "$b%s$b is an invalid announcements value." },
     { "NSMSG_SET_INFO", "$bINFO:         $b%s" },
@@ -2283,16 +2285,18 @@ set_list(struct userNode *user, struct handle_info *hi, int override)
     option_func_t *opt;
     unsigned int i;
     char *set_display[] = {
-        "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", "STYLE",
+        "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", /* "STYLE", */
         "EMAIL", "ANNOUNCEMENTS", "MAXLOGINS", "LANGUAGE"
     };
 
     send_message(user, nickserv, "NSMSG_SETTING_LIST");
+    send_message(user, nickserv, "NSMSG_SETTING_LIST_HEADER");
 
     /* Do this so options are presented in a consistent order. */
     for (i = 0; i < ArrayLength(set_display); ++i)
 	if ((opt = dict_find(nickserv_opt_dict, set_display[i], NULL)))
 	    opt(user, hi, override, 0, NULL);
+    send_message(user, nickserv, "NSMSG_SETTING_LIST_END");
 }
 
 static NICKSERV_FUNC(cmd_set)
@@ -2414,6 +2418,7 @@ static OPTION_FUNC(opt_privmsg)
     return 1;
 }
 
+/*
 static OPTION_FUNC(opt_style)
 {
     char *style;
@@ -2437,6 +2442,7 @@ static OPTION_FUNC(opt_style)
     send_message(user, nickserv, "NSMSG_SET_STYLE", style);
     return 1;
 }
+*/
 
 static OPTION_FUNC(opt_announcements)
 {
@@ -4028,7 +4034,7 @@ init_nickserv(const char *nick)
     dict_insert(nickserv_opt_dict, "TABLEWIDTH", opt_tablewidth);
     dict_insert(nickserv_opt_dict, "COLOR", opt_color);
     dict_insert(nickserv_opt_dict, "PRIVMSG", opt_privmsg);
-    dict_insert(nickserv_opt_dict, "STYLE", opt_style);
+/*    dict_insert(nickserv_opt_dict, "STYLE", opt_style); */
     dict_insert(nickserv_opt_dict, "PASS", opt_password);
     dict_insert(nickserv_opt_dict, "PASSWORD", opt_password);
     dict_insert(nickserv_opt_dict, "FLAGS", opt_flags);
