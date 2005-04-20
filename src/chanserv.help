@@ -551,7 +551,8 @@
          "NOTE: The NoAutoOp setting is equivalent to the !togop command in previous versions of X3.",
          "$uSee Also:$u set");
 "USET INFO" ("/msg $C USET <#channel> INFO <info>",
-        "This command will set a user defined information message to be displayed when you join the channel. By setting the message to '*', you will clear your message.",
+        "This command will set a user defined information message to be displayed when you join the channel. Set to '*' to clear the message.",
+        "Note: to keep from being annoying, your info message only shows when you have been offline for more than a few minutes.",
         "$uSee Also:$u access");
 "USERS" ("/msg $C USERS <#channel> [mask]",
         "Displays the userlist for the specified channel. If a mask is supplied, only users matching the mask will be shown.",

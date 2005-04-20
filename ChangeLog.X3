@@ -1,6 +1,18 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-04-20  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-common.c: removing +d. needs to be a config option
+	or something.
+
+	* src/nickserv.help: modified main help reply of authserv
+
+	* src/nickserv.c: added title, epithet, and fakehost to oset listing
+
+	* src/modcmd.c: fixed up auto-help & alias command handling. Needs
+	totally redesigned though.
+
 2005-04-15  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-common.c: Temp fix for x3 not seeing -hv modes being set

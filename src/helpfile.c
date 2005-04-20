@@ -801,9 +801,9 @@ send_help_brief(struct userNode *dest, struct userNode *src, struct helpfile *hf
     }
     rec = dict_find(hf->db, "<missing>", NULL);
     if (!rec)
-        return send_message(dest, src, "MSG_TOPIC_UNKNOWN");
+        return 0; /* send_message(dest, src, "MSG_TOPIC_UNKNOWN"); */
     if (rec->type != RECDB_QSTRING)
-	return send_message(dest, src, "HFMSG_HELP_NOT_STRING");
+	return 0; /* send_message(dest, src, "HFMSG_HELP_NOT_STRING"); */
     return _send_help(dest, src, hf->expand, rec->d.qstring);
 }
 

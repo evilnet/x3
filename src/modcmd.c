@@ -55,6 +55,7 @@ static const struct message_entry msgtab[] = {
     { "MCMSG_NO_CHANNEL_BEFORE", "You may not give a channel name before this command." },
     { "MCMSG_NO_PLUS_CHANNEL", "You may not use a +channel with this command." },
     { "MCMSG_COMMAND_ALIASES", "%s is an alias for: %s" },
+/*    { "MCMSG_HELP_COMMAND_ALIAS_FOR", "$bALIAS FOR:$b %s" },*/
     { "MCMSG_HELP_COMMAND_ALIAS", "$uAlias for:$u %s" },
     { "MCMSG_COMMAND_BINDING", "%s is a binding of: %s" },
     { "MCMSG_ALIAS_ERROR", "Error in alias expansion for %s; check the error log for details." },
@@ -773,7 +774,11 @@ svccmd_send_help(struct userNode *user, struct userNode *bot, struct svccmd *cmd
          * return send_help(user, bot, cmd->command->parent->helpfile, cmd->command->name);
          * TODO: We actually DO want to show the parent IF there is no other help.
          */
-    r = send_help(user, bot, cmd->command->parent->helpfile, cmd->name);
+    r =        send_help(user, bot, cmd->command->parent->helpfile, cmd->name);
+    if(cmd->command->name)
+    {
+        send_message(user, bot, "MCMSG_COMMAND_ALIASES", cmd->name, cmd->command->name);
+    }
 
     /* If it's an alias, show what it's an alias for. */
     if (cmd->alias.used) {
@@ -800,7 +805,20 @@ svccmd_send_help_brief(struct userNode *user, struct userNode *bot, struct svccm
          * return send_help(user, bot, cmd->command->parent->helpfile, cmd->command->name);
          * TODO: We actually DO want to show the parent IF there is no other help.
          */
+    /* If it's an alias, show what it's an alias for. */
+    if (cmd->alias.used) {
+        char alias_text[MAXLEN];
+        unsplit_string((char**)cmd->alias.list, cmd->alias.used, alias_text);
+        send_message(user, bot, "MCMSG_COMMAND_ALIASES", cmd->name, cmd->command->name);
+    }
     r = send_help_brief(user, bot, cmd->command->parent->helpfile, cmd->name);
+    if(!r) {
+        if(cmd->command->name)
+        {
+           send_message(user, bot, "MCMSG_HELP_COMMAND_ALIAS", cmd->command->name);
+           r = send_help_brief(user, bot, cmd->command->parent->helpfile, cmd->command->name);
+        }
+    }
 
     return r;
 }

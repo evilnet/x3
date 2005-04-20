@@ -110,7 +110,7 @@ DEFINE_LIST(handle_info_list, struct handle_info*);
 #define NICKSERV_MIN_PARMS(N) do { \
   if (argc < N) { \
     reply("MSG_MISSING_PARAMS", argv[0]); \
-    svccmd_send_help(user, nickserv, cmd); \
+    svccmd_send_help_brief(user, nickserv, cmd); \
     return 0; \
   } } while (0)
 
@@ -2286,7 +2286,8 @@ set_list(struct userNode *user, struct handle_info *hi, int override)
     unsigned int i;
     char *set_display[] = {
         "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", /* "STYLE", */
-        "EMAIL", "ANNOUNCEMENTS", "MAXLOGINS", "LANGUAGE"
+        "EMAIL", "ANNOUNCEMENTS", "MAXLOGINS", "LANGUAGE",
+        "FAKEHOST", "TITLE", "EPITHET"
     };
 
     send_message(user, nickserv, "NSMSG_SETTING_LIST");
@@ -2609,13 +2610,15 @@ static OPTION_FUNC(opt_level)
 
 static OPTION_FUNC(opt_epithet)
 {
-    if (!override) {
-        send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
-        return 0;
-    }
-
     if ((argc > 1) && oper_has_access(user, nickserv, nickserv_conf.set_epithet_level, 0)) {
-        char *epithet = unsplit_string(argv+1, argc-1, NULL);
+        char *epithet;
+        if (!override) {
+            send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
+            return 0;
+        }
+
+        epithet = unsplit_string(argv+1, argc-1, NULL);
+
         if (hi->epithet)
             free(hi->epithet);
         if ((epithet[0] == '*') && !epithet[1])
@@ -2635,12 +2638,12 @@ static OPTION_FUNC(opt_title)
 {
     const char *title;
 
-    if (!override) {
-        send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
-        return 0;
-    }
-
     if ((argc > 1) && oper_has_access(user, nickserv, nickserv_conf.set_title_level, 0)) {
+        if (!override) {
+            send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
+            return 0;
+        }
+
         title = argv[1];
         if (strchr(title, '.')) {
             send_message(user, nickserv, "NSMSG_TITLE_INVALID");
@@ -2675,12 +2678,12 @@ static OPTION_FUNC(opt_fakehost)
 {
     const char *fake;
 
-    if (!override) {
-        send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
-        return 0;
-    }
-
     if ((argc > 1) && oper_has_access(user, nickserv, nickserv_conf.set_fakehost_level, 0)) {
+        if (!override) {
+            send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
+            return 0;
+        }
+
         fake = argv[1];
         if ((strlen(fake) > HOSTLEN) || (fake[0] == '.')) {
             send_message(user, nickserv, "NSMSG_FAKEHOST_INVALID", HOSTLEN);
