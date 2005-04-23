@@ -1410,8 +1410,10 @@ static NICKSERV_FUNC(cmd_handleinfo)
             reply("NSMSG_HANDLEINFO_DNR", dnr->setter, dnr->reason);
         if (!oper_outranks(user, hi))
             return 1;
-    } else if (hi != user->handle_info)
+    } else if (hi != user->handle_info) {
+        reply("NSMSG_HANDLEINFO_END");
         return 1;
+    }
 
     if (nickserv_conf.email_enabled)
         reply("NSMSG_HANDLEINFO_EMAIL_ADDR", visible_email_addr(user, hi));

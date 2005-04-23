@@ -10,6 +10,9 @@
 	* src/chanserv.help: updated documentation to reflect the new and
 	much simpler topicmask feature, and removed op/voice levels.
 
+	* src/nickserv.c: added tailing 'end of' line for accountinfo
+	for non-opers too.
+
 2005-04-20  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-common.c: removing +d. needs to be a config option
