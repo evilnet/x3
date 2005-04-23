@@ -242,9 +242,11 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_CONFIRM_DEFAULTS", "To reset %s's settings to the defaults, you must use 'set defaults %s'." },
     { "CSMSG_SETTINGS_DEFAULTED", "All settings for %s have been reset to default values." },
     { "CSMSG_BAD_SETLEVEL", "You cannot change any setting to above your level." },
+    /*
     { "CSMSG_BAD_GIVEVOICE", "You cannot change GiveVoice to above GiveHalfOps (%d)." },
     { "CSMSG_BAD_GIVEHOPS", "You cannot change GiveHalfOps to below GiveOps (%d)." },
     { "CSMSG_BAD_GIVEOPS", "You cannot change GiveOps to below GiveVoice (%d)." },
+    */
     { "CSMSG_BAD_SETTERS", "You cannot change Setters to above your level." },
     { "CSMSG_INVALID_MODE_LOCK", "$b%s$b is an invalid mode lock." },
     { "CSMSG_INVALID_NUMERIC",   "$b%d$b is not a valid choice.  Choose one:" },
@@ -257,13 +259,17 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_DYNLIMIT",      "$bDynLimit    $b %s" },
     { "CSMSG_SET_OFFCHANNEL",    "$bOffChannel  $b %s" },
     { "CSMSG_SET_USERINFO",      "$bUserInfo    $b %d" },
+    /*
     { "CSMSG_SET_GIVE_VOICE",    "$bGiveVoice   $b %d" },
     { "CSMSG_SET_GIVE_HALFOPS",  "$bGiveHalfOps $b %d" },
+    */
     { "CSMSG_SET_TOPICSNARF",    "$bTopicSnarf  $b %d" },
     { "CSMSG_SET_INVITEME",      "$bInviteMe    $b %d" },
     { "CSMSG_SET_ENFOPS",        "$bEnfOps      $b %d" },
     { "CSMSG_SET_ENFHALFOPS",    "$bEnfHalfOps  $b %d" },
+    /*
     { "CSMSG_SET_GIVE_OPS",      "$bGiveOps     $b %d" },
+    */
     { "CSMSG_SET_ENFMODES",      "$bEnfModes    $b %d" },
     { "CSMSG_SET_ENFTOPIC",      "$bEnfTopic    $b %d" },
     { "CSMSG_SET_PUBCMD",        "$bPubCmd      $b %d" },
@@ -1464,7 +1470,7 @@ validate_op(struct userNode *user, struct chanNode *channel, struct userNode *vi
     struct userData *cs_victim;
 
     if((!(cs_victim = GetChannelUser(cData, victim->handle_info))
-        || (cs_victim->access < cData->lvlOpts[lvlGiveOps]))
+        || (cs_victim->access < UL_OP /* cData->lvlOpts[lvlGiveOps]*/))
        && !check_user_level(channel, user, lvlEnfOps, 0, 0))
     {
 	send_message(user, chanserv, "CSMSG_OPBY_LOCKED");
@@ -1481,7 +1487,7 @@ validate_halfop(struct userNode *user, struct chanNode *channel, struct userNode
     struct userData *cs_victim;
 
     if((!(cs_victim = GetChannelUser(cData, victim->handle_info))
-        || (cs_victim->access < cData->lvlOpts[lvlGiveHalfOps]))
+        || (cs_victim->access < UL_HALFOP /* cData->lvlOpts[lvlGiveHalfOps] */))
        && !check_user_level(channel, user, lvlEnfHalfOps, 0, 0))
     {
         send_message(user, chanserv, "CSMSG_HOPBY_LOCKED");
@@ -2620,17 +2626,17 @@ static CHANSERV_FUNC(cmd_up)
             reply("CSMSG_GODMODE_UP", argv[0]);
         return 0;
     }
-    else if(uData->access >= channel->channel_info->lvlOpts[lvlGiveOps])
+    else if(uData->access >= UL_OP /*channel->channel_info->lvlOpts[lvlGiveOps]*/)
     {
         change.args[0].mode = MODE_CHANOP;
         errmsg = "CSMSG_ALREADY_OPPED";
     }
-    else if(uData->access >= channel->channel_info->lvlOpts[lvlGiveHalfOps])
+    else if(uData->access >= UL_HALFOP /*channel->channel_info->lvlOpts[lvlGiveHalfOps]*/)
     {
         change.args[0].mode = MODE_HALFOP;
         errmsg = "CSMSG_ALREADY_HALFOPPED";
     }
-    else if(uData->access >= channel->channel_info->lvlOpts[lvlGiveVoice])
+    else if(uData->access >= UL_PEON /* channel->channel_info->lvlOpts[lvlGiveVoice]*/)
     {
         change.args[0].mode = MODE_VOICE;
         errmsg = "CSMSG_ALREADY_VOICED";
@@ -3342,11 +3348,11 @@ static CHANSERV_FUNC(cmd_myaccess)
             string_buffer_append(&sbuf, 's');
         if(IsUserAutoOp(uData))
         {
-            if(uData->access >= cData->lvlOpts[lvlGiveOps])
+            if(uData->access >= UL_OP /*cData->lvlOpts[lvlGiveOps]*/)
                 string_buffer_append(&sbuf, 'o');
-            else if(uData->access >= cData->lvlOpts[lvlGiveHalfOps])
+            else if(uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
                 string_buffer_append(&sbuf, 'h');
-            else if(uData->access >= cData->lvlOpts[lvlGiveVoice])
+            else if(uData->access >= UL_PEON /*cData->lvlOpts[lvlGiveVoice]*/)
                 string_buffer_append(&sbuf, 'v');
         }
         if(IsUserAutoInvite(uData) && (uData->access >= cData->lvlOpts[lvlInviteMe]))
@@ -3783,18 +3789,69 @@ static CHANSERV_FUNC(cmd_bans)
     return 1;
 }
 
+/* bad_topic
+ *
+ * return + if the user does NOT have the right to set the topic, and
+ * the topic is changed.
+ */
 static int
 bad_topic(struct chanNode *channel, struct userNode *user, const char *new_topic)
 {
     struct chanData *cData = channel->channel_info;
     if(check_user_level(channel, user, lvlEnfTopic, 1, 0))
         return 0;
-    if(cData->topic_mask)
-        return !match_ircglob(new_topic, cData->topic_mask);
     else if(cData->topic)
         return irccasecmp(new_topic, cData->topic);
     else
         return 0;
+}
+
+/* conform_topic
+ *
+ * Makes a givin topic fit into a givin topic mask and returns
+ * the results.
+ *
+ * topic_mask - the mask to conform to
+ * topic - the topic to make conform
+ * new_topic - the pre-allocated char* to put the new topic into
+ *
+ * modifies: new_topic
+ */
+void
+conform_topic(char* topic_mask, char* topic, char *new_topic)
+{
+    //char *topic_mask = cData->topic_mask;
+    char tchar;
+    int pos=0, starpos=-1, dpos=0, len;
+
+    while((tchar = topic_mask[pos++]) && (dpos <= TOPICLEN))
+    {
+        switch(tchar)
+        {
+        case '*':
+            if(starpos != -1)
+            {
+                strcpy(new_topic, "");
+                return;
+            }
+            len = strlen(topic);
+            if((dpos + len) > TOPICLEN)
+                len = TOPICLEN + 1 - dpos;
+            memcpy(new_topic+dpos, topic, len);
+            dpos += len;
+            starpos = pos;
+            break;
+        case '\\': tchar = topic_mask[pos++]; /* and fall through */
+        default: new_topic[dpos++] = tchar; break;
+        }
+    }
+    if((dpos > TOPICLEN) || tchar)
+    {
+        strcpy(new_topic, "");
+        return;
+    }
+    new_topic[dpos] = 0;
+    return;
 }
 
 static CHANSERV_FUNC(cmd_topic)
@@ -3805,12 +3862,12 @@ static CHANSERV_FUNC(cmd_topic)
     cData = channel->channel_info;
     if(argc < 2)
     {
-	if(cData->topic)
-	{
-	    SetChannelTopic(channel, chanserv, cData->topic, 1);
-	    reply("CSMSG_TOPIC_SET", cData->topic);
+        if(cData->topic)
+        {
+            SetChannelTopic(channel, chanserv, cData->topic, 1);
+            reply("CSMSG_TOPIC_SET", cData->topic);
             return 1;
-	}
+        }
 
         reply("CSMSG_NO_TOPIC", channel->name);
         return 0;
@@ -3820,48 +3877,34 @@ static CHANSERV_FUNC(cmd_topic)
     /* If they say "!topic *", use an empty topic. */
     if((topic[0] == '*') && (topic[1] == 0))
         topic[0] = 0;
+
     if(bad_topic(channel, user, topic))
     {
-        char *topic_mask = cData->topic_mask;
-        if(topic_mask)
+        reply("CSMSG_TOPIC_LOCKED", channel->name);
+        return 0;
+    }
+    else
+    {
+        /* If there is a topicmask set, and the new topic doesnt match, make it */
+        if(cData->topic_mask && !match_ircglob(topic, cData->topic_mask))
         {
-            char new_topic[TOPICLEN+1], tchar;
-            int pos=0, starpos=-1, dpos=0, len;
+            char *topic_mask = cData->topic_mask;
+            char new_topic[TOPICLEN+1];
 
-            while((tchar = topic_mask[pos++]) && (dpos <= TOPICLEN))
+            /* make a new topic fitting mask */
+            conform_topic(topic_mask, topic, new_topic);
+            if(!*new_topic)
             {
-                switch(tchar)
-                {
-                case '*':
-                    if(starpos != -1)
-                        goto bad_mask;
-                    len = strlen(topic);
-                    if((dpos + len) > TOPICLEN)
-                        len = TOPICLEN + 1 - dpos;
-                    memcpy(new_topic+dpos, topic, len);
-                    dpos += len;
-                    starpos = pos;
-                    break;
-                case '\\': tchar = topic_mask[pos++]; /* and fall through */
-                default: new_topic[dpos++] = tchar; break;
-                }
-            }
-            if((dpos > TOPICLEN) || tchar)
-            {
-            bad_mask:
+                /* Topic couldnt fit into mask, was too long */
                 reply("CSMSG_TOPICMASK_CONFLICT1", channel->name, topic_mask);
                 reply("CSMSG_TOPICMASK_CONFLICT2", TOPICLEN);
                 return 0;
             }
-            new_topic[dpos] = 0;
             SetChannelTopic(channel, chanserv, new_topic, 1);
-        } else {
-            reply("CSMSG_TOPIC_LOCKED", channel->name);
-            return 0;
         }
+        else /* No mask set, just set the topic */
+            SetChannelTopic(channel, chanserv, topic, 1);
     }
-    else
-        SetChannelTopic(channel, chanserv, topic, 1);
 
     if(check_user_level(channel, user, lvlTopicSnarf, 1, 0))
     {
@@ -4038,7 +4081,7 @@ static CHANSERV_FUNC(cmd_info)
     reply("CSMSG_BAR");
 
     uData = GetChannelUser(cData, user->handle_info);
-    if(uData && (uData->access >= cData->lvlOpts[lvlGiveOps]))
+    if(uData && (uData->access >= UL_OP /*cData->lvlOpts[lvlGiveOps]*/))
     {
         mod_chanmode_format(&cData->modes, modes);
 	reply("CSMSG_CHANNEL_TOPIC", cData->topic);
@@ -4243,8 +4286,7 @@ static CHANSERV_FUNC(cmd_resync)
             continue;
 
         uData = GetChannelAccess(cData, mn->user->handle_info);
-        if(!cData->lvlOpts[lvlGiveOps]
-           || (uData && uData->access >= cData->lvlOpts[lvlGiveOps]))
+        if(uData && uData->access >= UL_OP /* cData->lvlOpts[lvlGiveOps]*/)
         {
             if(!(mn->modes & MODE_CHANOP))
             {
@@ -4252,8 +4294,7 @@ static CHANSERV_FUNC(cmd_resync)
                 changes->args[used++].u.member = mn;
             }
         }
-        else if(!cData->lvlOpts[lvlGiveHalfOps]
-                || (uData && uData->access >= cData->lvlOpts[lvlGiveHalfOps]))
+        else if(uData && uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
         {
             if(!(mn->modes & MODE_HALFOP))
             {
@@ -4271,8 +4312,7 @@ static CHANSERV_FUNC(cmd_resync)
                 changes->args[used++].u.member = mn;
             }
         }
-        else if(!cData->lvlOpts[lvlGiveVoice]
-                || (uData && uData->access >= cData->lvlOpts[lvlGiveVoice]))
+        else if(uData && uData->access >= UL_PEON /* cData->lvlOpts[lvlGiveVoice]*/)
         {
             if(mn->modes & MODE_CHANOP)
             {
@@ -5232,6 +5272,7 @@ channel_level_option(enum levelOption option, struct userNode *user, struct chan
         }
         switch(option)
         {
+            /* removing these level sets..
         case lvlGiveVoice:
             if(value > cData->lvlOpts[lvlGiveOps])
             {
@@ -5253,6 +5294,7 @@ channel_level_option(enum levelOption option, struct userNode *user, struct chan
                 return 0;
             }
             break;
+            */
         case lvlSetters:
             /* This test only applies to owners, since non-owners
              * trying to set an option to above their level get caught
@@ -5282,7 +5324,7 @@ static MODCMD_FUNC(chan_opt_enfhalfops)
 {
     return channel_level_option(lvlEnfHalfOps, CSFUNC_ARGS);
 }
-
+/*
 static MODCMD_FUNC(chan_opt_giveops)
 {
     return channel_level_option(lvlGiveOps, CSFUNC_ARGS);
@@ -5292,7 +5334,7 @@ static MODCMD_FUNC(chan_opt_givehalfops)
 {
     return channel_level_option(lvlGiveHalfOps, CSFUNC_ARGS);
 }
-
+*/
 static MODCMD_FUNC(chan_opt_enfmodes)
 {
     return channel_level_option(lvlEnfModes, CSFUNC_ARGS);
@@ -5323,10 +5365,12 @@ static MODCMD_FUNC(chan_opt_userinfo)
     return channel_level_option(lvlUserInfo, CSFUNC_ARGS);
 }
 
+/*
 static MODCMD_FUNC(chan_opt_givevoice)
 {
     return channel_level_option(lvlGiveVoice, CSFUNC_ARGS);
 }
+*/
 
 static MODCMD_FUNC(chan_opt_topicsnarf)
 {
@@ -5509,10 +5553,11 @@ static MODCMD_FUNC(user_opt_noautoop)
         reply("CSMSG_NOT_USER", channel->name);
         return 0;
     }
-    if(uData->access < channel->channel_info->lvlOpts[lvlGiveOps])
+    if(uData->access < UL_OP /*channel->channel_info->lvlOpts[lvlGiveOps]*/)
         return user_binary_option("CSMSG_USET_NOAUTOVOICE", USER_AUTO_OP, CSFUNC_ARGS);
     else
         return user_binary_option("CSMSG_USET_NOAUTOOP", USER_AUTO_OP, CSFUNC_ARGS);
+    /* TODO: add halfops error message? or is the op one generic enough? */
 }
 
 static MODCMD_FUNC(user_opt_autoinvite)
@@ -6125,13 +6170,14 @@ handle_join(struct modeNode *mNode)
     {
         /* don't automatically give ops or voice during a join flood */
     }
+    /* I don't understand why we do this, so im removing it -rubin *
     else if(cData->lvlOpts[lvlGiveOps] == 0)
         modes |= MODE_CHANOP;
     else if(cData->lvlOpts[lvlGiveHalfOps] == 0)
         modes |= MODE_HALFOP;
     else if(cData->lvlOpts[lvlGiveVoice] == 0)
         modes |= MODE_VOICE;
-
+    */
     greeting = cData->greeting;
     if(user->handle_info)
     {
@@ -6156,11 +6202,11 @@ handle_join(struct modeNode *mNode)
             /* Ops and above were handled by the above case. */
             if(IsUserAutoOp(uData))
             {
-                if(uData->access >= cData->lvlOpts[lvlGiveOps])
+                if(uData->access >= UL_OP /*cData->lvlOpts[lvlGiveOps]*/)
                     modes |= MODE_CHANOP;
-                if(uData->access >= cData->lvlOpts[lvlGiveHalfOps])
+                if(uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
                     modes |= MODE_HALFOP;
-                else if(uData->access >= cData->lvlOpts[lvlGiveVoice])
+                else if(uData->access >= UL_PEON /* cData->lvlOpts[lvlGiveVoice] */)
                     modes |= MODE_VOICE;
             }
             if(uData->access >= UL_PRESENT)
@@ -6234,11 +6280,11 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 
         if(IsUserAutoOp(channel))
         {
-            if(channel->access >= cn->channel_info->lvlOpts[lvlGiveOps])
+            if(channel->access >= UL_OP /* cn->channel_info->lvlOpts[lvlGiveOps] */)
                 change.args[0].mode = MODE_CHANOP;
-            else if(channel->access >= cn->channel_info->lvlOpts[lvlGiveHalfOps])
+            else if(channel->access >= UL_HALFOP /* cn->channel_info->lvlOpts[lvlGiveHalfOps]*/)
                 change.args[0].mode = MODE_HALFOP;
-            else if(channel->access >= cn->channel_info->lvlOpts[lvlGiveVoice])
+            else if(channel->access >= UL_PEON /* cn->channel_info->lvlOpts[lvlGiveVoice]*/)
                 change.args[0].mode = MODE_VOICE;
             else
                 change.args[0].mode = 0;
@@ -6366,13 +6412,29 @@ handle_topic(struct userNode *user, struct chanNode *channel, const char *old_to
 
     cData = channel->channel_info;
     if(bad_topic(channel, user, channel->topic))
-    {
+    {   /* User doesnt have privs to set topics. Undo it */
         send_message(user, chanserv, "CSMSG_TOPIC_LOCKED", channel->name);
-        if(cData->topic_mask && match_ircglob(old_topic, cData->topic_mask))
-            SetChannelTopic(channel, chanserv, old_topic, 1);
-        else if(cData->topic)
-            SetChannelTopic(channel, chanserv, cData->topic, 1);
+        SetChannelTopic(channel, chanserv, old_topic, 1);
         return 1;
+    }
+    /* If there is a topic mask set, and the new topic doesnt match,
+     * set the topic to mask + new_topic */
+    if(cData->topic_mask && !match_ircglob(channel->topic, cData->topic_mask))
+    {
+        char new_topic[TOPICLEN+1];
+        conform_topic(cData->topic_mask, channel->topic, new_topic);
+        if(*new_topic)
+        {
+           SetChannelTopic(channel, chanserv, new_topic, 1);
+           /* and fall through to topicsnarf code below.. */
+        }
+        else /* Topic couldnt fit into mask, was too long */
+        {
+            SetChannelTopic(channel, chanserv, old_topic, 1);
+            send_message(user, chanserv, "CSMSG_TOPICMASK_CONFLICT1", channel->name, cData->topic_mask);
+            send_message(user, chanserv, "CSMSG_TOPICMASK_CONFLICT2", TOPICLEN);
+            return 1;
+        }
     }
     /* With topicsnarf, grab the topic and save it as the default topic. */
     if(check_user_level(channel, user, lvlTopicSnarf, 0, 0))
@@ -6650,7 +6712,7 @@ chanserv_conf_read(void)
             /* free form text */
             "DefaultTopic", "TopicMask", "Greeting", "UserGreeting", "Modes",
             /* options based on user level */
-            "PubCmd", "InviteMe", "UserInfo", "GiveVoice", "GiveHalfOps", "GiveOps", "EnfOps",
+            "PubCmd", "InviteMe", "UserInfo",/* "GiveVoice", "GiveHalfOps", "GiveOps", */ "EnfOps",
             "EnfHalfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", "CtcpUsers",
             /* multiple choice options */
             "CtcpReaction", "Protect", "Toys", "TopicRefresh",
@@ -7479,13 +7541,15 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(modes);
     DEFINE_CHANNEL_OPTION(enfops);
     DEFINE_CHANNEL_OPTION(enfhalfops);
-    DEFINE_CHANNEL_OPTION(giveops);
+    /*DEFINE_CHANNEL_OPTION(giveops);
     DEFINE_CHANNEL_OPTION(givehalfops);
+    */
     DEFINE_CHANNEL_OPTION(protect);
     DEFINE_CHANNEL_OPTION(enfmodes);
     DEFINE_CHANNEL_OPTION(enftopic);
     DEFINE_CHANNEL_OPTION(pubcmd);
-    DEFINE_CHANNEL_OPTION(givevoice);
+    /*DEFINE_CHANNEL_OPTION(givevoice);
+     */
     DEFINE_CHANNEL_OPTION(userinfo);
     DEFINE_CHANNEL_OPTION(dynlimit);
     DEFINE_CHANNEL_OPTION(topicsnarf);

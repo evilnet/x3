@@ -417,14 +417,11 @@
 	"PUBCMD:       Restrictions to use commands in public.",
         "INVITEME:     Minimum level for users to use INVITEME or AUTOINVITE.",
         "USERINFO:     Minimum level for users to show an infoline on join.",
-        "GIVEVOICE:    The users that $b$C$b will autovoice.",
-        "GIVEHOPS:     The users that $b$C$b will autohalfop.",
-        "GIVEOPS:      The users that $b$C$b will autoop.",
         "ENFOPS:       Restrictions for opping users.",
         "ENFHALFOPS:   Restrictions for halfopping users.",
         "ENFMODES:     Restrictions to change the default modes.",
         "ENFTOPIC:     Restrictions on changing the topic.",
-        "TOPICSNARF:   Topics set manually (by /TOPIC #channel ...) by users this level and above change the default $b$C$b topic.",
+        "TOPICSNARF:   Manual topics changes (by /TOPIC) from users this level and above will change the default $b$C$b topic.",
         "SETTERS:      Who may change channel settings (using $bSET$b).",
         "CTCPUSERS:    Who is allowed to send CTCPs to the channel.",
         "CTCPREACTION: What happens when a disallowed CTCP is sent to the channel.",
@@ -435,18 +432,20 @@
         "$bIRCOP ONLY$b:",
         "NODELETE:  Prevents channel deletion.",
         "If you wish to reset your channel to the default settings, you can use the $bSET DEFAULTS$b command.",
-        "$uSee Also:$u set pubcmd, set giveops, set givehalfops, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpusers, set ctcpreaction, set defaults");
+        "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpusers, set ctcpreaction, set defaults");
 "SET DEFAULTTOPIC" ("/msg $C SET <#channel> DEFAULTTOPIC <New default topic>",
         "This changes the default topic for the channel.  $C will set the IRC topic to this value when the $btopic$b command is used with no arguments, when the topic refresh happens (if you have $bset topicrefresh$b), or when an unauthorized user changes the topic to something else.",
         "$uSee Also:$u set, set topicrefresh, set enftopic, set topicmask");
 "SET TOPICMASK" ("/msg $C SET <#channel> TOPICMASK <Topic mask with * and ?>",
-        "This sets a pattern that $C allows for the topic.  A $b*$b will match any number of characters (including 0); a $b?$b will match any single character -- the same as with IRC hostmasks.  A user may set a topic if either $btopicmask$b or $benftopic$b allow it.",
-        "For example, $b!set topicmask Hello *$b allows anyone to set the topic to be $bHello world$b, but they must be able to override the topic (according to the $bEnfTopic$b setting) to set the topic to $bGoodbye world$b.",
+        "This sets a pattern that $C forces all topics to match. A $b*$b will match any number of characters (including 0); a $b?$b will match any single character -- the same as with IRC hostmasks.",
+        "For example, $b!set topicmask Hello *$b allows the topic to be set to $bHello world$b, but not $bGoodbye world$b.",
         "You may \"escape\" those characters by putting a \\ before them in the topic mask; for example, $b!set topicmask Whassup\\?$b would only allow the topic to be $bWhassup?$b, while leaving out the \\ would allow the topic to be $bWhassup!$b (among other things).",
-        "For ease of use, if the TopicMask has only one * and no ?, then using $b!topic something$b will (if $bsomething$b does not match the TopicMask and you cannot override the topic lock) replace the * with the text $bsomething$b.  If there is more than one * or any ? at all, $b!topic something$b will not work like that.",
+        "If the TopicMask has only one * and no ?, then using:",
+        " $btopic something$b",
+        "will replace the * with the text $bsomething$b.",
         "$uSee Also:$u set, set topic, set enftopic");
 "SET TOYS" ("/msg $C SET <#channel> TOYS <value>",
-	"This setting changes how $C will respond to commands like !8ball, or whether it responds at all.  Valid settings are:",
+	"This setting changes how $C will respond to commands like 8ball, or whether it responds at all.  Valid settings are:",
 	"$b0$b  Toys are completely disabled.",
 	"$b1$b  Toys will only reply privately.",
 	"$b2$b  Toys will reply publicly.",
@@ -538,7 +537,7 @@
         "Displays up to a certain limit, all channels registered with $b$C$b that have not been visited within a certain duration. If a duration is not provided, a default will be used.",
         "$uSee Also:$u expire, search, durations");
 "UP" ("/msg $C UP <#channel>",
-        "Grants you your normal channel privileges.  If your access in the channel is less than the GiveVoice setting, this does nothing.  Otherwise, if your access is less than the GiveOps setting, $b$C$b will give you an halfop.  If your access is as GiveHalfOps, $b$C$b will give you halfops.  If your access is at least GiveOps, $b$C$b will give you ops.");
+        "Grants you your normal channel privileges.  Ops for OPs, HalfOps for HALFOPs, and Voice for PEONs.");
 "UPALL" ("/msg $C UPALL",
         "Executes the $bup$b command for each channel you have access in.",
         "$uSee Also:$u up, down, downall");

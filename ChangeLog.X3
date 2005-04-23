@@ -1,6 +1,15 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-04-23  Alex Schumann  <rubin@afternet.org>
+	* src/chanserv.c: removed settings: oplevel, halfoplevel, and
+	voicelevel, hard coding them to OP, HALFOP, and PEON. Changed
+	topicmask to be an on or off setting, uninfluenced by enftopic. 
+	Added feature to use mask on /topic in addition to ,topic sets.
+
+	* src/chanserv.help: updated documentation to reflect the new and
+	much simpler topicmask feature, and removed op/voice levels.
+
 2005-04-20  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-common.c: removing +d. needs to be a config option
