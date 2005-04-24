@@ -775,9 +775,9 @@ svccmd_send_help(struct userNode *user, struct userNode *bot, struct svccmd *cmd
          * TODO: We actually DO want to show the parent IF there is no other help.
          */
     r =        send_help(user, bot, cmd->command->parent->helpfile, cmd->name);
-    if(cmd->command->name)
+    if(cmd->command->name && strcasecmp(cmd->command->name, cmd->name))
     {
-        send_message(user, bot, "MCMSG_COMMAND_ALIASES", cmd->name, cmd->command->name);
+        send_message(user, bot, "MCMSG_HELP_COMMAND_ALIAS", cmd->command->name);
     }
 
     /* If it's an alias, show what it's an alias for. */
@@ -815,7 +815,7 @@ svccmd_send_help_brief(struct userNode *user, struct userNode *bot, struct svccm
     if(!r) {
         if(cmd->command->name)
         {
-           send_message(user, bot, "MCMSG_HELP_COMMAND_ALIAS", cmd->command->name);
+           send_message(user, bot, "MCMSG_COMMAND_ALIASES", cmd->name, cmd->command->name);
            r = send_help_brief(user, bot, cmd->command->parent->helpfile, cmd->command->name);
         }
     }

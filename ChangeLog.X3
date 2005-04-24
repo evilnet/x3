@@ -6,12 +6,15 @@
 	voicelevel, hard coding them to OP, HALFOP, and PEON. Changed
 	topicmask to be an on or off setting, uninfluenced by enftopic. 
 	Added feature to use mask on /topic in addition to ,topic sets.
+	Removed special consideration for ircops in protect_user()
 
 	* src/chanserv.help: updated documentation to reflect the new and
 	much simpler topicmask feature, and removed op/voice levels.
 
 	* src/nickserv.c: added tailing 'end of' line for accountinfo
 	for non-opers too.
+
+	* src/modcmd.c: tweaked alias notification for help and breef help.
 
 2005-04-20  Alex Schumann  <rubin@afternet.org>
 

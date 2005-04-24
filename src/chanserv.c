@@ -1427,7 +1427,7 @@ protect_user(const struct userNode *victim, const struct userNode *aggressor, st
 
     /* Don't protect if no one is to be protected, someone is attacking
        himself, or if the aggressor is an IRC Operator. */
-    if(protect == 'n' || victim == aggressor || IsOper(aggressor))
+    if(protect == 'n' || victim == aggressor /* Opers dont get special treatment :/  || IsOper(aggressor) */)
 	return 0;
 
     /* Don't protect if the victim isn't authenticated (because they
