@@ -2237,6 +2237,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'Q': do_chan_mode(MODE_NOQUITMSGS); break;
         case 'T': do_chan_mode(MODE_NOAMSG); break;
         case 'O': do_chan_mode(MODE_OPERSONLY); break;
+        case 'Z': do_chan_mode(MODE_SSLONLY); break;
 	case 'z':
 	  if (!(flags & MCP_REGISTERED)) {
 	   do_chan_mode(MODE_REGISTERED);
@@ -2414,8 +2415,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
-        // uncomment this for ssl support
-        //DO_MODE_CHAR(SSLONLY, 'Z');
+        DO_MODE_CHAR(SSLONLY, 'Z');
 #undef DO_MODE_CHAR
         if (change->modes_clear & channel->modes & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', channel->key);
@@ -2466,8 +2466,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
-        // uncomment this for ssl support
-        //DO_MODE_CHAR(SSLONLY, 'Z');
+        DO_MODE_CHAR(SSLONLY, 'Z');
 #undef DO_MODE_CHAR
         if(change->modes_set & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', change->new_key);
@@ -2535,8 +2534,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
-        // uncomment this for ssl support
-        //DO_MODE_CHAR(SSLONLY, 'Z');
+        DO_MODE_CHAR(SSLONLY, 'Z');
 #undef DO_MODE_CHAR
     }
     if (change->modes_set) {
@@ -2559,8 +2557,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
-        // uncomment this for ssl support
-        //DO_MODE_CHAR(SSLONLY, 'Z');
+        DO_MODE_CHAR(SSLONLY, 'Z');
 #undef DO_MODE_CHAR
         switch (change->modes_set & (MODE_KEY|MODE_LIMIT)) {
         case MODE_KEY|MODE_LIMIT:
@@ -2615,6 +2612,7 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'T': remove |= MODE_NOAMSG; break;
         case 'O': remove |= MODE_OPERSONLY; break;
         case 'z': remove |= MODE_REGISTERED; break;
+        case 'Z': remove |= MODE_SSLONLY; break;
         }
     }
 

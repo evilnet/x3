@@ -53,6 +53,7 @@ enum levelOption {
 };
 
 enum charOption {
+    chVoice,
     chProtect,
     chToys,
     chTopicRefresh,
@@ -113,12 +114,14 @@ struct chanData
     struct chanData	*next;
 };
 
-#define USER_AUTO_OP            0x00000001
+#define USER_NOAUTO_OP          0x00000001 /* OLD; Not used at all.. */
 #define USER_SUSPENDED          0x00000002
 #define USER_AUTO_INVITE        0x00000004
-#define USER_FLAGS_SIZE         7
+#define USER_AUTO_OP            0x00000008
+#define USER_FLAGS_SIZE         15
+#define USER_FLAGS_DEFAULT      USER_AUTO_OP
 
-#define IsUserAutoOp(USER)      (!((USER)->flags & USER_AUTO_OP))
+#define IsUserAutoOp(USER)      ((USER)->flags & USER_AUTO_OP)
 #define IsUserSuspended(USER)   ((USER)->flags & USER_SUSPENDED)
 #define IsUserAutoInvite(USER)  ((USER)->flags & USER_AUTO_INVITE)
 

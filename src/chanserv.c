@@ -56,8 +56,12 @@
 #define KEY_GIVEOWNERSHIP_PERIOD "giveownership_timeout"
 
 /* ChanServ database */
+#define KEY_VERSION_CONTROL     "version_control"
 #define KEY_CHANNELS		"channels"
 #define KEY_NOTE_TYPES          "note_types"
+
+/* version control paramiter */
+#define KEY_VERSION_NUMBER      "version_number"
 
 /* Note type parameters */
 #define KEY_NOTE_OPSERV_ACCESS  "opserv_access"
@@ -275,12 +279,13 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_PUBCMD",        "$bPubCmd      $b %d" },
     { "CSMSG_SET_SETTERS",       "$bSetters     $b %d" },
     { "CSMSG_SET_CTCPUSERS",     "$bCTCPUsers   $b %d" },
+    { "CSMSG_SET_VOICE",         "$bvoice       $b %d - %s" },
     { "CSMSG_SET_PROTECT",       "$bProtect     $b %d - %s" },
     { "CSMSG_SET_TOYS",          "$bToys        $b %d - %s" },
     { "CSMSG_SET_CTCPREACTION",  "$bCTCPReaction$b %d - %s" },
     { "CSMSG_SET_TOPICREFRESH",  "$bTopicRefresh$b %d - %s" },
-    { "CSMSG_USET_NOAUTOOP",     "$bNoAutoOp    $b %s" },
-    { "CSMSG_USET_NOAUTOVOICE",  "$bNoAutoVoice $b %s" },
+    { "CSMSG_USET_AUTOOP",       "$bAutoOp      $b %s" },
+    { "CSMSG_USET_AUTOVOICE",    "$bAutoVoice   $b %s" },
     { "CSMSG_USET_AUTOINVITE",   "$bAutoInvite  $b %s" },
     { "CSMSG_USET_INFO",         "$bInfo        $b %s" },
 
@@ -294,6 +299,9 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_DEHALFOPPED_USERS", "DeHalfopped users in $b%s$b." },
     { "CSMSG_VOICED_USERS", "Voiced users in $b%s$b." },
     { "CSMSG_DEVOICED_USERS", "Devoiced users in $b%s$b." },
+    { "CSMSG_VOICE_NONE", "Noone will be auto-voiced" },
+    { "CSMSG_VOICE_PEON", "PEONs will be auto-voiced" },
+    { "CSMSG_VOICE_ALL", "Everyone will be auto-voiced" },
     { "CSMSG_PROTECT_ALL", "Non-users and users will be protected from those of equal or lower access." },
     { "CSMSG_PROTECT_EQUAL", "Users will be protected from those of equal or lower access." },
     { "CSMSG_PROTECT_LOWER", "Users will be protected from those of lower access." },
@@ -622,7 +630,11 @@ static const struct {
 struct charOptionValues {
     char value;
     char *format_name;
-} protectValues[] = {
+} voiceValues[] = {
+    { 'n', "CSMSG_VOICE_NONE" },
+    { 'p', "CSMSG_VOICE_PEON" },
+    { 'a', "CSMSG_VOICE_ALL" }
+}, protectValues[] = {
     { 'a', "CSMSG_PROTECT_ALL" },
     { 'e', "CSMSG_PROTECT_EQUAL" },
     { 'l', "CSMSG_PROTECT_LOWER" },
@@ -652,8 +664,9 @@ static const struct {
     unsigned char count;
     struct charOptionValues *values;
 } charOptions[] = {
-    { "CSMSG_SET_PROTECT", "protect", 'l', 0, ArrayLength(protectValues), protectValues },
-    { "CSMSG_SET_TOYS", "toys", 'p', 6, ArrayLength(toysValues), toysValues },
+    { "CSMSG_SET_VOICE",        "voice",        'p', 99, ArrayLength(voiceValues), voiceValues },
+    { "CSMSG_SET_PROTECT",      "protect",      'l', 0, ArrayLength(protectValues), protectValues },
+    { "CSMSG_SET_TOYS",         "toys",         'p', 6, ArrayLength(toysValues), toysValues },
     { "CSMSG_SET_TOPICREFRESH", "topicrefresh", 'n', 8, ArrayLength(topicRefreshValues), topicRefreshValues },
     { "CSMSG_SET_CTCPREACTION", "ctcpreaction", 't', 10, ArrayLength(ctcpReactionValues), ctcpReactionValues }
 };
@@ -662,6 +675,9 @@ struct userData *helperList;
 struct chanData *channelList;
 static struct module *chanserv_module;
 static unsigned int userCount;
+unsigned int chanserv_read_version = 0; /* db version control */
+
+#define CHANSERV_DB_VERSION 2
 
 #define GetChannelUser(channel, handle) _GetChannelUser(channel, handle, 1, 0)
 #define GetChannelAccess(channel, handle) _GetChannelUser(channel, handle, 0, 0)
@@ -1169,6 +1185,7 @@ add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned 
         ud->u_next->u_prev = ud;
     ud->handle->channels = ud;
 
+    ud->flags = USER_FLAGS_DEFAULT;
     return ud;
 }
 
@@ -2636,7 +2653,7 @@ static CHANSERV_FUNC(cmd_up)
         change.args[0].mode = MODE_HALFOP;
         errmsg = "CSMSG_ALREADY_HALFOPPED";
     }
-    else if(uData->access >= UL_PEON /* channel->channel_info->lvlOpts[lvlGiveVoice]*/)
+    else if(uData->access >= UL_PEON && (channel->channel_info->chOpts[chVoice] == 'p' || channel->channel_info->chOpts[chVoice] == 'a'))
     {
         change.args[0].mode = MODE_VOICE;
         errmsg = "CSMSG_ALREADY_VOICED";
@@ -3342,7 +3359,7 @@ static CHANSERV_FUNC(cmd_myaccess)
             continue;
         sbuf.used = 0;
         string_buffer_append_printf(&sbuf, "[%s (%d", cData->channel->name, uData->access);
-        if(uData->flags != USER_AUTO_OP)
+        if(uData->flags == USER_AUTO_OP)
             string_buffer_append(&sbuf, ',');
         if(IsUserSuspended(uData))
             string_buffer_append(&sbuf, 's');
@@ -5422,6 +5439,11 @@ channel_multiple_option(enum charOption option, struct userNode *user, struct ch
     return 1;
 }
 
+static MODCMD_FUNC(chan_opt_voice)
+{
+    return channel_multiple_option(chVoice, CSFUNC_ARGS);
+}
+
 static MODCMD_FUNC(chan_opt_protect)
 {
     return channel_multiple_option(chProtect, CSFUNC_ARGS);
@@ -5543,7 +5565,7 @@ user_binary_option(char *name, unsigned long mask, struct userNode *user, struct
     return 1;
 }
 
-static MODCMD_FUNC(user_opt_noautoop)
+static MODCMD_FUNC(user_opt_autoop)
 {
     struct userData *uData;
 
@@ -5554,9 +5576,9 @@ static MODCMD_FUNC(user_opt_noautoop)
         return 0;
     }
     if(uData->access < UL_OP /*channel->channel_info->lvlOpts[lvlGiveOps]*/)
-        return user_binary_option("CSMSG_USET_NOAUTOVOICE", USER_AUTO_OP, CSFUNC_ARGS);
+        return user_binary_option("CSMSG_USET_AUTOVOICE", USER_AUTO_OP, CSFUNC_ARGS);
     else
-        return user_binary_option("CSMSG_USET_NOAUTOOP", USER_AUTO_OP, CSFUNC_ARGS);
+        return user_binary_option("CSMSG_USET_AUTOOP", USER_AUTO_OP, CSFUNC_ARGS);
     /* TODO: add halfops error message? or is the op one generic enough? */
 }
 
@@ -5623,7 +5645,7 @@ static CHANSERV_FUNC(cmd_uset)
     {
         char *options[] =
         {
-            "NoAutoOp", "AutoInvite", "Info"
+            "AutoOp", "AutoInvite", "Info"
         };
 
         if(!uset_shows_list.size)
@@ -6168,16 +6190,12 @@ handle_join(struct modeNode *mNode)
 
     if(channel->join_flooded)
     {
-        /* don't automatically give ops or voice during a join flood */
+        /* don't automatically give non users ops or voice during a join flood */
     }
-    /* I don't understand why we do this, so im removing it -rubin *
-    else if(cData->lvlOpts[lvlGiveOps] == 0)
-        modes |= MODE_CHANOP;
-    else if(cData->lvlOpts[lvlGiveHalfOps] == 0)
-        modes |= MODE_HALFOP;
-    else if(cData->lvlOpts[lvlGiveVoice] == 0)
+    /* EVERYONE is to get voice */
+    else if(cData->chOpts[chVoice] == 'a')
         modes |= MODE_VOICE;
-    */
+
     greeting = cData->greeting;
     if(user->handle_info)
     {
@@ -6199,14 +6217,14 @@ handle_join(struct modeNode *mNode)
         uData = GetTrueChannelAccess(cData, handle);
         if(uData && !IsUserSuspended(uData))
         {
-            /* Ops and above were handled by the above case. */
+            /* non users getting voice are handled above. */
             if(IsUserAutoOp(uData))
             {
                 if(uData->access >= UL_OP /*cData->lvlOpts[lvlGiveOps]*/)
                     modes |= MODE_CHANOP;
                 if(uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
                     modes |= MODE_HALFOP;
-                else if(uData->access >= UL_PEON /* cData->lvlOpts[lvlGiveVoice] */)
+                else if(uData->access >= UL_PEON && cData->chOpts[chVoice] == 'p')
                     modes |= MODE_VOICE;
             }
             if(uData->access >= UL_PRESENT)
@@ -6848,6 +6866,18 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
 
     uData = add_channel_user(chan, handle, access, last_seen, inf);
     uData->flags = flags ? strtoul(flags, NULL, 0) : 0;
+
+    /* Upgrade: set autoop to the inverse of noautoop */
+    if(chanserv_read_version < 2)
+    {
+        /* if noautoop is true, set autoop false, and vice versa */
+        if(uData->flags & USER_NOAUTO_OP)
+            uData->flags = uData->flags & ~USER_AUTO_OP;
+        else
+            uData->flags = uData->flags | USER_AUTO_OP;
+        log_module(CS_LOG, LOG_INFO, "UPGRADE: to db version 2 from %u. Changing flag to %d for %s in %s.", chanserv_read_version, uData->flags, key, chan->channel->name);
+    }
+    
 }
 
 static void
@@ -7148,11 +7178,25 @@ chanserv_dnr_read(const char *key, struct record_data *hir)
         dnr->set = 0;
 }
 
+static void
+chanserv_version_read(struct dict *section)
+{
+    /* global var.. */
+    char *str;
+    str = database_get_data(section, KEY_VERSION_NUMBER, RECDB_QSTRING);
+    if(str)
+       chanserv_read_version = atoi(str);
+    log_module(CS_LOG, LOG_DEBUG, "Chanserv db version is %d.", chanserv_read_version);
+}
+
 static int
 chanserv_saxdb_read(struct dict *database)
 {
     struct dict *section;
     dict_iterator_t it;
+
+    if((section = database_get_data(database, KEY_VERSION_CONTROL, RECDB_OBJECT)))
+        chanserv_version_read(section);
 
     if((section = database_get_data(database, KEY_NOTE_TYPES, RECDB_OBJECT)))
         for(it = dict_first(section); it; it = iter_next(it))
@@ -7352,6 +7396,11 @@ chanserv_saxdb_write(struct saxdb_context *ctx)
     dict_iterator_t it;
     struct chanData *channel;
 
+    /* Version Control*/
+    saxdb_start_record(ctx, KEY_VERSION_CONTROL, 1);
+      saxdb_write_int(ctx, KEY_VERSION_NUMBER, CHANSERV_DB_VERSION);
+    saxdb_end_record(ctx);
+
     /* Notes */
     saxdb_start_record(ctx, KEY_NOTE_TYPES, 1);
     for(it = dict_first(note_types); it; it = iter_next(it))
@@ -7544,6 +7593,7 @@ init_chanserv(const char *nick)
     /*DEFINE_CHANNEL_OPTION(giveops);
     DEFINE_CHANNEL_OPTION(givehalfops);
     */
+    DEFINE_CHANNEL_OPTION(voice);
     DEFINE_CHANNEL_OPTION(protect);
     DEFINE_CHANNEL_OPTION(enfmodes);
     DEFINE_CHANNEL_OPTION(enftopic);
@@ -7568,12 +7618,12 @@ init_chanserv(const char *nick)
     modcmd_register(chanserv_module, "set topic", chan_opt_defaulttopic, 1, 0, NULL);
 
     /* User options */
-    DEFINE_USER_OPTION(noautoop);
     DEFINE_USER_OPTION(autoinvite);
     DEFINE_USER_OPTION(info);
+    DEFINE_USER_OPTION(autoop);
 
     /* Alias uset autovoice to uset autoop. */
-    modcmd_register(chanserv_module, "uset noautovoice", user_opt_noautoop, 1, 0, NULL);
+    modcmd_register(chanserv_module, "uset autovoice", user_opt_autoop, 1, 0, NULL);
 
     note_types = dict_new();
     dict_set_free_data(note_types, chanserv_deref_note_type);
@@ -7584,6 +7634,7 @@ init_chanserv(const char *nick)
         service_register(chanserv)->trigger = '!';
         reg_chanmsg_func('\001', chanserv, chanserv_ctcp_check);
     }
+
     saxdb_register("ChanServ", chanserv_saxdb_read, chanserv_saxdb_write);
 
     if(chanserv_conf.channel_expire_frequency)

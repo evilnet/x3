@@ -425,6 +425,7 @@
         "SETTERS:      Who may change channel settings (using $bSET$b).",
         "CTCPUSERS:    Who is allowed to send CTCPs to the channel.",
         "CTCPREACTION: What happens when a disallowed CTCP is sent to the channel.",
+        "VOICE:        Who should be auto-voiced in the channel.",
         "PROTECT:      The protection level $b$C$b provides.",
 	"TOYS:         Toggles how $b$C$b will respond to toy commands (!8ball etc).",
         "TOPICREFRESH: Controls if (and how often) $b$C$b will reset the topic.",
@@ -473,6 +474,12 @@
         "If a topic mask is set, then a person may change the topic as long as it matches that mask $bor$b they have the above access.",
         "If no topic mask is set, then a person must have the above access to change the topic from the default.",
         "$uSee Also:$u set, set topic, set topicmask");
+"SET VOICE" ("/msg $C SET <#channel> VOICE <value>",
+        "This setting configures who $C auto-voices.  Valid settings are:",
+        "$b0$b  Noone will get voice",
+        "$b1$b  PEONs will get voice (default).",
+        "$b2$b  Everyone will get voice.",
+        "$uSee Also:$u set, uset autoop");
 "SET PROTECT" ("/msg $C SET <#channel> PROTECT <value>",
         "This setting restricts the protection that $C enforces.  Valid settings are:",
         "$b0$b  Non-users and users will be protected from those of equal or lower access",
@@ -545,9 +552,8 @@
          "The $buset$b command allows you to toggle various channel user settings. With no arguments, it will print the current values of all channel user options.",
          "$bOptions:$b",
          "INFO:       Sets the infoline that $C sends when you join the channel.",
-         "NOAUTOOP:   Enable or disable $C automatically opping you upon joining or authenticating.",
+         "AUTOOP:     Enable or disable $C automatically opping you upon joining or authenticating.",
 	 "AUTOINVITE: $C will invite you to this channel if you have access to and are not in when you authenticate if this setting is on.",
-         "NOTE: The NoAutoOp setting is equivalent to the !togop command in previous versions of X3.",
          "$uSee Also:$u set");
 "USET INFO" ("/msg $C USET <#channel> INFO <info>",
         "This command will set a user defined information message to be displayed when you join the channel. Set to '*' to clear the message.",

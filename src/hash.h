@@ -47,7 +47,7 @@
 #define MODE_OPERSONLY          0x00080000 /* +O Opers only */
 #define MODE_NOQUITMSGS         0x00100000 /* +Q suppress messages from quit notices */
 #define MODE_NOAMSG             0x00200000 /* +T no multi-target messages */
-#define MODE_SSLONLY            0x00400000 /* +z ssl only */
+#define MODE_SSLONLY            0x00400000 /* +Z ssl only */
 #define MODE_HALFOP             0x00800000 /* +h USER */
 #define MODE_EXEMPT             0x01000000 /* +e exempt */
 #define MODE_REMOVE             0x80000000

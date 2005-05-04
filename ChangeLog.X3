@@ -1,6 +1,24 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-05-04  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: changed uset noautoop to uset autoop (removed double
+	negitive). Added set voice to provide control over use of voice.
+	Implimented a basic chanserv db version control system for upgrading
+	seamlessly.
+
+	* src/chanserv.help: adjusted help to reflect voice and uset autoop
+	changes.
+
+	* src/hash.h: updated ssz comment from z to Z
+
+	* src/modcmd.help: rewrote BIND help
+
+	* src/proto-p10.c: Added Z (sslonly) support back in
+
+	* UPGRADE: created file to document upgrading procedures needed
+
 2005-04-23  Alex Schumann  <rubin@afternet.org>
 	* src/chanserv.c: removed settings: oplevel, halfoplevel, and
 	voicelevel, hard coding them to OP, HALFOP, and PEON. Changed

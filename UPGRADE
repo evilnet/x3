@@ -1,0 +1,24 @@
+**************************************
+*** X3 IRC Services                ***
+**************************************
+*** IMPORTANT UPGRADE INSTRUCTIONS ***
+**************************************
+From srvx 1.4:
+  Rename srvx.conf to x3.conf
+  Review .conf file settings. 
+    * remove giveops, givevoice from set_shows and add "Voice" above "Protect".
+    * you can change from srvx.db to x3.db here also (dont forget to rename the file)
+  Run all of the steps below
+
+As of CVS version 1.24:
+  bind chanserv 'uset autoop' and 'set voice' (see note below).
+
+
+NOTE about command bindings:
+You may do: 'bind x3 * *chanserv.*' to re-bind ALL builtin commands on chanserv. This
+is the simplest approach and probably a good idea to run for each module (chanserv, 
+opserv, nickserv, modcmd, etc) after upgrading or changing some features (such as email).  
+Alternatively you can edit the .db by hand or using the 'bind' command on irc. 
+IMPORTANT: You will need to shut down x3 gracefully (using the die or restart commands)
+after binding in order for 'set' and 'uset' subcommand changes to function properly since
+the listing is cached. 
