@@ -195,6 +195,11 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_TRIMMED_USERS", "Trimmed $b%d users$b with access from %d to %d from the %s user list who were inactive for at least %s." },
     { "CSMSG_INCORRECT_ACCESS", "%s has access $b%s$b, not %s." },
     { "CSMSG_USER_EXISTS", "%s is already on the $b%s$b user list (with %s access)." },
+    { "CSMSG_ADDUSER_PENDING", "I have sent him/her a message letting them know, and if they auth or register soon, i will finish adding them automatically." },
+    { "CSMSG_ADDUSER_PENDING_ALREADY", "He or she is already pending addition to %s once he/she auths with $b$N$b." },
+    { "CSMSG_ADDUSER_PENDING_LIST", "Channel %s user %s" }, /* Remove after testing */
+    /*{ "CSMSG_ADDUSER_PENDING_NOTINCHAN", "That user is not in %s, and is not auth'd." }, */
+    { "CSMSG_ADDUSER_PENDING_TARGET", "Channel Services bot here, %s would like to add you to my userlist in channel %s, but you are not auth'd to $b$N$b. Please auth now, and you will be added. If you do not have an accont, type /msg $N help register" },
     { "CSMSG_CANNOT_TRIM", "You must include a minimum inactivity duration of at least 60 seconds to trim." },
 
     { "CSMSG_NO_SELF_CLVL", "You cannot change your own access." },
@@ -502,6 +507,8 @@ dict_t note_types;
 int off_channel;
 static dict_t plain_dnrs, mask_dnrs, handle_dnrs;
 static struct log_type *CS_LOG;
+struct adduserPending* adduser_pendings = NULL;
+unsigned int adduser_pendings_count = 0;
 
 static struct
 {
@@ -1219,6 +1226,110 @@ del_channel_user(struct userData *user, int do_gc)
         unregister_channel(channel, "lost all users.");
 }
 
+static struct adduserPending* 
+add_adduser_pending(struct chanNode *channel, struct userNode *user, int level)
+{
+    struct adduserPending *ap;
+    ap = calloc(1,sizeof(struct adduserPending));
+    ap->channel = channel;
+    ap->user = user;
+    ap->level = level;
+    ap->created = time(NULL);
+
+    /* ap->prev defaults to NULL already..  */
+    ap->next = adduser_pendings;
+    if(adduser_pendings)
+        adduser_pendings->prev = ap;
+    adduser_pendings = ap;
+    adduser_pendings_count++;
+    return(ap);
+}
+
+static void 
+del_adduser_pending(struct adduserPending *ap)
+{
+    if(ap->prev)
+        ap->prev->next = ap->next;
+    else
+        adduser_pendings = ap->next;
+
+    if(ap->next)
+        ap->next->prev = ap->prev;
+    free(ap);
+}
+
+static void expire_adduser_pending();
+
+/* find_adduser_pending(channel, user) will find an arbitrary record
+ * from user, channel, or user and channel.
+ * if user or channel are NULL, they will match any records.
+ */
+static struct adduserPending* 
+find_adduser_pending(struct chanNode *channel, struct userNode *user)
+{
+    struct adduserPending *ap;
+
+    expire_adduser_pending(); /* why not here.. */
+
+    if(!channel && !user) /* 2 nulls matches all */
+        return(adduser_pendings);
+    for(ap = adduser_pendings;ap;ap = ap->next)
+    {
+        if((channel == ap->channel && (user == NULL || user == ap->user)) || (user==ap->user && channel==NULL))
+            return ap;
+    }
+    return NULL;
+}
+
+
+/* Remove all pendings for a user or channel 
+ *
+ * called in nickserv.c DelUser() and proto-* unregister_channel()
+ */
+void
+wipe_adduser_pending(struct chanNode *channel, struct userNode *user)
+{
+    struct adduserPending *ap;
+
+    /* So this is a bit wastefull, i hate dealing with linked lists.
+     * if its a problem we'll rewrite it right */
+    while((ap = find_adduser_pending(channel, user))) {
+        del_adduser_pending(ap);
+    }
+}
+
+/* Called from nickserv.c cmd_auth after someone auths */
+void
+process_adduser_pending(struct userNode *user)
+{
+    struct adduserPending *ap;
+    while((ap = find_adduser_pending(NULL, user)))
+    {
+        struct userData *actee;
+        actee = add_channel_user(ap->channel->channel_info, ap->user->handle_info, ap->level, 0, NULL);
+        scan_user_presence(actee, NULL);
+        del_adduser_pending(ap);
+    }
+}
+
+static void
+expire_adduser_pending()
+{
+    struct adduserPending *ap, *ap_next;
+    ap = adduser_pendings;
+    while(ap)
+    {
+        if((ap->created + ADDUSER_PENDING_EXPIRE) < time(NULL))
+        {  /* expire it */
+            ap_next = ap->next; /* save next */
+            del_adduser_pending(ap); /* free and relink */
+            ap = ap_next; /* advance */
+        }
+        else
+            ap = ap->next;
+    }
+}
+
 static void expire_ban(void *data);
 
 static struct banData*
@@ -1336,6 +1447,7 @@ unregister_channel(struct chanData *channel, const char *reason)
        - Channel users.
        - Channel bans.
        - Channel suspension data.
+       - adduser_pending data.
        - Timeq entries. (Except timed bans, which are handled elsewhere.)
     */
 
@@ -1350,6 +1462,8 @@ unregister_channel(struct chanData *channel, const char *reason)
       change.modes_clear |= MODE_REGISTERED;
       mod_chanmode_announce(chanserv, channel->channel, &change);
     }
+
+    wipe_adduser_pending(channel->channel, NULL);
 
     while(channel->users)
 	del_channel_user(channel->users, 0);
@@ -2321,7 +2435,30 @@ static CHANSERV_FUNC(cmd_adduser)
     }
 
     if(!(handle = modcmd_get_handle_info(user, argv[1])))
+    {
+        // 'kevin must first authenticate with AuthServ.' is sent to user
+        struct userNode *unode;
+        unode = GetUserH(argv[1]); /* find user struct by nick */
+        if(unode)
+        {
+            if(find_adduser_pending(channel, unode)) {
+                reply("CSMSG_ADDUSER_PENDING_ALREADY", channel->name);
+            }
+            else {
+                if(IsInChannel(channel, unode)) {
+                   reply("CSMSG_ADDUSER_PENDING");
+                   add_adduser_pending(channel, unode, access);
+                   send_message_type(1,unode, chanserv, "CSMSG_ADDUSER_PENDING_TARGET", user->nick, channel->name);
+                }
+                /* this results in user must auth AND not in chan errors. too confusing..
+                else {
+                    reply("CSMSG_ADDUSER_PENDING_NOTINCHAN", channel->name);
+                }
+                */
+            }
+        }
         return 0;
+    }
 
     if((actee = GetTrueChannelAccess(channel->channel_info, handle)))
     {
@@ -3649,8 +3786,6 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
         lData.table.contents[matches] = ary;
         /* ary[0] = strtab(uData->access);*/
         ary[0] = user_level_name_from_level(uData->access);
-        /* TODO: replace above with func that returns static string
-         * of userlevel for that level. eg OP/MANAGER etc. -rubin */
         ary[1] = strtab(uData->access);
         ary[2] = uData->handle->handle;
         if(uData->present)
@@ -3675,6 +3810,14 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     }
     free(lData.table.contents[0]);
     free(lData.table.contents);
+    return 1;
+}
+
+static CHANSERV_FUNC(cmd_pending)
+{
+    struct adduserPending *ap;
+    for(ap = adduser_pendings;ap;ap = ap->next)
+        reply("CSMSG_ADDUSER_PENDING_LIST", ap->channel->name, ap->user->nick);
     return 1;
 }
 
@@ -7479,6 +7622,8 @@ init_chanserv(const char *nick)
     dict_set_free_data(plain_dnrs, free);
     mask_dnrs = dict_new();
     dict_set_free_data(mask_dnrs, free);
+    //TODO
+    //adduser_pending
 
     reg_svccmd_unbind_func(handle_svccmd_unbind);
     chanserv_module = module_register("ChanServ", CS_LOG, "chanserv.help", chanserv_expand_variable);
@@ -7490,6 +7635,8 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(cunsuspend, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "flags", "+helping", NULL);
     DEFINE_COMMAND(createnote, 5, 0, "level", "800", NULL);
     DEFINE_COMMAND(removenote, 2, 0, "level", "800", NULL);
+
+    DEFINE_COMMAND(pending, 1, MODCMD_REQUIRE_AUTHED, "flags", "+helping", NULL);
 
     DEFINE_COMMAND(unregister, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "flags", "+loghostmask", NULL);
     DEFINE_COMMAND(merge, 2, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "access", "owner", NULL);

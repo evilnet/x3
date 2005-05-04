@@ -1320,6 +1320,7 @@ static NICKSERV_FUNC(cmd_register)
        */
       SyncLog("REGISTER %s %s %s %s", hi->handle, syncpass, email_addr ? email_addr : "0", user->info);
     }
+    process_adduser_pending(user);
 
     return 1;
 }
@@ -1791,6 +1792,8 @@ static NICKSERV_FUNC(cmd_auth)
     if (hi->passwd[0] != '$')
         cryptpass(passwd, hi->passwd);
     reply("NSMSG_AUTH_SUCCESS");
+
+    process_adduser_pending(user);
     argv[pw_arg] = "****";
     return 1;
 }

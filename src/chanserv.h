@@ -72,10 +72,14 @@ enum charOption {
 #define CHANNEL_PEON_INVITE     0x00000080 /* (1 << 7) - DEPRECATED */
 #define CHANNEL_OFFCHANNEL      0x00000100 /* (1 << 8) */
 #define CHANNEL_HOP_ALL         0x00000200 /* (1 << 9) */
-
 /* Flags with values over 0x20000000 or (1 << 29) will not work
  * because chanData.flags is a 30-bit field.
  */
+
+/* how many seconds a pending adduser will wait for a user
+ * to get auth or register 
+ */
+#define ADDUSER_PENDING_EXPIRE 7200  /* 2 hours */
 
 #define IsProtected(x)		((x)->flags & CHANNEL_NODELETE)
 #define IsSuspended(x)		((x)->flags & CHANNEL_SUSPENDED)
@@ -144,6 +148,17 @@ struct userData
     struct userData     *u_next;
 };
 
+struct adduserPending
+{
+    struct chanNode *channel;
+    struct userNode *user;
+    int level;
+    time_t created;
+
+    struct adduserPending *prev;
+    struct adduserPending *next;
+};
+
 struct banData
 {
     char		mask[NICKLEN + USERLEN + HOSTLEN + 3];
@@ -187,5 +202,7 @@ int check_user_level(struct chanNode *channel, struct userNode *user, enum level
 void do_math(char *Buffer, char *Math);
 char* user_level_name_from_level(int level);
 
+void process_adduser_pending(struct userNode *user);
+void wipe_adduser_pending(struct chanNode *channel, struct userNode *user);
 
 #endif

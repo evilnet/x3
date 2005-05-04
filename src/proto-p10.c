@@ -2079,6 +2079,9 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
     /* mark them as dead, in case anybody cares */
     user->dead = 1;
 
+    /* remove pending adduser commands */
+    wipe_adduser_pending(NULL, user);
+
     /* remove user from all channels */
     while (user->channels.used > 0)
         DelChannelUser(user, user->channels.list[user->channels.used-1]->channel, false, 0);

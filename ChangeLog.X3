@@ -3,6 +3,22 @@
 
 2005-05-04  Alex Schumann  <rubin@afternet.org>
 
+	* src/chanserv.c: added an 'adduser pending' feature, where if
+	someone isn't authed x3 will ask them to /auth or register, and then
+	automatically finish adding them to the channel when they do.
+
+	* src/chanserv.h: adduser pending
+
+	* src/hash.c: adduser pending
+
+	* src/hash.h: adduser pending, and increased maxbans to 128 from 45.
+
+	* src/nickserv.c: adduser pending cleanup and activation code
+
+	* src/proto-p10.c: adduser pending cleanup code 
+
+2005-05-04  Alex Schumann  <rubin@afternet.org>
+
 	* src/chanserv.c: changed uset noautoop to uset autoop (removed double
 	negitive). Added set voice to provide control over use of voice.
 	Implimented a basic chanserv db version control system for upgrading
@@ -17,7 +33,7 @@
 
 	* src/proto-p10.c: Added Z (sslonly) support back in
 
-	* UPGRADE: created file to document upgrading procedures needed
+	* UPGRADE: created file to document upgrading procedures
 
 2005-04-23  Alex Schumann  <rubin@afternet.org>
 	* src/chanserv.c: removed settings: oplevel, halfoplevel, and

@@ -757,6 +757,33 @@ GetUserMode(struct chanNode *channel, struct userNode *user)
     return mn;
 }
 
+struct userNode *IsInChannel(struct chanNode *channel, struct userNode *user)
+{
+    unsigned int n;
+    struct modeNode *mn = NULL;
+
+    verify(channel);
+    verify(channel->members.list);
+    verify(user);
+    verify(user->channels.list);
+    if (channel->members.used < user->channels.used) {
+	for (n=0; n<channel->members.used; n++) {
+            verify(channel->members.list[n]);
+	    if (user == channel->members.list[n]->user) {
+                return(user);
+	    }
+	}
+    } else {
+	for (n=0; n<user->channels.used; n++) {
+            verify(user->channels.list[n]);
+	    if (channel == user->channels.list[n]->channel) {
+                return(user);
+	    }
+	}
+    }
+    return NULL;
+}
+
 DEFINE_LIST(userList, struct userNode*)
 DEFINE_LIST(modeList, struct modeNode*)
 DEFINE_LIST(banList, struct banNode*)

@@ -104,7 +104,7 @@
 #define CHANNELLEN      200
 
 #define MAXMODEPARAMS	6
-#define MAXBANS		45
+#define MAXBANS		128
 #define MAXEXEMPTS	45
 
 /* IDLEN is 6 because it takes 5.33 Base64 digits to store 32 bytes. */
@@ -269,6 +269,7 @@ int ChannelExemptExists(struct chanNode *channel, const char *exempt);
 typedef int (*topic_func_t)(struct userNode *who, struct chanNode *chan, const char *old_topic);
 void reg_topic_func(topic_func_t handler);
 void SetChannelTopic(struct chanNode *channel, struct userNode *user, const char *topic, int announce);
+struct userNode *IsInChannel(struct chanNode *channel, struct userNode *user);
 
 void init_structs(void);
 
