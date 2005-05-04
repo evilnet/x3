@@ -406,19 +406,22 @@
 "REGISTER" {
         "0: /services/nickserv/email_required" (
         "/msg $N@$s REGISTER <account> <password> <email>",
-        "Registers a specified account with $b$N$b, adding your current user@host to your new account. You must use the same password with $bauth$b to authenticate to your account.",
-        "An email will be sent to the email address you give containing a cookie that will let you activate your account.  Once you have that cookie, you must use the $bcookie$b command to be able to use your account.",
+        "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
+        "Having an account provides a single login identity for use with $b$C$b.
+        "Email activation is required: An email will be sent to the email address you give containing a cookie that will let you activate your account.  Once you have that cookie email, use the $bcookie$b command to activate your account.",
         "$uSee Also:$u auth, unregister"
         );
         "1: /services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password> [email]",
-        "Registers a specified account with $b$N$b, adding your current user@host to your new account. You must use the same password with $bauth$b to authenticate to your account.",
-        "If you specify an email address, an email will be sent to it containing a cookie that will let you activate your account.  Once you have that cookie, you must use the $bcookie$b command to be able to use your account.",
+        "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
+        "Having an account provides a single login identity for use with $b$C$b.
+        "Email activation is not required: But, if you specify an email address, an email will be sent to it containing a cookie that will let you activate your account.  Once you have that cookie, use the $bcookie$b command to activate your account.",
         "$uSee Also:$u auth, unregister"
         );
         "2: !/services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password>",
-        "Registers a specified account with $b$N$b, adding your current user@host to your new account. You must use the same password with $bauth$b to authenticate to your account.",
+        "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
+        "Having an account provides a single login identity for use with $b$C$b.
         "$uSee Also:$u auth, unregister"
         );
 };
@@ -432,10 +435,11 @@
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
+        "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
+        "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, userinfo"
         );
@@ -448,10 +452,11 @@
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
+        "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
+        "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, nickinfo, userinfo"
         );
@@ -463,10 +468,11 @@
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
+        "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
+        "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, userinfo"
         );
@@ -478,10 +484,11 @@
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
-        "$bSTYLE$b: The style you want X3 to use for channel userlists it sends you. $bSTYLE$b can be either $bDef$b (default) or $bZoot$b.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
+        "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
+        "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, nickinfo, userinfo"
         );
