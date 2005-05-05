@@ -407,21 +407,21 @@
         "0: /services/nickserv/email_required" (
         "/msg $N@$s REGISTER <account> <password> <email>",
         "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
-        "Having an account provides a single login identity for use with $b$C$b.
+        "Having an account provides a single login identity for use with $b$C$b.",
         "Email activation is required: An email will be sent to the email address you give containing a cookie that will let you activate your account.  Once you have that cookie email, use the $bcookie$b command to activate your account.",
         "$uSee Also:$u auth, unregister"
         );
         "1: /services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password> [email]",
         "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
-        "Having an account provides a single login identity for use with $b$C$b.
+        "Having an account provides a single login identity for use with $b$C$b.",
         "Email activation is not required: But, if you specify an email address, an email will be sent to it containing a cookie that will let you activate your account.  Once you have that cookie, use the $bcookie$b command to activate your account.",
         "$uSee Also:$u auth, unregister"
         );
         "2: !/services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password>",
         "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
-        "Having an account provides a single login identity for use with $b$C$b.
+        "Having an account provides a single login identity for use with $b$C$b.",
         "$uSee Also:$u auth, unregister"
         );
 };

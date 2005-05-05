@@ -17,6 +17,8 @@
 
 	* src/proto-p10.c: adduser pending cleanup code 
 
+	* src/nickserv.help: improved set and register help
+
 2005-05-04  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: changed uset noautoop to uset autoop (removed double
