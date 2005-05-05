@@ -3436,6 +3436,7 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
     struct string_list *masks, *slist;
     struct handle_info *hi;
     struct userNode *authed_users;
+    struct userData *channels;
     unsigned long int id;
     unsigned int ii;
     dict_t subdb;
@@ -3449,10 +3450,13 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
     }
     if ((hi = get_handle_info(handle))) {
         authed_users = hi->users;
+        channels = hi->channels;
         hi->users = NULL;
+        hi->channels = NULL;
         dict_remove(nickserv_handle_dict, hi->handle);
     } else {
         authed_users = NULL;
+        channels = NULL;
     }
     hi = register_handle(handle, str, id);
     if (authed_users) {
@@ -3462,6 +3466,7 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
             authed_users = authed_users->next_authed;
         }
     }
+    hi->channels = channels;
     masks = database_get_data(obj, KEY_MASKS, RECDB_STRING_LIST);
     hi->masks = masks ? string_list_copy(masks) : alloc_string_list(1);
     str = database_get_data(obj, KEY_MAXLOGINS, RECDB_QSTRING);

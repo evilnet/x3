@@ -14,7 +14,9 @@
 
 	* src/hash.h: adduser pending, and increased maxbans to 128 from 45.
 
-	* src/nickserv.c: adduser pending cleanup and activation code
+	* src/nickserv.c: adduser pending cleanup and activation code,
+	                  Arch sync (Avoid losing channel information when
+			  replacing an account using the mergedb command.)
 
 	* src/proto-p10.c: adduser pending cleanup code 
 
