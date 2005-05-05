@@ -1303,6 +1303,8 @@ void
 process_adduser_pending(struct userNode *user)
 {
     struct adduserPending *ap;
+    if(!user->handle_info)
+        return; /* not associated with an account */
     while((ap = find_adduser_pending(NULL, user)))
     {
         struct userData *actee;

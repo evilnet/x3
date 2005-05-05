@@ -6,6 +6,7 @@
 	* src/chanserv.c: added an 'adduser pending' feature, where if
 	someone isn't authed x3 will ask them to /auth or register, and then
 	automatically finish adding them to the channel when they do.
+	Fixed email bug with adduser pending
 
 	* src/chanserv.h: adduser pending
 

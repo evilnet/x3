@@ -1320,6 +1320,8 @@ static NICKSERV_FUNC(cmd_register)
        */
       SyncLog("REGISTER %s %s %s %s", hi->handle, syncpass, email_addr ? email_addr : "0", user->info);
     }
+
+    /* this wont work if email is required .. */
     process_adduser_pending(user);
 
     return 1;
@@ -2056,6 +2058,8 @@ static NICKSERV_FUNC(cmd_cookie)
     }
 
     nickserv_eat_cookie(hi->cookie);
+
+    process_adduser_pending(user);
 
     return 1;
 }
