@@ -3,6 +3,23 @@
 
 2005-05-04  Alex Schumann  <rubin@afternet.org>
 
+	* src/modcmd.c: added a 'rebindall' command to assist with
+	upgrades and changes which change command bindings.
+
+	* src/modcmd.help: modified help to reflect above
+
+	* src/opserv.help: modified help to reflect above
+
+	* src/chanserv.c: changed addban, addtimedban, delban, bans etc
+	to addlamer, dellamer, addtimedlamer, lamers to reduce confusion
+	between channel bans (+b) and x3 remembered bans (lamers)
+
+	* src/chanserv.help: modified help to reflect above
+
+	* UPGRADE: added use of rebindall to upgrade instructions
+
+2005-05-04  Alex Schumann  <rubin@afternet.org>
+
 	* src/chanserv.c: added an 'adduser pending' feature, where if
 	someone isn't authed x3 will ask them to /auth or register, and then
 	automatically finish adding them to the channel when they do.

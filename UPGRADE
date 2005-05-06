@@ -10,15 +10,38 @@ From srvx 1.4:
     * you can change from srvx.db to x3.db here also (dont forget to rename the file)
   Run all of the steps below
 
-As of CVS version 1.24:
-  bind chanserv 'uset autoop' and 'set voice' (see note below).
 
-
+*****************************
 NOTE about command bindings:
-You may do: 'bind x3 * *chanserv.*' to re-bind ALL builtin commands on chanserv. This
-is the simplest approach and probably a good idea to run for each module (chanserv, 
-opserv, nickserv, modcmd, etc) after upgrading or changing some features (such as email).  
+*****************************
+From srvx to x3, and within versions of x3, some commands have changed. When you upgrade
+your .db file may not have command bindings for new command names. I have added a command
+to help make solving this easy.
+If you don't have the 'rebindall' command bound, first bind it:
+    /msg O3 bind o3 * *modcmd.*
+Then, after any upgrade, or after adding modules, or changing command effecting settings
+such as 'email', you can simply run:
+    /msg O3 rebindall
+to ensure you have all the latest commands bound on all services.
+
+You may do: 'bind nick * *module.*' to re-bind ALL builtin commands on a givin module,
+(chanserv, opserv, nickserv, modcmd, etc) if you prefer to update them individually
+(if you unbind some default commands, and want them to stay unbound).  
 Alternatively you can edit the .db by hand or using the 'bind' command on irc. 
-IMPORTANT: You will need to shut down x3 gracefully (using the die or restart commands)
+NOTE: You will need to shut down x3 gracefully (using the die or restart commands)
 after binding in order for 'set' and 'uset' subcommand changes to function properly since
-the listing is cached. 
+the listings are cached. 
+
+*********************************************
+*** Steps needed, by version:
+***   note, binding can be taken care of
+***   according to the note above.
+*********************************************
+As of CVS version 1.24:
+  bind chanserv commands: uset autoop, and set voice
+
+As of CVS version 1.29:
+  bind chanserv commands: addlamer, dellamer, addtimedlamer, lamers, and llist
+  bind opserv commands: rebindall
+
+

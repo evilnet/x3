@@ -99,7 +99,7 @@
 #define KEY_FLAGS		"flags"
 #define KEY_OPTIONS             "options"
 #define KEY_USERS		"users"
-#define KEY_BANS		"bans"
+#define KEY_BANS		"bans" /* for lamers */
 #define KEY_MAX			"max"
 #define KEY_NOTES               "notes"
 #define KEY_TOPIC_MASK          "topic_mask"
@@ -171,7 +171,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_NO_CHAN_USER", "%s lacks access to $b%s$b." },
     { "CSMSG_NO_ACCESS", "You lack sufficient access to use this command." },
     { "CSMSG_NOT_REGISTERED", "$b%s$b has not been registered with $b$C$b." },
-    { "CSMSG_MAXIMUM_BANS", "This channel has reached the ban count limit of $b%d$b." },
+    { "CSMSG_MAXIMUM_LAMERS", "This channel has reached the lamer count limit of $b%d$b." },
     { "CSMSG_MAXIMUM_USERS", "This channel has reached the user count limit of $b%d$b." },
     { "CSMSG_ILLEGAL_CHANNEL", "$b%s$b is an illegal channel, and cannot be registered." },
     { "CSMSG_GODMODE_UP", "You may not use $b%s$b to op yourself unless you are on the user list.  Use the $bop$b command instead." },
@@ -210,21 +210,22 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_OWNERSHIP_GIVEN", "Ownership of $b%s$b has been transferred to account $b%s$b." },
 
 /* Ban management */
-    { "CSMSG_BAN_ADDED", "Permanently banned $b%s$b from %s." },
-    { "CSMSG_TIMED_BAN_ADDED", "Banned $b%s$b from %s for %s." },
+    { "CSMSG_LAMER_ADDED", "Added $b%s$b to %s LAMERs." },
+    { "CSMSG_TIMED_LAMER_ADDED", "LAMERed $b%s$b on %s for %s." },
     { "CSMSG_KICK_BAN_DONE", "Kickbanned $b%s$b from %s." },
     { "CSMSG_BAN_DONE", "Banned $b%s$b from %s." },
-    { "CSMSG_REASON_CHANGE", "Reason for ban $b%s$b changed." },
-    { "CSMSG_BAN_EXTENDED", "Extended ban for $b%s$b expires in %s." },
-    { "CSMSG_BAN_REMOVED", "Matching ban(s) for $b%s$b removed." },
-    { "CSMSG_TRIMMED_BANS", "Trimmed $b%d bans$b from the %s ban list that were inactive for at least %s." },
+    { "CSMSG_REASON_CHANGE", "Reason for LAMER $b%s$b changed." },
+    { "CSMSG_LAMER_EXTENDED", "Extended LAMER for $b%s$b, now expires in %s." },
+    { "CSMSG_BAN_REMOVED", "Matching ban(s) and LAMER(s) in $b%s$b were removed." },
+    { "CSMSG_TRIMMED_LAMERS", "Trimmed $b%d LAMERs$b from the %s LAMER list that were inactive for at least %s." },
     { "CSMSG_REDUNDANT_BAN", "$b%s$b is already banned in %s." },
+    { "CSMSG_REDUNDANT_LAMER", "$b%s$b is already LAMER'd in %s." },
     { "CSMSG_DURATION_TOO_LOW", "Timed bans must last for at least 15 seconds." },
     { "CSMSG_DURATION_TOO_HIGH", "Timed bans must last for less than 2 years." },
     { "CSMSG_LAME_MASK", "$b%s$b is a little too general. Try making it more specific." },
     { "CSMSG_MASK_PROTECTED", "Sorry, ban for $b%s$b conflicts with a protected user's hostmask." },
     { "CSMSG_NO_MATCHING_USERS", "No one in $b%s$b has a hostmask matching $b%s$b." },
-    { "CSMSG_BAN_NOT_FOUND", "Sorry, no ban found for $b%s$b." },
+    { "CSMSG_BAN_NOT_FOUND", "Sorry, no ban or LAMER found: $b%s$b." },
     { "CSMSG_BANLIST_FULL", "The $b%s$b channel ban list is $bfull$b." },
 
     { "CSMSG_INVALID_TRIM", "$b%s$b isn't a valid trim target." },
@@ -334,7 +335,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BAD_INFOLINE", "You may not use the character \\%03o in your infoline." },
 
     { "CSMSG_KICK_DONE", "Kicked $b%s$b from %s." },
-    { "CSMSG_NO_BANS", "No channel bans found on $b%s$b." },
+    { "CSMSG_NO_BANS", "No bans found on $b%s$b." },
     { "CSMSG_BANS_REMOVED", "Removed all channel bans from $b%s$b." },
 
 /* Channel userlist */
@@ -342,7 +343,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_ACCESS_SEARCH_HEADER", "$b%s Users From Level %s To %s Matching %s$b" },
     { "CSMSG_INVALID_ACCESS", "$b%s$b is an invalid access level." },
     { "CSMSG_CHANGED_ACCESS", "%s now has access $b%s$b (%u) in %s." },
-    { "CSMSG_BANS_HEADER", "$bBans in %s$b" },
+    { "CSMSG_LAMERS_HEADER", "$bLamers in %s$b" },
 
 /* Channel note list */
     { "CSMSG_NOTELIST_HEADER", "Notes for $b%s$b:" },
@@ -400,8 +401,8 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_CHANNEL_MODES", "$bMode Lock:           $b%s" },
     { "CSMSG_CHANNEL_NOTE", "$b%s:%*s$b%s" },
     { "CSMSG_CHANNEL_MAX", "$bRecord Visitors:     $b%i" },
-    { "CSMSG_CHANNEL_OWNER", "$bOwner:               $b%s" },
-    { "CSMSG_CHANNEL_BANS", "$bBan Count:           $b%i" },
+    { "CSMSG_CHANNEL_OWNER",  "$bOwner:               $b%s" },
+    { "CSMSG_CHANNEL_LAMERS", "$bLamer Count:         $b%i" },
     { "CSMSG_CHANNEL_USERS", "$bTotal User Count:    $b%i" },
     { "CSMSG_CHANNEL_REGISTRAR", "$bRegistrar:           $b%s" },
     { "CSMSG_CHANNEL_SUSPENDED", "$b%s$b is suspended:" },
@@ -430,7 +431,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_NETWORK_INFO", "Network Information:" },
     { "CSMSG_NETWORK_SERVERS", "$bServers:             $b%i" },
     { "CSMSG_NETWORK_USERS",   "$bTotal Users:         $b%i" },
-    { "CSMSG_NETWORK_BANS",    "$bTotal Ban Count:     $b%i" },
+    { "CSMSG_NETWORK_LAMERS",  "$bTotal Lamer Count:   $b%i" },
     { "CSMSG_NETWORK_CHANUSERS", "$bTotal User Count:    $b%i" },
     { "CSMSG_NETWORK_OPERS",   "$bIRC Operators:       $b%i" },
     { "CSMSG_NETWORK_CHANNELS","$bRegistered Channels: $b%i" },
@@ -478,10 +479,10 @@ static const struct message_entry msgtab[] = {
 /* eject_user and unban_user flags */
 #define ACTION_KICK		0x0001
 #define ACTION_BAN		0x0002
-#define ACTION_ADD_BAN		0x0004
-#define ACTION_ADD_TIMED_BAN   	0x0008
+#define ACTION_ADD_LAMER	0x0004
+#define ACTION_ADD_TIMED_LAMER 	0x0008
 #define ACTION_UNBAN		0x0010
-#define ACTION_DEL_BAN		0x0020
+#define ACTION_DEL_LAMER	0x0020
 
 /* The 40 allows for [+-ntlksimprD] and lots of fudge factor. */
 #define MODELEN			40 + KEYLEN
@@ -532,7 +533,7 @@ static struct
 
     unsigned int        max_owned;
     unsigned int 	max_chan_users;
-    unsigned int 	max_chan_bans;
+    unsigned int 	max_chan_bans; /* lamers */
     unsigned int        max_userinfo_length;
 
     struct string_list  *set_shows;
@@ -874,11 +875,11 @@ chanserv_ctcp_check(struct userNode *user, struct chanNode *channel, char *text,
         eflags |= ACTION_BAN;
         break;
     case 't':
-        eflags |= ACTION_BAN | ACTION_ADD_BAN | ACTION_ADD_TIMED_BAN;
+        eflags |= ACTION_BAN | ACTION_ADD_LAMER | ACTION_ADD_TIMED_LAMER;
         argv[argc++] = (char*)chanserv_conf.ctcp_short_ban_duration;
         break;
     case 'T':
-        eflags |= ACTION_BAN | ACTION_ADD_BAN | ACTION_ADD_TIMED_BAN;
+        eflags |= ACTION_BAN | ACTION_ADD_LAMER | ACTION_ADD_TIMED_LAMER;
         argv[argc++] = (char*)chanserv_conf.ctcp_long_ban_duration;
         break;
     }
@@ -1375,7 +1376,7 @@ add_channel_ban(struct chanData *channel, const char *mask, char *owner, time_t 
 	timeq_add(expires, expire_ban, bd);
 
     bd->prev = NULL;
-    bd->next = channel->bans;
+    bd->next = channel->bans; /* lamers */
     if(channel->bans)
 	channel->bans->prev = bd;
     channel->bans = bd;
@@ -1409,7 +1410,7 @@ del_channel_ban(struct banData *ban)
 }
 
 static void
-expire_ban(void *data)
+expire_ban(void *data) /* lamer.. */
 {
     struct banData *bd = data;
     if(!IsSuspended(bd->channel))
@@ -1447,7 +1448,7 @@ unregister_channel(struct chanData *channel, const char *reason)
        up:
        - Channel information.
        - Channel users.
-       - Channel bans.
+       - Channel bans. (lamers)
        - Channel suspension data.
        - adduser_pending data.
        - Timeq entries. (Except timed bans, which are handled elsewhere.)
@@ -2643,6 +2644,7 @@ static CHANSERV_FUNC(cmd_mdelhalfop)
 }
 
 
+/* trim_lamers.. */
 static int
 cmd_trim_bans(struct userNode *user, struct chanNode *channel, unsigned long duration)
 {
@@ -2665,7 +2667,7 @@ cmd_trim_bans(struct userNode *user, struct chanNode *channel, unsigned long dur
     }
 
     intervalString(interval, duration, user->handle_info);
-    send_message(user, chanserv, "CSMSG_TRIMMED_BANS", count, channel->name, interval);
+    send_message(user, chanserv, "CSMSG_TRIMMED_LAMERS", count, channel->name, interval);
     return 1;
 }
 
@@ -2730,9 +2732,9 @@ static CHANSERV_FUNC(cmd_trim)
 	return 0;
     }
 
-    if(!irccasecmp(argv[1], "bans"))
+    if(!irccasecmp(argv[1], "lamers"))
     {
-	cmd_trim_bans(user, channel, duration);
+	cmd_trim_bans(user, channel, duration); /* trim_lamers.. */
 	return 1;
     }
     else if(!irccasecmp(argv[1], "users"))
@@ -2969,7 +2971,7 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
     char *reason = "Bye.", *ban, *name;
     char interval[INTERVALLEN];
 
-    offset = (action & ACTION_ADD_TIMED_BAN) ? 3 : 2;
+    offset = (action & ACTION_ADD_TIMED_LAMER) ? 3 : 2;
     REQUIRE_PARAMS(offset);
     if(argc > offset)
     {
@@ -3055,18 +3057,18 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
        that 'ban' is a valid ban mask before sanitizing it. */
     sanitize_ircmask(ban);
 
-    if(action & ACTION_ADD_BAN)
+    if(action & ACTION_ADD_LAMER)
     {
 	struct banData *bData, *next;
 
-	if(channel->channel_info->banCount >= chanserv_conf.max_chan_bans)
+	if(channel->channel_info->banCount >= chanserv_conf.max_chan_bans) /* ..lamers.. */
 	{
-	    reply("CSMSG_MAXIMUM_BANS", chanserv_conf.max_chan_bans);
+	    reply("CSMSG_MAXIMUM_LAMERS", chanserv_conf.max_chan_bans); /* ..lamers.. */
 	    free(ban);
 	    return 0;
 	}
 
-	if(action & ACTION_ADD_TIMED_BAN)
+	if(action & ACTION_ADD_TIMED_LAMER)
 	{
 	    duration = ParseInterval(argv[2]);
 
@@ -3084,6 +3086,7 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 	    }
 	}
 
+        /* lamers... */
 	for(bData = channel->channel_info->bans; bData; bData = next)
 	{
 	    if(match_ircglobs(bData->mask, ban))
@@ -3135,15 +3138,15 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
                             /* automated kickban */
                         }
 			else if(duration)
-			    reply("CSMSG_BAN_EXTENDED", ban, intervalString(interval, duration, user->handle_info));
+			    reply("CSMSG_LAMER_EXTENDED", ban, intervalString(interval, duration, user->handle_info));
 			else
-			    reply("CSMSG_BAN_ADDED", name, channel->name);
+			    reply("CSMSG_LAMER_ADDED", name, channel->name);
 
 			goto post_add_ban;
 		    }
 		}
                 if(cmd)
-                    reply("CSMSG_REDUNDANT_BAN", name, channel->name);
+                    reply("CSMSG_REDUNDANT_LAMER", name, channel->name);
 
 		free(ban);
 		return 0;
@@ -3240,12 +3243,12 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
     {
         /* No response, since it was automated. */
     }
-    else if(action & ACTION_ADD_BAN)
+    else if(action & ACTION_ADD_LAMER)
     {
 	if(duration)
-	    reply("CSMSG_TIMED_BAN_ADDED", name, channel->name, intervalString(interval, duration, user->handle_info));
+	    reply("CSMSG_TIMED_LAMER_ADDED", name, channel->name, intervalString(interval, duration, user->handle_info));
 	else
-	    reply("CSMSG_BAN_ADDED", name, channel->name);
+	    reply("CSMSG_LAMER_ADDED", name, channel->name);
     }
     else if((action & (ACTION_BAN | ACTION_KICK)) == (ACTION_BAN | ACTION_KICK))
 	reply("CSMSG_KICK_BAN_DONE", name, channel->name);
@@ -3273,14 +3276,14 @@ static CHANSERV_FUNC(cmd_ban)
     return eject_user(CSFUNC_ARGS, ACTION_BAN);
 }
 
-static CHANSERV_FUNC(cmd_addban)
+static CHANSERV_FUNC(cmd_addlamer)
 {
-    return eject_user(CSFUNC_ARGS, ACTION_KICK | ACTION_BAN | ACTION_ADD_BAN);
+    return eject_user(CSFUNC_ARGS, ACTION_KICK | ACTION_BAN | ACTION_ADD_LAMER);
 }
 
-static CHANSERV_FUNC(cmd_addtimedban)
+static CHANSERV_FUNC(cmd_addtimedlamer)
 {
-    return eject_user(CSFUNC_ARGS, ACTION_KICK | ACTION_BAN | ACTION_ADD_BAN | ACTION_ADD_TIMED_BAN);
+    return eject_user(CSFUNC_ARGS, ACTION_KICK | ACTION_BAN | ACTION_ADD_LAMER | ACTION_ADD_TIMED_LAMER);
 }
 
 static struct mod_chanmode *
@@ -3362,11 +3365,11 @@ unban_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
         }
     }
 
-    if(action & ACTION_DEL_BAN)
+    if(action & ACTION_DEL_LAMER)
     {
 	struct banData *ban, *next;
 
-	ban = channel->channel_info->bans;
+	ban = channel->channel_info->bans; /* lamers */
 	while(ban)
 	{
 	    if(actee)
@@ -3398,11 +3401,11 @@ static CHANSERV_FUNC(cmd_unban)
     return unban_user(CSFUNC_ARGS, ACTION_UNBAN);
 }
 
-static CHANSERV_FUNC(cmd_delban)
+static CHANSERV_FUNC(cmd_dellamer)
 {
     /* it doesn't necessarily have to remove the channel ban - may want
        to make that an option. */
-    return unban_user(CSFUNC_ARGS, ACTION_UNBAN | ACTION_DEL_BAN);
+    return unban_user(CSFUNC_ARGS, ACTION_UNBAN | ACTION_DEL_LAMER);
 }
 
 static CHANSERV_FUNC(cmd_unbanme)
@@ -3412,7 +3415,7 @@ static CHANSERV_FUNC(cmd_unbanme)
 
     /* remove permanent bans if the user has the proper access. */
     if(uData->access >= UL_MANAGER)
-	flags |= ACTION_DEL_BAN;
+	flags |= ACTION_DEL_LAMER;
 
     argv[1] = user->nick;
     return unban_user(user, channel, 2, argv, cmd, flags);
@@ -3858,22 +3861,23 @@ static CHANSERV_FUNC(cmd_plist)
     return cmd_list_users(CSFUNC_ARGS, 1, UL_HALFOP-1);
 }
 
-static CHANSERV_FUNC(cmd_bans)
+static CHANSERV_FUNC(cmd_lamers)
 {
     struct helpfile_table tbl;
     unsigned int matches = 0, timed = 0, ii;
     char t_buffer[INTERVALLEN], e_buffer[INTERVALLEN], *search;
     const char *msg_never, *triggered, *expires;
-    struct banData *ban, **bans;
+    struct banData *ban, **bans; /* lamers */
 
     if(argc > 1)
 	search = argv[1];
     else
         search = NULL;
 
-    reply("CSMSG_BANS_HEADER", channel->name);
-    bans = alloca(channel->channel_info->banCount * sizeof(struct banData *));
+    reply("CSMSG_LAMERS_HEADER", channel->name);
+    bans = alloca(channel->channel_info->banCount * sizeof(struct banData *)); /* lamers */
 
+    /* lamers */
     for(ban = channel->channel_info->bans; ban; ban = ban->next)
     {
 	if(search && !match_ircglobs(search, ban->mask))
@@ -4267,7 +4271,7 @@ static CHANSERV_FUNC(cmd_info)
         if(owner->access == UL_OWNER)
             reply("CSMSG_CHANNEL_OWNER", owner->handle->handle);
     reply("CSMSG_CHANNEL_USERS", cData->userCount);
-    reply("CSMSG_CHANNEL_BANS", cData->banCount);
+    reply("CSMSG_CHANNEL_LAMERS", cData->banCount);
     reply("CSMSG_CHANNEL_VISITED", intervalString(buffer, now - cData->visited, user->handle_info));
     reply("CSMSG_CHANNEL_REGISTERED", intervalString(buffer, now - cData->registered, user->handle_info));
 
@@ -4305,7 +4309,7 @@ static CHANSERV_FUNC(cmd_netinfo)
     reply("CSMSG_NETWORK_USERS", dict_size(clients));
     reply("CSMSG_NETWORK_OPERS", curr_opers.used);
     reply("CSMSG_NETWORK_CHANNELS", registered_channels);
-    reply("CSMSG_NETWORK_BANS", banCount);
+    reply("CSMSG_NETWORK_LAMERS", banCount);
     reply("CSMSG_NETWORK_CHANUSERS", userCount);
     reply("CSMSG_SERVICES_UPTIME", intervalString(interval, time(NULL) - boot_time, user->handle_info));
     reply("CSMSG_BURST_LENGTH", intervalString(interval, burst_length, user->handle_info));
@@ -7672,14 +7676,14 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(voice, 2, MODCMD_REQUIRE_CHANNEL, "template", "op", NULL);
     DEFINE_COMMAND(devoice, 2, MODCMD_REQUIRE_CHANNEL, "template", "op", NULL);
 
-    DEFINE_COMMAND(kickban, 2, MODCMD_REQUIRE_REGCHAN, "template", "op", NULL);
-    DEFINE_COMMAND(kick, 2, MODCMD_REQUIRE_REGCHAN, "template", "op", NULL);
-    DEFINE_COMMAND(ban, 2, MODCMD_REQUIRE_REGCHAN, "template", "op", NULL);
-    DEFINE_COMMAND(unban, 2, 0, "template", "op", NULL);
-    DEFINE_COMMAND(unbanall, 1, 0, "template", "op", NULL);
-    DEFINE_COMMAND(unbanme, 1, MODCMD_REQUIRE_CHANUSER, "template", "op", NULL);
+    DEFINE_COMMAND(kickban, 2, MODCMD_REQUIRE_REGCHAN, "template", "hop", NULL);
+    DEFINE_COMMAND(kick, 2, MODCMD_REQUIRE_REGCHAN, "template", "hop", NULL);
+    DEFINE_COMMAND(ban, 2, MODCMD_REQUIRE_REGCHAN, "template", "hop", NULL);
+    DEFINE_COMMAND(unban, 2, 0, "template", "hop", NULL);
+    DEFINE_COMMAND(unbanall, 1, 0, "template", "hop", NULL);
+    DEFINE_COMMAND(unbanme, 1, MODCMD_REQUIRE_CHANUSER, "template", "hop", NULL);
     DEFINE_COMMAND(open, 1, MODCMD_REQUIRE_CHANUSER, "template", "op", NULL);
-    DEFINE_COMMAND(topic, 1, MODCMD_REQUIRE_REGCHAN, "template", "op", "flags", "+never_csuspend", NULL);
+    DEFINE_COMMAND(topic, 1, MODCMD_REQUIRE_REGCHAN, "template", "hop", "flags", "+never_csuspend", NULL);
     DEFINE_COMMAND(mode, 1, MODCMD_REQUIRE_REGCHAN, "template", "op", NULL);
     DEFINE_COMMAND(inviteme, 1, MODCMD_REQUIRE_CHANNEL, "access", "1", NULL);
     DEFINE_COMMAND(invite, 1, MODCMD_REQUIRE_CHANNEL, "access", "manager", NULL);
@@ -7687,13 +7691,17 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(wipeinfo, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(resync, 1, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
 
-    DEFINE_COMMAND(events, 1, MODCMD_REQUIRE_REGCHAN, "flags", "+nolog", "access", "350", NULL);
-    DEFINE_COMMAND(addban, 2, MODCMD_REQUIRE_REGCHAN, "access", "250", NULL);
-    DEFINE_COMMAND(addtimedban, 3, MODCMD_REQUIRE_REGCHAN, "access", "250", NULL);
-    DEFINE_COMMAND(delban, 2, MODCMD_REQUIRE_REGCHAN, "access", "250", NULL);
+    DEFINE_COMMAND(events, 1, MODCMD_REQUIRE_REGCHAN, "flags", "+nolog", "access", "manager", NULL);
+    DEFINE_COMMAND(addlamer, 2, MODCMD_REQUIRE_REGCHAN, "access", "manager", NULL);
+    DEFINE_COMMAND(addtimedlamer, 3, MODCMD_REQUIRE_REGCHAN, "access", "manager", NULL);
+
+    /* if you change dellamer access, see also places
+     * like unbanme which have manager hardcoded. */
+    DEFINE_COMMAND(dellamer, 2, MODCMD_REQUIRE_REGCHAN, "access", "manager", NULL);
     DEFINE_COMMAND(uset, 1, MODCMD_REQUIRE_CHANUSER, "access", "1", NULL);
 
-    DEFINE_COMMAND(bans, 1, MODCMD_REQUIRE_REGCHAN, "access", "1", "flags", "+nolog", NULL);
+    DEFINE_COMMAND(lamers, 1, MODCMD_REQUIRE_REGCHAN, "access", "1", "flags", "+nolog", NULL);
+
     DEFINE_COMMAND(peek, 1, MODCMD_REQUIRE_REGCHAN, "access", "op", "flags", "+nolog", NULL);
 
     DEFINE_COMMAND(myaccess, 1, MODCMD_REQUIRE_AUTHED, NULL);

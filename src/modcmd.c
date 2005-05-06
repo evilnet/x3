@@ -1917,6 +1917,14 @@ static MODCMD_FUNC(cmd_version) {
     return 1;
 }
 
+static void create_default_binds(int rebind);
+
+static MODCMD_FUNC(cmd_rebindall) {
+    send_message_type(4, user, cmd->parent->bot, "$bRe-binding all default commands to respective services..$b");
+    create_default_binds(1);
+    return 1;
+}
+
 
 void
 modcmd_nick_change(struct userNode *user, const char *old_nick) {
@@ -2159,6 +2167,7 @@ modcmd_init(void) {
     modcmd_register(modcmd_module, "service privileged", cmd_service_privileged, 2, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "service remove", cmd_service_remove, 2, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "dumpmessages", cmd_dump_messages, 1, 0, "oper_level", "1000", NULL);
+    modcmd_register(modcmd_module, "rebindall", cmd_rebindall, 0, MODCMD_KEEP_BOUND, "oper_level", "800", NULL);
     version_command = modcmd_register(modcmd_module, "version", cmd_version, 1, 0, NULL);
     message_register_table(msgtab);
 }
@@ -2324,7 +2333,7 @@ modcmd_saxdb_read(struct dict *db) {
 }
 
 static void
-create_default_binds(void) {
+create_default_binds(int rebind) {
     /* Which services should import which modules by default? */
     struct {
         const char *svcname;
@@ -2351,7 +2360,7 @@ create_default_binds(void) {
             continue;
         if (!(service = service_find(nick)))
             continue;
-        if (dict_size(service->commands) > 0)
+        if (dict_size(service->commands) > 0 && !rebind)
             continue;
 
         /* Bind the default modules for this service to it */
@@ -2369,6 +2378,7 @@ create_default_binds(void) {
         if (!irccasecmp(def_binds[ii].svcname, "ChanServ")) {
             service_make_alias(service, "addowner", "*chanserv.adduser", "$1", "owner", NULL);
             service_make_alias(service, "addcoowner", "*chanserv.adduser", "$1", "coowner", NULL);
+            service_make_alias(service, "addco", "*chanserv.adduser", "$1", "coowner", NULL);
             service_make_alias(service, "addmanager", "*chanserv.adduser", "$1", "manager", NULL);
             service_make_alias(service, "addop", "*chanserv.adduser", "$1", "op", NULL);
             service_make_alias(service, "addhop", "*chanserv.adduser", "$1", "halfop", NULL);
@@ -2378,6 +2388,7 @@ create_default_binds(void) {
             service_make_alias(service, "delmanager", "*chanserv.deluser", "manager", "$1", NULL);
             service_make_alias(service, "delop", "*chanserv.deluser", "op", "$1", NULL);
             service_make_alias(service, "delpeon", "*chanserv.deluser", "peon", "$1", NULL);
+            service_make_alias(service, "llist", "*chanserv.lamers", "1", "$1", NULL);
             service_make_alias(service, "command", "*modcmd.command", NULL);
             service_make_alias(service, "god", "*modcmd.god", NULL);
         } else if (!irccasecmp(def_binds[ii].svcname, "OpServ")) {
@@ -2427,7 +2438,7 @@ modcmd_finalize(void) {
 
     /* Check databases. */
     saxdb_register("modcmd", modcmd_saxdb_read, modcmd_saxdb_write);
-    create_default_binds();
+    create_default_binds(0);
     if (!saxdb_present)
         import_aliases_db();
 

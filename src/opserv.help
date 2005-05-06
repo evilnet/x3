@@ -135,6 +135,7 @@
              "  $bMODCMD$b        Change details of a command.",
              "  $bBIND$b          Make a command alias.",
              "  $bUNBIND$b        Remove a command alias.",
+             "  $bREBINDALL$b     Re-create all missing commands on all services",
              "  $bHELPFILES$b     Change the helpfile priority order.",
              "  $b$b",
              "  $bSERVICE ADD$b         Create a new service bot.",

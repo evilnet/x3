@@ -37,8 +37,8 @@
             " $bADDMANAGER$b  Add a user as a MANAGER in a channel.",
             " $bADDCOOWNER$b  Add a user as COOWNER in a channel.",
             " $bADDUSER$b     A more advanced way to add users.",
-            " $bADDBAN$b      Add a $upermanent$u ban for a user.",
-            " $bADDTIMEDBAN$b Add a $ulasting$u ban that expires in the specified time.",
+            " $bADDLAMER$b    Add a lamer to the lamers (keep out) list.",
+            " $bADDTIMEDLAMER$b Add a lamer to the lamers list that expires in the specified time.",
             "$b$b",
             " $bDELUSER$b     Delete a user from the userlist.",
             " $bMDELCOOWNER$b Mass-delete coowners with accounts matching a mask.",
@@ -46,7 +46,7 @@
             " $bMDELOP$b      Mass-delete ops with accounts matching a mask.",
             " $bMDELHOP$b     Mass-delete halfops with accounts matching a mask.",
             " $bMDELPEON$b    Mass-delete peons with accounts matching a mask.",
-            " $bDELBAN$b      Remove the specified $upermanent$u ban from memory.",
+            " $bDELLAMER$b    Remove the specified lamer from the lamer list.",
             " $bWIPEINFO$b    Remove a lower-ranked user's infoline.",
             " $bTRIM$b        Delete users who are inactive.",
             " $bSUSPEND$b     Suspend a user's access to a channel.",
@@ -181,9 +181,11 @@
 "ACCESS" ("/msg $S ACCESS <#channel> [<nick|*account>]",
         "Reports various pieces of information about a channel user, including channel and network access level, and the user's info line. If no nick or account is provided, $S returns your own information.",
         "$uSee Also:$u myaccess, users");
-"ADDBAN" ("/msg $C ADDBAN <#channel> <mask|nick> [Reason]",
-        "Adds a ban to the channels permanent ban list, remaining in effect until removed with the DELBAN command. If it exactly matches an existing ban already in the list, the reason will be updated. If the existing ban was a timed ban, it will be extended into a permanent ban.",
-        "$uSee Also:$u bans, delban, mdelban");
+"ADDLAMER" ("/msg $C ADDLAMER <#channel> <mask|nick> [Reason]",
+        "Adds a lamer to the channels lamer list, remaining in effect until removed with the DELLAMER command. ",
+        "Lamers are nick!user@host masks which $C watches for, and keeps out of your channel.",
+        "If it exactly matches an existing lamer already in the list, the reason will be updated. If the existing lamer was a timed lamer, it will be extended into a permanent lamer.",
+        "$uSee Also:$u bans, dellamer, mdellamer");
 "ADDUSER" ("/msg $C ADDUSER <#channel> <nick|*account> <level>",
         "This command adds someone to the channel user list with the specified access level.  (You may only add users to levels less than your own.)",
         "The level may be one of $bpeon$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
@@ -194,9 +196,11 @@
 "ADDHOP" ("/msg $C ADDHOP <#channel> <nick|*account>",
         "This command adds someone to the channel user list with HALFOP access level. (You may only add users to levels less than your own.)",
         "$uSee Also:$u adduser, deluser, users");
-"ADDTIMEDBAN" ("/msg $C ADDTIMEDBAN <#channel> <mask|nick> <Duration> [Reason]",
-        "Adds an automatically expiring ban to the channel ban list. This command behaves in the exact same fashion as ADDBAN with the exception that the bans are automatically removed after the user-supplied duration. If it exactly matches an existing ban already in the list, the reason will be updated. If the existing ban was a timed ban, it will be extended. Timed bans can be removed with the DELBAN command, as with permanent bans.",
-        "$uSee Also:$u addban, bans, delban, durations");
+"ADDTIMEDLAMER" ("/msg $C ADDTIMEDLAMER <#channel> <mask|nick> <Duration> [Reason]",
+        "Adds an automatically expiring lamer to the channel lamer list.",
+        "This command behaves in the exact same fashion as $bADDLAMER$b with the exception that the bans are automatically removed after the user-supplied duration. ",
+        "If it exactly matches an existing lamer already in the list, the reason will be updated. If the existing lamer was a timed lamer, it will be extended. Timed lamers can be removed with the $bDELLAMER$b command, as with permanent lamers.",
+        "$uSee Also:$u addlamer, lamers, dellamer, durations");
 "ALLOWREGISTER" ("/msg $C ALLOWREGISTER <#channel|*Account>",
         "Removes the named channel (or channel mask) from the do-not-register list.",
         "$uSee Also:$u register, noregister, unregister");
@@ -205,9 +209,10 @@
         "$uFor assistance, please join #Help$u",
         "Example: *!*serv@*.afternet.org would ban anyone with ident 'serv' and an afternet.org hostname from joining the channel.",
         "$uSee Also:$u unban, unbanall, unbanme");
-"BANS" ("/msg $C BANS <#channel> [mask]",
-        "This command lists all permanent and timed bans in the channel matching mask.",
-        "$uSee Also:$u addban, delban, mdelban");
+"LAMERS" ("/msg $C LAMERS <#channel> [mask]",
+        "This command lists all permanent and timed lamers in the channel matching an optional mask.",
+        "Lamers are nick!user@host masks which $C watches for, and keeps out of your channel.",
+        "$uSee Also:$u addlamer, dellamer, addtimedlamer");
 "CALC" ("/msg $C CALC <expression>",
         "CALC calculates a mathematical expression, and returns the answer.  It",
         "supports +, -, *, /, ^, and () and many other math operations, such as",
@@ -245,9 +250,9 @@
 "CUNSUSPEND" ("/msg $C CUNSUSPEND <#channel>",
         "Restores a channel's $b$C$b registration.",
         "$uSee Also:$u csuspend, unregister");
-"DELBAN" ("/msg $C DELBAN <#channel> <mask|nick>",
-        "Deletes a ban from the channel ban list. This command works for both permanent and timed bans alike.",
-        "$uSee Also:$u addban, addtimedban, bans");
+"DELLAMER" ("/msg $C DELLAMER <#channel> <mask|nick>",
+        "Deletes a lamer from the channel lamer list. This command works for both permanent and timed lamers alike.",
+        "$uSee Also:$u addlamer, addtimedlamer, lamers");
 "DELNOTE" ("/msg $C DELNOTE <#channel> <note-name>",
         "Deletes a note from the channel.  To do this, you must be able to set the note.",
         "$uSee Also:$u note, note types");
