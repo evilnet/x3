@@ -25,7 +25,7 @@
             " $bOLIST$b       Show all OPs of a channel.",
             " $bHLIST$b       Show all HALFOPs of a channel.",
             " $bPLIST$b       Show all PEONs of a channel.",    
-            " $bBANS$b        Show all  $ulasting$u bans in a channel.",
+            " $bLAMERS$b      Show all  LAMERs of a channel.",
             " $bACCESS$b      Check someone's access level in a channel.",
             " $bCLVL$b        Change a person's access level in a channel.",
             " $bUSET$b        Set a channel user's options (autos, info).",
@@ -185,7 +185,7 @@
         "Adds a lamer to the channels lamer list, remaining in effect until removed with the DELLAMER command. ",
         "Lamers are nick!user@host masks which $C watches for, and keeps out of your channel.",
         "If it exactly matches an existing lamer already in the list, the reason will be updated. If the existing lamer was a timed lamer, it will be extended into a permanent lamer.",
-        "$uSee Also:$u bans, dellamer, mdellamer");
+        "$uSee Also:$u llist, dellamer, mdellamer");
 "ADDUSER" ("/msg $C ADDUSER <#channel> <nick|*account> <level>",
         "This command adds someone to the channel user list with the specified access level.  (You may only add users to levels less than your own.)",
         "The level may be one of $bpeon$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
@@ -198,7 +198,7 @@
         "$uSee Also:$u adduser, deluser, users");
 "ADDTIMEDLAMER" ("/msg $C ADDTIMEDLAMER <#channel> <mask|nick> <Duration> [Reason]",
         "Adds an automatically expiring lamer to the channel lamer list.",
-        "This command behaves in the exact same fashion as $bADDLAMER$b with the exception that the bans are automatically removed after the user-supplied duration. ",
+        "This command behaves in the exact same fashion as $bADDLAMER$b with the exception that the lamers are automatically removed after the user-supplied duration. ",
         "If it exactly matches an existing lamer already in the list, the reason will be updated. If the existing lamer was a timed lamer, it will be extended. Timed lamers can be removed with the $bDELLAMER$b command, as with permanent lamers.",
         "$uSee Also:$u addlamer, lamers, dellamer, durations");
 "ALLOWREGISTER" ("/msg $C ALLOWREGISTER <#channel|*Account>",
@@ -334,7 +334,7 @@
         "Deletes all peons with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u addpeon, mdelcoowner, mdelmanager, mdelop");
 "MERGE" ("/msg $C MERGE <#channel> <destination>",
-        "Merges the source channel's registration, users, bans, and other data into the target channel. Users with access to both the source and target channels will retain the higher access level; if the access levels are the same, the more recent seen time is kept. Bans are also merged, with bans expiring later taking precedence.",
+        "Merges the source channel's registration, users, lamers, and other data into the target channel. Users with access to both the source and target channels will retain the higher access level; if the access levels are the same, the more recent seen time is kept. Lamers are also merged, with lamers expiring later taking precedence.",
         "$uSee Also:$u register, move, unregister");
 "MLIST" ("/msg $C MLIST <#channel> [mask]",
         "This command lists all users of level $bManager$b on a channel's userlist. If a mask is supplied, only managers matching the mask will be shown.",
@@ -526,7 +526,7 @@
 "TOPIC" ("/msg $C TOPIC <#channel> [topic]",
         "Sets the current topic for the specified channel.  If no topic is specified, then set the current topic to the default topic.");
 "TRIM" ("/msg $C TRIM <#channel> <target> <duration>",
-	"The trim command removes target objects inactive for more than a certain duration from a channel. The target must be a channel access level, a range of access levels (for example, \"300-399\"), \"users\" or \"bans\". The duration argument specifies the amount of time the target has been inactive for to be removed.",
+	"The trim command removes target objects inactive for more than a certain duration from a channel. The target must be a channel access level, a range of access levels (for example, \"300-399\"), \"users\" or \"lamers\". The duration argument specifies the amount of time the target has been inactive for to be removed.",
         "$uSee Also:$u durations");
 "UNBAN" ("/msg $C UNBAN <#channel> <mask|nick>",
         "Unbans the specified nick or hostmask. If a nick is given, $b$C$b determines what hostmask(s) to unban.",

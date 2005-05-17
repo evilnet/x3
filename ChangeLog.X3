@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-05-16  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.help: Fixed a couple ban/lamer conversions i missed in
+	the help file.
+
 2005-05-04  Alex Schumann  <rubin@afternet.org>
 
 	* src/modcmd.c: added a 'rebindall' command to assist with
