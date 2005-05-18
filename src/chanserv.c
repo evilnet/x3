@@ -197,7 +197,9 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_USER_EXISTS", "%s is already on the $b%s$b user list (with %s access)." },
     { "CSMSG_ADDUSER_PENDING", "I have sent him/her a message letting them know, and if they auth or register soon, i will finish adding them automatically." },
     { "CSMSG_ADDUSER_PENDING_ALREADY", "He or she is already pending addition to %s once he/she auths with $b$N$b." },
-    { "CSMSG_ADDUSER_PENDING_LIST", "Channel %s user %s" }, /* Remove after testing */
+    { "CSMSG_ADDUSER_PENDING_HEADER", "Users to add to channels pending logins:" }, /* Remove after testing? */
+    { "CSMSG_ADDUSER_PENDING_LIST", "Channel %s user %s" },             /* Remove after testing? */
+    { "CSMSG_ADDUSER_PENDING_HEADER", "--------- End of pending list ----------" }, /* Remove after testing? */
     /*{ "CSMSG_ADDUSER_PENDING_NOTINCHAN", "That user is not in %s, and is not auth'd." }, */
     { "CSMSG_ADDUSER_PENDING_TARGET", "Channel Services bot here, %s would like to add you to my userlist in channel %s, but you are not auth'd to $b$N$b. Please auth now, and you will be added. If you do not have an accont, type /msg $N help register" },
     { "CSMSG_CANNOT_TRIM", "You must include a minimum inactivity duration of at least 60 seconds to trim." },
@@ -3818,11 +3820,16 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     return 1;
 }
 
+/* Remove this now that debugging is over? or improve it for
+ * users? Would it be better tied into USERS somehow? -Rubin */
 static CHANSERV_FUNC(cmd_pending)
 {
     struct adduserPending *ap;
+    reply("CSMSG_ADDUSER_PENDING_HEADER");
+    reply("CSMSG_BAR");
     for(ap = adduser_pendings;ap;ap = ap->next)
         reply("CSMSG_ADDUSER_PENDING_LIST", ap->channel->name, ap->user->nick);
+    reply("CSMSG_ADDUSER_PENDING_FOOTER");
     return 1;
 }
 
@@ -7628,8 +7635,6 @@ init_chanserv(const char *nick)
     dict_set_free_data(plain_dnrs, free);
     mask_dnrs = dict_new();
     dict_set_free_data(mask_dnrs, free);
-    //TODO
-    //adduser_pending
 
     reg_svccmd_unbind_func(handle_svccmd_unbind);
     chanserv_module = module_register("ChanServ", CS_LOG, "chanserv.help", chanserv_expand_variable);

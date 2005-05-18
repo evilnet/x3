@@ -789,6 +789,7 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
     struct svccmd *cmd;
     char cmdname[MAXLEN];
     unsigned int nn;
+    int helpsent = 0;
 
     /* If there is no topic show the index */
     if (!topic)
@@ -803,7 +804,7 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
     {
         send_message(user, service->bot, "MCMSG_HELP_COMMAND_HEADER", cmdname);
         send_message(user, service->bot, "MCMSG_HELP_DIVIDER");
-        send_help(user, service->bot, cmd->command->parent->helpfile, cmd->name);
+        helpsent = send_help(user, service->bot, cmd->command->parent->helpfile, cmd->name);
 
         /* Show if its an alias, or a binding of another command */
         if (cmd->alias.used) 
@@ -811,11 +812,20 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
             char alias_text[MAXLEN];
             unsplit_string((char**)cmd->alias.list, cmd->alias.used, alias_text);
             send_message(user, service->bot, "MCMSG_HELP_COMMAND_ALIAS", alias_text);
+            /* If send_help above didnt work, try again with the referenced command.. */
+            if(!helpsent)
+                helpsent = send_help(user, service->bot, cmd->command->parent->helpfile, alias_text);
         }
         else if(cmd->command->name && strcasecmp(cmd->command->name, cmd->name))
         {
             send_message(user, service->bot, "MCMSG_HELP_COMMAND_ALIAS", cmd->command->name);
+            /* If send_help above didnt work, try again with the referenced command.. */
+            if(!helpsent)
+                helpsent = send_help(user, service->bot, cmd->command->parent->helpfile, cmd->command->name);
         } 
+        /* If send_help still couldnt find it, tell them sorry */
+        if(!helpsent)
+            send_message(user, service->bot, "MSG_TOPIC_UNKNOWN");
         send_message(user, service->bot, "MCMSG_HELP_FOOTER");
         return true;
     }
@@ -829,7 +839,8 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
 
                 send_message(user, service->bot, "MCMSG_HELP_TOPIC_HEADER", cmdname);
                 send_message(user, service->bot, "MCMSG_HELP_DIVIDER");
-                send_help(user, service->bot, module->helpfile, topic);
+                if(!send_help(user, service->bot, module->helpfile, topic))
+                    send_message(user, service->bot, "MSG_TOPIC_UNKNOWN");
                 send_message(user, service->bot, "MCMSG_HELP_FOOTER");
                 return true;
             }

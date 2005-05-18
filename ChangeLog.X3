@@ -3,19 +3,24 @@
 
 2005-05-18  Alex Schumann  <rubin@afternet.org>
 
-	* src/modcmd.c: Fixed up the help system (again)
+	* src/helpfile.c: make send_help() return true/false and not send
+	errors so svccmd_send_help can 'take control' of things.
+
+	* src/modcmd.c: Fixed up the help system (again) / find aliased
+	commands help if none exists.
 
 	* src/modcmd.h: Fixed up the help system (again)
 
 	* src/global.c: Fixed syntax display
 
 	* src/chanserv.help: Removed =---= formatting, fixed a few things.
-	*spelling
+	*spelling ++more spelling (thx reed)
 
 	* src/nickserv.help: Removed =---= formatting, fixed a few things.
-	*spelling
+	*spelling ++more spelling (thx reed)
 	
 	* src/opserv.help: Removed =---= formatting, fixed a few things.
+	++spelling (thx reed)
 
 	* src/global.help: simplified index
 

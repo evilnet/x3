@@ -745,7 +745,7 @@ send_help(struct userNode *dest, struct userNode *src, struct helpfile *hf, cons
         topic = "<index>";
     if (!hf) {
         _send_help(dest, src, NULL, "HFMSG_MISSING_HELPFILE");
-        return 0;
+        return false;
     }
     for (curr = (dest->handle_info ? dest->handle_info->language : lang_C);
          curr;
@@ -754,15 +754,20 @@ send_help(struct userNode *dest, struct userNode *src, struct helpfile *hf, cons
         if (!lang_hf)
             continue;
         rec = dict_find(lang_hf->db, topic, NULL);
-        if (rec && rec->type == RECDB_QSTRING)
-            return _send_help(dest, src, hf->expand, rec->d.qstring);
+        if (rec && rec->type == RECDB_QSTRING) {
+            _send_help(dest, src, hf->expand, rec->d.qstring);
+            return true;
+        }
     }
     rec = dict_find(hf->db, "<missing>", NULL);
     if (!rec)
-        return send_message(dest, src, "MSG_TOPIC_UNKNOWN");
-    if (rec->type != RECDB_QSTRING)
-	return send_message(dest, src, "HFMSG_HELP_NOT_STRING");
-    return _send_help(dest, src, hf->expand, rec->d.qstring);
+        return false;
+    if (rec->type != RECDB_QSTRING) { 
+        send_message(dest, src, "HFMSG_HELP_NOT_STRING");
+	return false; 
+    }
+    _send_help(dest, src, hf->expand, rec->d.qstring);
+    return true;
 }
 
 int
