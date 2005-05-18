@@ -7,7 +7,7 @@
            " help system  uses the format:          ",
            "   $b/MSG $C HELP <$bsubject$b>$b       ",
            " (In help, Words in <> represent required",
-           " paramiters. Words in [] are optional.)",
+           " parameters. Words in [] are optional.)",
            " For example: $b/msg $C HELP UBM$b      ",
            " shows help with the Un-Ban Me command.   ",
            "=---------------------------------------=",

@@ -11,7 +11,7 @@
                 " The help system  uses the format:",
                 "   $b/MSG $N HELP <$bsubject$b>$b       ",
                 " (In help, Words in <> represent required",
-                " paramiters. Words in [] are optional.)",
+                " parameters. Words in [] are optional.)",
                 " For example: $b/msg $N HELP RESETPASS$b",
                 " shows help with the command to reset a ",
                 " lost password.",

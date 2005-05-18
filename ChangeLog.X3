@@ -10,8 +10,10 @@
 	* src/global.c: Fixed syntax display
 
 	* src/chanserv.help: Removed =---= formatting, fixed a few things.
+	*spelling
 
 	* src/nickserv.help: Removed =---= formatting, fixed a few things.
+	*spelling
 	
 	* src/opserv.help: Removed =---= formatting, fixed a few things.
 
