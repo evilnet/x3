@@ -1,12 +1,16 @@
-"<INDEX>" ("=--------------- $b$C Help$b --------------=",
+"<INDEX>" (
            " Hello there!                           ",
+           " I'm $C, your handy channel services bot.",
+           " $b$b",
            " Please select the area you would like  ",
            " help with from the list below. The     ",
            " help system  uses the format:          ",
            "   $b/MSG $C HELP <$bsubject$b>$b       ",
+           " (In help, Words in <> represent required",
+           " paramiters. Words in [] are optional.)",
            " For example: $b/msg $C HELP UBM$b      ",
-           " shows help with the UnBanMe command.   ",
-           "=--------------------------------------=",
+           " shows help with the Un-Ban Me command.   ",
+           "=---------------------------------------=",
            " GENERAL  - How to use $C  ",
            " USER     - Commands to add and remove",
            "            bans, ops and managers from ",
@@ -16,9 +20,11 @@
            "            and topic.",
            " INFORMATION - Informative commands.",
            " OPER     - Commands for IRC Operators.",
-           "=--------------------------------------=",
+           "$b$b",
+           "Also see $b/MSG $N HELP$b for getting",
+           "and maintaining your user account."
 );
-"USER"     ("=-- $bUserlist Management Commands:$b ---=",
+"USER"     ("$bUserlist Management Commands:$b",
             " $bUSERS$b       Show the channels userlist.",
             " $bCLIST$b       Show all COOWNERs of a channel.",
             " $bMLIST$b       Show all MANAGERs of a channel.",
@@ -54,11 +60,10 @@
             "$b$b",
             " $bMYACCESS$b    Show all channels where you have access.",
             " $bDELETEME$b    Delete YOURSELF from the userlist.",
-            " $bGIVEOWNERSHIP$b Give away ownership to another user.",
-            "=------------- End of Help ------------="
+            " $bGIVEOWNERSHIP$b Give away ownership to another user."
 );
 
-"CHANNEL"  ("=-------- $bChannel Commands:$b ---------=",
+"CHANNEL"  ("$bChannel Commands:$b",
             " $bSET$b         Change various channel settings.",
             " $bTOPIC$b       Set the current topic, or reset it to the default topic.",
             " $bMODE$b        Change a channel mode.",
@@ -87,20 +92,18 @@
             " $bINVITE$b      Admit a user to pass through +ib modes in your channel.",
             "$b$b",
             " $bINFO$b        Show numerical information about the users in a channel.",
-            " $bEVENTS$b      View a list of events relevant to a channel.",
-            "=------------- End of Help ------------="
+            " $bEVENTS$b      View a list of events relevant to a channel."
 );
-"INFORMATION"     ("=------- $bInformative Commands:$b ------=",
+"INFORMATION"     ("$bInformative Commands:$b",
             " $bVERSION$b     Check the current running version of $C.",
             " $bNETINFO$b     Check current network-wide information.",
             " $bSTAFF$b       Get a list of all the current staff.",
             " $bIRCOPS$b      Get a list of all the current IRC operators.",
             " $bHELPERS$b     Get a list of all the current support helpers.",
             " $bPEEK$b        Reveal information on a channel's modes, topic and ops.",
-            " $bCOMMAND$b     Display some information about a command.",
-            "=------------- End of Help ------------="
+            " $bCOMMAND$b     Display some information about a command."
 );
-"OPER"     ("=-- $bHelper/IRC Operator commands:$b ---=",
+"OPER"     ("$bHelper/IRC Operator commands:$b",
             " $bGOD$b         Turn security override on/off.",
             " $bOPCHAN$b      Force $C to op itself in a channel.",
             "$b$b",
@@ -124,11 +127,10 @@
             " $bCREATENOTE$b  Create a new note type.",
             " $bREMOVENOTE$b  Remove an existing note type.",
             "*$bSAY$b         Have $C say a message in a channel.",
-            "*$bEMOTE$b       Equivalent to $C doing a /me in a channel.",
-            "=------------- End of Help ------------="
+            "*$bEMOTE$b       Equivalent to $C doing a /me in a channel."
 );
 
-"GENERAL"  ("=----------- General Help -------------=",
+"GENERAL"  (
             " NOTE: Before using $C or being added   ",
             " to channel userlists, users must       ",
             " register  an account with $b$N$b.      ",
@@ -157,12 +159,11 @@
             " expected as well.                       ",
             " See $b/msg $C HELP <COMMAND>$b for the  ",
             " exact syntax of each command.           ",
-            "=---------- For more info see ----------=",
-            "     http://www.afternet.org/support     ",
-            "=---------------------------------------="
+            "=---------- For more info see: ---------=",
+            "     http://www.afternet.org/support     "
 );
 
-"LOGIN" ("=-- Logging In --=",
+"LOGIN" (
          " Please login using:",
          "   /MSG $N AUTH <account> <password>",
          " or the shortcut:",

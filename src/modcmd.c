@@ -55,8 +55,11 @@ static const struct message_entry msgtab[] = {
     { "MCMSG_NO_CHANNEL_BEFORE", "You may not give a channel name before this command." },
     { "MCMSG_NO_PLUS_CHANNEL", "You may not use a +channel with this command." },
     { "MCMSG_COMMAND_ALIASES", "%s is an alias for: %s" },
-/*    { "MCMSG_HELP_COMMAND_ALIAS_FOR", "$bALIAS FOR:$b %s" },*/
     { "MCMSG_HELP_COMMAND_ALIAS", "$uAlias for:$u %s" },
+    { "MCMSG_HELP_COMMAND_HEADER", "Command help for: $b%s$b" },
+    { "MCMSG_HELP_TOPIC_HEADER",   "Help topic: $b%s$b" },
+    { "MCMSG_HELP_DIVIDER", "=---------------------------------------=" },
+    { "MCMSG_HELP_FOOTER",  "=------------- End of Help -------------=" },
     { "MCMSG_COMMAND_BINDING", "%s is a binding of: %s" },
     { "MCMSG_ALIAS_ERROR", "Error in alias expansion for %s; check the error log for details." },
     { "MCMSG_INTERNAL_COMMAND", "$b%s$b is an internal command and cannot be called directly; please check command bindings." },
@@ -757,60 +760,18 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
     return 1;
 }
 
-int
-svccmd_send_help(struct userNode *user, struct userNode *bot, struct svccmd *cmd) {
-    char cmdname[MAXLEN];
-    unsigned int nn;
-    int r;
-    /* Show command name (in bold). */
-    for (nn=0; cmd->name[nn]; nn++)
-        cmdname[nn] = toupper(cmd->name[nn]);
-    cmdname[nn] = 0;
-    send_message_type(4, user, bot, "=--- $b%s$b ---=", cmdname);
-
-    /* Show the help entry for the underlying command. */
-        /* Lets not show help for a parent command, thats not what
-         * they asked for!
-         * return send_help(user, bot, cmd->command->parent->helpfile, cmd->command->name);
-         * TODO: We actually DO want to show the parent IF there is no other help.
-         */
-    r =        send_help(user, bot, cmd->command->parent->helpfile, cmd->name);
-    if(cmd->command->name && strcasecmp(cmd->command->name, cmd->name))
-    {
-        send_message(user, bot, "MCMSG_HELP_COMMAND_ALIAS", cmd->command->name);
-    }
-
-    /* If it's an alias, show what it's an alias for. */
-    if (cmd->alias.used) {
-        char alias_text[MAXLEN];
-        unsplit_string((char**)cmd->alias.list, cmd->alias.used, alias_text);
-        send_message(user, bot, "MCMSG_HELP_COMMAND_ALIAS", alias_text);
-    }
-    return r;
-}
-
+/* First line (syntax usually) only help.. used for wrong param counts etc */
 int
 svccmd_send_help_brief(struct userNode *user, struct userNode *bot, struct svccmd *cmd) {
-    char cmdname[MAXLEN];
-    unsigned int nn;
     int r;
-    /* Show command name (in bold). */
-    for (nn=0; cmd->name[nn]; nn++)
-        cmdname[nn] = toupper(cmd->name[nn]);
-    cmdname[nn] = 0;
 
-    /* Show the help entry for the underlying command. */
-        /* Lets not show help for a parent command, thats not what
-         * they asked for!
-         * return send_help(user, bot, cmd->command->parent->helpfile, cmd->command->name);
-         * TODO: We actually DO want to show the parent IF there is no other help.
-         */
     /* If it's an alias, show what it's an alias for. */
     if (cmd->alias.used) {
         char alias_text[MAXLEN];
         unsplit_string((char**)cmd->alias.list, cmd->alias.used, alias_text);
         send_message(user, bot, "MCMSG_COMMAND_ALIASES", cmd->name, cmd->command->name);
     }
+    /* Send the syntax line of help.. */
     r = send_help_brief(user, bot, cmd->command->parent->helpfile, cmd->name);
     if(!r) {
         if(cmd->command->name)
@@ -819,31 +780,59 @@ svccmd_send_help_brief(struct userNode *user, struct userNode *bot, struct svccm
            r = send_help_brief(user, bot, cmd->command->parent->helpfile, cmd->command->name);
         }
     }
-
     return r;
 }
 
-
 int
-svccmd_send_help_2(struct userNode *user, struct service *service, const char *topic) {
+svccmd_send_help(struct userNode *user, struct service *service, const char *topic) {
     struct module *module;
     struct svccmd *cmd;
-    unsigned int ii;
-
-    /* If there is a command, send help for the command */
-    if ((cmd = dict_find(service->commands, topic, NULL)))
-        return svccmd_send_help(user, service->bot, cmd);
+    char cmdname[MAXLEN];
+    unsigned int nn;
 
     /* If there is no topic show the index */
     if (!topic)
         topic = "<index>";
-    /* look for the thing in the included help files */
-    for (ii = 0; ii < service->modules.used; ++ii) {
-        module = service->modules.list[ii];
-        if (!module->helpfile)
-            continue;
-        if (dict_find(module->helpfile->db, topic, NULL))
-            return send_help(user, service->bot, module->helpfile, topic);
+    /* make heading str (uppercase) */
+    for (nn=0; topic[nn]; nn++)
+            cmdname[nn] = toupper(topic[nn]);
+    cmdname[nn] = 0;
+
+    /* If there is a command 'topic', send command help for the command */
+    if ((cmd = dict_find(service->commands, topic, NULL)))
+    {
+        send_message(user, service->bot, "MCMSG_HELP_COMMAND_HEADER", cmdname);
+        send_message(user, service->bot, "MCMSG_HELP_DIVIDER");
+        send_help(user, service->bot, cmd->command->parent->helpfile, cmd->name);
+
+        /* Show if its an alias, or a binding of another command */
+        if (cmd->alias.used) 
+        {
+            char alias_text[MAXLEN];
+            unsplit_string((char**)cmd->alias.list, cmd->alias.used, alias_text);
+            send_message(user, service->bot, "MCMSG_HELP_COMMAND_ALIAS", alias_text);
+        }
+        else if(cmd->command->name && strcasecmp(cmd->command->name, cmd->name))
+        {
+            send_message(user, service->bot, "MCMSG_HELP_COMMAND_ALIAS", cmd->command->name);
+        } 
+        send_message(user, service->bot, "MCMSG_HELP_FOOTER");
+        return true;
+    }
+    else /* look for topic in the help files loaded to this nick/service */
+    {
+        /* Check for non command help in first primary help file, then 
+         * check for help for this on another service and provide a tip */
+            module = service->modules.list[0];
+            if (module->helpfile && dict_find(module->helpfile->db, topic, NULL))
+            {
+
+                send_message(user, service->bot, "MCMSG_HELP_TOPIC_HEADER", cmdname);
+                send_message(user, service->bot, "MCMSG_HELP_DIVIDER");
+                send_help(user, service->bot, module->helpfile, topic);
+                send_message(user, service->bot, "MCMSG_HELP_FOOTER");
+                return true;
+            }
     }
     /* Otherwise say we cant find it */
     send_message(user, service->bot, "MSG_TOPIC_UNKNOWN");
@@ -1276,7 +1265,7 @@ static MODCMD_FUNC(cmd_help) {
     const char *topic;
 
     topic = (argc < 2) ? NULL : unsplit_string(argv+1, argc-1, NULL);
-    return svccmd_send_help_2(user, cmd->parent, topic);
+    return svccmd_send_help(user, cmd->parent, topic);
 }
 
 static MODCMD_FUNC(cmd_timecmd) {
@@ -2388,7 +2377,7 @@ create_default_binds(int rebind) {
             service_make_alias(service, "delmanager", "*chanserv.deluser", "manager", "$1", NULL);
             service_make_alias(service, "delop", "*chanserv.deluser", "op", "$1", NULL);
             service_make_alias(service, "delpeon", "*chanserv.deluser", "peon", "$1", NULL);
-            service_make_alias(service, "llist", "*chanserv.lamers", "1", "$1", NULL);
+            service_make_alias(service, "llist", "*chanserv.lamers", "$1",  NULL);
             service_make_alias(service, "command", "*modcmd.command", NULL);
             service_make_alias(service, "god", "*modcmd.god", NULL);
         } else if (!irccasecmp(def_binds[ii].svcname, "OpServ")) {

@@ -1,4 +1,4 @@
-"<INDEX>" ("$b$G Help$b",
+"<INDEX>" (
         "The $b$G$b service allows network administrators to manage and send important notices to users. It also allows users to retrieve, at once, all messages addressed to them.",
         "$bUser Commands:$b",
         "  MESSAGES   Sends you all messages addressed to your user class.",

@@ -1,13 +1,20 @@
 "<INDEX>" {
         "/services/nickserv/disable_nicks" {
         "/services/nickserv/email_enabled" (
-                "=------------ $b$N Help$b -----------=",
                 " $b$N$b is an authentication service,",
                 " providing login identification for",
                 " the network. $N is how you 'log in'",
                 " to get access in channels registered",
                 " with $C, and its how ircops are known",
                 " to $O and $G.",
+                " $b$b",
+                " The help system  uses the format:",
+                "   $b/MSG $N HELP <$bsubject$b>$b       ",
+                " (In help, Words in <> represent required",
+                " paramiters. Words in [] are optional.)",
+                " For example: $b/msg $N HELP RESETPASS$b",
+                " shows help with the command to reset a ",
+                " lost password.",
                 " $b$b",
 	        " $b$N$b help categories:",
         	"  $bACCOUNT$b      Account management.",
@@ -19,11 +26,9 @@
                 "$b$b",
                 " $b$N is $uNOT$u a NickServ$b!        ",
                 "  see $b/msg $N HELP NOT NICKSERV$b   ",
-                "  for details ",
-                "=--------------------------------------="
+                "  for details "
         );
         "!/services/nickserv/email_enabled" (
-                "=------------ $b$N Help$b -----------=",
                 " $b$N$b is an authentication service,",
                 " providing login identification for",
                 " the network. $N is how you 'log in'",
@@ -38,13 +43,11 @@
                 "$b$b",
                 " $b$N is $uNOT$u a NickServ$b!        ",
                 "  see $b/msg $N HELP NOT NICKSERV$b   ",
-                "  for details ",
-                "=--------------------------------------="
+                "  for details "
         );
         };
         "!/services/nickserv/disable_nicks" {
         "/services/nickserv/email_enabled" (
-                "=------------ $b$N Help$b -----------=",
                 "$b$N Help$b",
                 "$b$N$b is a nickname and authentication service, intended to serve as a central authentication point for all other network services. $b$C$b, $b$O$b, and $b$G$b all depend on $b$N$b to verify that users are valid.  It also manages nickname ownership.",
 	        "$b$N$b command categories:",
@@ -53,11 +56,9 @@
                 "  EMAIL       Email maintenance commands.",
         	"  INFORMATION Other functions.",
                 "  COMMANDS    A list of all available commands.",
-                "  OPER        $N commands for IRC Operators.",
-                "=----------- End of Help --------------="
+                "  OPER        $N commands for IRC Operators."
         );
         "!/services/nickserv/email_enabled" (
-                "=------------ $b$N Help$b -----------=",
                 "$b$N Help$b",
                 "$b$N$b is a nickname and authentication service, intended to serve as a central authentication point for all other network services. $b$C$b, $b$O$b, and $b$G$b all depend on $b$N$b to verify that users are valid. It also manages nickname ownership.",
 	        "$b$N$b command categories:",
@@ -65,8 +66,7 @@
                 "  NICK        Nick management.",
         	"  INFORMATION Other functions.",
                 "  COMMANDS    A list of all available commands.",
-                "  OPER        $N commands for IRC Operators.",
-                "=----------- End of Help --------------="
+                "  OPER        $N commands for IRC Operators."
         );
         };
 };
@@ -75,7 +75,6 @@
 
 "ACCOUNT" {
         "/services/nickserv/enable_ghost" (
-                "=------------ $bACCOUNT Help$b -----------=",
                 " Accounts are the way that $b$C$b ",
                 " identifies you for access to channels.  ",
                 " They are slightly similar to IRC nicks, ",
@@ -93,11 +92,9 @@
                 "  $bDELMASK$b    Remove a hostmask from your account.",
                 "  $bSET$b        Set per-account options.",
                 "  $bGHOST$b      Disconnects your old clients",
-                "  $bACCOUNT FLAGS$b Definition for each account flag",
-                "=----------- End of Help --------------="
+                "  $bACCOUNT FLAGS$b Definition for each account flag"
         );
         "!/services/nickserv/enable_ghost" (
-                "=------------ $bACCOUNT Help$b -----------=",
                 " Accounts are the way that $b$C$b          ",
                 " identifies you for access to channels.    ",
                 " They are slightly similar to IRC nicks,   ",
@@ -116,14 +113,12 @@
                 "  $bDELMASK$b    Remove a hostmask from your account.",
                 "  $bSET$b        Set per-account options.",
                 "  $bRENAME$b     Renames an account",
-                "  $bACCOUNT FLAGS$b Definition for each account flag",
-                "=----------- End of Help --------------="
+                "  $bACCOUNT FLAGS$b Definition for each account flag"
         );
 };
 
 "NOT NICKSERV" {
                 "/services/nickserv/disable_nicks" (
-                "=------------ $bNOT NICKSERV$b ------------=",
                 " $N is $unot$u a NickServ. On this network, ",
                 " nicknames are not owned. $N allows ",
                 " you to register a single account to ",
@@ -131,20 +126,18 @@
                 " your nickname. ",
                 " $b$N$b can tell you what ",
                 " account a user is authenticated to ",
-                " using the $bUSERINFO$b command. ",
-                "=----------- End of Help --------------="
+                " using the $bUSERINFO$b command. "
                 );
 };
 
-"INFORMATION"  ("=------- $bInformational commands$b -------=",
+"INFORMATION"  ("$bInformational commands:$b",
                 " $bACCOUNTINFO$b   Displays information about an account.",
                 " $bUSERINFO$b      Display what account an online user is authenticated to.",
                 " $bSTATUS$b        $b$N$b status.",
-                " $bVERSION$b       $b$N$b version information.",
-                "=----------- End of Help --------------="
+                " $bVERSION$b       $b$N$b version information."
                 );
 
-"OPER"         ("=---------- $bIRC Operator Help$b ---------=",
+"OPER"         ("$bIRC Operator Help:$b",
                 " $bSEARCH$b      Search accounts and apply an action.",
                 " $bOSET$b        Modify account details including password.",
                 " $bRENAME$b      Rename an account.",
@@ -155,8 +148,7 @@
                 "*$bOUNREGNICK$b  Remove a nick from someone's account.",
                 " $bOADDMASK$b    Add a mask to someone's account.",
                 " $bODELMASK$b    Remove a mask from someone's account.",
-                " $bMERGEDB$b     Load a database into memory.",
-                "=----------- End of Help --------------="
+                " $bMERGEDB$b     Load a database into memory."
         );
 
 

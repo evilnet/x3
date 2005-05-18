@@ -271,7 +271,7 @@ static const struct message_entry msgtab[] = {
     { NULL, NULL }
 };
 
-#define OPSERV_SYNTAX() svccmd_send_help(user, opserv, cmd)
+#define OPSERV_SYNTAX() svccmd_send_help_brief(user, opserv, cmd)
 
 typedef int (*discrim_search_func)(struct userNode *match, void *extra);
 

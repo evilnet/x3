@@ -164,7 +164,7 @@ struct service *service_find(const char *name);
 struct svccmd *service_bind_modcmd(struct service *service, struct modcmd *cmd, const char *name);
 
 /* Send help for a command to a user. */
-int svccmd_send_help(struct userNode *user, struct userNode *bot, struct svccmd *cmd);
+int svccmd_send_help(struct userNode *user, struct service *service, const char *topic);
 /* .. and if somebody doesn't have a modcmd handy .. */
 int svccmd_send_help_2(struct userNode *user, struct service *service, const char *topic);
 /* Send brief help for a command to a user. */

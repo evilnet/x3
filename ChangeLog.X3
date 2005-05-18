@@ -1,6 +1,27 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-05-18  Alex Schumann  <rubin@afternet.org>
+
+	* src/modcmd.c: Fixed up the help system (again)
+
+	* src/modcmd.h: Fixed up the help system (again)
+
+	* src/global.c: Fixed syntax display
+
+	* src/chanserv.help: Removed =---= formatting, fixed a few things.
+
+	* src/nickserv.help: Removed =---= formatting, fixed a few things.
+	
+	* src/opserv.help: Removed =---= formatting, fixed a few things.
+
+	* src/global.help: simplified index
+
+	* src/nickserv.c: Changed message users get when their email is
+	already used for an account, fixed syntax help
+
+	* src/opserv.c: fixed syntax help
+
 2005-05-16  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.help: Fixed a couple ban/lamer conversions i missed in

@@ -157,7 +157,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLE_ACTIVATED", "Your account is now activated (with the password you entered when you registered).  You are now authenticated to your account." },
     { "NSMSG_PASSWORD_CHANGED", "You have successfully changed your password to what you requested with the $bresetpass$b command." },
     { "NSMSG_EMAIL_PROHIBITED", "%s may not be used as an email address: %s" },
-    { "NSMSG_EMAIL_OVERUSED", "There are already the maximum number of accounts associated with that email address." },
+    { "NSMSG_EMAIL_OVERUSED", "That email address already has an account. Use RESETPASS if you forgot your password." },
     { "NSMSG_EMAIL_SAME", "That is the email address already there; no need to change it." },
     { "NSMSG_EMAIL_CHANGED", "You have successfully changed your email address." },
     { "NSMSG_BAD_COOKIE_TYPE", "Your account had bad cookie type %d; sorry.  I am confused.  Please report this bug." },
@@ -1726,7 +1726,7 @@ static NICKSERV_FUNC(cmd_auth)
         pw_arg = 1;
     } else {
         reply("MSG_MISSING_PARAMS", argv[0]);
-        svccmd_send_help(user, nickserv, cmd);
+        svccmd_send_help_brief(user, nickserv, cmd);
         return 0;
     }
     if (!hi) {

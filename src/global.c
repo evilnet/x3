@@ -62,7 +62,7 @@ static const struct message_entry msgtab[] = {
     { NULL, NULL }
 };
 
-#define GLOBAL_SYNTAX()   svccmd_send_help(user, global, cmd)
+#define GLOBAL_SYNTAX()   svccmd_send_help_brief(user, global, cmd)
 #define GLOBAL_FUNC(NAME) MODCMD_FUNC(NAME)
 
 struct userNode *global;

@@ -1,4 +1,4 @@
-"<INDEX>"  ("=------------------ $b$O Help$b ------------------=",
+"<INDEX>"  (
             " $O provides Oper Services for the Network.    ",
             " Please choose from the following categories:  ",
             "  $bGOD$b         Enabling channel override.   ",
@@ -14,12 +14,11 @@
             "  $bSETTINGS$b    View and temporarily change  ",
             "              config file settings.        ",
             "  $bADMIN$b       Misc Administrator Commands. ",
-            "  $bOWNERONLY$b   $O operator only commands.   ",
-            "=---------------- End of Help ----------------="
+            "  $bOWNERONLY$b   $O operator only commands.   "
 );
 "COMMANDS" "${index}";
 
-"PUNISH"   ("=------------- $bUser Punishments$b --------------=",
+"PUNISH"   (
             "  $bGLINE$b       Global Ban a host.",
             "  $bUNGLINE$b     Remove a GLINE.",
             "  $bBLOCK$b       Gline by nickname.",
@@ -27,36 +26,32 @@
             "  $bGTRACE$b      Search the gline list.",
             "  $b$b",
             "  $bGAG$b         Cause the services to ignore... ",
-            "  $bUNGAG$b       ...or unignore by mask.",
-            "=---------------- End of Help ----------------="
+            "  $bUNGAG$b       ...or unignore by mask."
             );
 
-"INFORMATION"  ("=----------- $bInformation Gathering$b -----------=",
+"INFORMATION"  (
                 "  $bACCESS$b  Shows a users $O access level.",
                 "  $bSTATS$b   Show various lists and runtime info.",
                 "  $bWHOIS$b   Show details about a user by nick.",
                 "  $bVERSION$b Show the $O version information.",
                 "  $bLOG$b     View $O logs.",
-                "  $bTRACES$b  Powerfull commands for viewing or acting on lists of IRC objects.",
-                "=--------------- End of Help ----------------="
+                "  $bTRACES$b  Powerfull commands for viewing or acting on lists of IRC objects."
                );
 
-"TRACES"   ("=------------------ $bTraces$b ------------------=",
+"TRACES"   (
             "  $bTRACE$b    Search current users and optionally apply an action.",
             "  $bGTRACE$b   Search current GLINEs and optionally remove them.",
-            "  $bCSEARCH$b  Search current channels.",
-            "=--------------- End of Help ----------------="
+            "  $bCSEARCH$b  Search current channels."
            );
 
-"ALERTS"   ("=------------------ $bAlerts$b ------------------=",
+"ALERTS"   (
             "  $bADDALERT$b  Make $O automatically do something",
             "            when users match a criteria.",
             "  $bDELALERT$b  Remove an alert.",
-            "  $bSTATS ALERT$b See a listing of alerts. ",
-            "=--------------- End of Help ----------------="
+            "  $bSTATS ALERT$b See a listing of alerts. "
            );
 
-"CHANNEL"  ("=------------- $bChannel Commands$b -------------=",
+"CHANNEL"  (
             "  $bOP$b      Op someone.",
             "  $bDEOP$b    Deop someone.",
             "  $bVOICE$b   Voice someone.",
@@ -75,26 +70,23 @@
             "  $bINVITE$b     Invite someone to a channel.",
             "  $bINVITEME$b   Invite yourself to a channel.",
             "  $bCLEARBANS$b  Cear all bans from a channel.",
-            "  $bCLEARMODES$b Clear all modes from a channel.",
-            "=--------------- End of Help ----------------="
+            "  $bCLEARMODES$b Clear all modes from a channel."
            );
 
-"CLONES"   ("=-------------- $bClone handling$b --------------=",
+"CLONES"   (
             "  $bADDTRUST$b  Add a clone limit exemption for a host.",
             "  $bDELTRUST$b  Remove a clone exemption.",
             "  $bEDITTRUST$b Modify a clone exemption.",
             "  $bquery services/opserv/untrusted_max$b",
-            "                View the clone kill limit",
-            "=--------------- End of Help ----------------="
+            "                View the clone kill limit"
            );
 
-"SETTINGS" ("=----------------- $bSettings$b -----------------=",
+"SETTINGS" (
             "  $bQUERY$b  Show a runtime config setting.",
-            "  $bSET$b    $uTemporarily$u change a runtime config setting.",
-            "=--------------- End of Help ----------------="
+            "  $bSET$b    $uTemporarily$u change a runtime config setting."
            );
 
-"ADMIN"    ("=---------- $bAdministrative Commands$b ---------=",
+"ADMIN"    (
             "  $bACCESS$b  Modify someone's $O access level.",
             "  $bCOMMAND$b      Show details of a command.",
             "  $bSHOWCOMMANDS$b List all commands and required access levels.",
@@ -114,11 +106,10 @@
             "  $b$b",
             "  $bREFRESHG$b     Refresh the Glines.",
             "  $bSETTIME$b      Synchronize time across the network.",
-            "  $bTIMECMD$b      Time how long a command runs.",
-            "=--------------- End of Help ----------------="
+            "  $bTIMECMD$b      Time how long a command runs."
            );
 
-"OWNERONLY" ("=------------- $bOwner Only Stuff$b -------------=",
+"OWNERONLY" (
              "  $bWRITE$b         Write out a database.",
              "  $bWRITEALL$b      Write out ALL databases.",
              "  $bREOPEN$b        Close and Re-Open the logs.",
@@ -150,8 +141,7 @@
              "  $bDELEXEMPT$b     Remove an exception of the illegal word list.",
              "  $b$b",
              "  $bDUMP$b          Drop safetychecked server protocol to the server. ",
-             "  $bRAW$b           Draw raw server protocol to the server. (DANGEROUS!)",
-             "=--------------- End of Help ----------------="
+             "  $bRAW$b           Drop raw server protocol to the server. (DANGEROUS!)"
             );
 
 
@@ -171,7 +161,7 @@
         "$uSee Also:$u delalert, alert reaction, trace criteria"
         );
 
-"TIME NOTATION" ("=---------------- $bTime Notation$b ---------------=",
+"TIME NOTATION" (
                  " Many commands require a duration perameter ",
                  " which all use the same syntax: ",
                  "      1s  - 1 second ",
@@ -183,8 +173,7 @@
                  "      1y  - 1 year",
                  " Times can be compounded such as: ",
                  "      1m40s - 1 minute and 40 seconds ",
-                 "      5h20m30s - 5 hours 20 minutes and 30 seconds ",
-                 "=-----------------------------------------------="
+                 "      5h20m30s - 5 hours 20 minutes and 30 seconds "
                  ); 
 
 "ADDTRUST" ("/msg $O ADDTRUST <ip> <count> <duration> <reason>",
