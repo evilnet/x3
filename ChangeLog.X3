@@ -3,11 +3,23 @@
 
 2005-05-18  Alex Schumann  <rubin@afternet.org>
 
+	* src/modcmd.c: reed pointed out that modcmd non-command help wasnt
+	working, and pointed me to the opserv helpfiles command, which shows
+	what services search what help files.  This fixes the help command to
+	search that list as it should. Still need to modify the 'default'
+	helpfile search bindigs because I dont think chanserv should respond
+	to help from opserv's db, etc.  See opserv's 'helpfiles' command.
+
+	* src/modcmd.help: clarified 'helpfiles' help.
+
+2005-05-18  Alex Schumann  <rubin@afternet.org>
+
 	* src/helpfile.c: make send_help() return true/false and not send
 	errors so svccmd_send_help can 'take control' of things.
 
 	* src/modcmd.c: Fixed up the help system (again) / find aliased
-	commands help if none exists.
+	commands help if none exists. / Display no help for that command on
+	commands (instead of topic)
 
 	* src/modcmd.h: Fixed up the help system (again)
 

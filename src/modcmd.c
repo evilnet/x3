@@ -57,6 +57,7 @@ static const struct message_entry msgtab[] = {
     { "MCMSG_COMMAND_ALIASES", "%s is an alias for: %s" },
     { "MCMSG_HELP_COMMAND_ALIAS", "$uAlias for:$u %s" },
     { "MCMSG_HELP_COMMAND_HEADER", "Command help for: $b%s$b" },
+    { "MCMSG_HELP_COMMAND_UNKNOWN", "No help available for that command." },
     { "MCMSG_HELP_TOPIC_HEADER",   "Help topic: $b%s$b" },
     { "MCMSG_HELP_DIVIDER", "=---------------------------------------=" },
     { "MCMSG_HELP_FOOTER",  "=------------- End of Help -------------=" },
@@ -788,7 +789,7 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
     struct module *module;
     struct svccmd *cmd;
     char cmdname[MAXLEN];
-    unsigned int nn;
+    unsigned int nn, ii;
     int helpsent = 0;
 
     /* If there is no topic show the index */
@@ -825,24 +826,33 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
         } 
         /* If send_help still couldnt find it, tell them sorry */
         if(!helpsent)
-            send_message(user, service->bot, "MSG_TOPIC_UNKNOWN");
+            send_message(user, service->bot, "MCMSG_HELP_COMMAND_UNKNOWN");
         send_message(user, service->bot, "MCMSG_HELP_FOOTER");
         return true;
     }
     else /* look for topic in the help files loaded to this nick/service */
     {
-        /* Check for non command help in first primary help file, then 
-         * check for help for this on another service and provide a tip */
-            module = service->modules.list[0];
-            if (module->helpfile && dict_find(module->helpfile->db, topic, NULL))
+        /* Check for non command help in first primary help file, then next and so on */ 
+        /* Note - we need to think about default bindings. see opserv.helpfiles */
+            for(ii = 0; ii < service->modules.used; ii++)
             {
+                module = service->modules.list[ii];
+                if(!module->helpfile)
+                    continue;
+                if(dict_find(module->helpfile->db, topic, NULL))
+                {
+                    if (module->helpfile && dict_find(module->helpfile->db, topic, NULL))
+                    {
 
-                send_message(user, service->bot, "MCMSG_HELP_TOPIC_HEADER", cmdname);
-                send_message(user, service->bot, "MCMSG_HELP_DIVIDER");
-                if(!send_help(user, service->bot, module->helpfile, topic))
-                    send_message(user, service->bot, "MSG_TOPIC_UNKNOWN");
-                send_message(user, service->bot, "MCMSG_HELP_FOOTER");
-                return true;
+                        send_message(user, service->bot, "MCMSG_HELP_TOPIC_HEADER", cmdname);
+                        send_message(user, service->bot, "MCMSG_HELP_DIVIDER");
+                        /* This should never fail but maybe if something is odd? */
+                        if(!send_help(user, service->bot, module->helpfile, topic))
+                            send_message(user, service->bot, "MSG_TOPIC_UNKNOWN");
+                        send_message(user, service->bot, "MCMSG_HELP_FOOTER");
+                        return true;
+                    }
+                }
             }
     }
     /* Otherwise say we cant find it */
