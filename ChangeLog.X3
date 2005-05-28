@@ -1,6 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-05-27  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: make pending add check if the person is already on
+	the userlist before re-adding them (thx exec & reed for noticing this)
+	Fix capitalisation of I in pending notice.
+
+
 2005-05-18  Alex Schumann  <rubin@afternet.org>
 
 	* src/modcmd.c: reed pointed out that modcmd non-command help wasnt

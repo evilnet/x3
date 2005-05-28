@@ -195,7 +195,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_TRIMMED_USERS", "Trimmed $b%d users$b with access from %d to %d from the %s user list who were inactive for at least %s." },
     { "CSMSG_INCORRECT_ACCESS", "%s has access $b%s$b, not %s." },
     { "CSMSG_USER_EXISTS", "%s is already on the $b%s$b user list (with %s access)." },
-    { "CSMSG_ADDUSER_PENDING", "I have sent him/her a message letting them know, and if they auth or register soon, i will finish adding them automatically." },
+    { "CSMSG_ADDUSER_PENDING", "I have sent him/her a message letting them know, and if they auth or register soon, I will finish adding them automatically." },
     { "CSMSG_ADDUSER_PENDING_ALREADY", "He or she is already pending addition to %s once he/she auths with $b$N$b." },
     { "CSMSG_ADDUSER_PENDING_HEADER", "Users to add to channels pending logins:" }, /* Remove after testing? */
     { "CSMSG_ADDUSER_PENDING_LIST", "Channel %s user %s" },             /* Remove after testing? */
@@ -1311,8 +1311,15 @@ process_adduser_pending(struct userNode *user)
     while((ap = find_adduser_pending(NULL, user)))
     {
         struct userData *actee;
-        actee = add_channel_user(ap->channel->channel_info, ap->user->handle_info, ap->level, 0, NULL);
-        scan_user_presence(actee, NULL);
+        if(GetTrueChannelAccess(ap->channel->channel_info, ap->user->handle_info))
+        {
+            /* Already on the userlist. do nothing*/
+        }
+        else
+        {
+            actee = add_channel_user(ap->channel->channel_info, ap->user->handle_info, ap->level, 0, NULL);
+            scan_user_presence(actee, NULL);
+        }
         del_adduser_pending(ap);
     }
 }
