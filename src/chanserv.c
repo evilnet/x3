@@ -4478,7 +4478,7 @@ static CHANSERV_FUNC(cmd_resync)
         {
             if(mn->modes & MODE_CHANOP)
             {
-                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_CHANOP);
+                changes->args[used].mode = MODE_REMOVE |  MODE_CHANOP;
                 changes->args[used++].u.member = mn;
             }
             if(!(mn->modes & MODE_HALFOP))
@@ -4486,22 +4486,24 @@ static CHANSERV_FUNC(cmd_resync)
                 changes->args[used].mode = MODE_HALFOP;
                 changes->args[used++].u.member = mn;
             }
+            /* why cant halfops keep voice
             if(mn->modes & MODE_VOICE)
             {
                 changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_VOICE);
                 changes->args[used++].u.member = mn;
             }
+            */
         }
         else if(uData && uData->access >= UL_PEON /* cData->lvlOpts[lvlGiveVoice]*/)
         {
             if(mn->modes & MODE_CHANOP)
             {
-                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_CHANOP);
+                changes->args[used].mode = MODE_REMOVE | MODE_CHANOP;
                 changes->args[used++].u.member = mn;
             }
             if(mn->modes & MODE_HALFOP)
             {
-                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_HALFOP);
+                changes->args[used].mode = MODE_REMOVE | MODE_HALFOP;
                 changes->args[used++].u.member = mn;
             }
             if(!(mn->modes & MODE_VOICE))

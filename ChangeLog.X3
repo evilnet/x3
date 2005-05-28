@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-05-27  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Resync working now
+
 2005-05-27  Reed Loden  <reed@reedloden.com>
 
 	* src/chanserv.c: Fixed an incorrectly named message. Fixed some
