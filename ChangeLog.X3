@@ -1,12 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-05-27  Reed Loden  <reed@reedloden.com>
+
+	* src/chanserv.c: Fixed an incorrectly named message. Fixed some
+	grammar issues in the message send to pending users. Fixed a
+	problem with some of the resync code.
+
 2005-05-27  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: make pending add check if the person is already on
 	the userlist before re-adding them (thx exec & reed for noticing this)
 	Fix capitalisation of I in pending notice.
-
 
 2005-05-18  Alex Schumann  <rubin@afternet.org>
 

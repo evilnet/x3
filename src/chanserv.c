@@ -199,9 +199,9 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_ADDUSER_PENDING_ALREADY", "He or she is already pending addition to %s once he/she auths with $b$N$b." },
     { "CSMSG_ADDUSER_PENDING_HEADER", "Users to add to channels pending logins:" }, /* Remove after testing? */
     { "CSMSG_ADDUSER_PENDING_LIST", "Channel %s user %s" },             /* Remove after testing? */
-    { "CSMSG_ADDUSER_PENDING_HEADER", "--------- End of pending list ----------" }, /* Remove after testing? */
+    { "CSMSG_ADDUSER_PENDING_FOOTER", "--------- End of pending list ----------" }, /* Remove after testing? */
     /*{ "CSMSG_ADDUSER_PENDING_NOTINCHAN", "That user is not in %s, and is not auth'd." }, */
-    { "CSMSG_ADDUSER_PENDING_TARGET", "Channel Services bot here, %s would like to add you to my userlist in channel %s, but you are not auth'd to $b$N$b. Please auth now, and you will be added. If you do not have an accont, type /msg $N help register" },
+    { "CSMSG_ADDUSER_PENDING_TARGET", "Channel Services bot here: %s would like to add you to my userlist in channel %s, but you are not authenticated to $b$N$b. Please authenticate now and you will be added. If you do not have an account, type /msg $N help register" },
     { "CSMSG_CANNOT_TRIM", "You must include a minimum inactivity duration of at least 60 seconds to trim." },
 
     { "CSMSG_NO_SELF_CLVL", "You cannot change your own access." },
@@ -4476,14 +4476,14 @@ static CHANSERV_FUNC(cmd_resync)
         }
         else if(uData && uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
         {
-            if(!(mn->modes & MODE_HALFOP))
-            {
-                changes->args[used].mode = MODE_HALFOP;
-                changes->args[used++].u.member = mn;
-            }
             if(mn->modes & MODE_CHANOP)
             {
                 changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_CHANOP);
+                changes->args[used++].u.member = mn;
+            }
+            if(!(mn->modes & MODE_HALFOP))
+            {
+                changes->args[used].mode = MODE_HALFOP;
                 changes->args[used++].u.member = mn;
             }
             if(mn->modes & MODE_VOICE)
@@ -4496,12 +4496,12 @@ static CHANSERV_FUNC(cmd_resync)
         {
             if(mn->modes & MODE_CHANOP)
             {
-                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_VOICE);
+                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_CHANOP);
                 changes->args[used++].u.member = mn;
             }
             if(mn->modes & MODE_HALFOP)
             {
-                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_VOICE);
+                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_HALFOP);
                 changes->args[used++].u.member = mn;
             }
             if(!(mn->modes & MODE_VOICE))
