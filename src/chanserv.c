@@ -129,9 +129,11 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_REG_SUCCESS", "You now have ownership of $b%s$b." },
     { "CSMSG_PROXY_SUCCESS", "%s now has ownership of $b%s$b." },
     { "CSMSG_ALREADY_REGGED", "$b%s$b is registered to someone else." },
-    { "CSMSG_MUST_BE_OPPED", "You must be a channel operator in $b%s$b to register it." },
+    { "CSMSG_MUST_BE_OPPED", "You must be a channel operator (+o) in $b%s$b to register it." },
     { "CSMSG_PROXY_FORBIDDEN", "You may not register a channel for someone else." },
-    { "CSMSG_OWN_TOO_MANY", "%s already owns enough channels (at least %d); use FORCE to override." },
+    { "CSMSG_OWN_TOO_MANY", "%s already owns more than the limit of %d channels. Use FORCE to override." },
+    { "CSMSG_YOU_OWN_TOO_MANY", "You already own more than the limit of %d channels. Ask a staff member for help." },
+    { "CSMSG_ANOTHER_SERVICE", "Another service bot is in that channel already. Ask a staff member for help." },
 
 /* Do-not-register channels */
     { "CSMSG_NOT_DNR", "$b%s$b is not a valid channel name or *account." },
@@ -1887,6 +1889,8 @@ static CHANSERV_FUNC(cmd_register)
     char *chan_name;
     unsigned int new_channel, force=0;
     struct do_not_register *dnr;
+    unsigned int n;
+
 
     if(channel)
     {
@@ -1902,8 +1906,7 @@ static CHANSERV_FUNC(cmd_register)
             return 0;
         }
 
-        if(!IsHelping(user)
-           && (!(mn = GetUserMode(channel, user)) || !(mn->modes & MODE_CHANOP)))
+        if(!IsHelping(user) && (!(mn = GetUserMode(channel, user)) || !(mn->modes & MODE_CHANOP)))
         {
             reply("CSMSG_MUST_BE_OPPED", channel->name);
             return 0;
@@ -1948,11 +1951,36 @@ static CHANSERV_FUNC(cmd_register)
             return 0;
         force = (argc > (new_channel+2)) && !irccasecmp(argv[new_channel+2], "force");
         dnr = chanserv_is_dnr(chan_name, handle);
+
+        /* Check if they are over the limit.. */
+        if((chanserv_get_owned_count(handle) >= chanserv_conf.max_owned) && !force)
+        {
+            reply("CSMSG_OWN_TOO_MANY", handle->handle, chanserv_conf.max_owned);
+            return 0;
+        }
+
     }
     else
     {
-	handle = user->handle_info;
+        handle = user->handle_info;
         dnr = chanserv_is_dnr(chan_name, handle);
+        /* Check if they are over the limit.. */
+        if((chanserv_get_owned_count(handle) >= chanserv_conf.max_owned) && !force)
+        {
+            reply("CSMSG_YOU_OWN_TOO_MANY", chanserv_conf.max_owned);
+            return 0;
+        }
+        /* Check if another service is in the channel */
+        if(channel)
+            for(n = 0; n < channel->members.used; n++)
+            {
+                mn = channel->members.list[n];
+                if((mn && mn->user && (mn->user->modes & FLAGS_SERVICE)) || IsLocal(mn->user))
+                {
+                    reply("CSMSG_ANOTHER_SERVICE");
+                    return 0;
+                }
+            }
     }
     if(dnr && !force)
     {
@@ -1963,11 +1991,13 @@ static CHANSERV_FUNC(cmd_register)
         return 0;
     }
 
+    /* now handled above for message specilization *
     if((chanserv_get_owned_count(handle) >= chanserv_conf.max_owned) && !force)
     {
         reply("CSMSG_OWN_TOO_MANY", handle->handle, chanserv_conf.max_owned);
         return 0;
     }
+    */
 
     if(new_channel)
         channel = AddChannel(argv[1], now, NULL, NULL, NULL);

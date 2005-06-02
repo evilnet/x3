@@ -3,6 +3,12 @@
 
 2005-05-27  Alex Schumann  <rubin@afternet.org>
 
+	* src/chanserv.c: Improved usability of register command
+
+	* src/chanserv.help: Improved usability of register command
+
+2005-05-27  Alex Schumann  <rubin@afternet.org>
+
 	* src/chanserv.c: Resync working now
 
 2005-05-27  Reed Loden  <reed@reedloden.com>

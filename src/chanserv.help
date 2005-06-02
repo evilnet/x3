@@ -378,11 +378,20 @@
 "PLIST" ("/msg $C PLIST <#channel>",
         "This command lists all users of level $bPeon$b on a channel's userlist. If a mask is supplied, only peons matching the mask will be shown.",
         "$uSee Also:$u addpeon, delpeon, mdelpeon, users");
-"REGISTER" ("/msg $C REGISTER <#channel> [user|*account] [force]",
-        "Registers a channel with $b$C$b, automatically granting owner access to the specified user. If no user is provided, $b$C$b gives owner access to the user executing the command.",
-        "If the registrar is on the network staff and provides the third argument, $bforce$b, it will allow a do-not-register channel to be registered anyway.",
-        "In addition, $bregister$b will only allow one user to own a certain number of channels without the $bforce$b argument.",
-        "$uSee Also:$u addowner, noregister, unregister");
+
+"REGISTER" (
+        "/msg $C REGISTER <#channel>",
+        "Registers a channel to you with $b$C$b.  X3 will protect your channel, preserve your ownership of the channel, and provide handy features such as userlists and stats.",
+        "If the channel exists, you must have ops (+o) and there is a limit to the number of channels you may have at once.",
+        "Network staff see /MSG $C HELP STAFF REGISTER",
+        "$uSee Also:$u unregister, giveownership");
+
+"STAFF REGISTER" (
+        "/msg $C REGISTER <#channel> [user|*account] [force]",
+        "Registers a channel to the givin user with $b$C$b.",
+        "If staff provides the third argument, $bforce$b, it will allow the registration even if it is a do-not-register channel or ther register limit will be exceded.",
+        "$uSee Also:$u addowner, noregister, register, unregister");
+
 "REMOVENOTE" ("/msg $S REMOVENOTE <typename> [FORCE]",
         "Permanently deletes a note type.  Without the argument $bFORCE$b, it will only delete an unused note type.  With the argument $bFORCE$b, it will delete the note from all channels and then delete the note type.",
         "$uSee Also:$u createnote");
