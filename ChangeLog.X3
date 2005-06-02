@@ -3,7 +3,8 @@
 
 2005-05-27  Alex Schumann  <rubin@afternet.org>
 
-	* src/chanserv.c: Improved usability of register command
+	* src/chanserv.c: Improved usability of register command, fixed
+	unregister reply.
 
 	* src/chanserv.help: Improved usability of register command
 

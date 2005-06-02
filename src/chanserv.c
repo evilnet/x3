@@ -152,7 +152,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_UNREG_SUCCESS", "$b%s$b has been unregistered." },
     { "CSMSG_UNREG_NODELETE", "$b%s$b is protected from unregistration." },
     { "CSMSG_CHAN_SUSPENDED", "$b$C$b access to $b%s$b has been temporarily suspended (%s)." },
-    { "CSMSG_CONFIRM_UNREG", "To confirm this unregistration, you must use 'unregister %s'." },
+    { "CSMSG_CONFIRM_UNREG", "To confirm this unregistration, you must use 'unregister %s %s'." },
 
 /* Channel moving */
     { "CSMSG_MOVE_SUCCESS", "Channel registration has been moved to $b%s$b." },
@@ -2089,7 +2089,7 @@ static CHANSERV_FUNC(cmd_unregister)
         confirm_string = make_confirmation_string(uData);
 	if((argc < 2) || strcmp(argv[1], confirm_string))
 	{
-	    reply("CSMSG_CONFIRM_UNREG", confirm_string);
+	    reply("CSMSG_CONFIRM_UNREG", channel->name, confirm_string);
 	    return 0;
 	}
     }
