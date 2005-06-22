@@ -280,11 +280,24 @@
 "DOWNALL" ("/msg $C DOWNALL",
         "Executes the $bdown$b command for each channel you have access to.",
         "$uSee Also:$u down, up, upall");
-"DURATIONS" ("[<n>y][<n>M][<n>w][<n>d][<n>h][<n>m][<n>[s]]",
-        "There is a standard syntax for durations that let you easily specify longer periods of time.  A duration consists of one or more \"duration parts\", which are sequences of digits, separated by duration letters.",
-        "The valid duration letters are $by$b (for year, or 365 days), $bM$b (for month, or 31 days), $bw$b (for week, or 7 days), $bd$b (for day, or 24 hours), $bh$b (for hour, or 60 minutes), $bm$b (for minute, or 60 seconds), and $bs$b (for second).  We know not all years are 365 days and not all months are 31 days, but we pretend they are for parsing durations.",
-        "If the last duration part does not have any letter to indicate the units, seconds are assumed.",
-        "$uExamples$u: 1y1M is 365 days plus 31 days; 1y1m is 365 days plus 1 minute; 1h30m45 is ninety minutes and forty-five seconds; and so forth.");
+"DURATIONS" (
+        "This is the syntax used for commands that require time durations. A time duration is made up of numbers and units. Multiple units may be used in a row.",
+        "The valid unit letters are:",
+        "$by$b - years (365 days)",
+        "$bM$b - months (30 days)",
+        "$bw$b - weeks (7 days)",
+        "$bd$b - days (24 hours)",
+        "$bh$b - hours (60 minutes)",
+        "$bm$b - minutes (60 seconds)",
+        "$bs$b - seconds",
+        "If the unit letter is not givin, seconds are assumed.",
+        "$b$b",
+        "$uExamples$u:",
+        "$b5d$b is 5 days.",
+        "$b1y2M$b is 1 year and 2 months (425 days.)",
+        "$b1d1h$b is 1 day and 1 hour (25 hours.)",
+        "$b1h25m30s$b is 1 hour, 25 minutes and 30 seconds."
+        );
 "EMOTE" ("/msg $C EMOTE <#channel> <text>",
         "Makes $b$C$b send a CTCP ACTION message to the specified channel.",
         "$uSee Also:$u say");

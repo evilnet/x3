@@ -588,7 +588,7 @@ TypeLength(char type)
 {
     switch (type) {
     case 'y': return 365*24*60*60;
-    case 'M': return 31*24*60*60;
+    case 'M': return 30*24*60*60;
     case 'w': return 7*24*60*60;
     case 'd': return 24*60*60;
     case 'h': return 60*60;
@@ -598,6 +598,10 @@ TypeLength(char type)
     }
 }
 
+/* This function is not entirely accurate as it does not take into account leap units
+ * or varying months. TODO: use proper dateadd functions to calculate real seconds
+ * from now for the units (eg 1M should be give us seconds till todays date next month)
+ */
 unsigned long
 ParseInterval(const char *interval)
 {

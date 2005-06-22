@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-06-22  Alex Schumann  <rubin@afternet.org>
+	* src/chanserv.help: Improved DURATION help
+
+	* src/tools.c: Changed 'M' duration to 30 days (not 31) as its
+	a better average.
+
 2005-05-27  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Improved usability of register command, fixed
