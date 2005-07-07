@@ -3747,12 +3747,13 @@ def_list(struct listData *list)
         send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest), list->search);
     else
         send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest));
-    table_send(list->bot, list->user->nick, 0, NULL, list->table);
     if(list->table.length == 1)
     {
         msg = user_find_message(list->user, "MSG_NONE");
         send_message_type(4, list->user, list->bot, "  %s", msg);
     }
+    else
+        table_send(list->bot, list->user->nick, 0, NULL, list->table);
 }
 
 static int
@@ -3785,7 +3786,7 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     lData.search = (argc > 1) ? argv[1] : NULL;
     send_list = def_list;
     /* What does the following line do exactly?? */
-    (void)zoot_list; /* since it doesn't show user levels */
+    /*(void)zoot_list; ** since it doesn't show user levels */
 
     /* this does nothing!! -rubin
     if(user->handle_info)

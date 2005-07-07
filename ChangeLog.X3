@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-07-06  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Fixed a couple awkward looking outputs with userlist
+
+	* src/opserv.c: Fixed an awkward output of trace count etc.
+
 2005-06-22  Alex Schumann  <rubin@afternet.org>
 	* src/chanserv.help: Improved DURATION help
 

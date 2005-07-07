@@ -203,7 +203,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_USER_SEARCH_RESULTS", "The following users were found:" },
     { "OSMSG_USER_SEARCH_HEADER", "Nick                  User@Host   (Account)" },
     { "OSMSG_USER_SEARCH_BAR",    "-------------------------------------------" },
-    { "OSMSG_USER_SEARCH_COUNT",  "------------ Found %4u matches -----------" },
+    { "OSMSG_USER_SEARCH_COUNT",  "There were %4u matches" },
+    { "OSMSG_USER_SEARCH_COUNT_BAR",  "------------ Found %4u matches -----------" },
     { "OSMSG_CHANNEL_SEARCH_RESULTS", "The following channels were found:" },
     { "OSMSG_GLINE_SEARCH_RESULTS", "The following glines were found:" },
     { "OSMSG_LOG_SEARCH_RESULTS", "The following log entries were found:" },
@@ -3568,7 +3569,7 @@ static MODCMD_FUNC(cmd_trace)
 
     if (action == trace_print_func)
     {
-	reply("OSMSG_USER_SEARCH_RESULTS");
+        reply("OSMSG_USER_SEARCH_RESULTS");
         reply("OSMSG_USER_SEARCH_BAR");
         reply("OSMSG_USER_SEARCH_HEADER");
         reply("OSMSG_USER_SEARCH_BAR");
@@ -3590,9 +3591,14 @@ static MODCMD_FUNC(cmd_trace)
         dict_foreach(das.dict, opserv_show_hostinfo, &das);
 
     if (matches)
-	reply("OSMSG_USER_SEARCH_COUNT", matches);
+    {
+        if(action == trace_print_func)
+	    reply("OSMSG_USER_SEARCH_COUNT_BAR", matches);
+        else
+            reply("OSMSG_USER_SEARCH_COUNT", matches);
+    }
     else
-	reply("MSG_NO_MATCHES");
+	    reply("MSG_NO_MATCHES");
 
     if (das.discrim->channel)
         UnlockChannel(das.discrim->channel);
