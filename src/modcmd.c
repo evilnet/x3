@@ -941,6 +941,9 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int serv
              */
             snprintf(response, sizeof(response), "\x01VERSION %s\x01", PACKAGE_STRING);
             irc_notice_user(bot, user, response);
+        } else if (!irccasecmp(text, "GENDER")) {
+             snprintf(response, sizeof(response), "\x01GENDER ummm im still deciding\x01");
+             irc_notice_user(bot, user, response);
         }
         return;
     }

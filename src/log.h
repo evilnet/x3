@@ -23,6 +23,8 @@
 
 #include "common.h"
 
+#define AccountingLog   "everything.log"
+
 enum log_severity {
     LOG_REPLAY,   /* 0 */
     LOG_DEBUG,
@@ -92,5 +94,6 @@ struct logSearch* log_discrim_create(struct userNode *service, struct userNode *
 unsigned int log_entry_search(struct logSearch *discrim, entry_search_func esf, void *data);
 void report_entry(struct userNode *service, struct userNode *user, struct logEntry *entry);
 void SyncLog(char *fmt,...);
+int ShowLog(struct userNode *user, struct chanNode *cptr, char *chan, char *nuh, char *command, char *rest, int maxlines);
 
 #endif

@@ -45,6 +45,9 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
+/* Define to 1 if you have the <tgmath.h> header file. */
+#undef HAVE_TGMATH_H
+
 /* Define to 1 if you have the `ftime' function. */
 #undef HAVE_FTIME
 

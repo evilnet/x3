@@ -1,6 +1,32 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-05-07  Neil Spierling  <sirvulcan@gmail.com>
+
+	* configure: Regenerated.
+
+	* configure.in: Added checks for tgmath.h.
+
+	* src/chanserv.c: Added new command LAST, from X2. Similar to
+	EVENTS except its file based. Bear in mind you dont have to use
+	both. You can bind what you want to use. Commented out zoot_list
+	as its not in use, just a warning fix.
+
+	* src/hash.c: Warning fix.
+
+	* src/log.h: Misc defines.
+
+	* src/log.c: Logging functions from X2.
+
+	* src/math.c: If tgmath.h doesnt exist then include some other
+	files that contain the functions we require.
+
+	* src/modcmd.c: Added a small ctcp reply, gender.. like gnuworld X.
+
+	* src/proto-p10.c: Added chanserv.h #include to squash a small
+	compile error. Made X3 understand MARK's to a small point. Fixed
+	a small parsing bug with exempts.
+
 2005-07-06  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Fixed a couple awkward looking outputs with userlist
@@ -264,5 +290,5 @@
 
 ***********************************************************************/
 
-#define CVS_VERSION "$Revision$"
+#define CVS_VERSION "$Id$"
 

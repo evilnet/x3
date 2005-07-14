@@ -18,6 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
+#include "chanserv.h"
 #include "proto-common.c"
 
 /* Full commands. */
@@ -55,6 +56,7 @@
 #define CMD_LIST                "LIST"
 #define CMD_LUSERS              "LUSERS"
 #define CMD_MAP                 "MAP"
+#define CMD_MARK                "MARK"
 #define CMD_MODE                "MODE"
 #define CMD_MOTD                "MOTD"
 #define CMD_NAMES               "NAMES"
@@ -139,6 +141,7 @@
 #define TOK_LIST                "LIST"
 #define TOK_LUSERS              "LU"
 #define TOK_MAP                 "MAP"
+#define TOK_MARK                "MK"
 #define TOK_MODE                "M"
 #define TOK_MOTD                "MO"
 #define TOK_NAMES               "E"
@@ -234,6 +237,7 @@
 #define P10_LIST                TYPE(LIST)
 #define P10_LUSERS              TYPE(LUSERS)
 #define P10_MAP                 TYPE(MAP)
+#define P10_MARK                TYPE(MARK)
 #define P10_MODE                TYPE(MODE)
 #define P10_MOTD                TYPE(MOTD)
 #define P10_NAMES               TYPE(NAMES)
@@ -1143,8 +1147,10 @@ static CMD_FUNC(cmd_burst)
               if (ctype == 1) {
                 if (bcheck == 0) {
                   /* strip % char off start of very first ban */
-                  strncat(banlist, strtok(parm, "%"), sizeof(banlist) - 1 - strlen(banlist));
-                  strncat(banlist, " ", sizeof(banlist) - 1 - strlen(banlist));
+                  if (strlen(parm) > 1) {
+                    strncat(banlist, strtok(parm, "%"), sizeof(banlist) - 1 - strlen(banlist));
+                    strncat(banlist, " ", sizeof(banlist) - 1 - strlen(banlist));
+                  }
                   bcheck = 1;
                 } else {
                   strncat(banlist, parm, sizeof(banlist) - 1 - strlen(banlist));

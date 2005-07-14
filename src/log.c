@@ -20,9 +20,14 @@
 
 #include "conf.h"
 #include "log.h"
+#include "modcmd.h"
 #include "helpfile.h" /* send_message, message_register, etc */
 #include "nickserv.h"
 
+#define Block  4096
+#define MAXLOGSEARCHLENGTH 10000
+
+struct userNode *chanserv;
 struct logDestination;
 
 struct logDest_vtable {
@@ -78,6 +83,15 @@ static void log_format_audit(struct logEntry *entry);
 static const struct message_entry msgtab[] = {
     { "MSG_INVALID_FACILITY", "$b%s$b is an invalid log facility." },
     { "MSG_INVALID_SEVERITY", "$b%s$b is an invalid severity level." },
+
+    { "LAST_RESULTS",     "$b%s$b] %s %s $b%s$b %s" },
+    { "LAST_ERROR",       "%s:%s" },
+    { "LAST_COMMAND_LOG", "Channel Events for %s" },
+    { "LAST_LINE",        "----------------------------------------" },
+    { "LAST_STOPPING_AT", "--------- Stopping at %d lines ---------" },
+    { "LAST_MAX_AGE",     "-------- Data age limit reached --------" },
+    { "LAST_END_OF_LOG",  "---------- Found %d Matches ------------" },
+
     { NULL, NULL }
 };
 
@@ -1028,4 +1042,146 @@ void SyncLog(char *fmt,...)
     fclose(LogFile);
   }
 
+}
+
+int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *chan, char *nuh, char *command, char *rest)
+{
+   const char *info;
+
+   char serv[NICKLEN+1];
+
+   char* mychan;
+   char* mynuh;
+   char* mycommand;
+   char* myrest;
+   char* datestr;
+   char* mywho;
+   char* myserv;
+   char* myserva;
+   char* mychana;
+
+   datestr =   (char *) mysep(&LogLine, "]");
+   mywho =     (char *) mysep(&LogLine, " ");
+   mynuh =     (char *) mysep(&LogLine, " ");
+   mycommand = (char *) mysep(&LogLine, " ");
+   myrest =    (char *) mysep(&LogLine, "\0");
+   myserva =   (char *) mysep(&mywho, ":");
+   mychana =   (char *) mysep(&mywho, ":");
+   myserv =    (char *) mysep(&myserva, "(");
+   mychan =    (char *) mysep(&mychana, ")");
+
+   if(!mycommand)
+       return 0;
+
+   if(cptr)
+      chan = cptr->name;
+
+   if (!mychan)
+     mychan = "";
+
+   if(!chan)
+     chan = "";
+
+   if(!nuh)
+      nuh = "";
+   if(!command)
+      command = "";
+   if(!rest)
+      rest = "";
+   if(*chan && strcasecmp(mychan, chan))
+        return 0;
+   if(!myrest)
+      myrest = "";
+
+   info = conf_get_data("services/opserv/nick", RECDB_QSTRING);
+
+   if (!myserv)
+      myserv = "";
+
+   if (!strcmp(myserv, info)) {
+      if (!IsOper(user))
+        return 0;
+      sprintf(serv, "(%s)", info);
+   } else
+      sprintf(serv, "%s", "");
+
+   send_message(user, chanserv, "LAST_RESULTS", datestr, serv, mynuh, mycommand, myrest);
+   return 1;
+
+}
+
+int ShowLog(struct userNode *user, struct chanNode *cptr, char *chan, char *nuh, char *command, char *rest, int maxlines)
+{
+   FILE *TheFile;
+   int i, s, Last = 0, filelen, first;
+   int line = 0, searchline = 0;
+   int FilePosition;
+
+   char Buff[Block+1] = "", PrevBuff[Block+1] = "";
+   char LogLine[(Block+1)*2] = ""; /* To hold our exported results. */
+
+   if(!(TheFile = fopen(AccountingLog, "r")))
+   {
+       send_message(user, chanserv, "LAST_ERROR", AccountingLog, strerror(errno));
+       return 0;
+   }
+   s = fseek(TheFile, 0, SEEK_END); /* Start at the end. */
+   filelen = ftell(TheFile); /* Find out the length. */
+   FilePosition = 0; /* (from the bottom) */
+   send_message(user, chanserv, "LAST_COMMAND_LOG", cptr->name);
+   send_message(user, chanserv, "LAST_LINE");
+   while(Last == 0)
+   {
+       FilePosition += Block;
+       if(FilePosition > filelen)
+       {
+          FilePosition = filelen;
+          Last = 1;
+       }
+       if((s = fseek(TheFile, filelen-FilePosition, SEEK_SET)) < 0)
+       {
+          send_message(user, chanserv, "LAST_ERROR", AccountingLog, strerror(errno));
+          fclose(TheFile);
+          return 0;
+       }
+       s = fread(Buff, 1, Block, TheFile);
+       Buff[Block] = '\0';
+       if(ferror(TheFile))
+       {
+           send_message(user, chanserv, "LAST_ERROR", AccountingLog, strerror(errno));
+           fclose(TheFile);
+           return 0;
+       }
+       first = 1;
+       for(i = s-1; i >= 0; i--)
+       {
+            if(Buff[i] == '\n')
+            {
+               Buff[i] = '\0';
+               strcpy(LogLine, &Buff[i+1]);
+               if(first)
+                  strcat(LogLine, PrevBuff);
+               first = 0;
+               searchline++;
+               if(parselog(LogLine, user, cptr, chan, nuh, command, rest))
+                 line++;
+               if(line >= maxlines)
+               {
+                  send_message(user, chanserv, "LAST_STOPPING_AT", maxlines);
+                  return 1;
+               }
+               if( searchline >= MAXLOGSEARCHLENGTH )
+               {
+                   send_message(user, chanserv, "LAST_MAX_AGE");
+                   fclose(TheFile);
+                   return 1;
+               }
+
+            }
+       }
+       strcpy(PrevBuff, Buff); /* Save the remaining bit. */
+   }
+   send_message(user, chanserv, "LAST_END_OF_LOG", line);
+   fclose(TheFile);
+   return 1;
 }

@@ -23,11 +23,18 @@
 #include "modcmd.h"
 #include "saxdb.h"
 #include "timeq.h"
+
+#ifdef HAVE_TGMATH_H
+#include <tgmath.h>
+#else
+#include <math.h>
+#include <complex.h>
+#endif
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <tgmath.h>
 #include <time.h>
 
 #ifdef WIN32

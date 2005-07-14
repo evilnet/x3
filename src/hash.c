@@ -760,7 +760,6 @@ GetUserMode(struct chanNode *channel, struct userNode *user)
 struct userNode *IsInChannel(struct chanNode *channel, struct userNode *user)
 {
     unsigned int n;
-    struct modeNode *mn = NULL;
 
     verify(channel);
     verify(channel->members.list);

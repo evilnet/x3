@@ -477,6 +477,7 @@ static const struct message_entry msgtab[] = {
 
 /* Other things */
     { "CSMSG_EVENT_SEARCH_RESULTS", "$bChannel Events for %s$b" },
+    { "CSMSG_LAST_INVALID", "Invalid argument.  must be 1-200" },
     { NULL, NULL }
 };
 
@@ -3688,7 +3689,7 @@ static CHANSERV_FUNC(cmd_access)
     return 1;
 }
 
-/* This is never used... */
+/* This is never used...
 static void
 zoot_list(struct listData *list)
 {
@@ -3738,6 +3739,7 @@ zoot_list(struct listData *list)
         }
     }
 }
+*/
 
 static void
 def_list(struct listData *list)
@@ -4761,6 +4763,23 @@ static CHANSERV_FUNC(cmd_delnote)
     dict_remove(channel->channel_info->notes, note->type->name);
     reply("CSMSG_NOTE_REMOVED", argv[1], channel->name);
     return 1;
+}
+
+static CHANSERV_FUNC(cmd_last)
+{
+   int numoflines;
+
+   REQUIRE_PARAMS(1);
+
+   numoflines = (argc > 1) ? atoi(argv[1]) : 10;
+
+   if(numoflines < 1 || numoflines > 200)
+   {
+       reply("CSMSG_LAST_INVALID");
+       return 0;
+   }
+   ShowLog(user, channel, "*", "*", "*", "*", numoflines);
+   return 1;
 }
 
 static CHANSERV_FUNC(cmd_events)
@@ -7737,6 +7756,7 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(resync, 1, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
 
     DEFINE_COMMAND(events, 1, MODCMD_REQUIRE_REGCHAN, "flags", "+nolog", "access", "manager", NULL);
+    DEFINE_COMMAND(last, 1, MODCMD_REQUIRE_REGCHAN, "flags", "+nolog", "access", "manager", NULL);
     DEFINE_COMMAND(addlamer, 2, MODCMD_REQUIRE_REGCHAN, "access", "manager", NULL);
     DEFINE_COMMAND(addtimedlamer, 3, MODCMD_REQUIRE_REGCHAN, "access", "manager", NULL);
 
