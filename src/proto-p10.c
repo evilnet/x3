@@ -125,6 +125,7 @@
 #define TOK_EOB                 "EB"
 #define TOK_EOB_ACK             "EA"
 #define TOK_ERROR               "Y"
+#define TOK_EXEMPT		"EX"
 #define TOK_FAKEHOST            "FA"
 #define TOK_GET			"GET"
 #define TOK_GLINE               "GL"
@@ -190,7 +191,6 @@
 #define TOK_WHO                 "H"
 #define TOK_WHOIS               "W"
 #define TOK_WHOWAS              "X"
-#define TOK_EXEMPT		"EX"
 
 /* Protocol messages; aliased to full commands or tokens depending
    on compile-time configuration. ircu prefers tokens WITH THE
@@ -1701,6 +1701,9 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_WALLHOPS, cmd_dummy);
     /* Ignore dnsbl exemptions */
     dict_insert(irc_func_dict, TOK_EXEMPT, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_MARK, cmd_dummy);
+    /* Ignore privs */
+    dict_insert(irc_func_dict, TOK_PRIVS, cmd_dummy);
     /* We have reliable clock!  Always!  Wraaa! */
     dict_insert(irc_func_dict, CMD_SETTIME, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SETTIME, cmd_dummy);

@@ -1,6 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-07-06  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: made it ignore EX, MK and PRIV tokens to
+	remove errors from log. Fixed problem with missing break; in
+	channel mode c parsing (reed).
+
+	* src/mod-memoserv.c: Improved memoserv 'you have notes' message.
+
+	* src/log.c: Changed channel log target to send PRIVMSG instead of
+	NOTICE. (Ghozer)
+
 2005-05-07  Neil Spierling  <sirvulcan@gmail.com>
 
 	* configure: Regenerated.
