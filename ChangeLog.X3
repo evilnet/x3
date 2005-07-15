@@ -1,7 +1,15 @@
 /***********************************************************************
  X3 ChangeLog
 
-2005-07-06  Alex Schumann  <rubin@afternet.org>
+2005-07-15  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Changed around ctcpreaction setting so it:
+	    a) doesnt crash.
+	    b) doesnt kick userlist members ever
+	    c) has only 1 setting needed to control it
+	* src/chanserv.h: removed some old oplevel stuff.
+
+2005-07-14  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: made it ignore EX, MK and PRIV tokens to
 	remove errors from log. Fixed problem with missing break; in

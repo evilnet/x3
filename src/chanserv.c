@@ -270,25 +270,25 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_USERGREETING",  "$bUserGreeting$b %s" },
     { "CSMSG_SET_MODES",         "$bModes       $b %s" },
     { "CSMSG_SET_NODELETE",      "$bNoDelete    $b %s" },
-    { "CSMSG_SET_DYNLIMIT",      "$bDynLimit    $b %s" },
+    { "CSMSG_SET_DYNLIMIT",      "$bDynLimit    $b %s - +l joinflood protection." },
     { "CSMSG_SET_OFFCHANNEL",    "$bOffChannel  $b %s" },
-    { "CSMSG_SET_USERINFO",      "$bUserInfo    $b %d" },
+    { "CSMSG_SET_USERINFO",      "$bUserInfo    $b %d - and above userinfos are shown." },
     /*
     { "CSMSG_SET_GIVE_VOICE",    "$bGiveVoice   $b %d" },
     { "CSMSG_SET_GIVE_HALFOPS",  "$bGiveHalfOps $b %d" },
     */
     { "CSMSG_SET_TOPICSNARF",    "$bTopicSnarf  $b %d" },
-    { "CSMSG_SET_INVITEME",      "$bInviteMe    $b %d" },
-    { "CSMSG_SET_ENFOPS",        "$bEnfOps      $b %d" },
-    { "CSMSG_SET_ENFHALFOPS",    "$bEnfHalfOps  $b %d" },
+    { "CSMSG_SET_INVITEME",      "$bInviteMe    $b %d - Userlevel required to invite self." },
+    { "CSMSG_SET_ENFOPS",        "$bEnfOps      $b %d - level and above can op unknown users." },
+    { "CSMSG_SET_ENFHALFOPS",    "$bEnfHalfOps  $b %d - level and above can hop unknown users." },
     /*
     { "CSMSG_SET_GIVE_OPS",      "$bGiveOps     $b %d" },
     */
-    { "CSMSG_SET_ENFMODES",      "$bEnfModes    $b %d" },
-    { "CSMSG_SET_ENFTOPIC",      "$bEnfTopic    $b %d" },
-    { "CSMSG_SET_PUBCMD",        "$bPubCmd      $b %d" },
-    { "CSMSG_SET_SETTERS",       "$bSetters     $b %d" },
-    { "CSMSG_SET_CTCPUSERS",     "$bCTCPUsers   $b %d" },
+    { "CSMSG_SET_ENFMODES",      "$bEnfModes    $b %d - and above can change channel modes." },
+    { "CSMSG_SET_ENFTOPIC",      "$bEnfTopic    $b %d - and above can set the topic." },
+    { "CSMSG_SET_PUBCMD",        "$bPubCmd      $b %d - and above can use public commands." },
+    { "CSMSG_SET_SETTERS",       "$bSetters     $b %d - and above can change these settings." },
+/*    { "CSMSG_SET_CTCPUSERS",     "$bCTCPUsers   $b %d - and above can use ctcps." }, */
     { "CSMSG_SET_VOICE",         "$bvoice       $b %d - %s" },
     { "CSMSG_SET_PROTECT",       "$bProtect     $b %d - %s" },
     { "CSMSG_SET_TOYS",          "$bToys        $b %d - %s" },
@@ -324,6 +324,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_TOPICREFRESH_6_HOURS", "Refresh every 6 hours." },
     { "CSMSG_TOPICREFRESH_12_HOURS", "Refresh every 12 hours." },
     { "CSMSG_TOPICREFRESH_24_HOURS", "Refresh every 24 hours." },
+    { "CSMSG_CTCPREACTION_NONE", "CTCPs are allowed" },
     { "CSMSG_CTCPREACTION_KICK", "Kick on disallowed CTCPs" },
     { "CSMSG_CTCPREACTION_KICKBAN", "Kickban on disallowed CTCPs" },
     { "CSMSG_CTCPREACTION_SHORTBAN",  "Short timed ban on disallowed CTCPs" },
@@ -461,7 +462,7 @@ static const struct message_entry msgtab[] = {
 
 /* User settings */
     { "CSMSG_USER_OPTIONS", "User Options:" },
-    { "CSMSG_USER_PROTECTED", "That user is protected." },
+//    { "CSMSG_USER_PROTECTED", "That user is protected." },
 
 /* Toys */
     { "CSMSG_UNF_RESPONSE", "I don't want to be part of your sick fantasies!" },
@@ -617,6 +618,7 @@ static const struct {
     { "helper", "BUG:", UL_HELPER, 'X' }
 };
 
+/* If you change this, change the enum in chanserv.h also, or stack smashing will commence. */
 static const struct {
     char *format_name;
     char *db_name;
@@ -625,16 +627,16 @@ static const struct {
     unsigned int old_flag;
     unsigned short flag_value;
 } levelOptions[] = {
-    { "CSMSG_SET_GIVE_VOICE", "givevoice", 100, ~0, CHANNEL_VOICE_ALL, 0 },
-    { "CSMSG_SET_GIVE_HALFOPS", "givehalfops", 150, ~0, CHANNEL_HOP_ALL, 0 },
-    { "CSMSG_SET_GIVE_OPS", "giveops", 200, 2, 0, 0 },
+//    { "CSMSG_SET_GIVE_VOICE", "givevoice", 100, ~0, CHANNEL_VOICE_ALL, 0 },
+//    { "CSMSG_SET_GIVE_HALFOPS", "givehalfops", 150, ~0, CHANNEL_HOP_ALL, 0 },
+//    { "CSMSG_SET_GIVE_OPS", "giveops", 200, 2, 0, 0 }, // these 3 need removed, but causes segs if its still in the db..
     { "CSMSG_SET_ENFOPS", "enfops", 300, 1, 0, 0 },
     { "CSMSG_SET_ENFHALFOPS", "enfhalfops", 300, 1, 0, 0 },
     { "CSMSG_SET_ENFMODES", "enfmodes", 200, 3, 0, 0 },
     { "CSMSG_SET_ENFTOPIC", "enftopic", 200, 4, 0, 0 },
     { "CSMSG_SET_PUBCMD", "pubcmd", 0, 5, 0, 0 },
     { "CSMSG_SET_SETTERS", "setters", 400, 7, 0, 0 },
-    { "CSMSG_SET_CTCPUSERS", "ctcpusers", 0, 9, 0, 0 },
+//    { "CSMSG_SET_CTCPUSERS", "ctcpusers", 0, 9, 0, 0 },
     { "CSMSG_SET_USERINFO", "userinfo", 1, ~0, CHANNEL_INFO_LINES, 1 },
     { "CSMSG_SET_INVITEME", "inviteme", 1, ~0, CHANNEL_PEON_INVITE, 200 },
     { "CSMSG_SET_TOPICSNARF", "topicsnarf", 501, ~0, CHANNEL_TOPIC_SNARF, 1 }
@@ -663,6 +665,7 @@ struct charOptionValues {
     { '3', "CSMSG_TOPICREFRESH_12_HOURS" },
     { '4', "CSMSG_TOPICREFRESH_24_HOURS" }
 }, ctcpReactionValues[] = {
+    { 'n', "CSMSG_CTCPREACTION_NONE" },
     { 'k', "CSMSG_CTCPREACTION_KICK" },
     { 'b', "CSMSG_CTCPREACTION_KICKBAN" },
     { 't', "CSMSG_CTCPREACTION_SHORTBAN" },
@@ -681,7 +684,7 @@ static const struct {
     { "CSMSG_SET_PROTECT",      "protect",      'l', 0, ArrayLength(protectValues), protectValues },
     { "CSMSG_SET_TOYS",         "toys",         'p', 6, ArrayLength(toysValues), toysValues },
     { "CSMSG_SET_TOPICREFRESH", "topicrefresh", 'n', 8, ArrayLength(topicRefreshValues), topicRefreshValues },
-    { "CSMSG_SET_CTCPREACTION", "ctcpreaction", 't', 10, ArrayLength(ctcpReactionValues), ctcpReactionValues }
+    { "CSMSG_SET_CTCPREACTION", "ctcpreaction", 'n', 10, ArrayLength(ctcpReactionValues), ctcpReactionValues }
 };
 
 struct userData *helperList;
@@ -864,9 +867,15 @@ chanserv_ctcp_check(struct userNode *user, struct chanNode *channel, char *text,
        || IsService(user)
        || !ircncasecmp(text, "ACTION ", 7))
         return;
-    /* Figure out the minimum level needed to CTCP the channel */
-    if(check_user_level(channel, user, lvlCTCPUsers, 1, 0))
-        return;
+    /* We dont punish people we know -Rubin 
+     *    * Figure out the minimum level needed to CTCP the channel *
+     *
+     *	    if(check_user_level(channel, user, lvlCTCPUsers, 1, 0))
+     *		return;
+     */
+    /* If they are a user of the channel, they are exempt */
+    if(_GetChannelUser(channel->channel_info, user->handle_info, 0, 0))
+	    return;
     /* We need to enforce against them; do so. */
     eflags = 0;
     argv[0] = text;
@@ -875,7 +884,10 @@ chanserv_ctcp_check(struct userNode *user, struct chanNode *channel, char *text,
     if(GetUserMode(channel, user))
         eflags |= ACTION_KICK;
     switch(channel->channel_info->chOpts[chCTCPReaction]) {
-    default: case 'k': /* just do the kick */ break;
+    default: case 'n': return;
+    case 'k':
+        eflags |= ACTION_KICK; 
+        break;
     case 'b':
         eflags |= ACTION_BAN;
         break;
@@ -3038,19 +3050,24 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 
 	if(IsService(victim))
 	{
-	    reply("MSG_SERVICE_IMMUNE", victim->nick);
+	    if(cmd)
+	    	reply("MSG_SERVICE_IMMUNE", victim->nick);
 	    return 0;
 	}
 
         if((action == ACTION_KICK) && !victimCount)
         {
-            reply("MSG_CHANNEL_USER_ABSENT", victim->nick, channel->name);
+	    if(cmd)
+            	reply("MSG_CHANNEL_USER_ABSENT", victim->nick, channel->name);
             return 0;
         }
 
 	if(protect_user(victim, user, channel->channel_info))
 	{
-	    reply("CSMSG_USER_PROTECTED", victim->nick);
+	    // This translates to  send_message(user, cmd->parent->bot, ...)
+	    // if user is x3 (ctcp action) cmd is null and segfault.
+	    if(cmd)
+		reply("CSMSG_USER_PROTECTED", victim->nick);
 	    return 0;
 	}
 
@@ -3061,7 +3078,8 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
     {
 	if(!is_ircmask(argv[1]))
 	{
-	    reply("MSG_NICK_UNKNOWN", argv[1]);
+	    if(cmd)
+	       reply("MSG_NICK_UNKNOWN", argv[1]);
 	    return 0;
 	}
 
@@ -3069,7 +3087,8 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 
         if(bad_channel_ban(channel, user, argv[1], &victimCount, victims))
         {
-	    reply("CSMSG_MASK_PROTECTED", argv[1]);
+	    if(cmd)
+	        reply("CSMSG_MASK_PROTECTED", argv[1]);
 	    return 0;
 	}
         /* We dont actually want a victem count if were banning a mask manually, IMO -Rubin*/
@@ -3079,14 +3098,16 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 #ifdef entropy_lameness
         if((victimCount > 4) && ((victimCount * 3) > channel->members.used) && !IsOper(user))
         {
-            reply("CSMSG_LAME_MASK", argv[1]);
+	    if(cmd)
+                reply("CSMSG_LAME_MASK", argv[1]);
             return 0;
         }
 #endif
 
         if((action == ACTION_KICK) && (victimCount == 0))
         {
-            reply("CSMSG_NO_MATCHING_USERS", channel->name, argv[1]);
+	    if(cmd)
+                reply("CSMSG_NO_MATCHING_USERS", channel->name, argv[1]);
             return 0;
         }
 
@@ -3103,7 +3124,8 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 
 	if(channel->channel_info->banCount >= chanserv_conf.max_chan_bans) /* ..lamers.. */
 	{
-	    reply("CSMSG_MAXIMUM_LAMERS", chanserv_conf.max_chan_bans); /* ..lamers.. */
+	    if(cmd)
+	        reply("CSMSG_MAXIMUM_LAMERS", chanserv_conf.max_chan_bans); /* ..lamers.. */
 	    free(ban);
 	    return 0;
 	}
@@ -3114,13 +3136,15 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 
 	    if(duration < 15)
 	    {
-		reply("CSMSG_DURATION_TOO_LOW");
+		if(cmd)
+		    reply("CSMSG_DURATION_TOO_LOW");
 		free(ban);
 		return 0;
 	    }
 	    else if(duration > (86400 * 365 * 2))
 	    {
-		reply("CSMSG_DURATION_TOO_HIGH");
+		if(cmd)
+		    reply("CSMSG_DURATION_TOO_HIGH");
 		free(ban);
 		return 0;
 	    }
@@ -3175,7 +3199,7 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 
                         if(!cmd)
                         {
-                            /* automated kickban */
+                            /* automated kickban, dont reply */
                         }
 			else if(duration)
 			    reply("CSMSG_LAMER_EXTENDED", ban, intervalString(interval, duration, user->handle_info));
@@ -5587,10 +5611,12 @@ static MODCMD_FUNC(chan_opt_setters)
     return channel_level_option(lvlSetters, CSFUNC_ARGS);
 }
 
+/*
 static MODCMD_FUNC(chan_opt_ctcpusers)
 {
     return channel_level_option(lvlCTCPUsers, CSFUNC_ARGS);
 }
+*/
 
 static MODCMD_FUNC(chan_opt_userinfo)
 {
@@ -6946,7 +6972,7 @@ chanserv_conf_read(void)
             "DefaultTopic", "TopicMask", "Greeting", "UserGreeting", "Modes",
             /* options based on user level */
             "PubCmd", "InviteMe", "UserInfo",/* "GiveVoice", "GiveHalfOps", "GiveOps", */ "EnfOps",
-            "EnfHalfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", "CtcpUsers",
+            "EnfHalfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", /*"CtcpUsers", */
             /* multiple choice options */
             "CtcpReaction", "Protect", "Toys", "TopicRefresh",
             /* binary options */
@@ -7829,7 +7855,7 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(toys);
     DEFINE_CHANNEL_OPTION(setters);
     DEFINE_CHANNEL_OPTION(topicrefresh);
-    DEFINE_CHANNEL_OPTION(ctcpusers);
+//    DEFINE_CHANNEL_OPTION(ctcpusers);
     DEFINE_CHANNEL_OPTION(ctcpreaction);
     DEFINE_CHANNEL_OPTION(inviteme);
     if(off_channel > 1)

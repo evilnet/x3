@@ -36,16 +36,16 @@ enum UL_ALIASES {
 
 enum levelOption {
                     /* TODO: Does removing values here mess up reading the db files? */
-    lvlGiveVoice,   /* Depreciated */
-    lvlGiveHalfOps, /* Depreciated */
-    lvlGiveOps, /* Depreciated */
+//    lvlGiveVoice,   /* Depreciated */
+//    lvlGiveHalfOps, /* Depreciated */
+//    lvlGiveOps, /* Depreciated */
     lvlEnfOps,
     lvlEnfHalfOps,
     lvlEnfModes,
     lvlEnfTopic,
     lvlPubCmd,
     lvlSetters,
-    lvlCTCPUsers,
+//    lvlCTCPUsers,
     lvlUserInfo,
     lvlInviteMe,
     lvlTopicSnarf,
