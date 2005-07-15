@@ -190,6 +190,7 @@
 #define TOK_WHO                 "H"
 #define TOK_WHOIS               "W"
 #define TOK_WHOWAS              "X"
+#define TOK_EXEMPT		"EX"
 
 /* Protocol messages; aliased to full commands or tokens depending
    on compile-time configuration. ircu prefers tokens WITH THE
@@ -285,6 +286,7 @@
 #define P10_WHO                 TYPE(WHO)
 #define P10_WHOIS               TYPE(WHOIS)
 #define P10_WHOWAS              TYPE(WHOWAS)
+#define P10_EXEMPT		TYPE(EXEMPT)
 
 /* Servers claiming to have a boot or link time before PREHISTORY
  * trigger errors to the log.  We hope no server has been running
@@ -1697,6 +1699,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_WALLOPS, cmd_dummy);
     dict_insert(irc_func_dict, CMD_WALLHOPS, cmd_dummy);
     dict_insert(irc_func_dict, TOK_WALLHOPS, cmd_dummy);
+    /* Ignore dnsbl exemptions */
+    dict_insert(irc_func_dict, TOK_EXEMPT, cmd_dummy);
     /* We have reliable clock!  Always!  Wraaa! */
     dict_insert(irc_func_dict, CMD_SETTIME, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SETTIME, cmd_dummy);
@@ -2612,7 +2616,7 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'e': remove |= MODE_EXEMPT; break;
         case 'D': remove |= MODE_DELAYJOINS; break;
         case 'r': remove |= MODE_REGONLY; break;
-        case 'c': remove |= MODE_NOCOLORS;
+        case 'c': remove |= MODE_NOCOLORS; break;
         case 'C': remove |= MODE_NOCTCPS; break;
         case 'S': remove |= MODE_STRIPCOLOR; break;
         case 'M': remove |= MODE_MODUNREG; break;

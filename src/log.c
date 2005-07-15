@@ -969,14 +969,17 @@ ldIrc_close(struct logDestination *self_) {
     free(self);
 }
 
+/* 
+ * ldIrc_audit and ldIrc_module send log messages targetted to an IRC channel, to the channel
+ */
 static void
 ldIrc_audit(struct logDestination *self_, UNUSED_ARG(struct log_type *type), struct logEntry *entry) {
     struct logDest_irc *self = (struct logDest_irc*)self_;
 
     if (entry->channel_name) {
-        send_target_message(4, self->target, entry->bot, "(%s", strchr(strchr(entry->default_desc, ' '), ':')+1);
+        send_target_message(5, self->target, entry->bot, "(%s", strchr(strchr(entry->default_desc, ' '), ':')+1);
     } else {
-        send_target_message(4, self->target, entry->bot, "%s", strchr(entry->default_desc, ')')+2);
+        send_target_message(5, self->target, entry->bot, "%s", strchr(entry->default_desc, ')')+2);
     }
 }
 
@@ -985,7 +988,7 @@ ldIrc_module(struct logDestination *self_, struct log_type *type, enum log_sever
     struct logDest_irc *self = (struct logDest_irc*)self_;
     extern struct userNode *opserv;
 
-    send_target_message(4, self->target, opserv, "%s %s: %s\n", type->name, log_severity_names[sev], message);
+    send_target_message(5, self->target, opserv, "%s %s: %s\n", type->name, log_severity_names[sev], message);
 }
 
 static struct logDest_vtable ldIrc_vtbl = {

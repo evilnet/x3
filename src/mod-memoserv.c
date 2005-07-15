@@ -74,7 +74,7 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_EXPIRY", "Messages will be expired when they are %s old (%d seconds)." },
     { "MSMSG_MESSAGES_EXPIRED", "$b%lu$b message(s) expired." },
     { "MSMSG_MEMOS_INBOX", "You have $b%d$b new message(s) in your inbox and %d old messages.  Use /msg $S LIST to list them." },
-    { "MSMSG_NEW_MESSAGE", "You have a new message from $b%s$b." },
+    { "MSMSG_NEW_MESSAGE", "You have a new message from $b%s$b. /msg $S LIST" },
     { "MSMSG_DELETED_ALL", "Deleted all of your messages." },
     { "MSMSG_USE_CONFIRM", "Please use /msg $S DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
     { "MSMSG_STATUS_TOTAL", "I have $b%u$b memos in my database." },
