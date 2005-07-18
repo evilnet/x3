@@ -1049,19 +1049,24 @@ void SyncLog(char *fmt,...)
 
 int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *chan, char *nuh, char *command, char *rest)
 {
-   const char *info;
-
-   char serv[NICKLEN+1];
-
-   char* mychan;
-   char* mynuh;
+   struct svccmd *svccmd;
+   struct svccmd *cmd;
+   struct service *service;
+   const  char *info;
+   char   serv[NICKLEN+1];
+   char   buf[MAXLEN];
+   char   myservc[MAXLEN];
+   char*  mychan;
+   char*  mynuh;
    char* mycommand;
-   char* myrest;
-   char* datestr;
-   char* mywho;
-   char* myserv;
+   char*  myrest;
+   char*  datestr;
+   char*  mywho;
+   char *myserv;
    char* myserva;
-   char* mychana;
+   char*  mychana;
+   unsigned int pos;
+   int p = 0;
 
    datestr =   (char *) mysep(&LogLine, "]");
    mywho =     (char *) mysep(&LogLine, " ");
@@ -1100,13 +1105,75 @@ int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *
 
    if (!myserv)
       myserv = "";
+   else
+     strcpy(myservc, myserv);
 
-   if (!strcmp(myserv, info))
-      return 0;
-    else
+
+   if (!strcmp(myserv, info)) {
+      if (!IsOper(user))
+        return 0;
+      else {
+        if ((service = service_find(myserv))) {
+          if (!(cmd = dict_find(service->commands, mycommand, NULL)))
+            return 0;
+
+          if (!(svccmd = svccmd_resolve_name(cmd, mycommand)))
+            return 0;
+
+          pos = snprintf(buf, sizeof(buf), "%s.%s", svccmd->command->parent->name, svccmd->command->name);
+
+          if (svccmd->alias.used) {
+              buf[pos++] = ' ';
+              unsplit_string((char**)svccmd->alias.list+1, svccmd->alias.used-1, buf+pos);
+          }
+        }
+      }
+
+      if (!(strcmp(buf+0, "OpServ.OP")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.DEOP")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.VOICE")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.DEVOICE")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.KICK")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.KICKBAN")))
+         p = 1;
+
+      if (!(strcmp(buf+0, "OpServ.OPALL")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.DEOPALL")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.VOICEALL")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.DEVOICEALL")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.KICKALL")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.KICKBANALL")))
+         p = 1;
+
+
+      if (!(strcmp(buf+0, "OpServ.INVITE")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.INVITEME")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.CLEARBANS")))
+         p = 1;
+      if (!(strcmp(buf+0, "OpServ.CLEARMODES")))
+         p = 1;
+
+      if (p == 1)
+        send_message(user, chanserv, "LAST_RESULTS", datestr, myserv, mynuh, mycommand, myrest);
+
+      p = 0;
+    } else {
       sprintf(serv, "%s", "");
+      send_message(user, chanserv, "LAST_RESULTS", datestr, serv, mynuh, mycommand, myrest);
+    }
 
-   send_message(user, chanserv, "LAST_RESULTS", datestr, serv, mynuh, mycommand, myrest);
    return 1;
 
 }

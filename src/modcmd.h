@@ -162,6 +162,7 @@ struct service *service_register(struct userNode *bot);
 struct service *service_find(const char *name);
 /* Bind one command to a service. */
 struct svccmd *service_bind_modcmd(struct service *service, struct modcmd *cmd, const char *name);
+struct svccmd *svccmd_resolve_name(struct svccmd *origin, const char *name);
 
 /* Send help for a command to a user. */
 int svccmd_send_help(struct userNode *user, struct service *service, const char *topic);

@@ -1,7 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
-	* src/log.c: Dont show O3 stuff in LAST.
+2005-07-18  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/modcmd.h: Lets make some functions global.
+
+	* src/modcmd.c: Log hostmasks no matter what.
+
+	* src/log.c: Lookup commands if they are from OpServ in the log.
+	If they match channel specific commands like OP, DEOP, etc then
+	we will display them in a LAST command (assuming the person doing
+	the LAST is an oper). Normal clients wont see commands that have
+	been performed by OpServ.
 
 2005-07-15  Alex Schumann  <rubin@afternet.org>
 

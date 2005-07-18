@@ -255,7 +255,7 @@ add_pending_template(struct svccmd *cmd, const char *target) {
     pending_templates = pending;
 }
 
-static struct svccmd *
+struct svccmd *
 svccmd_resolve_name(struct svccmd *origin, const char *name) {
     char *sep, svcname[MAXLEN];
 
@@ -756,7 +756,7 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
             slvl = LOG_COMMAND;
         /* Unsplit argv after running the function to get the benefit
          * of any mangling/hiding done by the commands. */
-        log_audit(cmd->command->parent->clog, slvl, user, service->bot, channel_name, ((flags & MODCMD_LOG_HOSTMASK) ? AUDIT_HOSTMASK : 0), unsplit_string(argv, argc, NULL));
+        log_audit(cmd->command->parent->clog, slvl, user, service->bot, channel_name, AUDIT_HOSTMASK, unsplit_string(argv, argc, NULL));
     }
     return 1;
 }
