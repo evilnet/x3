@@ -1101,11 +1101,9 @@ int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *
    if (!myserv)
       myserv = "";
 
-   if (!strcmp(myserv, info)) {
-      if (!IsOper(user))
-        return 0;
-      sprintf(serv, "(%s)", info);
-   } else
+   if (!strcmp(myserv, info))
+      return 0;
+    else
       sprintf(serv, "%s", "");
 
    send_message(user, chanserv, "LAST_RESULTS", datestr, serv, mynuh, mycommand, myrest);

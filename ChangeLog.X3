@@ -1,6 +1,8 @@
 /***********************************************************************
  X3 ChangeLog
 
+	* src/log.c: Dont show O3 stuff in LAST.
+
 2005-07-15  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Changed around ctcpreaction setting so it:
