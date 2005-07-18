@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-07-18  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: added +L awareness
+
+	* src/hash.h: added +L awareness
+
+	* src/chanserv.help: changed set ctcpreaction help
+
 2005-07-18  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/modcmd.h: Lets make some functions global.

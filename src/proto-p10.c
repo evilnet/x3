@@ -2254,6 +2254,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'T': do_chan_mode(MODE_NOAMSG); break;
         case 'O': do_chan_mode(MODE_OPERSONLY); break;
         case 'Z': do_chan_mode(MODE_SSLONLY); break;
+	case 'L': do_chan_mode(MODE_HIDEMODE); break;
 	case 'z':
 	  if (!(flags & MCP_REGISTERED)) {
 	   do_chan_mode(MODE_REGISTERED);
@@ -2262,8 +2263,6 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
 	   return NULL;
 	  }
 	  break;
-//   uncomment this when ssl is enabled on the network.
-//        case 'Z': do_chan_mode(MODE_SSLONLY); break;
 #undef do_chan_mode
         case 'l':
             if (add) {
@@ -2432,6 +2431,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
+	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
         if (change->modes_clear & channel->modes & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', channel->key);
@@ -2483,6 +2483,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
+	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
         if(change->modes_set & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', change->new_key);
@@ -2551,6 +2552,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
+	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
     }
     if (change->modes_set) {
@@ -2574,6 +2576,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
+	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
         switch (change->modes_set & (MODE_KEY|MODE_LIMIT)) {
         case MODE_KEY|MODE_LIMIT:
@@ -2629,6 +2632,7 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'O': remove |= MODE_OPERSONLY; break;
         case 'z': remove |= MODE_REGISTERED; break;
         case 'Z': remove |= MODE_SSLONLY; break;
+	case 'L': remove |= MODE_HIDEMODE; break;
         }
     }
 

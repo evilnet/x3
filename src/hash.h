@@ -50,6 +50,7 @@
 #define MODE_SSLONLY            0x00400000 /* +Z ssl only */
 #define MODE_HALFOP             0x00800000 /* +h USER */
 #define MODE_EXEMPT             0x01000000 /* +e exempt */
+#define MODE_HIDEMODE		0x02000000 /* +L hide modes */
 #define MODE_REMOVE             0x80000000
 
 #define FLAGS_OPER		0x0001 /* Operator +O */
