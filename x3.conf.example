@@ -226,10 +226,24 @@
         "set_shows" ("DefaultTopic", "TopicMask", "Greeting", "UserGreeting", "Modes", "PubCmd", "InviteMe", "StrictOp", "AutoOp", "EnfModes", "EnfTopic", "TopicSnarf", "UserInfo", "GiveVoice", "GiveOps", "EnfOps", "Setters", "CtcpUser", "CtcpReaction", "Protect", "Toys", "DynLimit", "NoDelete");
  
         // A list of !8ball responses
-        "8ball" ("Not a chance.",
-                "In your dreams.",
+        "8ball" (
+                "Are you out of your MIND?",
+                "It won't happen, not a chance, definitely no.",
+                "Outlook seems bleak.",
+                "My sources say no.",
+                "You bet!",
+                "It is decidedly so.",
+                "It's hard to be sure.",
+                "Most definitely.",
+                "In your dreams...",
+                "If the prophets wish it...",
+                "Forecast hazy, try again later.",
+                "I don't know!",
                 "Absolutely!",
-                "Could be, could be.");
+                "Never.",
+                "Yes.",
+                "No.",
+                "Maybe.");
         // channel(s) that support helpers must be in to be helping
         // if this is a list, any one by itself will do
         "support_channel" ("#support", "#registration");

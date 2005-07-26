@@ -6172,6 +6172,7 @@ static CHANSERV_FUNC(cmd_wut)
     return 1;
 }
 
+#ifdef lame8ball
 static CHANSERV_FUNC(cmd_8ball)
 {
     unsigned int i, j, accum;
@@ -6193,6 +6194,169 @@ static CHANSERV_FUNC(cmd_8ball)
         send_message_type(4, user, cmd->parent->bot, "%s", resp);
     return 1;
 }
+
+#else /* Use cool 8ball instead */
+
+void eightball(char *outcome, int method, unsigned int seed)
+{
+   int answer = 0;
+
+#define NUMOFCOLORS 18
+   char ballcolors[50][50] = {"blue", "red", "green", "yellow",
+        "white", "black", "grey", "brown",
+        "yellow", "pink", "purple", "orange", "teal", "burgandy",
+        "fuchsia","turquoise","magenta", "cyan"};
+#define NUMOFLOCATIONS 50
+   char balllocations[50][55] = { 
+	"Locke's house", "Oregon", "California", "Indiana", "Canada",
+        "Russia", "Japan", "Florida", "the Bahamas", "Hiroshima",
+        "the Caribbean", "the Everglades", "your head", "your pants", "your school",
+        "the Statue of Liberty", "Mt. Fugi", "your mother's house", "IRC", "OSU",
+        "Locke's cat", "the closet", "the washroom", "the lake", "Spain",
+        "the bathtub", "the toilet", "the sewer", "a horse", "Jupiter",
+        "Uranus", "Pluto", "a dark place", "your undies", "your shirt",
+        "your bra", "your hair", "your bed", "the couch", "the wall", 
+	"Reed", "here --> [X]", "your brain", "Italy", "the Netherlands", 
+	"Mars", "my hardware", "the bar", "Neverland Ranch", "Germany" };
+#define NUMOFPREPS 15
+   char ballpreps[50][50] = { 
+	"Near", "Somewhere near", "In", "In", "In", 
+	"In", "Hiding in", "Under", "Next to", "Over", 
+	"Crying in", "Right beside", "Nowhere near", "North of", "Trying to find"};
+#define NUMOFNUMS 34
+   char ballnums[50][50] = { 
+        "A hundred", "A thousand", "A few", "42",
+        "About 1", "About 2", "About 3", "About 4", "About 5", "About 6", "About 7", "About 8", "About 9", "About 10",
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "Ten",
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "Ten",
+        };
+#define NUMOFMULTS 8
+   char ballmults[50][50] = { " million", " or so", " thousand", "", " or less", " or more", "", ""};
+
+   /* Method:
+    * 0: normal  (Not used in x3)
+    * 1: color
+    * 2: where is
+    * 3: how many
+    */
+
+    srand(seed);
+    if (method == 1) /* A Color */
+    {
+      char tmp[MAXLEN];
+
+      answer = (rand() % 12); /* Make sure this is the # of entries */
+      switch(answer)
+      {
+        case 0: strcpy(tmp, "Very bright %s, I'd say.");
+                break;
+        case 1: strcpy(tmp, "Sort of a light %s color.");
+                break;
+        case 2: strcpy(tmp, "Dark and dreary %s.");
+                break;
+        case 3: strcpy(tmp, "Quite a pale shade of %s.");
+                break;
+        case 4: strcpy(tmp, "A gross kind of mucky %s.");
+                break;
+        case 5: strcpy(tmp, "Brilliant whiteish %s.");
+		break;
+	case 6: case 7: case 8: case 9: strcpy(tmp, "%s.");
+		break;
+	case 10: strcpy(tmp, "Solid %s.");
+	        break;
+	case 11: strcpy(tmp, "Transparent %s.");
+		 break;
+        default: strcpy(outcome, "An invalid random number was generated.");
+                return;
+      }
+      sprintf(outcome, tmp, ballcolors[rand() % NUMOFCOLORS]);
+      return;
+    }
+    else if (method == 2)  /* Location */
+    {
+       sprintf(outcome, "%s %s.", ballpreps[rand() % NUMOFPREPS], balllocations[rand() % NUMOFLOCATIONS]);
+    }
+    else if (method == 3)  /* Number of ___ */
+    {
+       sprintf(outcome, "%s%s.", ballnums[rand() % NUMOFNUMS], ballmults[rand() % NUMOFMULTS]);
+    }
+    else
+    {
+      //Debug(DBGWARNING, "Error in 8ball.");
+    }
+    return;
+}
+
+static CHANSERV_FUNC(cmd_8ball)
+{
+  char *word1, *word2, *word3;
+  static char eb[MAXLEN];
+  unsigned int accum, i, j;
+
+  REQUIRE_PARAMS(1);
+  accum = 0;
+  for(i=1; i<argc; i++)
+    for(j=0; argv[i][j]; j++)
+      accum = (accum << 5) - accum + toupper(argv[i][j]);
+
+  accum += time(NULL)/3600;
+  word1 = argv[1];
+  word2 = argc>2?argv[2]:"";
+  word3 = argc>3?argv[3]:"";
+
+/*** COLOR *****/
+  if((word2) && strcasecmp(word1, "what") == 0 && strcasecmp(word2, "color") == 0)
+     eightball(eb, 1, accum);
+  else if((word3) && strcasecmp(word1, "what's") == 0 && strcasecmp(word2, "the") == 0 && strcasecmp(word3, "color") == 0)
+     eightball(eb, 1, accum);
+  else if((word3) && strcasecmp(word1, "whats") == 0 && strcasecmp(word2, "the") == 0 && strcasecmp(word3, "color") == 0)
+     eightball(eb, 1, accum);
+/*** LOCATION *****/
+  else if(
+           (
+             word2 &&
+             (
+                (strcasecmp(word1, "where") == 0) &&
+                (strcasecmp(word2, "is") == 0)
+             )
+           ) ||
+             (
+                   strcasecmp(word1, "where's") == 0
+             )
+         )
+     eightball(eb, 2, accum);
+/*** NUMBER *****/
+  else if((word2) && strcasecmp(word1, "how") == 0 && strcasecmp(word2, "many") == 0)
+     eightball(eb, 3, accum);
+/*** GENERIC *****/
+  else
+  {
+     /* Generic 8ball question.. so pull from x3.conf srvx style */
+	    const char *resp;
+
+	    resp = chanserv_conf.eightball->list[accum % chanserv_conf.eightball->used];
+	    if(channel)
+	    {
+		char response[MAXLEN];
+		sprintf(response, "\002%s\002: %s", user->nick, resp);
+		irc_privmsg(cmd->parent->bot, channel->name, response);
+	    }
+	    else
+		send_message_type(4, user, cmd->parent->bot, "%s", resp);
+	    return 1;
+  }
+
+  if(channel)
+  {
+        char response[MAXLEN];
+        sprintf(response, "\002%s\002: %s", user->nick, eb);
+        irc_privmsg(cmd->parent->bot, channel->name, response);
+  }
+  else
+        send_message_type(4, user, cmd->parent->bot, "%s", eb);
+  return 1;
+}
+#endif
 
 static CHANSERV_FUNC(cmd_d)
 {

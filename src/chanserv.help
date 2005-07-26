@@ -95,6 +95,7 @@
             " $bEVENTS$b      View a list of events relevant to a channel."
 );
 "INFORMATION"     ("$bInformative Commands:$b",
+            " $bMYACCESS$b    Show all the channels you have access to.",
             " $bVERSION$b     Check the current running version of $C.",
             " $bNETINFO$b     Check current network-wide information.",
             " $bSTAFF$b       Get a list of all the current staff.",
@@ -221,8 +222,11 @@
         "For example: CALC sqrt [5 + .43 * (tan[75])] / 2",
         "If you do not have access in the channel, the answer may be reported",
         "to you privately (via MSG or NOTICE) instead of in the channel.",
-        "CALC can be used by all users.",
         "$uSee Also:$u dice, 8ball");
+"8BALL" ("/msg $C 8BALL [yes no question|what color is..|how many..|where is..]?",
+	"8BALL answers yes or no questions, color queistions, numerical questions, and location questions.",
+	"If you do not have access in the channel, the answer may be reported to you privately instead of in the channel.",
+	"$uSee Also:$u dice, calc");
 "CLIST" ("/msg $C CLIST <#channel> [mask]",
         "This command lists all users of level $bCoowner$b on a channel's userlist. If a mask is supplied, only coowners matching the mask will be shown.",
         "$uSee Also:$u addcoowner, delcoowner, mdelcoowner, users");

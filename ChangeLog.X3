@@ -1,6 +1,16 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-07-26  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: ported x2's 8ball in, and improved it.
+
+	* src/math.c: Added osiris' hack to do_math for supporting
+	2(10)  and 2pi etc. Improved it to handle pi2 also.
+
+	* src/chanserv.help: updated 8ball help and added 'myaccess' to
+	information help index.
+
 2005-07-18  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: added +L awareness
