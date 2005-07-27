@@ -148,7 +148,7 @@
             "lc_h" "800"; // support helper (lower case h)
             "uc_H" "800"; // net helper (upper case H)
             "S" "999";    // O3 access suspended
-            "b" "1";      // ??
+            "b" "1";      // Bot (not sure what it does tho)
         };
 
         // and for who can change epithets for staff
