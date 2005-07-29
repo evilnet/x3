@@ -6293,7 +6293,7 @@ static CHANSERV_FUNC(cmd_8ball)
   static char eb[MAXLEN];
   unsigned int accum, i, j;
 
-  REQUIRE_PARAMS(1);
+  REQUIRE_PARAMS(2);
   accum = 0;
   for(i=1; i<argc; i++)
     for(j=0; argv[i][j]; j++)

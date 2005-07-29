@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-07-28  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: fixed crash bug in 8ball (required params was off by
+	one)
+
 2005-07-26  Alex Schumann  <rubin@afternet.org>
 
 	* x3.conf.example: Updated from live afternet file and improved help
