@@ -6,6 +6,9 @@
 	* src/chanserv.c: fixed crash bug in 8ball (required params was off by
 	one)
 
+	* src/proto-p10.c: Ignore wallusers (WU) tokens from server without
+	whining.
+
 2005-07-26  Alex Schumann  <rubin@afternet.org>
 
 	* x3.conf.example: Updated from live afternet file and improved help

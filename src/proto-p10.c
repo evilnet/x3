@@ -1699,6 +1699,7 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_WALLOPS, cmd_dummy);
     dict_insert(irc_func_dict, CMD_WALLHOPS, cmd_dummy);
     dict_insert(irc_func_dict, TOK_WALLHOPS, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_WALLUSERS, cmd_dummy);
     /* Ignore dnsbl exemptions */
     dict_insert(irc_func_dict, TOK_EXEMPT, cmd_dummy);
     dict_insert(irc_func_dict, TOK_MARK, cmd_dummy);
