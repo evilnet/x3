@@ -240,6 +240,10 @@ database_get_path(dict_t db, const char *path)
 void*
 database_get_data(dict_t db, const char *path, enum recdb_type type)
 {
+    assert(path != NULL);
+    if(!path)
+        log_module(MAIN_LOG, LOG_WARNING, "Null path in database_get_data()");
+    /* log_module(MAIN_LOG, LOG_DEBUG, "Reading config option '%s'", path); */
     struct record_data *rd = database_get_path(db, path);
     return (rd && rd->type == type) ? rd->d.whatever : NULL;
 }

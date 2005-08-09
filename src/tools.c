@@ -939,7 +939,7 @@ tools_cleanup(void)
  * multiple dilimiters, which can really
  * offset tokens and cause huge corruption
  * so this function will use strsep but
- * act like strtok in that sence.
+ * act like strtok in that sense.
  */
 char *mysep(char **sepstr, char *delim)
 {

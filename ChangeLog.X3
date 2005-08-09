@@ -1,6 +1,26 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-08-08  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Added banTimeout feature to .set
+
+	* src/chanserv.h: added banTimeout feature to .set
+
+	* src/recdb.c: Added some better error catching in database_get_data()
+
+        * src/proto-common.h: tabs
+
+	* x3.conf.example: added bantimeout to default set list, and ban
+	timeout frequency config setting.
+
+2005-08-04  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Changed kick protected message to one without %s or
+	$b because the kick function doesnt support replacements.
+
+	* src/tools.c: fixed spelling error in comment.
+
 2005-07-28  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: fixed crash bug in 8ball (required params was off by

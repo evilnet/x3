@@ -35,7 +35,6 @@ enum UL_ALIASES {
 };
 
 enum levelOption {
-                    /* TODO: Does removing values here mess up reading the db files? */
 //    lvlGiveVoice,   /* Depreciated */
 //    lvlGiveHalfOps, /* Depreciated */
 //    lvlGiveOps, /* Depreciated */
@@ -45,7 +44,6 @@ enum levelOption {
     lvlEnfTopic,
     lvlPubCmd,
     lvlSetters,
-//    lvlCTCPUsers,
     lvlUserInfo,
     lvlInviteMe,
     lvlTopicSnarf,
@@ -58,6 +56,7 @@ enum charOption {
     chToys,
     chTopicRefresh,
     chCTCPReaction,
+    chBanTimeout,
     NUM_CHAR_OPTIONS
 };
 
@@ -105,13 +104,13 @@ struct chanData
     unsigned int        may_opchan : 1;
     unsigned int        max;
     unsigned int        last_refresh;
-    unsigned short      banCount;
+    unsigned short      banCount; /* Lamers, really */
     unsigned short      userCount;
     unsigned short      lvlOpts[NUM_LEVEL_OPTIONS];
     unsigned char       chOpts[NUM_CHAR_OPTIONS];
 
     struct userData	*users;
-    struct banData	*bans;
+    struct banData	*bans; /* Lamers, really */
     struct dict         *notes;
     struct suspended	*suspended;
     struct chanData	*prev;

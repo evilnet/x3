@@ -38,6 +38,7 @@
 #define KEY_ADJUST_DELAY   	"adjust_delay"
 #define KEY_CHAN_EXPIRE_FREQ	"chan_expire_freq"
 #define KEY_CHAN_EXPIRE_DELAY	"chan_expire_delay"
+#define KEY_BAN_TIMEOUT_FREQ    "ban_timeout_freq"
 #define KEY_MAX_CHAN_USERS     	"max_chan_users"
 #define KEY_MAX_CHAN_BANS	"max_chan_bans"
 #define KEY_NICK		"nick"
@@ -288,18 +289,19 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_ENFTOPIC",      "$bEnfTopic    $b %d - and above can set the topic." },
     { "CSMSG_SET_PUBCMD",        "$bPubCmd      $b %d - and above can use public commands." },
     { "CSMSG_SET_SETTERS",       "$bSetters     $b %d - and above can change these settings." },
-/*    { "CSMSG_SET_CTCPUSERS",     "$bCTCPUsers   $b %d - and above can use ctcps." }, */
     { "CSMSG_SET_VOICE",         "$bvoice       $b %d - %s" },
     { "CSMSG_SET_PROTECT",       "$bProtect     $b %d - %s" },
     { "CSMSG_SET_TOYS",          "$bToys        $b %d - %s" },
     { "CSMSG_SET_CTCPREACTION",  "$bCTCPReaction$b %d - %s" },
     { "CSMSG_SET_TOPICREFRESH",  "$bTopicRefresh$b %d - %s" },
+    { "CSMSG_SET_BANTIMEOUT",    "$bBanTimeout  $b %d - %s" },
     { "CSMSG_USET_AUTOOP",       "$bAutoOp      $b %s" },
     { "CSMSG_USET_AUTOVOICE",    "$bAutoVoice   $b %s" },
     { "CSMSG_USET_AUTOINVITE",   "$bAutoInvite  $b %s" },
     { "CSMSG_USET_INFO",         "$bInfo        $b %s" },
 
     { "CSMSG_USER_PROTECTED", "Sorry, $b%s$b is protected." },
+    { "CSMSG_USER_PROTECTED_KICK", "That user is protected." }, /* No $ or %s replacements! */
     { "CSMSG_OPBY_LOCKED", "You may not op users who lack op or greater access." },
     { "CSMSG_HOPBY_LOCKED", "You may not halfop users who lack halfop or greater access." },
     { "CSMSG_PROCESS_FAILED", "$b$C$b could not process some of the nicks you provided." },
@@ -319,16 +321,25 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_TOYS_DISABLED", "Toys are completely disabled." },
     { "CSMSG_TOYS_PRIVATE", "Toys will only reply privately." },
     { "CSMSG_TOYS_PUBLIC", "Toys will reply publicly." },
+
     { "CSMSG_TOPICREFRESH_NEVER", "Never refresh topic." },
     { "CSMSG_TOPICREFRESH_3_HOURS", "Refresh every 3 hours." },
     { "CSMSG_TOPICREFRESH_6_HOURS", "Refresh every 6 hours." },
     { "CSMSG_TOPICREFRESH_12_HOURS", "Refresh every 12 hours." },
     { "CSMSG_TOPICREFRESH_24_HOURS", "Refresh every 24 hours." },
+
     { "CSMSG_CTCPREACTION_NONE", "CTCPs are allowed" },
     { "CSMSG_CTCPREACTION_KICK", "Kick on disallowed CTCPs" },
     { "CSMSG_CTCPREACTION_KICKBAN", "Kickban on disallowed CTCPs" },
     { "CSMSG_CTCPREACTION_SHORTBAN",  "Short timed ban on disallowed CTCPs" },
     { "CSMSG_CTCPREACTION_LONGBAN", "Long timed ban on disallowed CTCPs" },
+    
+    { "CSMSG_BANTIMEOUT_NONE", "Bans will not be removed automatically."},
+    { "CSMSG_BANTIMEOUT_10M", "Bans will be removed after 10 minutes."},
+    { "CSMSG_BANTIMEOUT_2H", "Bans will be removed after 2 hours."},
+    { "CSMSG_BANTIMEOUT_4H", "Bans will be removed after 4 hours."},
+    { "CSMSG_BANTIMEOUT_1D", "Bans will be removed after 24 hours."},
+    { "CSMSG_BANTIMEOUT_1W", "Bans will be removed after 1 week."},
 
     { "CSMSG_INVITED_USER", "Invited $b%s$b to join %s." },
     { "CSMSG_INVITING_YOU_REASON", "$b%s$b invites you to join %s: %s" },
@@ -524,6 +535,7 @@ static struct
 
     unsigned long 	db_backup_frequency;
     unsigned long 	channel_expire_frequency;
+    unsigned long       ban_timeout_frequency;
 
     long 		info_delay;
     unsigned int 	adjust_delay;
@@ -670,6 +682,13 @@ struct charOptionValues {
     { 'b', "CSMSG_CTCPREACTION_KICKBAN" },
     { 't', "CSMSG_CTCPREACTION_SHORTBAN" },
     { 'T', "CSMSG_CTCPREACTION_LONGBAN" }
+}, banTimeoutValues[] = {
+    { '0', "CSMSG_BANTIMEOUT_NONE" },
+    { '1', "CSMSG_BANTIMEOUT_10M" },
+    { '2', "CSMSG_BANTIMEOUT_2H" },
+    { '3', "CSMSG_BANTIMEOUT_4H" },
+    { '4', "CSMSG_BANTIMEOUT_1D" },
+    { '5', "CSMSG_BANTIMEOUT_1W" }
 };
 
 static const struct {
@@ -684,7 +703,8 @@ static const struct {
     { "CSMSG_SET_PROTECT",      "protect",      'l', 0, ArrayLength(protectValues), protectValues },
     { "CSMSG_SET_TOYS",         "toys",         'p', 6, ArrayLength(toysValues), toysValues },
     { "CSMSG_SET_TOPICREFRESH", "topicrefresh", 'n', 8, ArrayLength(topicRefreshValues), topicRefreshValues },
-    { "CSMSG_SET_CTCPREACTION", "ctcpreaction", 'n', 10, ArrayLength(ctcpReactionValues), ctcpReactionValues }
+    { "CSMSG_SET_CTCPREACTION", "ctcpreaction", 'n', 10, ArrayLength(ctcpReactionValues), ctcpReactionValues },
+    { "CSMSG_SET_BANTIMEOUT",   "bantimeout", '0', 11, ArrayLength(banTimeoutValues), banTimeoutValues }
 };
 
 struct userData *helperList;
@@ -1459,6 +1479,37 @@ expire_ban(void *data) /* lamer.. */
     bd->expires = 0;
     del_channel_ban(bd);
 }
+
+void expire_bans(UNUSED_ARG(void* data)) /* Real bans, not lamers */
+{
+    unsigned int jj;
+    struct banNode *bn;
+    struct chanData *channel;
+    time_t bantimeout;
+
+    for(channel = channelList; channel; channel = channel->next) {
+        switch(channel->chOpts[chBanTimeout])
+        {
+            default: case '0': continue;
+            case '1': bantimeout = now - (10 * 60); break; /* 10 minutes */
+            case '2': bantimeout = now - (2 * 60 * 60); break; /* 2 hours */
+            case '3': bantimeout = now - (4 * 60 * 60); break; /* 4 hours */
+            case '4': bantimeout = now - (24 * 60 * 60); break; /* 24 hours */
+            case '5': bantimeout = now - (7 * 24 * 60 * 60); break; /* 1 week */
+        }
+        for (jj=0; jj < channel->channel->banlist.used; ++jj) {
+            bn = channel->channel->banlist.list[jj];
+            if (bn->set < bantimeout) {
+                banList_remove(&channel->channel->banlist, bn);
+                free(bn);
+                jj--;
+            }
+        }
+    }
+    if(chanserv_conf.ban_timeout_frequency)
+        timeq_add(now + chanserv_conf.ban_timeout_frequency, expire_bans, NULL);
+}
+
 
 static void chanserv_expire_suspension(void *data);
 
@@ -5611,13 +5662,6 @@ static MODCMD_FUNC(chan_opt_setters)
     return channel_level_option(lvlSetters, CSFUNC_ARGS);
 }
 
-/*
-static MODCMD_FUNC(chan_opt_ctcpusers)
-{
-    return channel_level_option(lvlCTCPUsers, CSFUNC_ARGS);
-}
-*/
-
 static MODCMD_FUNC(chan_opt_userinfo)
 {
     return channel_level_option(lvlUserInfo, CSFUNC_ARGS);
@@ -5640,6 +5684,19 @@ static MODCMD_FUNC(chan_opt_inviteme)
     return channel_level_option(lvlInviteMe, CSFUNC_ARGS);
 }
 
+/* TODO:  Make look like this when no args are 
+ *        given:
+ *  -X3- -------------------------------
+ *  -X3- BanTimeout: Bans are removed: 
+ *  -X3- ----- * indicates current -----
+ *  -X3-   0: [*] Never.
+ *  -X3-   1: [ ] After 10 minutes.
+ *  -X3-   2: [ ] After 2 hours.
+ *  -X3-   3: [ ] After 4 hours.
+ *  -X3-   4: [ ] After 24 hours.
+ *  -X3-   5: [ ] After one week.
+ *  -X3- ------------- End -------------
+ */
 static int
 channel_multiple_option(enum charOption option, struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
 {
@@ -5698,6 +5755,11 @@ static MODCMD_FUNC(chan_opt_toys)
 static MODCMD_FUNC(chan_opt_ctcpreaction)
 {
     return channel_multiple_option(chCTCPReaction, CSFUNC_ARGS);
+}
+
+static MODCMD_FUNC(chan_opt_bantimeout)
+{
+    return channel_multiple_option(chBanTimeout, CSFUNC_ARGS);
 }
 
 static MODCMD_FUNC(chan_opt_topicrefresh)
@@ -6817,7 +6879,7 @@ handle_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *c
 
     if(protect_user(victim, kicker, channel->channel_info))
     {
-        const char *reason = user_find_message(kicker, "CSMSG_USER_PROTECTED");
+        const char *reason = user_find_message(kicker, "CSMSG_USER_PROTECTED_KICK");
 	KickChannelUser(kicker, channel, chanserv, reason);
     }
 
@@ -7086,6 +7148,8 @@ chanserv_conf_read(void)
     chanserv_conf.adjust_delay = str ? ParseInterval(str) : 30;
     str = database_get_data(conf_node, KEY_CHAN_EXPIRE_FREQ, RECDB_QSTRING);
     chanserv_conf.channel_expire_frequency = str ? ParseInterval(str) : 86400;
+    str = database_get_data(conf_node, KEY_BAN_TIMEOUT_FREQ, RECDB_QSTRING);
+    chanserv_conf.ban_timeout_frequency = str ? ParseInterval(str) : 600;
     str = database_get_data(conf_node, KEY_CHAN_EXPIRE_DELAY, RECDB_QSTRING);
     chanserv_conf.channel_expire_delay = str ? ParseInterval(str) : 86400*30;
     str = database_get_data(conf_node, KEY_NODELETE_LEVEL, RECDB_QSTRING);
@@ -7140,7 +7204,7 @@ chanserv_conf_read(void)
             /* multiple choice options */
             "CtcpReaction", "Protect", "Toys", "TopicRefresh",
             /* binary options */
-            "DynLimit", "NoDelete",
+            "DynLimit", "NoDelete", "BanTimeout",
             /* delimiter */
             NULL
         };
@@ -8019,8 +8083,8 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(toys);
     DEFINE_CHANNEL_OPTION(setters);
     DEFINE_CHANNEL_OPTION(topicrefresh);
-//    DEFINE_CHANNEL_OPTION(ctcpusers);
     DEFINE_CHANNEL_OPTION(ctcpreaction);
+    DEFINE_CHANNEL_OPTION(bantimeout);
     DEFINE_CHANNEL_OPTION(inviteme);
     if(off_channel > 1)
         DEFINE_CHANNEL_OPTION(offchannel);
@@ -8051,6 +8115,9 @@ init_chanserv(const char *nick)
 
     if(chanserv_conf.channel_expire_frequency)
 	timeq_add(now + chanserv_conf.channel_expire_frequency, expire_channels, NULL);
+
+    if(chanserv_conf.ban_timeout_frequency)
+        timeq_add(now + chanserv_conf.ban_timeout_frequency, expire_bans, NULL);
 
     if(chanserv_conf.refresh_period)
     {

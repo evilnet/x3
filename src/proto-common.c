@@ -506,11 +506,11 @@ reg_mode_change_func(mode_change_func_t handler)
 {
     if (mcf_used == mcf_size) {
 	if (mcf_size) {
-	    mcf_size <<= 1;
-	    mcf_list = realloc(mcf_list, mcf_size*sizeof(mode_change_func_t));
+		mcf_size <<= 1;
+		mcf_list = realloc(mcf_list, mcf_size*sizeof(mode_change_func_t));
 	} else {
-	    mcf_size = 8;
-	    mcf_list = malloc(mcf_size*sizeof(mode_change_func_t));
+		mcf_size = 8;
+		mcf_list = malloc(mcf_size*sizeof(mode_change_func_t));
 	}
     }
     mcf_list[mcf_used++] = handler;

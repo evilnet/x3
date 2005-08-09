@@ -292,6 +292,9 @@
         // .. but ChanServ will only increment or decrement the limit this often.
         "adjust_delay" "30";  // (seconds)
 
+        // How often to look for expired bans?
+        "ban_timeout_freq" "2m";
+
         // How often to look for channels that have expired?
         "chan_expire_freq" "1d";
 
