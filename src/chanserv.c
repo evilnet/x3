@@ -1480,37 +1480,6 @@ expire_ban(void *data) /* lamer.. */
     del_channel_ban(bd);
 }
 
-void expire_bans(UNUSED_ARG(void* data)) /* Real bans, not lamers */
-{
-    unsigned int jj;
-    struct banNode *bn;
-    struct chanData *channel;
-    time_t bantimeout;
-
-    for(channel = channelList; channel; channel = channel->next) {
-        switch(channel->chOpts[chBanTimeout])
-        {
-            default: case '0': continue;
-            case '1': bantimeout = now - (10 * 60); break; /* 10 minutes */
-            case '2': bantimeout = now - (2 * 60 * 60); break; /* 2 hours */
-            case '3': bantimeout = now - (4 * 60 * 60); break; /* 4 hours */
-            case '4': bantimeout = now - (24 * 60 * 60); break; /* 24 hours */
-            case '5': bantimeout = now - (7 * 24 * 60 * 60); break; /* 1 week */
-        }
-        for (jj=0; jj < channel->channel->banlist.used; ++jj) {
-            bn = channel->channel->banlist.list[jj];
-            if (bn->set < bantimeout) {
-                banList_remove(&channel->channel->banlist, bn);
-                free(bn);
-                jj--;
-            }
-        }
-    }
-    if(chanserv_conf.ban_timeout_frequency)
-        timeq_add(now + chanserv_conf.ban_timeout_frequency, expire_bans, NULL);
-}
-
-
 static void chanserv_expire_suspension(void *data);
 
 static void
@@ -3440,6 +3409,68 @@ find_matching_bans(struct banList *bans, struct userNode *actee, const char *mas
     assert(count == change->argc);
     return change;
 }
+
+void expire_bans(UNUSED_ARG(void* data)) /* Real bans, not lamers */
+{
+    unsigned int jj, ii, count;
+    struct banNode *bn;
+    struct chanData *channel;
+    time_t bantimeout;
+    struct mod_chanmode *change;
+
+    log_module(CS_LOG, LOG_DEBUG, "Checking for expired bans");
+    /* Walk through every channel */
+    for(channel = channelList; channel; channel = channel->next) {
+        switch(channel->chOpts[chBanTimeout])
+        {
+            default: case '0': continue; /* Dont remove bans in this chan */
+            case '1': bantimeout = now - (10 * 60);          break; /* 10 minutes */
+            case '2': bantimeout = now - (2 * 60 * 60);      break; /* 2 hours */
+            case '3': bantimeout = now - (4 * 60 * 60);      break; /* 4 hours */
+            case '4': bantimeout = now - (24 * 60 * 60);     break; /* 24 hours */
+            case '5': bantimeout = now - (7 * 24 * 60 * 60); break; /* 1 week */
+        }
+        count = 0;
+        /* First find out how many bans were going to unset */
+        for (jj=0; jj < channel->channel->banlist.used; ++jj) {
+            if(channel->channel->banlist.list[jj]->set < bantimeout)
+                count++;
+        }
+        if(count > 0) {
+            /* At least one ban, so setup a removal */
+            change = mod_chanmode_alloc(count);
+            ii = 0;
+            /* Walk over every ban in this channel.. */
+            for (jj=0; jj < channel->channel->banlist.used; ++jj) {
+                bn = channel->channel->banlist.list[jj];
+                if (bn->set < bantimeout) {
+                    log_module(CS_LOG, LOG_DEBUG, "Removing ban %s from %s", bn->ban, channel->channel->name);
+
+                    /* Add this ban to the mode change */
+                    change->args[ii].mode = MODE_REMOVE | MODE_BAN;
+                    change->args[ii].u.hostmask = strdup(bn->ban);
+                    ii++;
+                    /* Pull this ban out of the list */
+                    banList_remove(&(channel->channel->banlist), bn);
+                    jj--;
+                    free(bn);
+                }
+            }
+            /* Send the modes to IRC */
+            mod_chanmode_announce(chanserv, channel->channel, change);
+
+            /* free memory from strdup above */
+            for(ii = 0; ii < count; ++ii)
+                free((char*)change->args[ii].u.hostmask);
+
+            mod_chanmode_free(change);
+        }
+    } 
+    /* Set this function to run again */
+    if(chanserv_conf.ban_timeout_frequency)
+        timeq_add(now + chanserv_conf.ban_timeout_frequency, expire_bans, NULL);
+}
+
 
 static int
 unban_user(struct userNode *user, struct chanNode *channel, unsigned int argc, char *argv[], struct svccmd *cmd, int action)
