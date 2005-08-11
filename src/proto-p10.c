@@ -2152,8 +2152,10 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	case 'o':
 	    do_user_mode(FLAGS_OPER);
 	    if (add) {
-		userList_append(&curr_opers, user);
-		call_oper_funcs(user);
+                if(!IsOper(user)) { /* Dont re-oper an oper */
+                    userList_append(&curr_opers, user);
+                    call_oper_funcs(user);
+                }
 	    } else {
 		userList_remove(&curr_opers, user);
 	    }
