@@ -2150,7 +2150,6 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	case '+': add = 1; break;
 	case '-': add = 0; break;
 	case 'o':
-	    do_user_mode(FLAGS_OPER);
 	    if (add) {
                 if(!IsOper(user)) { /* Dont re-oper an oper */
                     userList_append(&curr_opers, user);
@@ -2159,6 +2158,7 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	    } else {
 		userList_remove(&curr_opers, user);
 	    }
+	    do_user_mode(FLAGS_OPER);
 	    break;
 	case 'O': do_user_mode(FLAGS_LOCOP); break;
 	case 'i': do_user_mode(FLAGS_INVISIBLE);
