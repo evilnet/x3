@@ -400,6 +400,14 @@ irc_mode(struct userNode *who, struct chanNode *target, const char *modes) {
     putsock(":%s MODE %s "FMT_TIME_T" %s", who->nick, target->name, target->timestamp, modes);
 }
 
+/* Untested...*/
+void
+irc_umode(struct userNode *target, const char *modes)
+{
+        putsock(":%s MODE %s %s ",self->numeric,target->nick, modes);
+}
+
+
 void
 irc_svsmode(struct userNode *target, char *modes, unsigned long stamp) {
     extern struct userNode *nickserv;

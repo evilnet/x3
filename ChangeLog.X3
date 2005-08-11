@@ -3,6 +3,21 @@
 
 2005-08-11  Alex Schumann  <rubin@afternet.org>
 
+	* src/proto-p10.c: added irc_umode() to send usermodes (Life4Christ)
+
+	* src/proto-bahumit.c: added irc_umode() to send usermodes, untested..
+
+	* src/proto.h: added irc_umode() to send usermodes (Life4Christ)
+
+	* src/nickserv.c: Added option to have authserv oper/admin people with
+	opserv access. (Life4Christ)
+
+	* src/opserv.c: Added admin_level config option
+	
+	* src/opserv.h: Added admin_level config option
+
+2005-08-11  Alex Schumann  <rubin@afternet.org>
+
 	* src/proto-p10.c: Avoid duplicating an oper in curr_opers (,staff
 	command) when nef* bug sends the +o twice. ++fix bug in patch
 

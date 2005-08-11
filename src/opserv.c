@@ -76,6 +76,7 @@
 #define KEY_BLOCK_GLINE_DURATION "block_gline_duration"
 #define KEY_ISSUER "issuer"
 #define KEY_ISSUED "issued"
+#define KEY_ADMIN_LEVEL "admin_level"
 
 #define IDENT_FORMAT		"%s [%s@%s/%s]"
 #define IDENT_DATA(user)	user->nick, user->ident, user->hostname, inet_ntoa(user->ip)
@@ -304,6 +305,7 @@ static struct {
     unsigned long purge_lock_delay;
     unsigned long join_flood_moderate;
     unsigned long join_flood_moderate_threshold;
+    unsigned long admin_level;
 } opserv_conf;
 
 struct trusted_host {
@@ -4149,6 +4151,10 @@ opserv_conf_read(void)
     } else {
         opserv_conf.staff_auth_channel = NULL;
     }
+
+    str = database_get_data(conf_node, KEY_ADMIN_LEVEL, RECDB_QSTRING);
+    opserv_conf.admin_level = str ? strtoul(str, NULL, 0): 800;
+
     str = database_get_data(conf_node, KEY_UNTRUSTED_MAX, RECDB_QSTRING);
     opserv_conf.untrusted_max = str ? strtoul(str, NULL, 0) : 5;
     str = database_get_data(conf_node, KEY_PURGE_LOCK_DELAY, RECDB_QSTRING);
@@ -4185,6 +4191,13 @@ opserv_conf_read(void)
     policer_params_set(pp, "drain-rate", "3");
     if ((child = database_get_data(conf_node, KEY_NEW_USER_POLICER, RECDB_OBJECT)))
 	dict_foreach(child, set_policer_param, pp);
+}
+
+/* lame way to export opserv_conf value to nickserv.c ... */
+unsigned int 
+opserv_conf_admin_level()
+{
+    return(opserv_conf.admin_level);
 }
 
 static void

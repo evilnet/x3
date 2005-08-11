@@ -714,6 +714,16 @@ irc_mode(struct userNode *from, struct chanNode *target, const char *modes)
             target->name, modes, target->timestamp);
 }
 
+/* Added to allow services to mode users
+   2005 - 8 - 10 by Life4Christ
+*/
+void
+irc_umode(struct userNode *target, const char *modes)
+{
+    putsock("%s " P10_MODE " %s %s ",self->numeric,target->nick, modes);
+}
+
+
 void
 irc_invite(struct userNode *from, struct userNode *who, struct chanNode *to)
 {

@@ -24,5 +24,6 @@
 void init_opserv(const char *nick);
 unsigned int gag_create(const char *mask, const char *owner, const char *reason, time_t expires);
 int opserv_bad_channel(const char *name);
+unsigned int opserv_conf_admin_level();
 
 #endif

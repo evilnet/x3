@@ -134,6 +134,7 @@ void irc_wallchops(struct userNode *from, const char *to, const char *message);
 void irc_join(struct userNode *who, struct chanNode *what);
 void irc_invite(struct userNode *from, struct userNode *who, struct chanNode *to);
 void irc_mode(struct userNode *who, struct chanNode *target, const char *modes);
+void irc_umode(struct userNode *target, const char *modes);
 void irc_kick(struct userNode *who, struct userNode *target, struct chanNode *from, const char *msg);
 void irc_part(struct userNode *who, struct chanNode *what, const char *reason);
 void irc_topic(struct userNode *who, struct chanNode *what, const char *topic);

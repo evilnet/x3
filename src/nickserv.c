@@ -50,6 +50,8 @@
 #define KEY_SET_TITLE_LEVEL "set_title_level"
 #define KEY_SET_FAKEHOST_LEVEL "set_fakehost_level"
 #define KEY_TITLEHOST_SUFFIX "titlehost_suffix"
+#define KEY_AUTO_OPER "auto_oper"
+#define KEY_AUTO_ADMIN "auto_admin"
 #define KEY_FLAG_LEVELS "flag_levels"
 #define KEY_HANDLE_EXPIRE_FREQ	"handle_expire_freq"
 #define KEY_ACCOUNT_EXPIRE_FREQ "account_expire_freq"
@@ -295,6 +297,10 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SET_EPITHET", "$bEPITHET:      $b%s" },
     { "NSMSG_SET_TITLE", "$bTITLE:        $b%s" },
     { "NSMSG_SET_FAKEHOST", "$bFAKEHOST:    $b%s" },
+
+    { "NSMSG_AUTO_OPER", "You have been auto-opered" },
+    { "NSMSG_AUTO_OPER_ADMIN", "You have been auto-admined" },
+
     { "NSEMAIL_ACTIVATION_SUBJECT", "Account verification for %s" },
     { "NSEMAIL_ACTIVATION_BODY", 
         "This email has been sent to verify that this email address belongs to the person who tried to register an account on %1$s.  Your cookie is:\n"
@@ -392,6 +398,8 @@ static struct {
     unsigned long auto_reclaim_delay;
     unsigned char default_maxlogins;
     unsigned char hard_maxlogins;
+    const char *auto_oper;
+    const char *auto_admin;
 } nickserv_conf;
 
 /* We have 2^32 unique account IDs to use. */
@@ -1793,9 +1801,29 @@ static NICKSERV_FUNC(cmd_auth)
         reply("NSMSG_WEAK_PASSWORD");
     if (hi->passwd[0] != '$')
         cryptpass(passwd, hi->passwd);
+
+   /* If a channel was waiting for this user to auth, 
+    * finish adding them */
+    process_adduser_pending(user);
+
     reply("NSMSG_AUTH_SUCCESS");
 
-    process_adduser_pending(user);
+    if(!IsOper(user))
+    {
+        /* Auto Oper users with Opserv access -Life4Christ 8-10-2005  */
+        if( nickserv_conf.auto_admin[0] && hi->opserv_level >= opserv_conf_admin_level())
+        {
+            irc_umode(user,nickserv_conf.auto_admin);
+            reply("NSMSG_AUTO_OPER_ADMIN");
+        }
+        else if (nickserv_conf.auto_oper[0] && hi->opserv_level > 0)
+        {
+            irc_umode(user,nickserv_conf.auto_oper);
+            reply("NSMSG_AUTO_OPER");
+        }
+    }
+
+   /* Wipe out the pass for the logs */
     argv[pw_arg] = "****";
     return 1;
 }
@@ -3792,6 +3820,13 @@ nickserv_conf_read(void)
     nickserv_conf.email_search_level = str ? strtoul(str, NULL, 0) : 600;
     str = database_get_data(conf_node, KEY_TITLEHOST_SUFFIX, RECDB_QSTRING);
     nickserv_conf.titlehost_suffix = str ? str : "example.net";
+
+    str = database_get_data(conf_node, KEY_AUTO_OPER, RECDB_QSTRING);
+    nickserv_conf.auto_oper = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_AUTO_ADMIN, RECDB_QSTRING);
+    nickserv_conf.auto_admin = str ? str : "";
+
     str = conf_get_data("server/network", RECDB_QSTRING);
     nickserv_conf.network_name = str ? str : "some IRC network";
     if (!nickserv_conf.auth_policer_params) {
