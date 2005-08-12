@@ -4,12 +4,12 @@
 2005-08-12  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Cleanup. Added 'automode' channel setting in place
-	of 'voice' setting. 
+	of 'voice' setting.  + Rewording setting help
 
 	* src/chanserv.h: Cleanup. Added 'automode' channel setting in place
 	of 'voice' setting.
 
-	* src/chanserv.help: Added help for automode.
+	* src/chanserv.help: Added help for automode. + Rewording setting help
 
 2005-08-11  Alex Schumann  <rubin@afternet.org>
 

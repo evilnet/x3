@@ -303,10 +303,10 @@ static const struct message_entry msgtab[] = {
 
     { "CSMSG_AUTOMODE_NONE", "Noone will be automatically oped, half-oped, or voiced." },
     { "CSMSG_AUTOMODE_NORMAL", "Give voice to peons, half-op to halfops, and op to ops." },
-    { "CSMSG_AUTOMODE_VOICE", "Give voice to strangers." },
-    { "CSMSG_AUTOMODE_HOP", "Give halfops to strangers." },
-    { "CSMSG_AUTOMODE_OP", "Give ops to strangers (not advised)" },
-    { "CSMSG_AUTOMODE_MUTE", "Give half-op to halfops, and op to ops (no voice to peons)." },
+    { "CSMSG_AUTOMODE_VOICE", "#1 plus give voice to everyone." },
+    { "CSMSG_AUTOMODE_HOP", "#1 plus give halfops to everyone." },
+    { "CSMSG_AUTOMODE_OP", "#1 plus give ops to everyone (not advised)" },
+    { "CSMSG_AUTOMODE_MUTE", "Give half-op to halfops, and op to ops only." },
 
     { "CSMSG_PROTECT_ALL", "Non-users and users will be protected from those of equal or lower access." },
     { "CSMSG_PROTECT_EQUAL", "Users will be protected from those of equal or lower access." },

@@ -511,11 +511,12 @@
         "This setting configures who $C auto-voices.  Valid settings are:",
         "$b0$b  Noone will be automatically oped, half-oped, or voiced.",
         "$b1$b  Give voice to peons, half-op to halfops, and op to ops.",
-        "$b2$b  Give voice to strangers.",
-        "$b3$b  Give halfops to strangers.",
-        "$b4$b  Give ops to strangers (not advised.)",
-        "$b5$b  Give half-op to halfops, and op to ops (no voice to peons).",
-        "$uSee Also:$u set, uset autoop");
+        "$b2$b  #1 Plus Give voice to strangers.",
+        "$b3$b  #1 Plus give halfops to strangers.",
+        "$b4$b  #1 Plus give ops to strangers (not advised.)",
+        "$b5$b  Give half-op to halfops, and op to ops only, peons do not get voice. ",
+        "Option #5 also affects RESYNC and UP commands. Other options do not.",
+        "$uSee Also:$u set, uset autoop, up, resync");
 
 "SET PROTECT" ("/msg $C SET <#channel> PROTECT <value>",
         "This setting restricts the protection that $C enforces.  Valid settings are:",
