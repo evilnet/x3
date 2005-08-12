@@ -35,9 +35,6 @@ enum UL_ALIASES {
 };
 
 enum levelOption {
-//    lvlGiveVoice,   /* Depreciated */
-//    lvlGiveHalfOps, /* Depreciated */
-//    lvlGiveOps, /* Depreciated */
     lvlEnfOps,
     lvlEnfHalfOps,
     lvlEnfModes,
@@ -51,7 +48,7 @@ enum levelOption {
 };
 
 enum charOption {
-    chVoice,
+    chAutomode,
     chProtect,
     chToys,
     chTopicRefresh,

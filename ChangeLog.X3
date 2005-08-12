@@ -1,6 +1,16 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-08-12  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Cleanup. Added 'automode' channel setting in place
+	of 'voice' setting. 
+
+	* src/chanserv.h: Cleanup. Added 'automode' channel setting in place
+	of 'voice' setting.
+
+	* src/chanserv.help: Added help for automode.
+
 2005-08-11  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: added irc_umode() to send usermodes (Life4Christ)

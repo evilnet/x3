@@ -257,11 +257,6 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_CONFIRM_DEFAULTS", "To reset %s's settings to the defaults, you must use 'set defaults %s'." },
     { "CSMSG_SETTINGS_DEFAULTED", "All settings for %s have been reset to default values." },
     { "CSMSG_BAD_SETLEVEL", "You cannot change any setting to above your level." },
-    /*
-    { "CSMSG_BAD_GIVEVOICE", "You cannot change GiveVoice to above GiveHalfOps (%d)." },
-    { "CSMSG_BAD_GIVEHOPS", "You cannot change GiveHalfOps to below GiveOps (%d)." },
-    { "CSMSG_BAD_GIVEOPS", "You cannot change GiveOps to below GiveVoice (%d)." },
-    */
     { "CSMSG_BAD_SETTERS", "You cannot change Setters to above your level." },
     { "CSMSG_INVALID_MODE_LOCK", "$b%s$b is an invalid mode lock." },
     { "CSMSG_INVALID_NUMERIC",   "$b%d$b is not a valid choice.  Choose one:" },
@@ -274,27 +269,21 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_DYNLIMIT",      "$bDynLimit    $b %s - +l joinflood protection." },
     { "CSMSG_SET_OFFCHANNEL",    "$bOffChannel  $b %s" },
     { "CSMSG_SET_USERINFO",      "$bUserInfo    $b %d - and above userinfos are shown." },
-    /*
-    { "CSMSG_SET_GIVE_VOICE",    "$bGiveVoice   $b %d" },
-    { "CSMSG_SET_GIVE_HALFOPS",  "$bGiveHalfOps $b %d" },
-    */
     { "CSMSG_SET_TOPICSNARF",    "$bTopicSnarf  $b %d" },
     { "CSMSG_SET_INVITEME",      "$bInviteMe    $b %d - Userlevel required to invite self." },
     { "CSMSG_SET_ENFOPS",        "$bEnfOps      $b %d - level and above can op unknown users." },
     { "CSMSG_SET_ENFHALFOPS",    "$bEnfHalfOps  $b %d - level and above can hop unknown users." },
-    /*
-    { "CSMSG_SET_GIVE_OPS",      "$bGiveOps     $b %d" },
-    */
     { "CSMSG_SET_ENFMODES",      "$bEnfModes    $b %d - and above can change channel modes." },
     { "CSMSG_SET_ENFTOPIC",      "$bEnfTopic    $b %d - and above can set the topic." },
     { "CSMSG_SET_PUBCMD",        "$bPubCmd      $b %d - and above can use public commands." },
     { "CSMSG_SET_SETTERS",       "$bSetters     $b %d - and above can change these settings." },
-    { "CSMSG_SET_VOICE",         "$bvoice       $b %d - %s" },
+    { "CSMSG_SET_AUTOMODE",      "$bAutoMode    $b %d - %s" },
     { "CSMSG_SET_PROTECT",       "$bProtect     $b %d - %s" },
     { "CSMSG_SET_TOYS",          "$bToys        $b %d - %s" },
     { "CSMSG_SET_CTCPREACTION",  "$bCTCPReaction$b %d - %s" },
     { "CSMSG_SET_TOPICREFRESH",  "$bTopicRefresh$b %d - %s" },
     { "CSMSG_SET_BANTIMEOUT",    "$bBanTimeout  $b %d - %s" },
+
     { "CSMSG_USET_AUTOOP",       "$bAutoOp      $b %s" },
     { "CSMSG_USET_AUTOVOICE",    "$bAutoVoice   $b %s" },
     { "CSMSG_USET_AUTOINVITE",   "$bAutoInvite  $b %s" },
@@ -311,9 +300,14 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_DEHALFOPPED_USERS", "DeHalfopped users in $b%s$b." },
     { "CSMSG_VOICED_USERS", "Voiced users in $b%s$b." },
     { "CSMSG_DEVOICED_USERS", "Devoiced users in $b%s$b." },
-    { "CSMSG_VOICE_NONE", "Noone will be auto-voiced" },
-    { "CSMSG_VOICE_PEON", "PEONs will be auto-voiced" },
-    { "CSMSG_VOICE_ALL", "Everyone will be auto-voiced" },
+
+    { "CSMSG_AUTOMODE_NONE", "Noone will be automatically oped, half-oped, or voiced." },
+    { "CSMSG_AUTOMODE_NORMAL", "Give voice to peons, half-op to halfops, and op to ops." },
+    { "CSMSG_AUTOMODE_VOICE", "Give voice to strangers." },
+    { "CSMSG_AUTOMODE_HOP", "Give halfops to strangers." },
+    { "CSMSG_AUTOMODE_OP", "Give ops to strangers (not advised)" },
+    { "CSMSG_AUTOMODE_MUTE", "Give half-op to halfops, and op to ops (no voice to peons)." },
+
     { "CSMSG_PROTECT_ALL", "Non-users and users will be protected from those of equal or lower access." },
     { "CSMSG_PROTECT_EQUAL", "Users will be protected from those of equal or lower access." },
     { "CSMSG_PROTECT_LOWER", "Users will be protected from those of lower access." },
@@ -639,16 +633,12 @@ static const struct {
     unsigned int old_flag;
     unsigned short flag_value;
 } levelOptions[] = {
-//    { "CSMSG_SET_GIVE_VOICE", "givevoice", 100, ~0, CHANNEL_VOICE_ALL, 0 },
-//    { "CSMSG_SET_GIVE_HALFOPS", "givehalfops", 150, ~0, CHANNEL_HOP_ALL, 0 },
-//    { "CSMSG_SET_GIVE_OPS", "giveops", 200, 2, 0, 0 }, // these 3 need removed, but causes segs if its still in the db..
     { "CSMSG_SET_ENFOPS", "enfops", 300, 1, 0, 0 },
     { "CSMSG_SET_ENFHALFOPS", "enfhalfops", 300, 1, 0, 0 },
     { "CSMSG_SET_ENFMODES", "enfmodes", 200, 3, 0, 0 },
     { "CSMSG_SET_ENFTOPIC", "enftopic", 200, 4, 0, 0 },
     { "CSMSG_SET_PUBCMD", "pubcmd", 0, 5, 0, 0 },
     { "CSMSG_SET_SETTERS", "setters", 400, 7, 0, 0 },
-//    { "CSMSG_SET_CTCPUSERS", "ctcpusers", 0, 9, 0, 0 },
     { "CSMSG_SET_USERINFO", "userinfo", 1, ~0, CHANNEL_INFO_LINES, 1 },
     { "CSMSG_SET_INVITEME", "inviteme", 1, ~0, CHANNEL_PEON_INVITE, 200 },
     { "CSMSG_SET_TOPICSNARF", "topicsnarf", 501, ~0, CHANNEL_TOPIC_SNARF, 1 }
@@ -657,10 +647,13 @@ static const struct {
 struct charOptionValues {
     char value;
     char *format_name;
-} voiceValues[] = {
-    { 'n', "CSMSG_VOICE_NONE" },
-    { 'p', "CSMSG_VOICE_PEON" },
-    { 'a', "CSMSG_VOICE_ALL" }
+} automodeValues[] = {
+    { 'n', "CSMSG_AUTOMODE_NONE" },
+    { 'y', "CSMSG_AUTOMODE_NORMAL" },
+    { 'v', "CSMSG_AUTOMODE_VOICE" },
+    { 'h', "CSMSG_AUTOMODE_HOP" },
+    { 'o', "CSMSG_AUTOMODE_OP" },
+    { 'm', "CSMSG_AUTOMODE_MUTE" }
 }, protectValues[] = {
     { 'a', "CSMSG_PROTECT_ALL" },
     { 'e', "CSMSG_PROTECT_EQUAL" },
@@ -699,7 +692,7 @@ static const struct {
     unsigned char count;
     struct charOptionValues *values;
 } charOptions[] = {
-    { "CSMSG_SET_VOICE",        "voice",        'p', 99, ArrayLength(voiceValues), voiceValues },
+    { "CSMSG_SET_AUTOMODE",     "automode",     'y', 99, ArrayLength(automodeValues), automodeValues },
     { "CSMSG_SET_PROTECT",      "protect",      'l', 0, ArrayLength(protectValues), protectValues },
     { "CSMSG_SET_TOYS",         "toys",         'p', 6, ArrayLength(toysValues), toysValues },
     { "CSMSG_SET_TOPICREFRESH", "topicrefresh", 'n', 8, ArrayLength(topicRefreshValues), topicRefreshValues },
@@ -2856,17 +2849,17 @@ static CHANSERV_FUNC(cmd_up)
             reply("CSMSG_GODMODE_UP", argv[0]);
         return 0;
     }
-    else if(uData->access >= UL_OP /*channel->channel_info->lvlOpts[lvlGiveOps]*/)
+    else if(uData->access >= UL_OP)
     {
         change.args[0].mode = MODE_CHANOP;
         errmsg = "CSMSG_ALREADY_OPPED";
     }
-    else if(uData->access >= UL_HALFOP /*channel->channel_info->lvlOpts[lvlGiveHalfOps]*/)
+    else if(uData->access >= UL_HALFOP )
     {
         change.args[0].mode = MODE_HALFOP;
         errmsg = "CSMSG_ALREADY_HALFOPPED";
     }
-    else if(uData->access >= UL_PEON && (channel->channel_info->chOpts[chVoice] == 'p' || channel->channel_info->chOpts[chVoice] == 'a'))
+    else if(uData->access >= UL_PEON && (channel->channel_info->chOpts[chAutomode] != 'm' ))
     {
         change.args[0].mode = MODE_VOICE;
         errmsg = "CSMSG_ALREADY_VOICED";
@@ -3653,11 +3646,11 @@ static CHANSERV_FUNC(cmd_myaccess)
             string_buffer_append(&sbuf, 's');
         if(IsUserAutoOp(uData))
         {
-            if(uData->access >= UL_OP /*cData->lvlOpts[lvlGiveOps]*/)
+            if(uData->access >= UL_OP )
                 string_buffer_append(&sbuf, 'o');
-            else if(uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
+            else if(uData->access >= UL_HALFOP )
                 string_buffer_append(&sbuf, 'h');
-            else if(uData->access >= UL_PEON /*cData->lvlOpts[lvlGiveVoice]*/)
+            else if(uData->access >= UL_PEON )
                 string_buffer_append(&sbuf, 'v');
         }
         if(IsUserAutoInvite(uData) && (uData->access >= cData->lvlOpts[lvlInviteMe]))
@@ -4605,7 +4598,7 @@ static CHANSERV_FUNC(cmd_resync)
             continue;
 
         uData = GetChannelAccess(cData, mn->user->handle_info);
-        if(uData && uData->access >= UL_OP /* cData->lvlOpts[lvlGiveOps]*/)
+        if(uData && uData->access >= UL_OP )
         {
             if(!(mn->modes & MODE_CHANOP))
             {
@@ -4613,7 +4606,7 @@ static CHANSERV_FUNC(cmd_resync)
                 changes->args[used++].u.member = mn;
             }
         }
-        else if(uData && uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
+        else if(uData && uData->access >= UL_HALFOP)
         {
             if(mn->modes & MODE_CHANOP)
             {
@@ -4625,15 +4618,8 @@ static CHANSERV_FUNC(cmd_resync)
                 changes->args[used].mode = MODE_HALFOP;
                 changes->args[used++].u.member = mn;
             }
-            /* why cant halfops keep voice
-            if(mn->modes & MODE_VOICE)
-            {
-                changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_VOICE);
-                changes->args[used++].u.member = mn;
-            }
-            */
         }
-        else if(uData && uData->access >= UL_PEON /* cData->lvlOpts[lvlGiveVoice]*/)
+        else if(uData && uData->access >= UL_PEON )
         {
             if(mn->modes & MODE_CHANOP)
             {
@@ -4645,7 +4631,8 @@ static CHANSERV_FUNC(cmd_resync)
                 changes->args[used].mode = MODE_REMOVE | MODE_HALFOP;
                 changes->args[used++].u.member = mn;
             }
-            if(!(mn->modes & MODE_VOICE))
+            /* Don't voice peons if were in mode m */
+            if(!(mn->modes & MODE_VOICE) && cData->chOpts[chAutomode] != 'm')
             {
                 changes->args[used].mode = MODE_VOICE;
                 changes->args[used++].u.member = mn;
@@ -5610,42 +5597,19 @@ channel_level_option(enum levelOption option, struct userNode *user, struct chan
         }
         switch(option)
         {
-            /* removing these level sets..
-        case lvlGiveVoice:
-            if(value > cData->lvlOpts[lvlGiveOps])
-            {
-                reply("CSMSG_BAD_GIVEVOICE", cData->lvlOpts[lvlGiveOps]);
-                return 0;
-            }
-            break;
-        case lvlGiveHalfOps:
-            if(value < cData->lvlOpts[lvlGiveVoice])
-            {
-                reply("CSMSG_BAD_GIVEHOPS", cData->lvlOpts[lvlGiveHalfOps]);
-                return 0;
-            }
-            break;
-        case lvlGiveOps:
-            if(value < cData->lvlOpts[lvlGiveVoice])
-            {
-                reply("CSMSG_BAD_GIVEOPS", cData->lvlOpts[lvlGiveVoice]);
-                return 0;
-            }
-            break;
-            */
-        case lvlSetters:
-            /* This test only applies to owners, since non-owners
-             * trying to set an option to above their level get caught
-             * by the CSMSG_BAD_SETLEVEL test above.
-             */
-            if(value > uData->access)
-            {
-                reply("CSMSG_BAD_SETTERS");
-                return 0;
-            }
-            break;
-        default:
-            break;
+            case lvlSetters:
+                /* This test only applies to owners, since non-owners
+                 * trying to set an option to above their level get caught
+                 * by the CSMSG_BAD_SETLEVEL test above.
+                 */
+                if(value > uData->access)
+                {
+                    reply("CSMSG_BAD_SETTERS");
+                    return 0;
+                }
+                break;
+            default:
+                break;
         }
         cData->lvlOpts[option] = value;
     }
@@ -5662,17 +5626,6 @@ static MODCMD_FUNC(chan_opt_enfhalfops)
 {
     return channel_level_option(lvlEnfHalfOps, CSFUNC_ARGS);
 }
-/*
-static MODCMD_FUNC(chan_opt_giveops)
-{
-    return channel_level_option(lvlGiveOps, CSFUNC_ARGS);
-}
-
-static MODCMD_FUNC(chan_opt_givehalfops)
-{
-    return channel_level_option(lvlGiveHalfOps, CSFUNC_ARGS);
-}
-*/
 static MODCMD_FUNC(chan_opt_enfmodes)
 {
     return channel_level_option(lvlEnfModes, CSFUNC_ARGS);
@@ -5697,13 +5650,6 @@ static MODCMD_FUNC(chan_opt_userinfo)
 {
     return channel_level_option(lvlUserInfo, CSFUNC_ARGS);
 }
-
-/*
-static MODCMD_FUNC(chan_opt_givevoice)
-{
-    return channel_level_option(lvlGiveVoice, CSFUNC_ARGS);
-}
-*/
 
 static MODCMD_FUNC(chan_opt_topicsnarf)
 {
@@ -5768,9 +5714,9 @@ channel_multiple_option(enum charOption option, struct userNode *user, struct ch
     return 1;
 }
 
-static MODCMD_FUNC(chan_opt_voice)
+static MODCMD_FUNC(chan_opt_automode)
 {
-    return channel_multiple_option(chVoice, CSFUNC_ARGS);
+    return channel_multiple_option(chAutomode, CSFUNC_ARGS);
 }
 
 static MODCMD_FUNC(chan_opt_protect)
@@ -6600,36 +6546,6 @@ handle_join(struct modeNode *mNode)
     if(channel->members.used > cData->max)
         cData->max = channel->members.used;
 
-    /* Check for bans.  If they're joining through a ban, one of two
-     * cases applies:
-     *   1: Join during a netburst, by riding the break.  Kick them
-     *      unless they have ops or voice in the channel.
-     *   2: They're allowed to join through the ban (an invite in
-     *   ircu2.10, or a +e on Hybrid, or something).
-     * If they're not joining through a ban, and the banlist is not
-     * full, see if they're on the banlist for the channel.  If so,
-     * kickban them.
-     */
-    /* This is really, really stupid. not all banned people are kicked. 
-     * sometimes we like to leave them unkicked. 
-     * I tried to explain this to the srvx developers and 
-     * got insulted.. hence one reason for this fork.
-     *
-    if(user->uplink->burst && !mNode->modes)
-    {
-        unsigned int ii;
-        for(ii = 0; ii < channel->banlist.used; ii++)
-        {
-            if(user_matches_glob(user, channel->banlist.list[ii]->ban, 1))
-            {
-                ** Riding a netburst.  Naughty. **
-                KickChannelUser(user, channel, chanserv, "User from far side of netsplit should have been banned - bye.");
-                return 1;
-            }
-        }
-    }
-    */
-
     mod_chanmode_init(&change);
     change.argc = 1;
     if(channel->banlist.used < MAXBANS)
@@ -6686,13 +6602,16 @@ handle_join(struct modeNode *mNode)
         timeq_add(now + chanserv_conf.adjust_delay, chanserv_adjust_limit, cData);
     }
 
-    if(channel->join_flooded)
+    /* Give automodes exept during join-floods */
+    if(!channel->join_flooded)
     {
-        /* don't automatically give non users ops or voice during a join flood */
+        if(cData->chOpts[chAutomode] == 'v')
+            modes |= MODE_VOICE;
+        else if(cData->chOpts[chAutomode] == 'h')
+            modes |= MODE_HALFOP;
+        else if(cData->chOpts[chAutomode] == 'o')
+            modes |= MODE_CHANOP;
     }
-    /* EVERYONE is to get voice */
-    else if(cData->chOpts[chVoice] == 'a')
-        modes |= MODE_VOICE;
 
     greeting = cData->greeting;
     if(user->handle_info)
@@ -6715,14 +6634,14 @@ handle_join(struct modeNode *mNode)
         uData = GetTrueChannelAccess(cData, handle);
         if(uData && !IsUserSuspended(uData))
         {
-            /* non users getting voice are handled above. */
-            if(IsUserAutoOp(uData))
+            /* non users getting automodes are handled above. */
+            if(IsUserAutoOp(uData) && cData->chOpts[chAutomode] != 'n')
             {
-                if(uData->access >= UL_OP /*cData->lvlOpts[lvlGiveOps]*/)
+                if(uData->access >= UL_OP )
                     modes |= MODE_CHANOP;
-                if(uData->access >= UL_HALFOP /*cData->lvlOpts[lvlGiveHalfOps]*/)
+                else if(uData->access >= UL_HALFOP )
                     modes |= MODE_HALFOP;
-                else if(uData->access >= UL_PEON && cData->chOpts[chVoice] == 'p')
+                else if(uData->access >= UL_PEON && cData->chOpts[chAutomode] != 'm')
                     modes |= MODE_VOICE;
             }
             if(uData->access >= UL_PRESENT)
@@ -6742,10 +6661,12 @@ handle_join(struct modeNode *mNode)
     {
         if(modes)
         {
+            /* -- I'd rather have ops get voice too, if automode is v. -Rubin
             if(modes & MODE_CHANOP) {
                 modes &= ~MODE_HALFOP;
                 modes &= ~MODE_VOICE;
             }
+            */
             change.args[0].mode = modes;
             change.args[0].u.member = mNode;
             mod_chanmode_announce(chanserv, channel, &change);
@@ -6796,11 +6717,11 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 
         if(IsUserAutoOp(channel))
         {
-            if(channel->access >= UL_OP /* cn->channel_info->lvlOpts[lvlGiveOps] */)
+            if(channel->access >= UL_OP )
                 change.args[0].mode = MODE_CHANOP;
-            else if(channel->access >= UL_HALFOP /* cn->channel_info->lvlOpts[lvlGiveHalfOps]*/)
+            else if(channel->access >= UL_HALFOP )
                 change.args[0].mode = MODE_HALFOP;
-            else if(channel->access >= UL_PEON /* cn->channel_info->lvlOpts[lvlGiveVoice]*/)
+            else if(channel->access >= UL_PEON )
                 change.args[0].mode = MODE_VOICE;
             else
                 change.args[0].mode = 0;
@@ -7052,7 +6973,9 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
     {
         channel = user->channels.list[ii]->channel;
         /* Need not check for bans if they're opped or voiced. */
-        if(user->channels.list[ii]->modes & (MODE_CHANOP|MODE_HALFOP|MODE_VOICE))
+        /* TODO: does this make sense in automode v, h, and o? *
+         * lets still enforce on voice people anyway, and see how that goes -Rubin */
+        if(user->channels.list[ii]->modes & (MODE_CHANOP|MODE_HALFOP /*|MODE_VOICE */))
             continue;
         /* Need not check for bans unless channel registration is active. */
         if(!channel->channel_info || IsSuspended(channel->channel_info))
@@ -7230,10 +7153,10 @@ chanserv_conf_read(void)
             /* free form text */
             "DefaultTopic", "TopicMask", "Greeting", "UserGreeting", "Modes",
             /* options based on user level */
-            "PubCmd", "InviteMe", "UserInfo",/* "GiveVoice", "GiveHalfOps", "GiveOps", */ "EnfOps",
-            "EnfHalfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", /*"CtcpUsers", */
+            "PubCmd", "InviteMe", "UserInfo","EnfOps",
+            "EnfHalfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", 
             /* multiple choice options */
-            "CtcpReaction", "Protect", "Toys", "TopicRefresh",
+            "AutoMode", "CtcpReaction", "Protect", "Toys", "TopicRefresh",
             /* binary options */
             "DynLimit", "NoDelete", "BanTimeout",
             /* delimiter */
@@ -8097,16 +8020,11 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(modes);
     DEFINE_CHANNEL_OPTION(enfops);
     DEFINE_CHANNEL_OPTION(enfhalfops);
-    /*DEFINE_CHANNEL_OPTION(giveops);
-    DEFINE_CHANNEL_OPTION(givehalfops);
-    */
-    DEFINE_CHANNEL_OPTION(voice);
+    DEFINE_CHANNEL_OPTION(automode);
     DEFINE_CHANNEL_OPTION(protect);
     DEFINE_CHANNEL_OPTION(enfmodes);
     DEFINE_CHANNEL_OPTION(enftopic);
     DEFINE_CHANNEL_OPTION(pubcmd);
-    /*DEFINE_CHANNEL_OPTION(givevoice);
-     */
     DEFINE_CHANNEL_OPTION(userinfo);
     DEFINE_CHANNEL_OPTION(dynlimit);
     DEFINE_CHANNEL_OPTION(topicsnarf);

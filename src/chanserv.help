@@ -455,7 +455,7 @@
         "TOPICSNARF:   Manual topics changes (by /TOPIC) from users this level and above will change the default $b$C$b topic.",
         "SETTERS:      Who may change channel settings (using $bSET$b).",
         "CTCPREACTION: What happens when a CTCP is sent to the channel.",
-        "VOICE:        Who should be auto-voiced in the channel.",
+        "AUTOMODE:     Who should be auto-voice/hop/oped in the channel.",
         "PROTECT:      The protection level $b$C$b provides.",
 	"TOYS:         Toggles how $b$C$b will respond to toy commands (!8ball etc).",
         "TOPICREFRESH: Controls if (and how often) $b$C$b will reset the topic.",
@@ -464,9 +464,11 @@
         "NODELETE:  Prevents channel deletion.",
         "If you wish to reset your channel to the default settings, you can use the $bSET DEFAULTS$b command.",
         "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpusers, set ctcpreaction, set defaults");
+
 "SET DEFAULTTOPIC" ("/msg $C SET <#channel> DEFAULTTOPIC <New default topic>",
         "This changes the default topic for the channel.  $C will set the IRC topic to this value when the $btopic$b command is used with no arguments, when the topic refresh happens (if you have $bset topicrefresh$b), or when an unauthorized user changes the topic to something else.",
         "$uSee Also:$u set, set topicrefresh, set enftopic, set topicmask");
+
 "SET TOPICMASK" ("/msg $C SET <#channel> TOPICMASK <Topic mask with * and ?>",
         "This sets a pattern that $C forces all topics to match. A $b*$b will match any number of characters (including 0); a $b?$b will match any single character -- the same as with IRC hostmasks.",
         "For example, $b!set topicmask Hello *$b allows the topic to be set to $bHello world$b, but not $bGoodbye world$b.",
@@ -475,41 +477,46 @@
         " $btopic something$b",
         "will replace the * with the text $bsomething$b.",
         "$uSee Also:$u set, set topic, set enftopic");
+
 "SET TOYS" ("/msg $C SET <#channel> TOYS <value>",
 	"This setting changes how $C will respond to commands like 8ball, or whether it responds at all.  Valid settings are:",
 	"$b0$b  Toys are completely disabled.",
 	"$b1$b  Toys will only reply privately.",
 	"$b2$b  Toys will reply publicly.",
 	"$uSee Also:$u set");
+
 "SET PUBCMD" ("/msg $C SET <#channel> PUBCMD <value>",
         "This setting restricts the access necessary to use in-channel commands.  It is a numeric user level, or 501 to mean no one may use public commands.",
         "$uSee Also:$u set");
+
 "SET ENFOPS" ("/msg $C SET <#channel> ENFOPS <value>",
         "This setting restricts who may op users who are not at least ops on the userlist.  If $C sees someone with access below the specified access op someone not on the userlist (or who is a peon), it will deop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
         "$uSee Also:$u set");
+
 "SET ENFHALFOPS" ("/msg $C SET <#channel> ENFHALFOPS <value>",
         "This setting restricts who may halfop users who are not at least halfops on the userlist.  If $C sees someone with access below the specified access halfop someone not on the userlist (or who is a peon), it will dehalfop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
         "$uSee Also:$u set");
-"SET GIVEOPS" ("/msg $C SET <#channel> GIVEOPS <value>",
-        "This setting restricts the minimum access someone must be to be automatically op'ed by $C.  It is a numeric user level.",
-        "$uSee Also:$u set");
-"SET GIVEHOPS" ("/msg $C SET <#channel> GIVEHOPS <value>",
-        "This setting restricts the minimum access someone must be to be automatically halfop'ed by $C.  It is a numeric user level.",
-        "$uSee Also:$u set");
+
 "SET ENFMODES" ("/msg $C SET <#channel> ENFMODES <value>",
         "This setting restricts the minimum access someone must have to change the channel modes from what is specified in the channel settings.  It is a numeric user level, or 501 to mean no one may override the default modes.",
         "$uSee Also:$u set");
+
 "SET ENFTOPIC" ("/msg $C SET <#channel> ENFTOPIC <value>",
         "This setting restricts the minimum access someone must have to change the channel topic.  It is a numeric user level, or 501 to mean no one may override the default topic.",
         "If a topic mask is set, then a person may change the topic as long as it matches that mask $bor$b they have the above access.",
         "If no topic mask is set, then a person must have the above access to change the topic from the default.",
         "$uSee Also:$u set, set topic, set topicmask");
-"SET VOICE" ("/msg $C SET <#channel> VOICE <value>",
+
+"SET AUTOMODE" ("/msg $C SET <#channel> AUTOMODE <value>",
         "This setting configures who $C auto-voices.  Valid settings are:",
-        "$b0$b  Noone will get voice",
-        "$b1$b  PEONs will get voice (default).",
-        "$b2$b  Everyone will get voice.",
+        "$b0$b  Noone will be automatically oped, half-oped, or voiced.",
+        "$b1$b  Give voice to peons, half-op to halfops, and op to ops.",
+        "$b2$b  Give voice to strangers.",
+        "$b3$b  Give halfops to strangers.",
+        "$b4$b  Give ops to strangers (not advised.)",
+        "$b5$b  Give half-op to halfops, and op to ops (no voice to peons).",
         "$uSee Also:$u set, uset autoop");
+
 "SET PROTECT" ("/msg $C SET <#channel> PROTECT <value>",
         "This setting restricts the protection that $C enforces.  Valid settings are:",
         "$b0$b  Non-users and users will be protected from those of equal or lower access",
@@ -517,9 +524,11 @@
         "$b2$b  Users will be protected from those of lower access.",
         "$b3$b  No users will be protected.",
         "$uSee Also:$u set");
+
 "SET SETTERS" ("/msg $C SET <#channel> SETTERS <value>",
         "Users with at least this user level can use the $bset$b command for $C.",
         "$uSee Also:$u set");
+
 "SET TOPICREFRESH" ("/msg $C SET <#channel> TOPICREFRESH <value>",
         "This setting controls if (and how often) $C refreshes the topic to the default value.  Valid settings are:",
         "$b0$b  Never refresh topic.",
@@ -528,6 +537,7 @@
         "$b3$b  Refresh every 12 hours.",
         "$b4$b  Refresh every 24 hours.",
         "$uSee Also:$u set, set topic");
+
 "SET CTCPREACTION" ("/msg $C SET <#channel> CTCPREACTION <value>",
         "This setting controls what happens to those who send disallowed CTCPs to the channel:",
         "$b0$b  CTCPs are allowed. Do nothing.",
@@ -536,24 +546,31 @@
         "$b3$b  Short timed ban (defaults to 3 minutes) on disallowed CTCPs.",
         "$b4$b  Long timed ban (defaults to 1 hour) on disallowed CTCPs.",
         "$uSee Also:$u set, set ctcpusers");
+
 "SET DEFAULTS" ("/msg $C SET <#channel> DEFAULTS [<confirmation>]",
         "With the proper confirmation string, resets all the options for the channel to their default values.",
         "With no confirmation string, displays the appropriate confirmation string.",
         "$uSee Also:$u set");
+
 "STAFF" ("/msg $C STAFF",
         "Lists all the IRC operators and helpers currently online. Nicknames enclosed in parentheses are away, and likely unavailable.",
         "$uSee Also:$u helpers, ircops, netinfo");
+
 "SUSPEND" ("/msg $C SUSPEND <#channel> <nick|*account>",
         "This disables the target's access to the channel.  That access can be restored using the unsuspend command.",
         "$uSee Also:$u unsuspend, deluser");
+
 "TOPIC" ("/msg $C TOPIC <#channel> [topic]",
         "Sets the current topic for the specified channel.  If no topic is specified, then set the current topic to the default topic.");
+
 "TRIM" ("/msg $C TRIM <#channel> <target> <duration>",
 	"The trim command removes target objects inactive for more than a certain duration from a channel. The target must be a channel access level, a range of access levels (for example, \"300-399\"), \"users\" or \"lamers\". The duration argument specifies the amount of time the target has been inactive for to be removed.",
         "$uSee Also:$u durations");
+
 "UNBAN" ("/msg $C UNBAN <#channel> <mask|nick>",
         "Unbans the specified nick or hostmask. If a nick is given, $b$C$b determines what hostmask(s) to unban.",
         "$uSee Also:$u ban, kick, kickban");
+
 "UNBANALL" ("/msg $C UNBANALL <#channel>",
         "Clears the specified channel's banlist. If the channel is omitted, then $bunbanall$b will be done in the channel where the command was given.",
         "$uSee Also:$u ban, unban, unbanme");
