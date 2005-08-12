@@ -3,6 +3,13 @@
 
 2005-08-12  Alex Schumann  <rubin@afternet.org>
 
+	* src/chanserv.c: Modified resync to work accourding to automode
+	setting, and fixed a buffer overflow problem.
+
+	* src/chanserv.help: updated set automode and rsync help.
+
+2005-08-12  Alex Schumann  <rubin@afternet.org>
+
 	* src/chanserv.c: Cleanup. Added 'automode' channel setting in place
 	of 'voice' setting.  + Rewording setting help
 

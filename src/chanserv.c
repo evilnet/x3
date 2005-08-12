@@ -633,14 +633,14 @@ static const struct {
     unsigned int old_flag;
     unsigned short flag_value;
 } levelOptions[] = {
-    { "CSMSG_SET_ENFOPS", "enfops", 300, 1, 0, 0 },
-    { "CSMSG_SET_ENFHALFOPS", "enfhalfops", 300, 1, 0, 0 },
-    { "CSMSG_SET_ENFMODES", "enfmodes", 200, 3, 0, 0 },
-    { "CSMSG_SET_ENFTOPIC", "enftopic", 200, 4, 0, 0 },
-    { "CSMSG_SET_PUBCMD", "pubcmd", 0, 5, 0, 0 },
-    { "CSMSG_SET_SETTERS", "setters", 400, 7, 0, 0 },
-    { "CSMSG_SET_USERINFO", "userinfo", 1, ~0, CHANNEL_INFO_LINES, 1 },
-    { "CSMSG_SET_INVITEME", "inviteme", 1, ~0, CHANNEL_PEON_INVITE, 200 },
+    { "CSMSG_SET_ENFOPS",     "enfops",     300,  1, 0, 0 },
+    { "CSMSG_SET_ENFHALFOPS", "enfhalfops", 300,  1, 0, 0 },
+    { "CSMSG_SET_ENFMODES",   "enfmodes",   200,  3, 0, 0 },
+    { "CSMSG_SET_ENFTOPIC",   "enftopic",   200,  4, 0, 0 },
+    { "CSMSG_SET_PUBCMD",     "pubcmd",       0,  5, 0, 0 },
+    { "CSMSG_SET_SETTERS",    "setters",    400,  7, 0, 0 },
+    { "CSMSG_SET_USERINFO",   "userinfo",     1, ~0, CHANNEL_INFO_LINES, 1 },
+    { "CSMSG_SET_INVITEME",   "inviteme",     1, ~0, CHANNEL_PEON_INVITE, 200 },
     { "CSMSG_SET_TOPICSNARF", "topicsnarf", 501, ~0, CHANNEL_TOPIC_SNARF, 1 }
 };
 
@@ -4588,7 +4588,8 @@ static CHANSERV_FUNC(cmd_resync)
     struct chanData *cData = channel->channel_info;
     unsigned int ii, used;
 
-    changes = mod_chanmode_alloc(channel->members.used * 2);
+    /* 6 = worst case -ovh+ovh on everyone */
+    changes = mod_chanmode_alloc(channel->members.used * 6);
     for(ii = used = 0; ii < channel->members.used; ++ii)
     {
         struct modeNode *mn = channel->members.list[ii];
@@ -4597,53 +4598,128 @@ static CHANSERV_FUNC(cmd_resync)
         if(IsService(mn->user))
             continue;
 
+
         uData = GetChannelAccess(cData, mn->user->handle_info);
-        if(uData && uData->access >= UL_OP )
+        
+        /* If the channel is in no-mode mode, de-mode EVERYONE */
+        if(cData->chOpts[chAutomode] == 'n')
         {
-            if(!(mn->modes & MODE_CHANOP))
-            {
-                changes->args[used].mode = MODE_CHANOP;
-                changes->args[used++].u.member = mn;
-            }
+                if(mn->modes)
+                {
+                    changes->args[used].mode = MODE_REMOVE | mn->modes;
+                    changes->args[used++].u.member = mn;
+                }
         }
-        else if(uData && uData->access >= UL_HALFOP)
+        else /* Give various userlevels their modes.. */
         {
-            if(mn->modes & MODE_CHANOP)
+            if(uData && uData->access >= UL_OP )
             {
-                changes->args[used].mode = MODE_REMOVE |  MODE_CHANOP;
-                changes->args[used++].u.member = mn;
+                if(!(mn->modes & MODE_CHANOP))
+                {
+                    changes->args[used].mode = MODE_CHANOP;
+                    changes->args[used++].u.member = mn;
+                }
             }
-            if(!(mn->modes & MODE_HALFOP))
+            else if(uData && uData->access >= UL_HALFOP)
             {
-                changes->args[used].mode = MODE_HALFOP;
-                changes->args[used++].u.member = mn;
+                if(mn->modes & MODE_CHANOP)
+                {
+                    changes->args[used].mode = MODE_REMOVE |  MODE_CHANOP;
+                    changes->args[used++].u.member = mn;
+                }
+                if(!(mn->modes & MODE_HALFOP))
+                {
+                    changes->args[used].mode = MODE_HALFOP;
+                    changes->args[used++].u.member = mn;
+                }
             }
-        }
-        else if(uData && uData->access >= UL_PEON )
-        {
-            if(mn->modes & MODE_CHANOP)
+            else if(uData && uData->access >= UL_PEON )
             {
-                changes->args[used].mode = MODE_REMOVE | MODE_CHANOP;
-                changes->args[used++].u.member = mn;
+                if(mn->modes & MODE_CHANOP)
+                {
+                    changes->args[used].mode = MODE_REMOVE | MODE_CHANOP;
+                    changes->args[used++].u.member = mn;
+                }
+                if(mn->modes & MODE_HALFOP)
+                {
+                    changes->args[used].mode = MODE_REMOVE | MODE_HALFOP;
+                    changes->args[used++].u.member = mn;
+                }
+                /* Don't voice peons if were in mode m */
+                if( cData->chOpts[chAutomode] == 'm')
+                {
+                    if(mn->modes & MODE_VOICE)
+                    {
+                        changes->args[used].mode = MODE_REMOVE | MODE_VOICE;
+                        changes->args[used++].u.member = mn;
+                    }
+                }
+                /* otherwise, make user they do have voice */
+                else if(!(mn->modes & MODE_VOICE))
+                {
+                    changes->args[used].mode = MODE_VOICE;
+                    changes->args[used++].u.member = mn;
+                }
             }
-            if(mn->modes & MODE_HALFOP)
+            else /* They arnt on the userlist.. */
             {
-                changes->args[used].mode = MODE_REMOVE | MODE_HALFOP;
-                changes->args[used++].u.member = mn;
-            }
-            /* Don't voice peons if were in mode m */
-            if(!(mn->modes & MODE_VOICE) && cData->chOpts[chAutomode] != 'm')
-            {
-                changes->args[used].mode = MODE_VOICE;
-                changes->args[used++].u.member = mn;
-            }
-        }
-        else
-        {
-            if(mn->modes)
-            {
-                changes->args[used].mode = MODE_REMOVE | mn->modes;
-                changes->args[used++].u.member = mn;
+                /* If we voice everyone, but they dont.. */
+                if(cData->chOpts[chAutomode] == 'v')
+                {
+                    /* Remove anything except v */
+                    if(mn->modes & ~MODE_VOICE)
+                    {
+                        changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_VOICE);
+                        changes->args[used++].u.member = mn;
+                    }
+                    /* Add v */
+                    if(!(mn->modes & MODE_VOICE))
+                    {
+                        changes->args[used].mode = MODE_VOICE;
+                        changes->args[used++].u.member = mn;
+                    }
+                }
+                /* If we hop everyone, but they dont.. */
+                else if(cData->chOpts[chAutomode] == 'h')
+                {
+                    /* Remove anything except h */
+                    if(mn->modes & ~MODE_HALFOP)
+                    {
+                        changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_HALFOP);
+                        changes->args[used++].u.member = mn;
+                    }
+                    /* Add h */
+                    if(!(mn->modes & MODE_HALFOP))
+                    {
+                        changes->args[used].mode = MODE_HALFOP;
+                        changes->args[used++].u.member = mn;
+                    }
+                }
+                /* If we op everyone, but they dont.. */
+                else if(cData->chOpts[chAutomode] == 'o')
+                {
+                    /* Remove anything except h */
+                    if(mn->modes & ~MODE_CHANOP)
+                    {
+                        changes->args[used].mode = MODE_REMOVE | (mn->modes & ~MODE_CHANOP);
+                        changes->args[used++].u.member = mn;
+                    }
+                    /* Add h */
+                    if(!(mn->modes & MODE_CHANOP))
+                    {
+                        changes->args[used].mode = MODE_CHANOP;
+                        changes->args[used++].u.member = mn;
+                    }
+                }
+                /* they have no excuse for having modes, de-everything them */
+                else
+                {
+                    if(mn->modes)
+                    {
+                        changes->args[used].mode = MODE_REMOVE | mn->modes;
+                        changes->args[used++].u.member = mn;
+                    }
+                }
             }
         }
     }

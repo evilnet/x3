@@ -81,7 +81,7 @@
             " $bDEHOP$b       Remove halfops from the specified user.",
             " $bVOICE$b       Give voice to the specified user.",
             " $bDEVOICE$b     Remove voice from the specified user.",
-            " $bRESYNC$b      Synchronize ops and voice with the channel userlist.",
+            " $bRESYNC$b      Synchronize (half)ops and voice with the channel userlist.",
             "$b$b",
             " $bKICK$b        Kick a user from a channel.",
             " $bBAN$b         Ban a user from a channel.",
@@ -412,8 +412,12 @@
 "REMOVENOTE" ("/msg $S REMOVENOTE <typename> [FORCE]",
         "Permanently deletes a note type.  Without the argument $bFORCE$b, it will only delete an unused note type.  With the argument $bFORCE$b, it will delete the note from all channels and then delete the note type.",
         "$uSee Also:$u createnote");
+
 "RESYNC" ("/msg $S RESYNC <#channel>",
-        "Synchronizes users in the channel with the userlist.  This means that if the user can normally get ops, $S makes sure the user has ops.  Otherwise, if the user normally gets voice, $S makes sure the user has voice but not ops.  Otherwise, $S makes sure the user has neither voice nor ops.");
+        "Synchronizes users in the channel with the userlist, according to the SET AUTOMODE setting.",
+        "It will give and take ops, halfops, and voice modes to users to make the channel match the userlist and automode setting.",
+        "$uSee Also:$u set automode, up, op, hop, voice");
+
 "SAY" ("/msg $C SAY <#channel> <text>",
         "Makes $b$C$b send a message to the specified channel.",
         "$uSee Also:$u emote");
@@ -508,15 +512,15 @@
         "$uSee Also:$u set, set topic, set topicmask");
 
 "SET AUTOMODE" ("/msg $C SET <#channel> AUTOMODE <value>",
-        "This setting configures who $C auto-voices.  Valid settings are:",
-        "$b0$b  Noone will be automatically oped, half-oped, or voiced.",
-        "$b1$b  Give voice to peons, half-op to halfops, and op to ops.",
-        "$b2$b  #1 Plus Give voice to strangers.",
-        "$b3$b  #1 Plus give halfops to strangers.",
-        "$b4$b  #1 Plus give ops to strangers (not advised.)",
-        "$b5$b  Give half-op to halfops, and op to ops only, peons do not get voice. ",
-        "Option #5 also affects RESYNC and UP commands. Other options do not.",
-        "$uSee Also:$u set, uset autoop, up, resync");
+        "This setting configures who $C gives different channel modes to on join or RESYNC.  ",
+        "Valid settings are:",
+        "  $b0$b  Noone will be automatically oped, half-oped, or voiced.",
+        "  $b1$b  Give voice to peons, half-op to halfops, and op to ops.",
+        "  $b2$b  #1 Plus Give voice to everyone.",
+        "  $b3$b  #1 Plus give halfops to everyone.",
+        "  $b4$b  #1 Plus give ops to everyone (not advised.)",
+        "  $b5$b  Give half-op to halfops, and op to ops only, but peons do not get voice. ",
+        "$uSee Also:$u set, up, uset autoop, resync");
 
 "SET PROTECT" ("/msg $C SET <#channel> PROTECT <value>",
         "This setting restricts the protection that $C enforces.  Valid settings are:",
