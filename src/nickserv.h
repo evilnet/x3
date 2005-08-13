@@ -38,8 +38,9 @@ struct svccmd;
 #define HI_FLAG_NODELETE       0x00000080
 #define HI_FLAG_NETWORK_HELPER 0x00000100
 #define HI_FLAG_BOT            0x00000200
+#define HI_FLAG_AUTOHIDE       0x00000400
 /* Flag characters for the above.  First char is LSB, etc. */
-#define HANDLE_FLAGS "SphgscfnHb"
+#define HANDLE_FLAGS "SphgscfnHbx"
 
 /* HI_STYLE_* go into handle_info.userlist_style */
 #define HI_STYLE_DEF	       'd'

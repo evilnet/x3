@@ -288,6 +288,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SET_PRIVMSG", "$bPRIVMSG:      $b%s" },
     { "NSMSG_SET_STYLE", "$bSTYLE:        $b%s" },
     { "NSMSG_SET_ANNOUNCEMENTS", "$bANNOUNCEMENTS: $b%s" },
+    { "NSMSG_SET_AUTOHIDE", "$bAUTOHIDE: $b%s" },
     { "NSMSG_SET_PASSWORD", "$bPASSWORD:     $b%s" },
     { "NSMSG_SET_FLAGS", "$bFLAGS:        $b%s" },
     { "NSMSG_SET_EMAIL", "$bEMAIL:        $b%s" },
@@ -1808,7 +1809,12 @@ static NICKSERV_FUNC(cmd_auth)
 
     reply("NSMSG_AUTH_SUCCESS");
 
-    if(!IsOper(user))
+    
+    /* Set +x if autohide is on */
+    if(HANDLE_FLAGGED(hi, AUTOHIDE))
+        irc_umode(user, "+x");
+
+    if(!IsOper(user)) /* If they arnt already opered.. */
     {
         /* Auto Oper users with Opserv access -Life4Christ 8-10-2005  */
         if( nickserv_conf.auto_admin[0] && hi->opserv_level >= opserv_conf_admin_level())
@@ -2323,7 +2329,7 @@ set_list(struct userNode *user, struct handle_info *hi, int override)
     unsigned int i;
     char *set_display[] = {
         "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", /* "STYLE", */
-        "EMAIL", "ANNOUNCEMENTS", "MAXLOGINS", "LANGUAGE",
+        "EMAIL", "ANNOUNCEMENTS", "AUTOHIDE", "MAXLOGINS", "LANGUAGE",
         "FAKEHOST", "TITLE", "EPITHET"
     };
 
@@ -2453,6 +2459,23 @@ static OPTION_FUNC(opt_privmsg)
     }
 
     send_message(user, nickserv, "NSMSG_SET_PRIVMSG", user_find_message(user, HANDLE_FLAGGED(hi, USE_PRIVMSG) ? "MSG_ON" : "MSG_OFF"));
+    return 1;
+}
+
+static OPTION_FUNC(opt_autohide)
+{
+    if (argc > 1) {
+	if (enabled_string(argv[1]))
+	    HANDLE_SET_FLAG(hi, AUTOHIDE);
+        else if (disabled_string(argv[1]))
+	    HANDLE_CLEAR_FLAG(hi, AUTOHIDE);
+	else {
+	    send_message(user, nickserv, "MSG_INVALID_BINARY", argv[1]);
+	    return 0;
+	}
+    }
+
+    send_message(user, nickserv, "NSMSG_SET_AUTOHIDE", user_find_message(user, HANDLE_FLAGGED(hi, AUTOHIDE) ? "MSG_ON" : "MSG_OFF"));
     return 1;
 }
 
@@ -4086,6 +4109,7 @@ init_nickserv(const char *nick)
     dict_insert(nickserv_opt_dict, "TABLEWIDTH", opt_tablewidth);
     dict_insert(nickserv_opt_dict, "COLOR", opt_color);
     dict_insert(nickserv_opt_dict, "PRIVMSG", opt_privmsg);
+    dict_insert(nickserv_opt_dict, "AUTOHIDE", opt_autohide);
 /*    dict_insert(nickserv_opt_dict, "STYLE", opt_style); */
     dict_insert(nickserv_opt_dict, "PASS", opt_password);
     dict_insert(nickserv_opt_dict, "PASSWORD", opt_password);

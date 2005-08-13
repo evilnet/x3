@@ -8,6 +8,12 @@
 
 	* src/chanserv.help: updated set automode and rsync help.
 
+	* src/nickserv.h: Added an autohide setting to nickserv/authserv that
+	sets +x on AUTH.
+
+	* src/nickserv.c: Added an autohide setting to nickserv/authserv that
+	sets +x on AUTH.
+
 2005-08-12  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Cleanup. Added 'automode' channel setting in place
