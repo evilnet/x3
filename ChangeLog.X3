@@ -1,6 +1,15 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-08-13  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Fixed a bug i created using masks in ,kick. Restored
+	some *@* protection.
+
+	* src/tools.c: added function to detect an overmask (too general)
+
+	* src/common.h: added function to detect an overmask (too general)
+
 2005-08-12  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Modified resync to work accourding to automode

@@ -307,6 +307,13 @@ match_ircglob(const char *text, const char *glob)
 
 extern const char *hidden_host_suffix;
 
+/* Prevent *@* *@** *@*a* type masks, while allowing anything else. This is the best way iv found to detect 
+ * a global matching mask; if it matches this string, it'll match almost anything :) */
+int is_overmask(char *mask)
+{
+    return(match_ircglob("abcdefghijklmnopqrstuv!frcmbghilnrtoasde@apdic.yfa.dsfsdaffsdasfdasfd.abcdefghijklmnopqrstuvwxyz.asdfasfdfsdsfdasfda.ydfbe", mask));
+}
+
 int user_matches_glob(struct userNode *user, const char *orig_glob, int include_nick)
 {
     /* A new glob function, the old one had many false positives.

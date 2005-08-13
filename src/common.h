@@ -147,6 +147,8 @@ int split_line(char *line, int irc_colon, int argv_size, char *argv[]);
 int mmatch(const char *glob, const char *newglob);
 int match_ircglob(const char *text, const char *glob);
 int user_matches_glob(struct userNode *user, const char *glob, int include_nick);
+int is_overmask(char *mask);
+
 
 int is_ircmask(const char *text);
 int is_gline(const char *text);

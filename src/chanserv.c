@@ -3104,18 +3104,18 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 	        reply("CSMSG_MASK_PROTECTED", argv[1]);
 	    return 0;
 	}
-        /* We dont actually want a victem count if were banning a mask manually, IMO -Rubin*/
-        if(cmd)
-            victimCount = 0;  /* Dont deop etc ppl who match this */
-
-#ifdef entropy_lameness
-        if((victimCount > 4) && ((victimCount * 3) > channel->members.used) && !IsOper(user))
+/* If i want to ban *.nl and theres 5 of them, what is it to the bot?!? 
+//      if((victimCount > 4) && ((victimCount * 3) > channel->members.used) && !IsOper(user)) 
+                                                                           And, ^^^^^^^^^ BAH! 
+   We use x2 style over-mask detection instead because it doesnt stop channel owners from doing 
+   reasonable bans, but does stop *@*, *@*a* *@*b* etc type masks.  Yes, you can defeat it with 
+   some creativity, but its not x3's job to be the ban censor anyway.  */
+        if(is_overmask(argv[1]))
         {
 	    if(cmd)
                 reply("CSMSG_LAME_MASK", argv[1]);
             return 0;
         }
-#endif
 
         if((action == ACTION_KICK) && (victimCount == 0))
         {
