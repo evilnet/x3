@@ -2388,8 +2388,20 @@ merge_bans(struct chanData *source, struct chanData *target)
 static void
 merge_data(struct chanData *source, struct chanData *target)
 {
+    /* Use more recent visited and owner-transfer time; use older
+     * registered time.  Bitwise or may_opchan.  Use higher max.
+     * Do not touch last_refresh, ban count or user counts.
+     */
     if(source->visited > target->visited)
 	target->visited = source->visited;
+    if(source->registered < target->registered)
+        target->registered = source->registered;
+    if(source->ownerTransfer > target->ownerTransfer)
+        target->ownerTransfer = source->ownerTransfer;
+    if(source->may_opchan)
+        target->may_opchan = 1;
+    if(source->max > target->max)
+        target->max = source->max;
 }
 
 static void
@@ -3002,7 +3014,7 @@ static CHANSERV_FUNC(cmd_devoice)
 }
 
 static int
-bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban, int *victimCount, struct modeNode **victims)
+bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban, unsigned int *victimCount, struct modeNode **victims)
 {
     unsigned int ii;
 
@@ -4419,9 +4431,10 @@ static CHANSERV_FUNC(cmd_info)
     reply("CSMSG_CHANNEL_USERS", cData->userCount);
     reply("CSMSG_CHANNEL_LAMERS", cData->banCount);
     reply("CSMSG_CHANNEL_VISITED", intervalString(buffer, now - cData->visited, user->handle_info));
-    reply("CSMSG_CHANNEL_REGISTERED", intervalString(buffer, now - cData->registered, user->handle_info));
 
     privileged = IsStaff(user);
+    if(privileged)
+        reply("CSMSG_CHANNEL_REGISTERED", intervalString(buffer, now - cData->registered, user->handle_info));
     if(((uData && uData->access >= UL_COOWNER) || privileged) && cData->registrar)
         reply("CSMSG_CHANNEL_REGISTRAR", cData->registrar);
 
