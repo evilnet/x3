@@ -45,9 +45,6 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
-/* Define to 1 if you have the <tgmath.h> header file. */
-#undef HAVE_TGMATH_H
-
 /* Define to 1 if you have the `ftime' function. */
 #undef HAVE_FTIME
 
@@ -216,6 +213,9 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
+/* Define to 1 if you have the <tgmath.h> header file. */
+#undef HAVE_TGMATH_H
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -301,3 +301,6 @@
 #ifndef __cplusplus
 #undef inline
 #endif
+
+/* type to use in place of socklen_t if not defined */
+#undef socklen_t
