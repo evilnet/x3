@@ -55,10 +55,12 @@ static const struct message_entry msgtab[] = {
     { "GMSG_ID_INVALID", "$b%s$b is an invalid message ID." },
     { "GMSG_MESSAGE_COUNT", "$b%d$b messages found." },
     { "GMSG_NO_MESSAGES", "There are no messages for you." },
-    { "GMSG_NOTICE_SOURCE", "[$b%s$b] Notice from %s:" },
-    { "GMSG_MESSAGE_SOURCE", "[$b%s$b] Notice from %s, posted %s:" },
-    { "GMSG_MOTD_HEADER", "$b------------- MESSAGE(S) OF THE DAY --------------$b" },
-    { "GMSG_MOTD_FOOTER", "$b---------- END OF MESSAGE(S) OF THE DAY ----------$b" },
+    { "GMSG_NOTICE_SOURCE", "Notice to [$b%s$b] from %s:" },
+    { "GMSG_MESSAGE_SOURCE", "Notice to [$b%s$b] from %s, posted %s:" },
+    //{ "GMSG_MOTD_HEADER", "$b------------- MESSAGE(S) OF THE DAY --------------$b" },
+    { "GMSG_MOTD_HEADER", "$bNetwork Announcements$b" },
+    { "GMSG_MOTD_BAR",    "---------------------------------------" },
+    { "GMSG_MOTD_FOOTER", "--------------- Thank You--------------" },
     { NULL, NULL }
 };
 
@@ -532,7 +534,10 @@ send_messages(struct userNode *user, long mask, int obstreperize)
 	if(message->flags & mask)
 	{
             if (obstreperize && !count)
+	    {
                 send_target_message(0, user->nick, global, "GMSG_MOTD_HEADER");
+                send_target_message(0, user->nick, global, "GMSG_MOTD_BAR");
+	    }
 	    notice_target(user->nick, message);
 	    count++;
 	}

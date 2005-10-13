@@ -1,20 +1,24 @@
 "<INDEX>" {
         "/services/nickserv/disable_nicks" {
         "/services/nickserv/email_enabled" (
-                " $b$N$b is an authentication service,",
-                " providing login identification for",
-                " the network. $N is how you 'log in'",
-                " to get access in channels registered",
-                " with $C, and its how ircops are known",
-                " to $O and $G.",
+                " $b$N$b is the login bot. It provides ",
+                " accounts for use on the network. ",
+                " $N is how you 'log in' to get access ",
+		" in channels registered with $C, and  ",
+		" its how ircops are known to $O and $G.",
+		" To get an account:  ",
+		"   $b/msg $N HELP REGISTER$b ",
+		" To login to your account: ",
+		"   $b/msg $N@$s AUTH accountname password$b",
                 " $b$b",
-                " The help system uses the format:",
-                "   $b/MSG $N HELP <$bsubject$b>$b       ",
+		" Read more about $N in the help system:",
+                " To read help, type:",
+                "   $b/msg $N HELP <$bsubject$b>$b       ",
                 " (In help, words in <> represent required",
                 " parameters. Words in [] are optional.)",
-                " For example: $b/msg $N HELP RESETPASS$b",
-                " shows help with the command to reset a",
-                " lost password.",
+                " For example: $b/msg $N HELP REGISTER$b",
+                " shows help with the command create an ",
+                " account. ",
                 " $b$b",
 	        " $b$N$b help categories:",
         	"  $bACCOUNT$b      Account management.",
@@ -25,16 +29,29 @@
                 "  $bOPER$b         Commands for IRC Operators.",
                 "$b$b",
                 " $b$N is $uNOT$u a NickServ$b!        ",
+		"  We do not 'own' nicks here. ",
                 "  see $b/msg $N HELP NOT NICKSERV$b   ",
                 "  for details "
         );
         "!/services/nickserv/email_enabled" (
-                " $b$N$b is an authentication service,",
-                " providing login identification for",
-                " the network. $N is how you 'log in'",
-                " to get access in channels registered",
-                " with $C, and its how ircops are known",
-                " to $O and $G.",
+                " $b$N$b is the login bot. It provides ",
+                " accounts for use on the network. ",
+                " $N is how you 'log in' to get access ",
+		" in channels registered with $C, and  ",
+		" its how ircops are known to $O and $G.",
+		" To get an account:  ",
+		"   $b/msg $N HELP REGISTER$b ",
+		" To login to your account: ",
+		"   $b/msg $N@$s AUTH accountname password$b",
+                " $b$b",
+		" Read more about $N in the help system:",
+                " To read help, type:",
+                "   $b/msg $N HELP <$bsubject$b>$b       ",
+                " (In help, words in <> represent required",
+                " parameters. Words in [] are optional.)",
+                " For example: $b/msg $N HELP REGISTER$b",
+                " shows help with the command create an ",
+                " account. ",
                 " $b$b",
 	        " $b$N$b help categories:",
         	"  $bACCOUNT$b      Account management.",
@@ -42,6 +59,7 @@
                 "  $bOPER$b         Commands for IRC Operators.",
                 "$b$b",
                 " $b$N is $uNOT$u a NickServ$b!        ",
+		"  We do not 'own' nicks here. ",
                 "  see $b/msg $N HELP NOT NICKSERV$b   ",
                 "  for details "
         );
@@ -398,9 +416,14 @@
 "REGISTER" {
         "0: /services/nickserv/email_required" (
         "/msg $N@$s REGISTER <account> <password> <email>",
-        "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
-        "Having an account provides a single login identity for use with $b$C$b.",
-        "Email activation is required: An email will be sent to the email address you give containing a cookie that will let you activate your account.  Once you have that cookie email, use the $bcookie$b command to activate your account.",
+        "Register is the command to create an an account with $b$N$b. ",
+        "Having an account provides a single login identity for the network, and for use with $b$C$b.",
+	"$b$b",
+        "$bEmail activation is required:$b An email will be sent to the email address you give to verify it. You must",
+	"provide a valid email address or registration will fail. After you register, check your email for instructions validating your account.",
+	"$b$b",
+	"If you already have an account, login using the $bAUTH$b command:",
+	"$b/msg $N@$s AUTH <accountname> <password>$b",
         "$uSee Also:$u auth, unregister"
         );
         "1: /services/nickserv/email_enabled" (
@@ -408,7 +431,10 @@
         "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
         "Having an account provides a single login identity for use with $b$C$b.",
         "Email activation is not required: But, if you specify an email address, an email will be sent to it containing a cookie that will let you activate your account.  Once you have that cookie, use the $bcookie$b command to activate your account.",
-        "$uSee Also:$u auth, unregister"
+       	"$b$b",
+	"If you already have an account, login using the $bAUTH$b command:",
+	"$b/msg $N@$s AUTH <accountname> <password>$b",
+ "$uSee Also:$u auth, unregister"
         );
         "2: !/services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password>",

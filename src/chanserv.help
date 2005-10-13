@@ -11,7 +11,7 @@
            " For example: $b/msg $C HELP UBM$b      ",
            " shows help with the Un-Ban Me command.   ",
            "=---------------------------------------=",
-           " GENERAL  - How to use $C  ",
+           " GENERAL  - How to get and communicate with $C  ",
            " USER     - Commands to add and remove",
            "            bans, ops and managers from ",
            "            your channel.",
@@ -132,11 +132,13 @@
 );
 
 "GENERAL"  (
-            " NOTE: Before using $C or being added   ",
-            " to channel userlists, users must       ",
-            " register  an account with $b$N$b.      ",
-            "  $b/MSG $N help$b for more information ",
+	    "$b-$N Accounts$b-",
+            " Before using $C or being added to      ",
+            " channel userlists, you and your users  ",
+	    " must register an account with $b$N$b.  ",
+            "  $b/MSG $N help$b to learn how. ",
             "$b$b",
+	    "$b-Talking to $C-$b",
             " $C uses a standard interface for each  ",
             " command in its command list. Commands  ",
             " can be issued either in /MSG format or ",

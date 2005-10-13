@@ -5,6 +5,16 @@
 
 	* src/proto-p10.c: ignore remote /lusers
 
+2005-09-13  Alex Schumann <rubin@afternet.org>
+
+	* src/global.c: Changed motd header style
+
+	* src/nickserv.help: Improved directions for getting and using
+	accounts.
+
+	* src/chanserv.help: Improved directions for getting and using
+	accounts.
+
 2005-08-13  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Fixed a bug i created using masks in ,kick. Restored
