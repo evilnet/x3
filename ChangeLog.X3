@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-10-13  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: ignore remote /lusers
+
 2005-08-13  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Fixed a bug i created using masks in ,kick. Restored

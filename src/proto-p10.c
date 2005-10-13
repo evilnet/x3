@@ -1715,6 +1715,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_MARK, cmd_dummy);
     /* Ignore privs */
     dict_insert(irc_func_dict, TOK_PRIVS, cmd_dummy);
+    /* Ignore remote luser */
+    dict_insert(irc_func_dict, TOK_LUSER, cmd_dummy);
     /* We have reliable clock!  Always!  Wraaa! */
     dict_insert(irc_func_dict, CMD_SETTIME, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SETTIME, cmd_dummy);
