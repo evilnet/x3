@@ -784,6 +784,29 @@ svccmd_send_help_brief(struct userNode *user, struct userNode *bot, struct svccm
     return r;
 }
 
+int is_joiner(struct svccmd *cmd)
+{
+    if(cmd->command->name)
+    {
+        if(strcasecmp("joiner", cmd->command->name))
+            return(0);
+        else
+            return(1);
+    }
+    return(0);
+/*
+    if(cmd->alias.used)
+    {
+        char alias_text[MAXLEN];
+        unsplit_string((char**)cmd->alias.list, cmd->alias.used, alias_text);
+        if(strcasecmp("joiner", alias_text))
+            return(0);
+        else
+            return(1);
+    }
+*/
+}
+
 int
 svccmd_send_help(struct userNode *user, struct service *service, const char *topic) {
     struct module *module;
@@ -800,8 +823,8 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
             cmdname[nn] = toupper(topic[nn]);
     cmdname[nn] = 0;
 
-    /* If there is a command 'topic', send command help for the command */
-    if ((cmd = dict_find(service->commands, topic, NULL)))
+    /* If there is a command 'topic', send command help for the command (unless its bound to JOINER) */
+    if ((cmd = dict_find(service->commands, topic, NULL)) && !is_joiner(cmd))
     {
         send_message(user, service->bot, "MCMSG_HELP_COMMAND_HEADER", cmdname);
         send_message(user, service->bot, "MCMSG_HELP_DIVIDER");
@@ -1278,8 +1301,8 @@ static MODCMD_FUNC(cmd_readhelp) {
     stop.tv_sec -= start.tv_sec;
     stop.tv_usec -= start.tv_usec;
     if (stop.tv_usec < 0) {
-	stop.tv_sec -= 1;
-	stop.tv_usec += 1000000;
+        stop.tv_sec -= 1;
+        stop.tv_usec += 1000000;
     }
     reply("MCMSG_HELPFILE_READ", module->name, stop.tv_sec, stop.tv_usec/1000);
     return 1;
@@ -1303,8 +1326,8 @@ static MODCMD_FUNC(cmd_timecmd) {
     stop.tv_sec -= start.tv_sec;
     stop.tv_usec -= start.tv_usec;
     if (stop.tv_usec < 0) {
-	stop.tv_sec -= 1;
-	stop.tv_usec += 1000000;
+        stop.tv_sec -= 1;
+        stop.tv_usec += 1000000;
     }
     reply("MCMSG_COMMAND_TIME", cmd_text, stop.tv_sec, stop.tv_usec);
     return 1;
@@ -1507,17 +1530,17 @@ static MODCMD_FUNC(cmd_god) {
                 reply("MCMSG_ALREADY_HELPING");
                 return 0;
             }
-	    helping = 1;
+            helping = 1;
         } else if (disabled_string(argv[1])) {
             if (!HANDLE_FLAGGED(user->handle_info, HELPING)) {
                 reply("MCMSG_ALREADY_NOT_HELPING");
                 return 0;
             }
-	    helping = 0;
+            helping = 0;
         } else {
             reply("MSG_INVALID_BINARY", argv[1]);
             return 0;
-	}
+        }
     } else {
         helping = !IsHelping(user);
     }

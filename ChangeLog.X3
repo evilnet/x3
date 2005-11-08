@@ -3,6 +3,9 @@
 
 2005-11-08  Alex Schumann  <rubin@afternet.org>
 
+	* src/modcmd.c: cleaned up tabs, added hack to display help on JOINER
+	aliases properly.
+
 	* src/modcmd.help: Added note about escaping spaces to modcmd help.
 
 	* src/nickserv.help: Improved help files
