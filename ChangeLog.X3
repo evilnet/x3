@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-11-08  Alex Schumann  <rubin@afternet.org>
+
+	* src/modcmd.help: Added note about escaping spaces to modcmd help.
+
+	* src/nickserv.help: Improved help files
+
+	* src/chanserv.help: Improved help files
+
 2005-10-13  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: ignore remote /lusers

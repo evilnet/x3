@@ -145,15 +145,15 @@
             " in a channel which $C is in. These two ",
             " ways are demonstrated below:",
             "  $b/MSG $C OP #chatzone Locke$b",
-            "  $b.OP #chatzone locke$b",
+            "  $b,OP #chatzone locke$b",
             "$b$b",
             " If a command is given in a channel, and ",
             " the channel parameter is not given, the ",
             " channel that the command was issued in  ",
             " will be used:",
-            " $b.OP locke$b",
+            " $b,OP locke$b",
             "$b$b",
-            " Some commands, such as $bNETSTATS$b     ",
+            " Some commands, such as $bNETINFO$b     ",
             " don't require a channel. If one is      ",
             " supplied it will be ignored.",
             "$b$b",
@@ -163,7 +163,8 @@
             " See $b/msg $C HELP <COMMAND>$b for the  ",
             " exact syntax of each command.           ",
             "=---------- For more info see: ---------=",
-            "     http://www.afternet.org/support     "
+            "     http://www.afternet.org/support     ",
+            "     http://x2serv.sf.net/x3help.php     "
 );
 
 "LOGIN" (
@@ -194,12 +195,27 @@
         "This command adds someone to the channel user list with the specified access level.  (You may only add users to levels less than your own.)",
         "The level may be one of $bpeon$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
         "$uSee Also:$u deluser, users");
+
+"ADDPEON" ("/msg $C ADDPEON <#channel> <nick|*account>",
+        "This command adds someone to the channel user list with PEON access level. (You may only add users to levels less than your own.)",
+        "$uSee Also:$u adduser, deluser, users");
+
 "ADDOP" ("/msg $C ADDOP <#channel> <nick|*account>",
         "This command adds someone to the channel user list with OP access level. (You may only add users to levels less than your own.)",
         "$uSee Also:$u adduser, deluser, users");
+
 "ADDHOP" ("/msg $C ADDHOP <#channel> <nick|*account>",
         "This command adds someone to the channel user list with HALFOP access level. (You may only add users to levels less than your own.)",
         "$uSee Also:$u adduser, deluser, users");
+
+"ADDMANAGER" ("/msg $C ADDMANAGER <#channel> <nick|*account>",
+        "This command adds someone to the channel user list with MANAGER access level. (You may only add users to levels less than your own.)",
+        "$uSee Also:$u adduser, deluser, users");
+
+"ADDCOOWNER" ("/msg $C ADDCOOWNER <#channel> <nick|*account>",
+        "This command adds someone to the channel user list with COOWNER access level. (You may only add users to levels less than your own.)",
+        "$uSee Also:$u adduser, deluser, users");
+
 "ADDTIMEDLAMER" ("/msg $C ADDTIMEDLAMER <#channel> <mask|nick> <Duration> [Reason]",
         "Adds an automatically expiring lamer to the channel lamer list.",
         "This command behaves in the exact same fashion as $bADDLAMER$b with the exception that the lamers are automatically removed after the user-supplied duration. ",
@@ -382,10 +398,10 @@
         "$uSee Also:$u note, delnote");
 "OLIST" ("/msg $C OLIST <#channel> [mask]",
         "This command lists all users of level $bOp$b on a channel's userlist.  If a mask is supplied, only ops matching the mask will be shown.",
-        "$uSee Also:$u addop, delop, mdelop, users");
+        "$uSee Also:$u addop, deluser, mdelop, users");
 "OP" ("/msg $C OP <#channel> <nick> [nick]...",
         "This command makes $C op the specified user.",
-        "$uSee Also:$u addop, delop, deop");
+        "$uSee Also:$u addop, deluser, deop");
 "OPCHAN" ("/msg $C OPCHAN <#channel>",
         "This command makes $C op itself in the specified channel.");
 "OPEN" ("/msg $C OPEN <#channel>",
@@ -469,7 +485,7 @@
         "$bIRCOP ONLY$b:",
         "NODELETE:  Prevents channel deletion.",
         "If you wish to reset your channel to the default settings, you can use the $bSET DEFAULTS$b command.",
-        "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpusers, set ctcpreaction, set defaults");
+        "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpreaction, set defaults");
 
 "SET DEFAULTTOPIC" ("/msg $C SET <#channel> DEFAULTTOPIC <New default topic>",
         "This changes the default topic for the channel.  $C will set the IRC topic to this value when the $btopic$b command is used with no arguments, when the topic refresh happens (if you have $bset topicrefresh$b), or when an unauthorized user changes the topic to something else.",
@@ -552,7 +568,7 @@
         "$b2$b  Kickban on disallowed CTCPs.",
         "$b3$b  Short timed ban (defaults to 3 minutes) on disallowed CTCPs.",
         "$b4$b  Long timed ban (defaults to 1 hour) on disallowed CTCPs.",
-        "$uSee Also:$u set, set ctcpusers");
+        "$uSee Also:$u set");
 
 "SET DEFAULTS" ("/msg $C SET <#channel> DEFAULTS [<confirmation>]",
         "With the proper confirmation string, resets all the options for the channel to their default values.",
@@ -623,6 +639,7 @@
         "$uSee Also:$u addcoowner, delcoowner, mdelcoowner, users");
 
 "ME"	"I am at your service. /msg $C help command, or /join #help ";
+
 "thanks" ("AfterNET's own X3 is based on the hard work of the origional srvx developers.  They would like to thank the following people for their help in making the origional srvx:",
         "     $bGameSurge IRC Network$b - All the users and staff there bear with our shortcomings and bugs and let us know what needs to be fixed.",
         "     $bIC5 Networks$b (and JohnM in particular) - Never afraid to critique things, even if we are the 800 pound gorilla.",

@@ -73,7 +73,6 @@
                 "  NICK        Nick management.",
                 "  EMAIL       Email maintenance commands.",
         	"  INFORMATION Other functions.",
-                "  COMMANDS    A list of all available commands.",
                 "  OPER        $N commands for IRC Operators."
         );
         "!/services/nickserv/email_enabled" (
@@ -83,7 +82,6 @@
         	"  ACCOUNT     Account management.",
                 "  NICK        Nick management.",
         	"  INFORMATION Other functions.",
-                "  COMMANDS    A list of all available commands.",
                 "  OPER        $N commands for IRC Operators."
         );
         };

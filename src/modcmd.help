@@ -66,7 +66,8 @@
         "$uSee Also:$u modcmd, bind");
 
 "modcmd" ("/msg $S MODCMD <command> [<option> <newval> ...]",
-        "Displays options for the specified command, or changes the options and values listed.  The command name may be prefixed with $bServiceNick.$b to specify another service's command (for example, $N.AUTH to refer to the auth command).",
+        "Displays and optionally changes options for the specified command.  The command name may be prefixed with $bServiceNick.$b to specify another service's command (for example, $N.AUTH to refer to the auth command).",
+        "Note: For multi-word commands, escape the space with a '\'. Example: trace\ gline",
         "Supported options are:",
         "  FLAGS          Comma-separated, +/- prefixed list of flags to add or remove.",
         "  CHANNEL_ACCESS Minimum ChanServ access.",
