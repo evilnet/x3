@@ -945,8 +945,12 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
     user->handle_info = hi;
     if (hi && !hi->users && !hi->opserv_level)
         HANDLE_CLEAR_FLAG(hi, HELPING);
-    for (n=0; n<auth_func_used; n++)
-        auth_func_list[n](user, old_info);
+
+    if (GetUserH(user->nick)) {
+        for (n=0; n<auth_func_used; n++)
+            auth_func_list[n](user, old_info);
+    }
+
     if (hi) {
         struct nick_info *ni;
 
@@ -956,6 +960,7 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
             for (other = hi->users; other; other = other->next_authed)
                 send_message(other, nickserv, "NSMSG_CLONE_AUTH", user->nick, user->ident, user->hostname);
         }
+
 	user->next_authed = hi->users;
 	hi->users = user;
 	hi->lastseen = now;
