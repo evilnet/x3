@@ -159,4 +159,6 @@ void reg_allowauth_func(allowauth_func_t func);
 typedef void (*failpw_func_t)(struct userNode *user, struct handle_info *handle);
 void reg_failpw_func(failpw_func_t func);
 
+void send_func_list(struct userNode *user);
+
 #endif

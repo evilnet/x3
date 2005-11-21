@@ -906,6 +906,17 @@ apply_fakehost(struct handle_info *handle)
         assign_fakehost(target, fake, 1);
 }
 
+void send_func_list(struct userNode *user)
+{
+    unsigned int n;
+    struct handle_info *old_info;
+
+    old_info = user->handle_info;
+
+    for (n=0; n<auth_func_used; n++)
+        auth_func_list[n](user, old_info);
+}
+
 static void
 set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
 {
@@ -949,7 +960,8 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
     if (GetUserH(user->nick)) {
         for (n=0; n<auth_func_used; n++)
             auth_func_list[n](user, old_info);
-    }
+    } else
+      user->loc = 1;
 
     if (hi) {
         struct nick_info *ni;

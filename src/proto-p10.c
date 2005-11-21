@@ -18,6 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
+#include "nickserv.h"
 #include "chanserv.h"
 #include "proto-common.c"
 
@@ -2091,6 +2092,10 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     for (n=0; n<nuf_used; n++)
         if (nuf_list[n](uNode))
             break;
+
+    if ((uNode->loc == 1) && (uNode->handle_info))
+        send_func_list(uNode);
+
     return uNode;
 }
 

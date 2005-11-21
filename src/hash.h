@@ -128,6 +128,7 @@ struct userNode {
     char numeric[COMBO_NUMERIC_LEN+1];
     unsigned int num_local : 18;
 #endif
+    unsigned int loc;             /* Is user connecting via LOC? */
     unsigned int dead : 1;        /* Is user waiting to be recycled? */
     struct in_addr ip;            /* User's IP address */
     long modes;                   /* user flags +isw etc... */
