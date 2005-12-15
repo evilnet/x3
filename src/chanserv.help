@@ -478,6 +478,7 @@
         "SETTERS:      Who may change channel settings (using $bSET$b).",
         "CTCPREACTION: What happens when a CTCP is sent to the channel.",
         "AUTOMODE:     Who should be auto-voice/hop/oped in the channel.",
+        "BANTIMEOUT:   Removes old bans.",
         "PROTECT:      The protection level $b$C$b provides.",
 	"TOYS:         Toggles how $b$C$b will respond to toy commands (!8ball etc).",
         "TOPICREFRESH: Controls if (and how often) $b$C$b will reset the topic.",
@@ -539,6 +540,18 @@
         "  $b4$b  #1 Plus give ops to everyone (not advised.)",
         "  $b5$b  Give half-op to halfops, and op to ops only, but peons do not get voice. ",
         "$uSee Also:$u set, up, uset autoop, resync");
+
+"SET BANTIMEOUT" ("/msg $C SET <#channel> BANTIMEOUT <value>",
+        "This setting configures $C to automatically remove bans older than the set age. It is useful for avoiding buildup of old bans, eventually running out of ban slots.",
+        "Valid settings are:",
+        "  $b0$b  Does not remove bans",
+        "  $b1$b  Bans will be removed after 10 minutes",
+        "  $b2$b  Bans will be removed after 2 hours",
+        "  $b3$b  Bans will be removed after 4 hours",
+        "  $b4$b  Bans will be removed after 24 hours",
+        "  $b5$b  Bans will be removed after 1 week",
+        "It should be noted that this setting expires channel bans (mode +b) $bNOT$b perminantly banned "LAMERs", although it will expire the individual host-bans $C sets on those who match LAMER entries.",
+        "$uSee Also:$u unban, addlamer, addtimedlamer");
 
 "SET PROTECT" ("/msg $C SET <#channel> PROTECT <value>",
         "This setting restricts the protection that $C enforces.  Valid settings are:",
