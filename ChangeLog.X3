@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2005-12-14  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.help: added set bantimeout help
+
 2005-11-08  Alex Schumann  <rubin@afternet.org>
 
 	* src/modcmd.c: cleaned up tabs, added hack to display help on JOINER

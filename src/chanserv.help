@@ -550,7 +550,7 @@
         "  $b3$b  Bans will be removed after 4 hours",
         "  $b4$b  Bans will be removed after 24 hours",
         "  $b5$b  Bans will be removed after 1 week",
-        "It should be noted that this setting expires channel bans (mode +b) $bNOT$b perminantly banned "LAMERs", although it will expire the individual host-bans $C sets on those who match LAMER entries.",
+        "It should be noted that this setting expires channel bans (mode +b) $bNOT$b perminantly banned \"LAMERs\", although it will expire the individual host-bans $C sets on those who match LAMER entries.",
         "$uSee Also:$u unban, addlamer, addtimedlamer");
 
 "SET PROTECT" ("/msg $C SET <#channel> PROTECT <value>",
