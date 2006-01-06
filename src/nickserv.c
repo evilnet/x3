@@ -565,7 +565,7 @@ free_handle_info(void *vhi)
 static void set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp);
 
 static void
-nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify)
+nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, struct userNode *bot)
 {
     unsigned int n;
 
@@ -575,9 +575,9 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify)
         set_user_handle_info(hi->users, NULL, 0);
     if (notify) {
         if (nickserv_conf.disable_nicks)
-            send_message(notify, nickserv, "NSMSG_UNREGISTER_SUCCESS", hi->handle);
+            send_message(notify, bot, "NSMSG_UNREGISTER_SUCCESS", hi->handle);
         else
-            send_message(notify, nickserv, "NSMSG_UNREGISTER_NICKS_SUCCESS", hi->handle);
+            send_message(notify, bot, "NSMSG_UNREGISTER_NICKS_SUCCESS", hi->handle);
     }
 
     if (nickserv_conf.sync_log)
@@ -2869,7 +2869,7 @@ static NICKSERV_FUNC(cmd_unregister)
     passwd = argv[1];
     argv[1] = "****";
     if (checkpass(passwd, hi->passwd)) {
-        nickserv_unregister_handle(hi, user);
+        nickserv_unregister_handle(hi, user, cmd->parent->bot);
         return 1;
     } else {
 	log_module(NS_LOG, LOG_INFO, "Account '%s' tried to unregister with the wrong password.", hi->handle);
@@ -2885,7 +2885,7 @@ static NICKSERV_FUNC(cmd_ounregister)
     NICKSERV_MIN_PARMS(2);
     if (!(hi = get_victim_oper(user, argv[1])))
         return 0;
-    nickserv_unregister_handle(hi, user);
+    nickserv_unregister_handle(hi, user, cmd->parent->bot);
     return 1;
 }
 
@@ -3164,7 +3164,7 @@ static NICKSERV_FUNC(cmd_merge)
     global_message(MESSAGE_RECIPIENT_STAFF, buffer);
 
     /* Unregister the "from" handle. */
-    nickserv_unregister_handle(hi_from, NULL);
+    nickserv_unregister_handle(hi_from, NULL, cmd->parent->bot);
 
     return 1;
 }
@@ -3387,7 +3387,7 @@ static void
 search_unregister_func (struct userNode *source, struct handle_info *match)
 {
     if (oper_has_access(source, nickserv, match->opserv_level, 0))
-        nickserv_unregister_handle(match, source);
+        nickserv_unregister_handle(match, source, nickserv); // XXX nickserv hard coded
 }
 
 static int
@@ -3682,7 +3682,7 @@ expire_handles(UNUSED_ARG(void *data))
         expiry = hi->channels ? nickserv_conf.handle_expire_delay : nickserv_conf.nochan_handle_expire_delay;
         if ((now - hi->lastseen) > expiry) {
             log_module(NS_LOG, LOG_INFO, "Expiring account %s for inactivity.", hi->handle);
-            nickserv_unregister_handle(hi, NULL);
+            nickserv_unregister_handle(hi, NULL, NULL);
         }
     }
 

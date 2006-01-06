@@ -1,6 +1,20 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-01-06  Alex Schumann  <rubin@afternet.org>
+
+	* src/opserv.c: fix gtrace, trace, csearch and alerts to work when aliased
+	to a different bot, eg chanserv, and to reply from the correct nickname.
+	also a bunch of whitespace changes
+
+	* src/nickserv.c: begin work on making nickserv commands bind without
+	responding from the wrong nick. also a bunch of whitespace changes
+
+	* src/hash.h: whitespace
+
+    * src/opserv.help: improved QUERY helpfile. (though command itself still
+	has bugs)
+
 2005-12-14  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.help: added set bantimeout help

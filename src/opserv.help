@@ -607,8 +607,13 @@
         "$uSee also:$u /msg $O HELPSERV HELP"
         );
 
-"QUERY" ("/msg $O QUERY <option>",
-        "Displays the value of the given configuration key.  If the key is a composite entry, show the subkeys inside it.",
+"QUERY" ("/msg $O QUERY [key][/<sub-key>[/<sub-sub-key>]...]",
+        "Displays the value of the given configuration key.  ",
+        "If the key is a composite entry, show the subkeys inside it.",
+        "Examples:",
+        " QUERY                    - shows 1st level keys ",
+        " QUERY services/chanserv  - shows list of chanserv settings ",
+        " QUERY services/chanserv/chan_expire_delay - shows value ",
         "Access level: $b${level/query}$b",
         "$uSee Also:$u set, rehash"
         );
