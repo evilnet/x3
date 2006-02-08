@@ -1,5 +1,6 @@
-"<INDEX>" ("Hello there!",
-        " Im $b$S$b, your handy message relay service.",
+"<INDEX>" (
+	" Hello there!",
+	" Im $b$S$b, your handy message relay service.",
 	"$b$b",
 	" With this service you can relay long distance",
 	" messages to other users, wether they be on",
