@@ -214,7 +214,7 @@
 "TRACE" ("/msg $O TRACE <action> <criteria> <value> [<criteria> <value>]...",
         "Searches through the current users for those matching the specified criteria, and applies the specified action to them. A detailed list of actions can be found in $bhelp trace action$b and a list of criteria in $bhelp trace criteria$b.",
         "Quick Ref ACTIONS: PRINT, COUNT, KILL, GLINE, GAG, DOMAINS",
-        "Quick Ref CRITERIA: MASK, NICK, IDENT, HOST, INFO, SERVER, IP, ACCOUNT, AUTHED, CHANNEL, NUMCHANNELS, LIMIT, NICKAGE, ACCESS, REASON, DEPTH, DURATION, CLONES, INFO_SPACE, ABUSE OPERS, LOG",
+        "Quick Ref CRITERIA: MASK, NICK, IDENT, HOST, INFO, SERVER, IP, ACCOUNT, AUTHED, CHANNEL, NUMCHANNELS, LIMIT, NICKAGE, ACCESS, REASON, DEPTH, DURATION, CLONES, INFO_SPACE, ABUSE OPERS, LOG, REGEX",
         "Access level: $b${level/trace}$b",
         "$uSee Also:$u trace action, trace criteria"
         );
@@ -254,6 +254,7 @@
         "$bINFO_SPACE$b yes/no      Clients match only if their info starts with a space (' ') character.",
         "$bABUSE OPERS$b            Force adverse actions to affect opers as well.",
         "$bLOG$b                    Record matching users in $O's log file (in addition to acting).",
+        "$bREGEX$b yes/no           Specifies if NICK/IDENT/HOST/INFO should be treated as a regular expression.",
         "Additionally, the $bCHANNEL$b target may be prefixed with @ to select channel operators, + to select voiced users (will not select chanops unless @ is also used), or - to select non-voiced non-chanop users.  For example, CHANNEL #foo will select all users in #foo; CHANNEL +#foo will select only users voiced in #foo; CHANNEL @+#foo will select ops and voiced users in #foo; etc.",
         "$uSee Also:$u trace action, trace"
         );

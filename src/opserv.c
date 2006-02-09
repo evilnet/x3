@@ -36,6 +36,9 @@
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
+#ifdef HAVE_REGEX_H
+#include <regex.h>
+#endif
 
 #define OPSERV_CONF_NAME "services/opserv"
 
@@ -270,6 +273,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_CHANINFO_MANY_USERS", "%d users (\"/msg $S %s %s users\" for the list)" },
     { "OSMSG_CHANINFO_USER_COUNT", "Users (%d):" },
     { "OSMSG_CSEARCH_CHANNEL_INFO", "%s [%d users] %s %s" },
+    { "OSMSG_INVALID_REGEX", "Invalid regex: %s: %s (%d)" },
     { NULL, NULL }
 };
 
@@ -344,6 +348,8 @@ opserv_free_hostinfo(void *data)
 typedef struct opservDiscrim {
     struct chanNode *channel;
     char *mask_nick, *mask_ident, *mask_host, *mask_info, *server, *ip_mask_str, *reason, *accountmask;
+    regex_t regex_nick, regex_ident, regex_host, regex_info;
+    unsigned int has_regex_nick : 1, has_regex_ident : 1, has_regex_host : 1, has_regex_info : 1;
     unsigned long limit, ip_mask;
     struct in_addr ip_addr;
     unsigned int min_level, max_level, domain_depth, duration, min_clones, min_channels, max_channels;
@@ -351,6 +357,7 @@ typedef struct opservDiscrim {
     unsigned int chan_req_modes : 2, chan_no_modes : 2;
     int authed : 2, info_space : 2;
     time_t min_ts, max_ts;
+    unsigned int use_regex : 1;
 } *discrim_t;
 
 struct discrim_and_source {
@@ -389,6 +396,14 @@ opserv_free_user_alert(void *data)
     free(alert->owner);
     free(alert->text_discrim);
     free(alert->split_discrim);
+    if(alert->discrim->has_regex_nick)
+      regfree(&alert->discrim->regex_nick);
+    if(alert->discrim->has_regex_ident)
+      regfree(&alert->discrim->regex_ident);
+    if(alert->discrim->has_regex_host)
+      regfree(&alert->discrim->regex_host);
+    if(alert->discrim->has_regex_info)
+      regfree(&alert->discrim->regex_info);
     free(alert->discrim->reason);
     free(alert->discrim);
     free(alert);
@@ -2625,6 +2640,7 @@ foreach_matching_user(const char *hostmask, discrim_search_func func, void *extr
     discrim->max_channels = INT_MAX;
     discrim->authed = -1;
     discrim->info_space = -1;
+    discrim->use_regex = 0;
     dupmask = strdup(hostmask);
     if (split_ircmask(dupmask, &discrim->mask_nick, &discrim->mask_ident, &discrim->mask_host)) {
         if (discrim->mask_host && !discrim->mask_host[strspn(discrim->mask_host, "0123456789.?*")]) {
@@ -3161,6 +3177,16 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
             send_message(user, bot, "MSG_INVALID_BINARY", argv[i]);
             goto fail;
         }
+    } else if (irccasecmp(argv[i], "regex") == 0) {
+        i++;
+        if (true_string(argv[i])) {
+            discrim->use_regex = 1;
+        } else if (false_string(argv[i])) {
+            discrim->use_regex = 0;
+        } else {
+            send_message(user, opserv, "MSG_INVALID_BINARY", argv[i]);
+            goto fail;
+        }
     } else if (irccasecmp(argv[i], "duration") == 0) {
         discrim->duration = ParseInterval(argv[++i]);
         } else if (irccasecmp(argv[i], "channel") == 0) {
@@ -3274,8 +3300,82 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
     if (discrim->mask_host && !discrim->mask_host[strspn(discrim->mask_host, "*.")]) {
         discrim->mask_host = 0;
     }
+
+    if(discrim->use_regex)
+    {
+        if(discrim->mask_nick)
+        {
+            int err = regcomp(&discrim->regex_nick, discrim->mask_nick, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            discrim->has_regex_nick = !err;
+            if(err)
+            {
+                char buff[256];
+                buff[regerror(err, &discrim->regex_nick, buff, sizeof(buff))] = 0;
+
+                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_nick, buff, err);
+                goto regfail;
+            }
+        }
+
+        if(discrim->mask_ident)
+        {
+            int err = regcomp(&discrim->regex_ident, discrim->mask_ident, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            discrim->has_regex_ident = !err;
+            if(err)
+            {
+                char buff[256];
+                buff[regerror(err, &discrim->regex_ident, buff, sizeof(buff))] = 0;
+
+                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_ident, buff, err);
+                goto regfail;
+            }
+        }
+
+        if(discrim->mask_host)
+        {
+            int err = regcomp(&discrim->regex_host, discrim->mask_host, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            discrim->has_regex_host = !err;
+            if(err)
+            {
+                char buff[256];
+                buff[regerror(err, &discrim->regex_host, buff, sizeof(buff))] = 0;
+
+                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_host, buff, err);
+                goto regfail;
+            }
+        }
+
+        if(discrim->mask_info)
+        {
+            int err = regcomp(&discrim->regex_info, discrim->mask_info, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            discrim->has_regex_info = !err;
+            if(err)
+            {
+                char buff[256];
+                buff[regerror(err, &discrim->regex_info, buff, sizeof(buff))] = 0;
+
+                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_info, buff, err);
+                goto regfail;
+            }
+        }
+    }
+
     return discrim;
+
   fail:
+    free(discrim);
+    return NULL;
+
+  regfail:
+    if(discrim->has_regex_nick)
+      regfree(&discrim->regex_nick);
+    if(discrim->has_regex_ident)
+      regfree(&discrim->regex_ident);
+    if(discrim->has_regex_host)
+      regfree(&discrim->regex_host);
+    if(discrim->has_regex_info)
+      regfree(&discrim->regex_info);
+
     free(discrim);
     return NULL;
 }
@@ -3293,15 +3393,31 @@ discrim_match(discrim_t discrim, struct userNode *user)
         || (discrim->authed == 1 && !user->handle_info)
         || (discrim->info_space == 0 && user->info[0] == ' ')
         || (discrim->info_space == 1 && user->info[0] != ' ')
-        || (discrim->mask_nick && !match_ircglob(user->nick, discrim->mask_nick))
-        || (discrim->mask_ident && !match_ircglob(user->ident, discrim->mask_ident))
-        || (discrim->mask_host && !match_ircglob(user->hostname, discrim->mask_host))
-        || (discrim->mask_info && !match_ircglob(user->info, discrim->mask_info))
         || (discrim->server && !match_ircglob(user->uplink->name, discrim->server))
         || (discrim->accountmask && (!user->handle_info || !match_ircglob(user->handle_info->handle, discrim->accountmask)))
         || (discrim->ip_mask && !MATCH_IPMASK(user->ip, discrim->ip_addr, discrim->ip_mask))) {
         return 0;
     }
+
+    if(discrim->use_regex)
+    {
+        if((discrim->has_regex_nick && regexec(&discrim->regex_nick, user->nick, 0, 0, 0))
+           || (discrim->has_regex_ident && regexec(&discrim->regex_ident, user->ident, 0, 0, 0))
+           || (discrim->has_regex_host && regexec(&discrim->regex_host, user->hostname, 0, 0, 0))
+           || (discrim->has_regex_info && regexec(&discrim->regex_info, user->info, 0, 0, 0))) {
+           return 0;
+           }
+    }
+    else
+    {
+        if ((discrim->mask_nick && !match_ircglob(user->nick, discrim->mask_nick))
+            || (discrim->mask_ident && !match_ircglob(user->ident, discrim->mask_ident))
+            || (discrim->mask_host && !match_ircglob(user->hostname, discrim->mask_host))
+            || (discrim->mask_info && !match_ircglob(user->info, discrim->mask_info))) {
+            return 0;
+        }
+    }
+
     if (discrim->channel && !GetUserMode(discrim->channel, user)) return 0;
     access = user->handle_info ? user->handle_info->opserv_level : 0;
     if ((access < discrim->min_level)
@@ -3614,6 +3730,16 @@ static MODCMD_FUNC(cmd_trace)
     if (das.discrim->channel)
         UnlockChannel(das.discrim->channel);
     free(das.discrim->reason);
+
+    if(das.discrim->has_regex_nick)
+      regfree(&das.discrim->regex_nick);
+    if(das.discrim->has_regex_ident)
+      regfree(&das.discrim->regex_ident);
+    if(das.discrim->has_regex_host)
+      regfree(&das.discrim->regex_host);
+    if(das.discrim->has_regex_info)
+      regfree(&das.discrim->regex_info);
+
     free(das.discrim);
     dict_delete(das.dict);
     return 1;
