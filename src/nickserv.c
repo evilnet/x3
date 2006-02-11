@@ -1368,19 +1368,26 @@ static NICKSERV_FUNC(cmd_oregister)
     struct userNode *settee;
     struct handle_info *hi;
 
-    NICKSERV_MIN_PARMS(4);
+    NICKSERV_MIN_PARMS(nickserv_conf.email_required ? 5 : 4);
 
     if (!is_valid_handle(argv[1])) {
         reply("NSMSG_BAD_HANDLE", argv[1]);
         return 0;
     }
 
+    if (nickserv_conf.email_required) {
+        if (!is_valid_email_addr(argv[4])) {
+            reply("NSMSG_BAD_EMAIL_ADDR");
+            return 0;
+        }
+    }
+
     if (strchr(argv[3], '@')) {
 	mask = canonicalize_hostmask(strdup(argv[3]));
 	if (argc > 4) {
-	    settee = GetUserH(argv[4]);
+	    settee = GetUserH(nickserv_conf.email_required ? argv[5] : argv[4]);
 	    if (!settee) {
-		reply("MSG_NICK_UNKNOWN", argv[4]);
+		reply("MSG_NICK_UNKNOWN", nickserv_conf.email_required ? argv[5] : argv[4]);
                 free(mask);
 		return 0;
 	    }
@@ -1399,6 +1406,11 @@ static NICKSERV_FUNC(cmd_oregister)
         return 0;
     }
     if (!(hi = nickserv_register(user, settee, argv[1], argv[2], 0))) {
+        if (nickserv_conf.email_required) {
+            nickserv_set_email_addr(hi, argv[4]);
+            if (nickserv_conf.sync_log)
+                SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, argv[4], user->info);
+        }
         free(mask);
         return 0;
     }
@@ -2110,7 +2122,8 @@ static NICKSERV_FUNC(cmd_cookie)
            * This should only happen if an OREGISTER was sent. Require
            * email must be enabled! - SiRVulcaN
            */
-          SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, hi->cookie->data, user->info);
+          if (nickserv_conf.sync_log)
+            SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, hi->cookie->data, user->info);
         }
         nickserv_set_email_addr(hi, hi->cookie->data);
         reply("NSMSG_EMAIL_CHANGED");
