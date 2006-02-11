@@ -432,6 +432,18 @@ irc_user(struct userNode *user)
 }
 
 void
+irc_rename(struct userNode *user, const char *new_handle)
+{
+    putsock("%s " P10_ACCOUNT " %s M %s", self->numeric, user->numeric, new_handle);
+}
+
+void
+irc_delete(struct userNode *user)
+{
+    putsock("%s " P10_ACCOUNT " %s U", self->numeric, user->numeric);
+}
+
+void
 irc_account(struct userNode *user, const char *stamp, time_t timestamp)
 {
     putsock("%s " P10_ACCOUNT " %s R %s %lu", self->numeric, user->numeric, stamp, timestamp);

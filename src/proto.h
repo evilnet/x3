@@ -149,6 +149,8 @@ void irc_stats(struct userNode *from, struct server *target, char type);
 void irc_svsnick(struct userNode *from, struct userNode *target, const char *newnick);
 
 /* account maintenance */
+void irc_rename(struct userNode *user, const char *new_handle);
+void irc_delete(struct userNode *user);
 void irc_account(struct userNode *user, const char *stamp, time_t timestamp);
 void irc_regnick(struct userNode *user);
 void irc_fakehost(struct userNode *user, const char *host);

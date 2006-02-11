@@ -568,11 +568,18 @@ static void
 nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, struct userNode *bot)
 {
     unsigned int n;
+    struct userNode *uNode;
 
     for (n=0; n<unreg_func_used; n++)
         unreg_func_list[n](notify, hi);
-    while (hi->users)
+    while (hi->users) {
+        if (nickserv_conf.sync_log) {
+            uNode = GetUserH(hi->users->nick);
+            if (uNode)
+                irc_delete(uNode);
+        }
         set_user_handle_info(hi->users, NULL, 0);
+    }
     if (notify) {
         if (nickserv_conf.disable_nicks)
             send_message(notify, bot, "NSMSG_UNREGISTER_SUCCESS", hi->handle);
@@ -581,7 +588,7 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, stru
     }
 
     if (nickserv_conf.sync_log)
-      SyncLog("UNREGISTER %s", hi->handle);
+        SyncLog("UNREGISTER %s", hi->handle);
 
     dict_remove(nickserv_handle_dict, hi->handle);
 }
@@ -1342,7 +1349,7 @@ static NICKSERV_FUNC(cmd_register)
     if (nickserv_conf.sync_log) {
       cryptpass(password, syncpass);
       /*
-       * An 0 is only sent if theres no email address. Thios should only happen if email functions are
+      * An 0 is only sent if theres no email address. Thios should only happen if email functions are
        * disabled which they wont be for us. Email Required MUST be set on if you are using this.
        * -SiRVulcaN
        */
@@ -1613,6 +1620,7 @@ static NICKSERV_FUNC(cmd_nickinfo)
 static NICKSERV_FUNC(cmd_rename_handle)
 {
     struct handle_info *hi;
+    struct userNode *uNode;
     char msgbuf[MAXLEN], *old_handle;
     unsigned int nn;
 
@@ -1639,6 +1647,15 @@ static NICKSERV_FUNC(cmd_rename_handle)
     for (nn=0; nn<rf_list_used; nn++)
         rf_list[nn](hi, old_handle);
     snprintf(msgbuf, sizeof(msgbuf), "%s renamed account %s to %s.", user->handle_info->handle, old_handle, hi->handle);
+
+
+    if (nickserv_conf.sync_log) {
+        for (uNode = hi->users; uNode; uNode = uNode->next_authed)
+            irc_rename(uNode, hi->handle);
+
+        SyncLog("RENAME %s %s", hi->handle);
+    }
+
     reply("NSMSG_HANDLE_CHANGED", old_handle, hi->handle);
     global_message(MESSAGE_RECIPIENT_STAFF, msgbuf);
     free(old_handle);
