@@ -1653,7 +1653,7 @@ static NICKSERV_FUNC(cmd_rename_handle)
         for (uNode = hi->users; uNode; uNode = uNode->next_authed)
             irc_rename(uNode, hi->handle);
 
-        SyncLog("RENAME %s %s", hi->handle);
+        SyncLog("RENAME %s %s", old_handle, hi->handle);
     }
 
     reply("NSMSG_HANDLE_CHANGED", old_handle, hi->handle);
@@ -2577,6 +2577,9 @@ static OPTION_FUNC(opt_password)
 
     if (argc > 1)
 	cryptpass(argv[1], hi->passwd);
+
+    if (nickserv_conf.sync_log)
+        SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
 
     send_message(user, nickserv, "NSMSG_SET_PASSWORD", "***");
     return 1;
