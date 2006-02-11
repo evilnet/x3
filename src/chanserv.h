@@ -132,6 +132,7 @@ struct userData
 
     char		*info;
     time_t 		seen;
+    time_t              expires;
     unsigned short      access;
     unsigned int	present : 1;
     unsigned int        flags : USER_FLAGS_SIZE;

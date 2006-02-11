@@ -6140,12 +6140,22 @@ static CHANSERV_FUNC(cmd_giveownership)
     return 1;
 }
 
+static void
+chanserv_expire_user_suspension(void *data)
+{
+    struct userData *target = data;
+
+       target->expires = 0;
+       target->flags &= ~USER_SUSPENDED;
+}
+
 static CHANSERV_FUNC(cmd_suspend)
 {
     struct handle_info *hi;
     struct userData *self, *target;
+    time_t expiry;
 
-    REQUIRE_PARAMS(2);
+    REQUIRE_PARAMS(3);
     if(!(hi = modcmd_get_handle_info(user, argv[1]))) return 0;
     self = GetChannelUser(channel->channel_info, user->handle_info);
     if(!(target = GetTrueChannelAccess(channel->channel_info, hi)))
@@ -6168,6 +6178,24 @@ static CHANSERV_FUNC(cmd_suspend)
         target->present = 0;
         target->seen = now;
     }
+    if(!strcmp(argv[2], "0"))
+        expiry = 0;
+    else
+    {
+        unsigned int duration;
+        if(!(duration = ParseInterval(argv[2])))
+        {
+            reply("MSG_INVALID_DURATION", argv[2]);
+            return 0;
+        }
+        expiry = now + duration;
+    }
+
+        target->expires = expiry;
+
+        if(target->expires)
+            timeq_add(target->expires, chanserv_expire_user_suspension, target);
+
     target->flags |= USER_SUSPENDED;
     reply("CSMSG_USER_SUSPENDED", hi->handle, channel->name);
     return 1;
@@ -6198,6 +6226,7 @@ static CHANSERV_FUNC(cmd_unsuspend)
     }
     target->flags &= ~USER_SUSPENDED;
     scan_user_presence(target, NULL);
+    timeq_del(target->expires, chanserv_expire_user_suspension, target, 0);
     reply("CSMSG_USER_UNSUSPENDED", hi->handle, channel->name);
     return 1;
 }
@@ -7348,7 +7377,7 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
 {
     struct handle_info *handle;
     struct userData *uData;
-    char *seen, *inf, *flags;
+    char *seen, *inf, *flags, *expires;
     time_t last_seen;
     unsigned short access;
 
@@ -7369,6 +7398,7 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
     seen = database_get_data(rd->d.object, KEY_SEEN, RECDB_QSTRING);
     last_seen = seen ? (signed)strtoul(seen, NULL, 0) : now;
     flags = database_get_data(rd->d.object, KEY_FLAGS, RECDB_QSTRING);
+    expires = database_get_data(rd->d.object, KEY_EXPIRES, RECDB_QSTRING);
     handle = get_handle_info(key);
     if(!handle)
     {
@@ -7378,6 +7408,15 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
 
     uData = add_channel_user(chan, handle, access, last_seen, inf);
     uData->flags = flags ? strtoul(flags, NULL, 0) : 0;
+    uData->expires = expires ? strtoul(expires, NULL, 0) : 0;
+
+    if((uData->flags & USER_SUSPENDED) && uData->expires)
+    {
+        if(uData->expires > now)
+            timeq_add(uData->expires, chanserv_expire_user_suspension, uData);
+        else
+            uData->flags &= ~USER_SUSPENDED;
+    }
 
     /* Upgrade: set autoop to the inverse of noautoop */
     if(chanserv_read_version < 2)
@@ -7739,6 +7778,8 @@ chanserv_write_users(struct saxdb_context *ctx, struct userData *uData)
         saxdb_write_int(ctx, KEY_SEEN, uData->seen);
         if(uData->flags)
             saxdb_write_int(ctx, KEY_FLAGS, uData->flags);
+        if(uData->expires)
+            saxdb_write_int(ctx, KEY_EXPIRES, uData->expires);
 	if(uData->info)
             saxdb_write_string(ctx, KEY_INFO, uData->info);
         saxdb_end_record(ctx);

@@ -592,9 +592,10 @@
         "Lists all the IRC operators and helpers currently online. Nicknames enclosed in parentheses are away, and likely unavailable.",
         "$uSee Also:$u helpers, ircops, netinfo");
 
-"SUSPEND" ("/msg $C SUSPEND <#channel> <nick|*account>",
+"SUSPEND" ("/msg $C SUSPEND <#channel> <nick|*account> <duration>",
         "This disables the target's access to the channel.  That access can be restored using the unsuspend command.",
-        "$uSee Also:$u unsuspend, deluser");
+        "The duration may be \"0\" to make it never expire; otherwise, $C will automatically unsuspend the user after the duration",
+        "$uSee Also:$u durations, unsuspend, deluser");
 
 "TOPIC" ("/msg $C TOPIC <#channel> [topic]",
         "Sets the current topic for the specified channel.  If no topic is specified, then set the current topic to the default topic.");
