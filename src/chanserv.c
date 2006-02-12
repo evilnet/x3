@@ -92,6 +92,11 @@
 #define KEY_REVOKED             "revoked"
 #define KEY_SUSPEND_EXPIRES     "suspend_expires"
 #define KEY_SUSPEND_REASON      "suspend_reason"
+#define KEY_GIVEOWNERSHIP       "giveownership"
+#define KEY_STAFF_ISSUER        "staff_issuer"
+#define KEY_OLD_OWNER           "old_owner"
+#define KEY_TARGET              "target"
+#define KEY_TARGET_ACCESS       "target_access"
 #define KEY_VISITED		"visited"
 #define KEY_TOPIC		"topic"
 #define KEY_GREETING		"greeting"
@@ -427,6 +432,10 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_CHANNEL_SUSPENDED_7", " %s ago by %s; revoked %s ago: %s" },
     { "CSMSG_CHANNEL_REGISTERED", "$bRegistered:          $b%s ago." },
     { "CSMSG_CHANNEL_VISITED", "$bVisited:             $b%s ago." },
+    { "CSMSG_CHANNEL_OWNERSHIP_HISTORY", "Ownership transfer history for $b%s$b" },
+    { "CSMSG_CHANNEL_OWNERSHIP_NORMAL", "from %s to %s (%d access) on %s" },
+    { "CSMSG_CHANNEL_OWNERSHIP_STAFF_REASON", "from %s to %s (%d access) by %s on %s reason: %s" },
+    { "CSMSG_CHANNEL_OWNERSHIP_STAFF", "from %s to %s (%d access) by %s on %s" },
     { "CSMSG_CHANNEL_END",  "---------------End of Info--------------"},
 
     { "CSMSG_PEEK_INFO", "$bStatus of %s$b" },
@@ -4390,6 +4399,31 @@ show_suspension_info(struct svccmd *cmd, struct userNode *user, struct suspended
     }
 }
 
+static void
+show_giveownership_info(struct svccmd *cmd, struct userNode *user, struct giveownership *giveownership)
+{
+    char buf[MAXLEN];
+    const char *fmt = "%a %b %d %H:%M %Y";
+    strftime(buf, sizeof(buf), fmt, localtime(&giveownership->issued));
+
+    if(giveownership->staff_issuer)
+    {
+        if(giveownership->reason)
+            reply("CSMSG_CHANNEL_OWNERSHIP_STAFF_REASON", giveownership->old_owner,
+                  giveownership->target, giveownership->target_access,
+                  giveownership->staff_issuer, buf, giveownership->reason);
+        else
+            reply("CSMSG_CHANNEL_OWNERSHIP_STAFF", giveownership->old_owner,
+                  giveownership->target, giveownership->target_access,
+                  giveownership->staff_issuer, buf);
+    }
+    else
+    {
+        reply("CSMSG_CHANNEL_OWNERSHIP_NORMAL", giveownership->old_owner, giveownership->target, giveownership->target_access, buf);
+    }
+}
+
+
 static CHANSERV_FUNC(cmd_info)
 {
     char modes[MAXLEN], buffer[INTERVALLEN];
@@ -4452,6 +4486,13 @@ static CHANSERV_FUNC(cmd_info)
     {
         reply("CSMSG_CHANNEL_SUSPENDED", channel->name);
         show_suspension_info(cmd, user, cData->suspended);
+    }
+    if(cData->giveownership && ((uData && (uData->access >= UL_COOWNER)) || IsStaff(user)))
+    {
+        struct giveownership *giveownership;
+        reply("CSMSG_CHANNEL_OWNERSHIP_HISTORY", channel->name);
+        for(giveownership = cData->giveownership; giveownership; giveownership = giveownership->previous)
+            show_giveownership_info(cmd, user, giveownership);
     }
     reply("CSMSG_CHANNEL_END");
     return 1;
@@ -6062,13 +6103,22 @@ static CHANSERV_FUNC(cmd_giveownership)
     struct userData *new_owner, *curr_user;
     struct chanData *cData = channel->channel_info;
     struct do_not_register *dnr;
-    unsigned int force;
-    unsigned short co_access;
-    char reason[MAXLEN];
+    struct giveownership *giveownership;
+    unsigned int force, override;
+    unsigned short co_access, new_owner_old_access;
+    char reason[MAXLEN], transfer_reason[MAXLEN];
 
     REQUIRE_PARAMS(2);
     curr_user = GetChannelAccess(cData, user->handle_info);
     force = IsHelping(user) && (argc > 2) && !irccasecmp(argv[2], "force");
+
+    struct userData *uData = _GetChannelUser(channel->channel_info, user->handle_info, 1, 0);
+    override = ((cmd->effective_flags & MODCMD_REQUIRE_CHANUSER)
+                && (uData->access > 500)
+                && (!(uData = _GetChannelUser(channel->channel_info, user->handle_info, 0, 0))
+                    || uData->access < 500));
+
+
     if(!curr_user || (curr_user->access != UL_OWNER))
     {
         struct userData *owner = NULL;
@@ -6126,6 +6176,8 @@ static CHANSERV_FUNC(cmd_giveownership)
             chanserv_show_dnrs(user, cmd, NULL, new_owner_hi->handle);
         return 0;
     }
+
+    new_owner_old_access = new_owner->access;
     if(new_owner->access >= UL_COOWNER)
         co_access = new_owner->access;
     else
@@ -6134,6 +6186,25 @@ static CHANSERV_FUNC(cmd_giveownership)
     if(curr_user)
         curr_user->access = co_access;
     cData->ownerTransfer = now;
+
+    giveownership = calloc(1, sizeof(*giveownership));
+    giveownership->issued = now;
+    giveownership->old_owner = curr_user->handle->handle;
+    giveownership->target = new_owner_hi->handle;
+    giveownership->target_access = new_owner_old_access;
+    if(override)
+    {
+        if(argc > (2 + force))
+        {
+            unsplit_string(argv + 2 + force, argc - 2 - force, transfer_reason);
+            giveownership->reason = strdup(transfer_reason);
+        }
+        giveownership->staff_issuer = strdup(user->handle_info->handle);
+    }
+
+    giveownership->previous = channel->channel_info->giveownership;
+    channel->channel_info->giveownership = giveownership;
+
     reply("CSMSG_OWNERSHIP_GIVEN", channel->name, new_owner_hi->handle);
     sprintf(reason, "%s ownership transferred to %s by %s.", channel->name, new_owner_hi->handle, user->handle_info->handle);
     global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
@@ -7488,10 +7559,36 @@ chanserv_read_suspended(dict_t obj)
     return suspended;
 }
 
+static struct giveownership *
+chanserv_read_giveownership(dict_t obj)
+{
+    struct giveownership *giveownership = calloc(1, sizeof(*giveownership));
+    char *str;
+    dict_t previous;
+
+    str = database_get_data(obj, KEY_STAFF_ISSUER, RECDB_QSTRING);
+    giveownership->staff_issuer = str ? strdup(str) : NULL;
+
+    giveownership->old_owner = strdup(database_get_data(obj, KEY_OLD_OWNER, RECDB_QSTRING));
+
+    giveownership->target = strdup(database_get_data(obj, KEY_TARGET, RECDB_QSTRING));
+    giveownership->target_access = atoi(database_get_data(obj, KEY_TARGET_ACCESS, RECDB_QSTRING));
+
+    str = database_get_data(obj, KEY_REASON, RECDB_QSTRING);
+    giveownership->reason = str ? strdup(str) : NULL;
+    str = database_get_data(obj, KEY_ISSUED, RECDB_QSTRING);
+    giveownership->issued = str ? (time_t)strtoul(str, NULL, 0) : 0;
+
+    previous = database_get_data(obj, KEY_PREVIOUS, RECDB_OBJECT);
+    giveownership->previous = previous ? chanserv_read_giveownership(previous) : NULL;
+    return giveownership;
+}
+
 static int
 chanserv_channel_read(const char *key, struct record_data *hir)
 {
     struct suspended *suspended;
+    struct giveownership *giveownership;
     struct mod_chanmode *modes;
     struct chanNode *cNode;
     struct chanData *cData;
@@ -7615,6 +7712,12 @@ chanserv_channel_read(const char *key, struct record_data *hir)
             timeq_add(suspended->expires, chanserv_expire_suspension, suspended);
         else if(suspended->expires)
             cData->flags &= ~CHANNEL_SUSPENDED;
+    }
+
+    if((obj = database_get_data(hir->d.object, KEY_GIVEOWNERSHIP, RECDB_OBJECT)))
+    {
+        giveownership = chanserv_read_giveownership(obj);
+        cData->giveownership = giveownership;
     }
 
     if((!off_channel || !IsOffChannel(cData)) && !IsSuspended(cData)) {
@@ -7829,6 +7932,27 @@ chanserv_write_suspended(struct saxdb_context *ctx, const char *name, struct sus
 }
 
 static void
+chanserv_write_giveownership(struct saxdb_context *ctx, const char *name, struct giveownership *giveownership)
+{
+    saxdb_start_record(ctx, name, 0);
+    if(giveownership->staff_issuer)
+      saxdb_write_string(ctx, KEY_STAFF_ISSUER, giveownership->staff_issuer);
+    if(giveownership->old_owner)
+      saxdb_write_string(ctx, KEY_OLD_OWNER, giveownership->old_owner);
+    if(giveownership->target)
+      saxdb_write_string(ctx, KEY_TARGET, giveownership->target);
+    if(giveownership->target_access)
+      saxdb_write_int(ctx, KEY_TARGET_ACCESS, giveownership->target_access);
+    if(giveownership->reason)
+      saxdb_write_string(ctx, KEY_REASON, giveownership->reason);
+    if(giveownership->issued)
+        saxdb_write_int(ctx, KEY_ISSUED, giveownership->issued);
+    if(giveownership->previous)
+        chanserv_write_giveownership(ctx, KEY_PREVIOUS, giveownership->previous);
+    saxdb_end_record(ctx);
+}
+
+static void
 chanserv_write_channel(struct saxdb_context *ctx, struct chanData *channel)
 {
     char buf[MAXLEN];
@@ -7852,6 +7976,8 @@ chanserv_write_channel(struct saxdb_context *ctx, struct chanData *channel)
         saxdb_write_string(ctx, KEY_TOPIC_MASK, channel->topic_mask);
     if(channel->suspended)
         chanserv_write_suspended(ctx, "suspended", channel->suspended);
+    if(channel->giveownership)
+        chanserv_write_giveownership(ctx, "giveownership", channel->giveownership);
 
     saxdb_start_record(ctx, KEY_OPTIONS, 0);
     saxdb_write_int(ctx, KEY_FLAGS, channel->flags);

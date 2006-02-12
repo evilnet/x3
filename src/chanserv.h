@@ -110,6 +110,7 @@ struct chanData
     struct banData	*bans; /* Lamers, really */
     struct dict         *notes;
     struct suspended	*suspended;
+    struct giveownership *giveownership;
     struct chanData	*prev;
     struct chanData	*next;
 };
@@ -179,6 +180,17 @@ struct suspended
     char                *reason;
     time_t              issued, expires, revoked;
     struct suspended    *previous;
+};
+
+struct giveownership
+{
+    char                 *staff_issuer;
+    char                  *old_owner;
+    char                  *target;
+    unsigned short        target_access;
+    time_t                issued;
+    char                  *reason;
+    struct giveownership  *previous;
 };
 
 struct do_not_register
