@@ -100,6 +100,10 @@
 #define KEY_ANNOUNCEMENTS "announcements"
 #define KEY_MAXLOGINS "maxlogins"
 #define KEY_FAKEHOST "fakehost"
+#define KEY_NOTE_NOTE "note"
+#define KEY_NOTE_SETTER "setter"
+#define KEY_NOTE_DATE "date"
+
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
@@ -203,6 +207,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_INFOLINE", "Infoline: %s" },
     { "NSMSG_HANDLEINFO_FLAGS", "Flags: %s" },
     { "NSMSG_HANDLEINFO_EPITHET", "Epithet: %s" },
+    { "NSMSG_HANDLEINFO_NOTE", "Note (by %s on %s): %s " },
     { "NSMSG_HANDLEINFO_FAKEHOST", "Fake host: %s" },
     { "NSMSG_HANDLEINFO_LAST_HOST", "Last quit hostmask: %s" },
     { "NSMSG_HANDLEINFO_LAST_HOST_UNKNOWN", "Last quit hostmask: Unknown" },
@@ -296,6 +301,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SET_LANGUAGE", "$bLANGUAGE:     $b%s" },
     { "NSMSG_SET_LEVEL", "$bLEVEL:        $b%d" },
     { "NSMSG_SET_EPITHET", "$bEPITHET:      $b%s" },
+    { "NSMSG_SET_NOTE", "$bNOTE:         $b%s"},
     { "NSMSG_SET_TITLE", "$bTITLE:        $b%s" },
     { "NSMSG_SET_FAKEHOST", "$bFAKEHOST:    $b%s" },
 
@@ -416,6 +422,17 @@ canonicalize_hostmask(char *mask)
 	*out++ = 0;
     }
     return mask;
+}
+
+static struct handle_note *
+nickserv_add_note(const char *setter, time_t date, const char *text)
+{
+    struct handle_note *note = calloc(1, sizeof(*note) + strlen(text));
+
+    strncpy(note->setter, setter, sizeof(note->setter)-1);
+    note->date = date;
+    memcpy(note->note, text, strlen(text));
+    return note;
 }
 
 static struct handle_info *
@@ -548,6 +565,7 @@ free_handle_info(void *vhi)
         delete_nick(hi->nicks);
     free(hi->infoline);
     free(hi->epithet);
+    free(hi->note);
     free(hi->fakehost);
     if (hi->cookie) {
         timeq_del(hi->cookie->expires, nickserv_free_cookie, hi->cookie, 0);
@@ -1497,6 +1515,16 @@ static NICKSERV_FUNC(cmd_handleinfo)
         || HANDLE_FLAGGED(hi, NETWORK_HELPER)
         || (hi->opserv_level > 0)) {
         reply("NSMSG_HANDLEINFO_EPITHET", (hi->epithet ? hi->epithet : nsmsg_none));
+    }
+
+    if (IsHelping(user) || IsOper(user))
+    {
+        if (hi->note)
+        {
+            char date[64];
+            strftime(date, 64, "%b %d %Y", localtime(&hi->note->date));
+            reply("NSMSG_HANDLEINFO_NOTE", hi->note->setter, date, hi->note->note);
+        }
     }
 
     if (hi->fakehost)
@@ -2816,6 +2844,31 @@ static OPTION_FUNC(opt_fakehost)
     return 1;
 }
 
+static OPTION_FUNC(opt_note)
+{
+    if (!override) {
+        send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
+        return 0;
+    }
+
+    if (argc > 1) {
+        char *text = unsplit_string(argv + 1, argc - 1, NULL);
+
+        if (hi->note)
+            free(hi->note);
+
+        if ((text[0] == '*') && !text[1])
+            hi->note = NULL;
+        else {
+            if (!(hi->note = nickserv_add_note(user->handle_info->handle, now, text)))
+                hi->note = NULL;
+        }
+    }
+
+    send_message(user, nickserv, "NSMSG_SET_NOTE", hi->note->note);
+    return 1;
+}
+
 static NICKSERV_FUNC(cmd_reclaim)
 {
     struct handle_info *hi;
@@ -3016,6 +3069,14 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
             saxdb_write_string(ctx, KEY_EMAIL_ADDR, hi->email_addr);
         if (hi->epithet)
             saxdb_write_string(ctx, KEY_EPITHET, hi->epithet);
+        if (hi->note) {
+            saxdb_start_record(ctx, KEY_NOTE_NOTE, 0);
+            saxdb_write_string(ctx, KEY_NOTE_SETTER, hi->note->setter);
+            saxdb_write_int(ctx, KEY_NOTE_DATE, hi->note->date);
+            saxdb_write_string(ctx, KEY_NOTE_NOTE, hi->note->note);
+            saxdb_end_record(ctx);
+        }
+
         if (hi->fakehost)
             saxdb_write_string(ctx, KEY_FAKEHOST, hi->fakehost);
         if (hi->flags) {
@@ -3543,6 +3604,8 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
     unsigned long int id;
     unsigned int ii;
     dict_t subdb;
+    char *setter, *note;
+    time_t date;
 
     str = database_get_data(obj, KEY_ID, RECDB_QSTRING);
     id = str ? strtoul(str, NULL, 0) : 0;
@@ -3616,6 +3679,19 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
     str = database_get_data(obj, KEY_EPITHET, RECDB_QSTRING);
     if (str)
         hi->epithet = strdup(str);
+    subdb = database_get_data(obj, KEY_NOTE_NOTE, RECDB_OBJECT);
+    if (subdb) {
+        setter = database_get_data(subdb, KEY_NOTE_SETTER, RECDB_QSTRING);
+        str = database_get_data(subdb, KEY_NOTE_DATE, RECDB_QSTRING);
+        date = str ? (time_t)strtoul(str, NULL, 0) : now;
+        note = database_get_data(subdb, KEY_NOTE_NOTE, RECDB_QSTRING);
+        if (setter && date && note)
+        {
+            if (!(hi->note = nickserv_add_note(setter, date, note)))
+                hi->note = NULL;
+        }
+    }
+
     str = database_get_data(obj, KEY_FAKEHOST, RECDB_QSTRING);
     if (str)
         hi->fakehost = strdup(str);
@@ -4169,6 +4245,7 @@ init_nickserv(const char *nick)
     dict_insert(nickserv_opt_dict, "ACCESS", opt_level);
     dict_insert(nickserv_opt_dict, "LEVEL", opt_level);
     dict_insert(nickserv_opt_dict, "EPITHET", opt_epithet);
+    dict_insert(nickserv_opt_dict, "NOTE", opt_note);
     if (nickserv_conf.titlehost_suffix) {
         dict_insert(nickserv_opt_dict, "TITLE", opt_title);
         dict_insert(nickserv_opt_dict, "FAKEHOST", opt_fakehost);

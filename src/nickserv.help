@@ -407,6 +407,7 @@
           "$bFLAGS$b: Changes account flags (SphHdscfn) for user (see $uaccount flags$u).",
           "$bLEVEL$b: Sets $O access level.",
           "$bEPITHET$b: The description shown for the user's access in /whois.",
+          "$bNOTE$b: Adds a note to the user's account.",
           "$bTITLE$b: The title the user will get (in there hostname) when +x.",
           "$bFAKEHOST$b: The fake hostname the user will get when +x.",
           "..or anything $bset$b can change.",
