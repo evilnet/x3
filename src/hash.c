@@ -692,7 +692,7 @@ reg_topic_func(topic_func_t handler)
 }
 
 void
-SetChannelTopic(struct chanNode *channel, struct userNode *user, const char *topic, int announce)
+SetChannelTopic(struct chanNode *channel, struct userNode *service, struct userNode *user, const char *topic, int announce)
 {
     unsigned int n;
     struct modeNode *mn;
@@ -713,7 +713,7 @@ SetChannelTopic(struct chanNode *channel, struct userNode *user, const char *top
     if (announce) {
 	/* We don't really care if a local user messes with the topic,
          * so don't call the tf_list functions. */
-	irc_topic(user, channel, topic);
+	irc_topic(service, user, channel, topic);
     } else {
 	for (n=0; n<tf_used; n++)
 	    if (tf_list[n](user, channel, old_topic))

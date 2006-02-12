@@ -135,7 +135,7 @@ void irc_mode(struct userNode *who, struct chanNode *target, const char *modes);
 void irc_umode(struct userNode *target, const char *modes);
 void irc_kick(struct userNode *who, struct userNode *target, struct chanNode *from, const char *msg);
 void irc_part(struct userNode *who, struct chanNode *what, const char *reason);
-void irc_topic(struct userNode *who, struct chanNode *what, const char *topic);
+void irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what, const char *topic);
 void irc_fetchtopic(struct userNode *from, const char *to);
 
 /* network maintenance */

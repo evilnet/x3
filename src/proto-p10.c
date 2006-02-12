@@ -787,8 +787,14 @@ irc_part(struct userNode *who, struct chanNode *what, const char *reason)
 }
 
 void
-irc_topic(struct userNode *who, struct chanNode *what, const char *topic)
+irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what, const char *topic)
 {
+/* UNCOMMENT FOR NEFARIOUS 0.5.0 TOPIC SUPPORT
+ *    putsock("%s " P10_TOPIC " %s %s " FMT_TIME_T " " FMT_TIME_T " :%s", service->numeric, what->name, who->nick, what->timestamp, now, topic);
+ * UNCOMMENT FOR NEFARIOUS 0.5.0 TOPIC SUPPORT */
+
+    who = service; /* REMOVE LINE FOR NEFARIOUS 0.5.0 */
+
     putsock("%s " P10_TOPIC " %s :%s", who->numeric, what->name, topic);
 }
 
@@ -1340,6 +1346,7 @@ static CMD_FUNC(cmd_topic)
 {
     struct chanNode *cn;
     time_t chan_ts, topic_ts;
+    struct userNode *user;
 
     if (argc < 3)
         return 0;
@@ -1347,15 +1354,23 @@ static CMD_FUNC(cmd_topic)
         log_module(MAIN_LOG, LOG_ERROR, "Unable to find channel %s whose topic is being set", argv[1]);
         return 0;
     }
-    if (argc >= 5) {
-        /* Looks like an Asuka style topic burst. */
+
+
+    if (argc == 5) {              /* Asuka / Topic Bursting IRCu's */
+        user = GetUserH(origin);
         chan_ts = atoi(argv[2]);
         topic_ts = atoi(argv[3]);
-    } else {
+    } else if (argc >= 6) {       /* Nefarious 0.5.0 */
+        user = GetUserH(strtok(argv[2], "!"));
+        chan_ts = atoi(argv[3]);
+        topic_ts = atoi(argv[4]);
+    } else {                      /* Regular IRCu (No Topic Bursting)*/
+        user = GetUserH(origin);
         chan_ts = cn->timestamp;
         topic_ts = now;
     }
-    SetChannelTopic(cn, GetUserH(origin), argv[argc-1], 0);
+
+    SetChannelTopic(cn, user, user, argv[argc-1], 0);
     cn->topic_time = topic_ts;
     return 1;
 }

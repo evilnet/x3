@@ -4191,13 +4191,18 @@ static CHANSERV_FUNC(cmd_topic)
 {
     struct chanData *cData;
     char *topic;
+    int p10 = 0;
+
+#ifdef WITH_PROTOCOL_P10
+    p10 = 1;
+#endif
 
     cData = channel->channel_info;
     if(argc < 2)
     {
         if(cData->topic)
         {
-            SetChannelTopic(channel, chanserv, cData->topic, 1);
+            SetChannelTopic(channel, chanserv, p10 ? user : chanserv, cData->topic, 1);
             reply("CSMSG_TOPIC_SET", cData->topic);
             return 1;
         }
@@ -4233,10 +4238,10 @@ static CHANSERV_FUNC(cmd_topic)
                 reply("CSMSG_TOPICMASK_CONFLICT2", TOPICLEN);
                 return 0;
             }
-            SetChannelTopic(channel, chanserv, new_topic, 1);
+            SetChannelTopic(channel, chanserv, p10 ? user : chanserv, new_topic, 1);
         }
         else /* No mask set, just set the topic */
-            SetChannelTopic(channel, chanserv, topic, 1);
+            SetChannelTopic(channel, chanserv, p10 ? user : chanserv, topic, 1);
     }
 
     if(check_user_level(channel, user, lvlTopicSnarf, 1, 0))
@@ -5433,7 +5438,7 @@ static MODCMD_FUNC(chan_opt_defaulttopic)
                && !match_ircglob(channel->channel_info->topic, channel->channel_info->topic_mask))
                 reply("CSMSG_TOPIC_MISMATCH", channel->name);
 	}
-        SetChannelTopic(channel, chanserv, topic ? topic : "", 1);
+        SetChannelTopic(channel, chanserv, chanserv, topic ? topic : "", 1);
     }
 
     if(channel->channel_info->topic)
@@ -6352,7 +6357,7 @@ chanserv_refresh_topics(UNUSED_ARG(void *data))
         if((refresh_num - cData->last_refresh) < (unsigned int)(1 << (opt - '1')))
             continue;
         if(cData->topic)
-            SetChannelTopic(cData->channel, chanserv, cData->topic, 1);
+            SetChannelTopic(cData->channel, chanserv, chanserv, cData->topic, 1);
         cData->last_refresh = refresh_num;
     }
     timeq_add(now + chanserv_conf.refresh_period, chanserv_refresh_topics, NULL);
@@ -6710,7 +6715,7 @@ handle_new_channel(struct chanNode *channel)
         mod_chanmode_announce(chanserv, cData->channel, &cData->modes);
 
     if(self->uplink && !self->uplink->burst && channel->channel_info->topic)
-        SetChannelTopic(channel, chanserv, channel->channel_info->topic, 1);
+        SetChannelTopic(channel, chanserv, chanserv, channel->channel_info->topic, 1);
 }
 
 /* Welcome to my worst nightmare. Warning: Read (or modify)
@@ -7040,7 +7045,7 @@ handle_topic(struct userNode *user, struct chanNode *channel, const char *old_to
     if(bad_topic(channel, user, channel->topic))
     {   /* User doesnt have privs to set topics. Undo it */
         send_message(user, chanserv, "CSMSG_TOPIC_LOCKED", channel->name);
-        SetChannelTopic(channel, chanserv, old_topic, 1);
+        SetChannelTopic(channel, chanserv, chanserv, old_topic, 1);
         return 1;
     }
     /* If there is a topic mask set, and the new topic doesnt match,
@@ -7051,12 +7056,12 @@ handle_topic(struct userNode *user, struct chanNode *channel, const char *old_to
         conform_topic(cData->topic_mask, channel->topic, new_topic);
         if(*new_topic)
         {
-           SetChannelTopic(channel, chanserv, new_topic, 1);
+           SetChannelTopic(channel, chanserv, chanserv, new_topic, 1);
            /* and fall through to topicsnarf code below.. */
         }
         else /* Topic couldnt fit into mask, was too long */
         {
-            SetChannelTopic(channel, chanserv, old_topic, 1);
+            SetChannelTopic(channel, chanserv, chanserv, old_topic, 1);
             send_message(user, chanserv, "CSMSG_TOPICMASK_CONFLICT1", channel->name, cData->topic_mask);
             send_message(user, chanserv, "CSMSG_TOPICMASK_CONFLICT2", TOPICLEN);
             return 1;

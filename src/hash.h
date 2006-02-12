@@ -270,7 +270,7 @@ int ChannelExemptExists(struct chanNode *channel, const char *exempt);
 
 typedef int (*topic_func_t)(struct userNode *who, struct chanNode *chan, const char *old_topic);
 void reg_topic_func(topic_func_t handler);
-void SetChannelTopic(struct chanNode *channel, struct userNode *user, const char *topic, int announce);
+void SetChannelTopic(struct chanNode *channel, struct userNode *service, struct userNode *user, const char *topic, int announce);
 struct userNode *IsInChannel(struct chanNode *channel, struct userNode *user);
 
 void init_structs(void);
