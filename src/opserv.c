@@ -389,6 +389,7 @@ static int ungag_helper_func(struct userNode *match, void *extra);
 typedef enum {
     REACT_NOTICE,
     REACT_KILL,
+    REACT_SILENT,
     REACT_GLINE,
     REACT_SHUN
 } opserv_alert_reaction;
@@ -864,7 +865,7 @@ static MODCMD_FUNC(cmd_restart)
 }
 
 static struct gline *
-opserv_block(struct userNode *target, char *src_handle, char *reason, unsigned long duration)
+opserv_block(struct userNode *target, char *src_handle, char *reason, unsigned long duration, int silent)
 {
     char *mask;
     mask = alloca(MAXLEN);
@@ -874,7 +875,7 @@ opserv_block(struct userNode *target, char *src_handle, char *reason, unsigned l
         snprintf(reason, MAXLEN, "G-line requested by %s.", src_handle);
     }
     if (!duration) duration = opserv_conf.block_gline_duration;
-    return gline_add(src_handle, mask, duration, reason, now, 1);
+    return gline_add(src_handle, mask, duration, reason, now, 1, silent ? 1 : 0);
 }
 
 static MODCMD_FUNC(cmd_block)
@@ -893,7 +894,7 @@ static MODCMD_FUNC(cmd_block)
         return 0;
     }
     reason = (argc > 2) ? unsplit_string(argv+2, argc-2, NULL) : NULL;
-    gline = opserv_block(target, user->handle_info->handle, reason, 0);
+    gline = opserv_block(target, user->handle_info->handle, reason, 0, 0);
     reply("OSMSG_GLINE_ISSUED", gline->target);
     return 1;
 }
@@ -918,7 +919,7 @@ static MODCMD_FUNC(cmd_gline)
         reply("MSG_INVALID_DURATION", argv[2]);
         return 0;
     }
-    gline = gline_add(user->handle_info->handle, argv[1], duration, reason, now, 1);
+    gline = gline_add(user->handle_info->handle, argv[1], duration, reason, now, 1, 0);
     reply("OSMSG_GLINE_ISSUED", gline->target);
     return 1;
 }
@@ -1801,6 +1802,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         switch (alert->reaction) {
         case REACT_NOTICE: reaction = "notice"; break;
         case REACT_KILL: reaction = "kill"; break;
+        case REACT_SILENT: reaction = "silent"; break;
         case REACT_GLINE: reaction = "gline"; break;
         case REACT_SHUN: reaction = "shun"; break;
         default: reaction = "<unknown>"; break;
@@ -2062,7 +2064,7 @@ opserv_new_user_check(struct userNode *user)
         } else if (ohi->clients.used > limit) {
             char target[18];
             sprintf(target, "*@%s", inet_ntoa(user->ip));
-            gline_add(opserv->nick, target, opserv_conf.clone_gline_duration, "AUTO Excessive connections from a single host.", now, 1);
+            gline_add(opserv->nick, target, opserv_conf.clone_gline_duration, "Excessive connections from a single host.", now, 1, 1);
         }
     }
 
@@ -2920,6 +2922,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_NOTICE;
     else if (!irccasecmp(react, "kill"))
         reaction = REACT_KILL;
+    else if (!irccasecmp(react, "silent"))
+        reaction = REACT_SILENT;
     else if (!irccasecmp(react, "gline"))
         reaction = REACT_GLINE;
     else if (!irccasecmp(react, "shun"))
@@ -3110,6 +3114,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             switch (alert->reaction) {
             case REACT_NOTICE: reaction = "notice"; break;
             case REACT_KILL: reaction = "kill"; break;
+            case REACT_SILENT: reaction = "silent"; break;
             case REACT_GLINE: reaction = "gline"; break;
             case REACT_SHUN: reaction = "shun"; break;
             default:
@@ -3654,7 +3659,7 @@ trace_gline_func(struct userNode *match, void *extra)
     struct discrim_and_source *das = extra;
 
     if (is_oper_victim(das->source, match, das->discrim->match_opers)) {
-        opserv_block(match, das->source->handle_info->handle, das->discrim->reason, das->discrim->duration);
+        opserv_block(match, das->source->handle_info->handle, das->discrim->reason, das->discrim->duration, 0);
     }
 
     return 0;
@@ -4283,8 +4288,11 @@ alert_check_user(const char *key, void *data, void *extra)
     case REACT_KILL:
         DelUser(user, opserv, 1, alert->discrim->reason);
         return 1;
+    case REACT_SILENT:
+        opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration, 1);
+        return 1;
     case REACT_GLINE:
-        opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
+        opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration, 0);
         return 1;
     case REACT_SHUN:
         opserv_shun(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
@@ -4452,6 +4460,8 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_NOTICE;
     else if (!irccasecmp(argv[2], "kill"))
         reaction = REACT_KILL;
+    else if (!irccasecmp(argv[2], "silent"))
+        reaction = REACT_SILENT;
     else if (!irccasecmp(argv[2], "gline"))
         reaction = REACT_GLINE;
     else if (!irccasecmp(argv[2], "shun"))
@@ -4649,6 +4659,7 @@ init_opserv(const char *nick)
     opserv_define_func("ACCESS", cmd_access, 0, 0, 0);
     opserv_define_func("ADDALERT", cmd_addalert, 800, 0, 4);
     opserv_define_func("ADDALERT NOTICE", NULL, 0, 0, 0);
+    opserv_define_func("ADDALERT SILENT", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT GLINE", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT SHUN", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT KILL", NULL, 900, 0, 0);

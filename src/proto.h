@@ -140,7 +140,7 @@ void irc_topic(struct userNode *service, struct userNode *who, struct chanNode *
 void irc_fetchtopic(struct userNode *from, const char *to);
 
 /* network maintenance */
-void irc_gline(struct server *srv, struct gline *gline);
+void irc_gline(struct server *srv, struct gline *gline, int silent);
 void irc_shun(struct server *srv, struct shun *shun);
 void irc_settime(const char *srv_name_mask, time_t new_time);
 void irc_ungline(const char *mask);

@@ -197,6 +197,7 @@
         "Valid alert actions (to be taken when an alert is hit) are:",
         "$bNOTICE$b:       Send a notice to the $b$O$b alert channel",
         "$bKILL$b:         Disconnect the user",
+        "$bSILENT$b        Same as GLINE, except AUTO: is appended to make the gline silent",
         "$bGLINE$b:        Gline the user that tripped the alert",
         "$bSHUN$b :        Shun the user that tripped the alert",
         "$uSee Also:$u addalert, delalert"

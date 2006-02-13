@@ -43,7 +43,7 @@ struct gline_discrim {
 };
 
 void gline_init(void);
-struct gline *gline_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, int announce);
+struct gline *gline_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, int announce, int silent);
 struct gline *gline_find(const char *target);
 int gline_remove(const char *target, int announce);
 void gline_refresh_server(struct server *srv);

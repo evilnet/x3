@@ -134,7 +134,7 @@ gline_remove(const char *target, int announce)
 }
 
 struct gline *
-gline_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, int announce)
+gline_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, int announce, int silent)
 {
     struct gline *ent;
     struct gline *prev_first;
@@ -162,7 +162,7 @@ gline_add(const char *issuer, const char *target, unsigned long duration, const 
 	timeq_add(ent->expires, gline_expire, 0);
     }
     if (announce)
-        irc_gline(NULL, ent);
+        irc_gline(NULL, ent, silent);
     return ent;
 }
 
@@ -232,7 +232,7 @@ static int
 gline_refresh_helper(UNUSED_ARG(void *key), void *data, void *extra)
 {
     struct gline *ge = data;
-    irc_gline(extra, ge);
+    irc_gline(extra, ge, 0);
     return 0;
 }
 
@@ -279,7 +279,7 @@ gline_add_record(const char *key, void *data, UNUSED_ARG(void *extra))
         issuer = "<unknown>";
     }
     if (expiration > now)
-        gline_add(issuer, key, expiration - now, reason, issued, 0);
+        gline_add(issuer, key, expiration - now, reason, issued, 0, 0);
     return 0;
 }
 
