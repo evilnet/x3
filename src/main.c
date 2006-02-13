@@ -26,6 +26,7 @@
 #include "modcmd.h"
 #include "saxdb.h"
 #include "sendmail.h"
+#include "shun.h"
 #include "timeq.h"
 
 #include "chanserv.h"
@@ -95,6 +96,7 @@ static const struct message_entry msgtab[] = {
     { "MSG_MODULE_UNKNOWN", "No module has been registered with name $b%s$b." },
     { "MSG_INVALID_MODES", "$b%s$b is an invalid set of channel modes." },
     { "MSG_INVALID_GLINE", "Invalid G-line '%s'." },
+    { "MSG_INVALID_SHUN", "Invalid Shun '%s'." },
     { "MSG_INVALID_DURATION", "Invalid time span '%s'." },
     { "MSG_NOT_TARGET_NAME", "You must provide the name of a channel or user." },
     { "MSG_NOT_CHANNEL_NAME", "The channel name you specified is not a valid channel name." },
@@ -830,6 +832,7 @@ int main(int argc, char *argv[])
     modcmd_init();
     saxdb_init();
     gline_init();
+    shun_init();
     sendmail_init();
     helpfile_init();
     conf_globals(); /* initializes the core services */

@@ -23,6 +23,7 @@
 #include "ioset.h"
 #include "log.h"
 #include "nickserv.h"
+#include "shun.h"
 #include "timeq.h"
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>

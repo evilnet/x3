@@ -37,6 +37,7 @@
 #endif
 
 struct gline;
+struct shun;
 struct server;
 struct userNode;
 struct chanNode;
@@ -140,8 +141,10 @@ void irc_fetchtopic(struct userNode *from, const char *to);
 
 /* network maintenance */
 void irc_gline(struct server *srv, struct gline *gline);
+void irc_shun(struct server *srv, struct shun *shun);
 void irc_settime(const char *srv_name_mask, time_t new_time);
 void irc_ungline(const char *mask);
+void irc_unshun(const char *mask);
 void irc_error(const char *to, const char *message);
 void irc_kill(struct userNode *from, struct userNode *target, const char *message);
 void irc_raw(const char *what);

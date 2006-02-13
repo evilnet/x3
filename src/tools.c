@@ -471,6 +471,21 @@ is_gline(const char *text)
 }
 
 int
+is_shun(const char *text)
+{
+    if (*text == '@')
+        return 0;
+    text += strcspn(text, "@!% \t\r\n");
+    if (*text++ != '@')
+        return 0;
+    if (!*text)
+        return 0;
+    while (*text && (isalnum((char)*text) || strchr(".-?*:", *text)))
+        text++;
+    return !*text;
+}
+
+int
 split_ircmask(char *text, char **nick, char **ident, char **host)
 {
     char *start;

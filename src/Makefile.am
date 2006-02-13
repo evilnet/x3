@@ -35,6 +35,7 @@ x3_SOURCES = \
 	recdb.c recdb.h \
 	saxdb.c saxdb.h \
 	sendmail.c sendmail.h \
+	shun.c shun.h \
 	timeq.c timeq.h \
 	tools.c
 

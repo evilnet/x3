@@ -67,7 +67,8 @@ am_x3_OBJECTS = chanserv.$(OBJEXT) compat.$(OBJEXT) conf.$(OBJEXT) \
 	main.$(OBJEXT) math.$(OBJEXT) md5.$(OBJEXT) modcmd.$(OBJEXT) \
 	modules.$(OBJEXT) nickserv.$(OBJEXT) opserv.$(OBJEXT) \
 	policer.$(OBJEXT) recdb.$(OBJEXT) saxdb.$(OBJEXT) \
-	sendmail.$(OBJEXT) timeq.$(OBJEXT) tools.$(OBJEXT)
+	sendmail.$(OBJEXT) shun.$(OBJEXT) timeq.$(OBJEXT) \
+	tools.$(OBJEXT)
 x3_OBJECTS = $(am_x3_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I.
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -210,6 +211,7 @@ x3_SOURCES = \
 	recdb.c recdb.h \
 	saxdb.c saxdb.h \
 	sendmail.c sendmail.h \
+	shun.c shun.h \
 	timeq.c timeq.h \
 	tools.c
 
@@ -320,6 +322,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/recdb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/saxdb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sendmail.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shun.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeq.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Po@am__quote@
 

@@ -152,6 +152,7 @@ int is_overmask(char *mask);
 
 int is_ircmask(const char *text);
 int is_gline(const char *text);
+int is_shun(const char *text);
 
 char *sanitize_ircmask(char *text);
 

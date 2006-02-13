@@ -25,6 +25,12 @@
             "  $bTRACE GLINE$b Gline all hosts matching a search.",
             "  $bGTRACE$b      Search the gline list.",
             "  $b$b",
+            "  $bSHUN$b        Global Shun a host.",
+            "  $bUNSHUN$b      Remove a SHUN.",
+            "  $bSBLOCK$b      Shun by nickname.",
+            "  $bTRACE SHUN$b  Shun all hosts matching a search.",
+            "  $bSTRACE$b      Search the shun list.",
+            "  $b$b",
             "  $bGAG$b         Cause the services to ignore... ",
             "  $bUNGAG$b       ...or unignore by mask."
             );
@@ -41,6 +47,7 @@
 "TRACES"   (
             "  $bTRACE$b    Search current users and optionally apply an action.",
             "  $bGTRACE$b   Search current GLINEs and optionally remove them.",
+            "  $bSTRACE$b   Search current SHUNs and optionally remove them.",
             "  $bCSEARCH$b  Search current channels."
            );
 
@@ -105,6 +112,7 @@
             "  $bUNJUPE$b       Remove a dummy server.",
             "  $b$b",
             "  $bREFRESHG$b     Refresh the Glines.",
+            "  $bREFRESHS$b     Refresh the Shuns.",
             "  $bSETTIME$b      Synchronize time across the network.",
             "  $bTIMECMD$b      Time how long a command runs."
            );
@@ -121,7 +129,8 @@
              "  $bDIE$b           Make the bot quit.",
              "  $bJUMP$b          Change uplink servers.",
              "  $bRECONNECT$b     Reconnect to this uplink server.",
-             "  $bGSYNC$b         Pull glines from the givin server into memory.",
+             "  $bGSYNC$b         Pull glines from the given server into memory.",
+             "  $bSSYNC$b         Pull shuns from the given server into memory.",
              "  $b$b",
              "  $bMODCMD$b        Change details of a command.",
              "  $bBIND$b          Make a command alias.",
@@ -189,6 +198,7 @@
         "$bNOTICE$b:       Send a notice to the $b$O$b alert channel",
         "$bKILL$b:         Disconnect the user",
         "$bGLINE$b:        Gline the user that tripped the alert",
+        "$bSHUN$b :        Shun the user that tripped the alert",
         "$uSee Also:$u addalert, delalert"
         );
 
@@ -213,7 +223,7 @@
         
 "TRACE" ("/msg $O TRACE <action> <criteria> <value> [<criteria> <value>]...",
         "Searches through the current users for those matching the specified criteria, and applies the specified action to them. A detailed list of actions can be found in $bhelp trace action$b and a list of criteria in $bhelp trace criteria$b.",
-        "Quick Ref ACTIONS: PRINT, COUNT, KILL, GLINE, GAG, DOMAINS",
+        "Quick Ref ACTIONS: PRINT, COUNT, KILL, GLINE, SHUN, GAG, DOMAINS",
         "Quick Ref CRITERIA: MASK, NICK, IDENT, HOST, INFO, SERVER, IP, ACCOUNT, AUTHED, CHANNEL, NUMCHANNELS, LIMIT, NICKAGE, ACCESS, REASON, DEPTH, DURATION, CLONES, INFO_SPACE, ABUSE OPERS, LOG, REGEX",
         "Access level: $b${level/trace}$b",
         "$uSee Also:$u trace action, trace criteria"
@@ -225,9 +235,10 @@
         "$bCOUNT$b:   Count all matching users.",
         "$bKILL$b:    Kill matching clients.",
         "$bGLINE$b:   Issue a gline for the client's host (by default, 1 hour long).",
+        "$bSHUN$b:    Issue a shun for the client's host (by default, 1 hour long).",
         "$bGAG$b:     Gag all matching users (by default, does not expire).",
         "$bDOMAINS$b: Display counts of users in each domain (length specified by DEPTH criteria.", 
-        "Note: By default, IRC operators are not affected by the KILL, GLINE or GAG actions.  You can override this by specifying the $bABUSE OPERS$b criteria for a trace.  Even if you do specify $bABUSE OPERS$b, it will not affect opers at your access level or above.",
+        "Note: By default, IRC operators are not affected by the KILL, GLINE, SHUN or GAG actions.  You can override this by specifying the $bABUSE OPERS$b criteria for a trace.  Even if you do specify $bABUSE OPERS$b, it will not affect opers at your access level or above.",
         "$uSee Also:$u trace criteria, trace"
         );
 
@@ -247,7 +258,7 @@
         "$bLIMIT$b 50               Limits the number of responses to a certain number.",
         "$bNICKAGE$b cmp            Client has had nick this long (<Nu, <=Nu, =Nu, >=Nu or >Nu)",
         "$bACCESS$b cmp             Access constraints (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
-        "$bREASON$b reason          Reason for kill or gline (must be listed last).",
+        "$bREASON$b reason          Reason for kill, gline or shun (must be listed last).",
         "$bDEPTH$b depth            How many domain-name parts to use for $bDOMAINS$b action.",
         "$bDURATION$b duration      How long to apply a G-line or gag.",
         "$bCLONES$b min             Ignore clients from hosts with fewer than this many connections.",
@@ -502,6 +513,73 @@
         "$uSee Also:$u gline"
         );
 
+"SHUN" ("$bSHUN COMMANDS$b",
+        "Searches for, issues, and removes Shuns.",
+        "  SBLOCK   [${level/sblock}]",
+        "  SHUN     [${level/shun}]",
+        "  STRACE   [${level/strace}]",
+        "  SSYNC    [${level/ssync}]",
+        "  REFRESHS [${level/refreshs}]",
+        "  UNSHUN   [${level/unshun}]"
+        );
+
+"SBLOCK" ("/msg $O SBLOCK <nick> [reason]",
+        "SHUNS the host of the specified nick for one hour  If no reason is given, use a default reason.",
+        "Access level: $b${level/sblock}$b",
+        "$uSee Also:$u shun, unshun"
+        );
+
+"SHUN" ("/msg $O SHUN <user@host> <duration> <reason>",
+        "Issues a SHUN on the network for the speicified user@host for the specified duration (making the expiration time: net time + duration).",
+        "Access level: $b${level/shun}$b",
+        "$uSee Also:$u trace, unshun"
+        );
+
+"STRACE" ("/msg $O STRACE <action> <criteria> [<criteria> <value>]...",
+        "Searches through the shuns, much like $bTRACE$b does for users.",
+        "Access level: $b${level/strace}$b",
+        "$uSee Also:$u trace, strace action, strace criteria"
+        );
+
+"STRACE ACTION" ("$bSTRACE ACTION$b",
+        "Options for the action in $bstrace$b are:",
+        "$bPRINT$b: Display the shuns (mask, issuer, expiration time, reason)",
+        "$bCOUNT$b: Count the number of matching shuns",
+	"$bUNSHUN$b: Remove matching shuns",
+        "$uSee Also:$u strace criteria, strace"
+        );
+
+"STRACE CRITERIA" ("$bSTRACE CRITERIA$b",
+        "Criteria and values for $bstrace$b (a search with $bstrace$b must match all the criteria you give):",
+        "$bMASK SUPERSET$b user@host Shun matches if it applies to someone with this hostmask.",
+        "$bMASK SUBSET$b user@host  Shun matches if this hostmask \"covers\" the Shun target.",
+        "$bMASK EXACT$b user@host   Shun matches only if the target is exactly this.",
+        "$bMASK$b user@host         Specifies a mask to search for (equivalent to MASK SUPERSET).",
+        "$bLIMIT$b count            Limits the number of matching shuns.",
+        "$bREASON$b reason          Looks for shuns with the given reason.",
+        "$bISSUER$b account         Looks for shuns issued by the given account.",
+        "$bAFTER$b interval         Looks for shuns that expire more than $binterval$b in the future.",
+        "$uSee Also:$u strace action, strace"
+        );
+
+"SSYNC" ("/msg $O SSYNC [server]",
+	"Requests a list of SHUNS from its uplink or the specified server.  This can be used in the event X3 is down for period and becomes desynced.",
+        "Access level: $b${level/ssync}$b",
+	"$uSee Also:$u refreshs, shun, unshun"
+        );
+
+"REFRESHS" ("/msg $O REFRESHS [server]",
+        "Re-issues all SHUNS in $b$O's$b database. Usually used for newly joining or desynched servers.  If a server mask is specified, the SHUNS are only sent to server(s) with matching names.",
+        "Access level: $b${level/refreshs}$b",
+        "$uSee Also:$u shun, unshun, ssync"
+        );
+
+"UNSHUN" ("/msg $O UNSHUN <user@host>",
+        "Removes a shun from the network before it expires.",
+        "Access level: $b${level/unshun}$b",
+        "$uSee Also:$u shun"
+        );
+
 "CLONE" ("/msg $O CLONE <sub-command> <sub-command arguments>",
         "Creats and manipulates a fake user. Sub-commands for $bclone$b are:",
         "$bADD$b:    Adds a new clone. Arguments: <nickname> <user@host> <info>",
@@ -657,6 +735,7 @@
         "$bBAD$b:        Current list of bad words and exempted channels.",
         "$bGAGS$b:       The list of current gags.",
         "$bGLINES$b:     Reports the current number of glines.",
+        "$bSHUNS$b :     Reports the current number of shuns.",
         "$bLINKS$b:      Information about the link to the network.",
         "$bMAX$b:        The max clients seen on the network.",
         "$bNETWORK$b:    Displays network information such as total users and how many users are on each server.",

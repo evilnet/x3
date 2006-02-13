@@ -26,6 +26,7 @@
 #include "opserv.h"
 #include "timeq.h"
 #include "saxdb.h"
+#include "shun.h"
 
 #ifdef HAVE_SYS_TIMES_H
 #include <sys/times.h>
@@ -77,6 +78,7 @@
 #define KEY_STAFF_AUTH_CHANNEL_MODES "staff_auth_channel_modes"
 #define KEY_CLONE_GLINE_DURATION "clone_gline_duration"
 #define KEY_BLOCK_GLINE_DURATION "block_gline_duration"
+#define KEY_BLOCK_SHUN_DURATION "block_shun_duration"
 #define KEY_ISSUER "issuer"
 #define KEY_ISSUED "issued"
 #define KEY_ADMIN_LEVEL "admin_level"
@@ -96,6 +98,11 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_NEED_CHANNEL", "You must specify a channel for $b%s$b." },
     { "OSMSG_INVALID_IRCMASK", "$b%s$b is an invalid IRC hostmask." },
     { "OSMSG_ADDED_BAN", "I have banned $b%s$b from $b%s$b." },
+    { "OSMSG_SHUN_ISSUED", "Shun issued for $b%s$b." },
+    { "OSMSG_SHUN_REMOVED", "Shun removed for $b%s$b." },
+    { "OSMSG_SHUN_FORCE_REMOVED", "Unknown/expired Shun removed for $b%s$b." },
+    { "OSMSG_SHUN_ONE_REFRESHED", "All Shuns resent to $b%s$b." },
+    { "OSMSG_SHUN_REFRESHED", "All Shuns refreshed." },
     { "OSMSG_GLINE_ISSUED", "G-line issued for $b%s$b." },
     { "OSMSG_GLINE_REMOVED", "G-line removed for $b%s$b." },
     { "OSMSG_GLINE_FORCE_REMOVED", "Unknown/expired G-line removed for $b%s$b." },
@@ -160,6 +167,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_BADWORD_LIST", "Bad words: %s" },
     { "OSMSG_EXEMPTED_LIST", "Exempted channels: %s" },
     { "OSMSG_GLINE_COUNT", "There are %d glines active on the network." },
+    { "OSMSG_SHUN_COUNT", "There are %d shuns active on the network." },
     { "OSMSG_LINKS_SERVER", "%s%s (%u clients; %s)" },
     { "OSMSG_MAX_CLIENTS", "Max clients: %d at %s" },
     { "OSMSG_NETWORK_INFO", "Total users: %d (%d invisible, %d opers)" },
@@ -211,9 +219,12 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_USER_SEARCH_COUNT_BAR",  "------------ Found %4u matches -----------" },
     { "OSMSG_CHANNEL_SEARCH_RESULTS", "The following channels were found:" },
     { "OSMSG_GLINE_SEARCH_RESULTS", "The following glines were found:" },
+    { "OSMSG_SHUN_SEARCH_RESULTS", "The following shun were found:" },
     { "OSMSG_LOG_SEARCH_RESULTS", "The following log entries were found:" },
     { "OSMSG_GSYNC_RUNNING", "Synchronizing glines from %s." },
+    { "OSMSG_SSYNC_RUNNING", "Synchronizing shuns from %s." },
     { "OSMSG_GTRACE_FORMAT", "%s (issued %s by %s, expires %s): %s" },
+    { "OSMSG_STRACE_FORMAT", "%s (issued %s by %s, expires %s): %s" },
     { "OSMSG_GAG_APPLIED", "Gagged $b%s$b, affecting %d users." },
     { "OSMSG_GAG_ADDED", "Gagged $b%s$b." },
     { "OSMSG_REDUNDANT_GAG", "Gag $b%s$b is redundant." },
@@ -259,6 +270,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_UPLINK_START", "Uplink $b%s$b:" },
     { "OSMSG_UPLINK_ADDRESS", "Address: %s:%d" },
     { "OSMSG_STUPID_GLINE", "Gline %s?  Now $bthat$b would be smooth." },
+    { "OSMSG_STUPID_SHUN", "Shun %s?  Now $bthat$b would be smooth." },
     { "OSMSG_ACCOUNTMASK_AUTHED", "Invalid criteria: it is impossible to match an account mask but not be authed" },
     { "OSMSG_CHANINFO_HEADER", "%s Information" },
     { "OSMSG_CHANINFO_TIMESTAMP", "Created on: %a %b %d %H:%M:%S %Y (%s)" },
@@ -307,6 +319,7 @@ static struct {
     unsigned long untrusted_max;
     unsigned long clone_gline_duration;
     unsigned long block_gline_duration;
+    unsigned long block_shun_duration;
     unsigned long purge_lock_delay;
     unsigned long join_flood_moderate;
     unsigned long join_flood_moderate_threshold;
@@ -376,7 +389,8 @@ static int ungag_helper_func(struct userNode *match, void *extra);
 typedef enum {
     REACT_NOTICE,
     REACT_KILL,
-    REACT_GLINE
+    REACT_GLINE,
+    REACT_SHUN
 } opserv_alert_reaction;
 
 struct opserv_user_alert {
@@ -944,6 +958,101 @@ static MODCMD_FUNC(cmd_refreshg)
     return 1;
 }
 
+static struct shun *
+opserv_shun(struct userNode *target, char *src_handle, char *reason, unsigned long duration)
+{
+    char *mask;
+    mask = alloca(MAXLEN);
+    snprintf(mask, MAXLEN, "*@%s", target->hostname);
+    if (!reason) {
+        reason = alloca(MAXLEN);
+        snprintf(reason, MAXLEN, "Shun requested by %s.", src_handle);
+    }
+    if (!duration) duration = opserv_conf.block_shun_duration;
+    return shun_add(src_handle, mask, duration, reason, now, 1);
+}
+
+static MODCMD_FUNC(cmd_sblock)
+{
+    struct userNode *target;
+    struct shun *shun;
+    char *reason;
+
+    target = GetUserH(argv[1]);
+    if (!target) {
+        reply("MSG_NICK_UNKNOWN", argv[1]);
+        return 0;
+    }
+    if (IsService(target)) {
+        reply("MSG_SERVICE_IMMUNE", target->nick);
+        return 0;
+    }
+    reason = (argc > 2) ? unsplit_string(argv+2, argc-2, NULL) : NULL;
+    shun = opserv_shun(target, user->handle_info->handle, reason, 0);
+    reply("OSMSG_SHUN_ISSUED", shun->target);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_shun)
+{
+    unsigned long duration;
+    char *reason;
+    struct shun *shun;
+
+    reason = unsplit_string(argv+3, argc-3, NULL);
+    if (!is_shun(argv[1]) && !IsChannelName(argv[1]) && (argv[1][0] != '&')) {
+        reply("MSG_INVALID_SHUN", argv[1]);
+        return 0;
+    }
+    if (!argv[1][strspn(argv[1], "#&*?@.")] && (strlen(argv[1]) < 10)) {
+        reply("OSMSG_STUPID_SHUN", argv[1]);
+        return 0;
+    }
+    duration = ParseInterval(argv[2]);
+    if (!duration) {
+        reply("MSG_INVALID_DURATION", argv[2]);
+        return 0;
+    }
+    shun = shun_add(user->handle_info->handle, argv[1], duration, reason, now, 1);
+    reply("OSMSG_SHUN_ISSUED", shun->target);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_unshun)
+{
+    if (shun_remove(argv[1], 1))
+        reply("OSMSG_SHUN_REMOVED", argv[1]);
+    else
+        reply("OSMSG_SHUN_FORCE_REMOVED", argv[1]);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_refreshs)
+{
+    if (argc > 1) {
+        unsigned int count;
+        dict_iterator_t it;
+        struct server *srv;
+
+        for (it=dict_first(servers), count=0; it; it=iter_next(it)) {
+            srv = iter_data(it);
+            if ((srv == self) || !match_ircglob(srv->name, argv[1]))
+                continue;
+            shun_refresh_server(srv);
+            reply("OSMSG_SHUNS_ONE_REFRESHED", srv->name);
+            count++;
+        }
+        if (!count) {
+            reply("MSG_SERVER_UNKNOWN", argv[1]);
+            return 0;
+        }
+    } else {
+        shun_refresh_all();
+        reply("OSMSG_SHUNS_REFRESHED");
+    }
+    return 1;
+}
+
 static void
 opserv_ison(struct userNode *tell, struct userNode *target, const char *message)
 {
@@ -1468,6 +1577,11 @@ static MODCMD_FUNC(cmd_stats_glines) {
     return 1;
 }
 
+static MODCMD_FUNC(cmd_stats_shuns) {
+    reply("OSMSG_SHUN_COUNT", shun_count());
+    return 1;
+}
+
 static void
 trace_links(struct userNode *bot, struct userNode *user, struct server *server, unsigned int depth) {
     unsigned int nn, pos;
@@ -1688,6 +1802,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_NOTICE: reaction = "notice"; break;
         case REACT_KILL: reaction = "kill"; break;
         case REACT_GLINE: reaction = "gline"; break;
+        case REACT_SHUN: reaction = "shun"; break;
         default: reaction = "<unknown>"; break;
         }
         reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
@@ -2807,6 +2922,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_KILL;
     else if (!irccasecmp(react, "gline"))
         reaction = REACT_GLINE;
+    else if (!irccasecmp(react, "shun"))
+        reaction = REACT_SHUN;
     else {
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
@@ -2994,6 +3111,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_NOTICE: reaction = "notice"; break;
             case REACT_KILL: reaction = "kill"; break;
             case REACT_GLINE: reaction = "gline"; break;
+            case REACT_SHUN: reaction = "shun"; break;
             default:
                 reaction = NULL;
                 log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s (while writing database).", alert->reaction, iter_key(it));
@@ -3543,6 +3661,18 @@ trace_gline_func(struct userNode *match, void *extra)
 }
 
 static int
+trace_shun_func(struct userNode *match, void *extra)
+{
+    struct discrim_and_source *das = extra;
+
+    if (is_oper_victim(das->source, match, das->discrim->match_opers)) {
+        opserv_shun(match, das->source->handle_info->handle, das->discrim->reason, das->discrim->duration);
+    }
+
+    return 0;
+}
+
+static int
 trace_kill_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
@@ -3673,6 +3803,8 @@ static MODCMD_FUNC(cmd_trace)
         action = trace_domains_func;
     else if (!irccasecmp(argv[1], "gline"))
         action = trace_gline_func;
+    else if (!irccasecmp(argv[1], "shun"))
+        action = trace_shun_func;
     else if (!irccasecmp(argv[1], "kill"))
         action = trace_kill_func;
     else if (!irccasecmp(argv[1], "gag"))
@@ -3705,6 +3837,8 @@ static MODCMD_FUNC(cmd_trace)
         das.discrim->limit = INT_MAX;
     else if ((action == trace_gline_func) && !das.discrim->duration)
         das.discrim->duration = opserv_conf.block_gline_duration;
+    else if ((action == trace_shun_func) && !das.discrim->duration)
+        das.discrim->duration = opserv_conf.block_shun_duration;
     else if (action == trace_domains_func) {
         das.dict = dict_new();
         dict_set_free_data(das.dict, free);
@@ -3943,6 +4077,23 @@ static MODCMD_FUNC(cmd_gsync)
     return 1;
 }
 
+static MODCMD_FUNC(cmd_ssync)
+{
+    struct server *src;
+    if (argc > 1) {
+        src = GetServerH(argv[1]);
+        if (!src) {
+            reply("MSG_SERVER_UNKNOWN", argv[1]);
+            return 0;
+        }
+    } else {
+        src = self->uplink;
+    }
+    irc_stats(cmd->parent->bot, src, 'S');
+    reply("OSMSG_SSYNC_RUNNING", src->name);
+    return 1;
+}
+
 struct gline_extra {
     struct userNode *user;
     struct string_list *glines;
@@ -4025,6 +4176,88 @@ static MODCMD_FUNC(cmd_gtrace)
     return 1;
 }
 
+struct shun_extra {
+    struct userNode *user;
+    struct string_list *shuns;
+    struct userNode *bot;
+};
+
+static void
+strace_print_func(struct shun *shun, void *extra)
+{
+    struct shun_extra *xtra = extra;
+    char *when_text, set_text[20];
+    strftime(set_text, sizeof(set_text), "%Y-%m-%d", localtime(&shun->issued));
+    when_text = asctime(localtime(&shun->expires));
+    when_text[strlen(when_text)-1] = 0; /* strip lame \n */
+    send_message(xtra->user, xtra->bot, "OSMSG_STRACE_FORMAT", shun->target, set_text, shun->issuer, when_text, shun->reason);
+}
+
+static void
+strace_count_func(UNUSED_ARG(struct shun *shun), UNUSED_ARG(void *extra))
+{
+}
+
+static void
+strace_unshun_func(struct shun *shun, void *extra)
+{
+    struct shun_extra *xtra = extra;
+    string_list_append(xtra->shuns, strdup(shun->target));
+}
+
+static MODCMD_FUNC(cmd_strace)
+{
+    struct shun_discrim *discrim;
+    shun_search_func action;
+    unsigned int matches, nn;
+    struct shun_extra extra;
+    struct svccmd *subcmd;
+    char buf[MAXLEN];
+
+    if (!irccasecmp(argv[1], "print"))
+        action = strace_print_func;
+    else if (!irccasecmp(argv[1], "count"))
+        action = strace_count_func;
+    else if (!irccasecmp(argv[1], "unshun"))
+        action = strace_unshun_func;
+    else {
+        reply("OSMSG_BAD_ACTION", argv[1]);
+        return 0;
+    }
+    sprintf(buf, "%s %s", argv[0], argv[0]);
+    if ((subcmd = dict_find(opserv_service->commands, buf, NULL))
+        && !svccmd_can_invoke(user, opserv_service->bot, subcmd, channel, SVCCMD_NOISY)) {
+        return 0;
+    }
+
+    discrim = shun_discrim_create(user, cmd->parent->bot, argc-2, argv+2);
+    if (!discrim)
+        return 0;
+
+    if (action == strace_print_func)
+        reply("OSMSG_SHUN_SEARCH_RESULTS");
+    else if (action == strace_count_func)
+        discrim->limit = INT_MAX;
+
+    extra.user = user;
+    extra.shuns = alloc_string_list(4);
+    extra.bot = cmd->parent->bot;
+    matches = shun_discrim_search(discrim, action, &extra);
+
+    if (action == strace_unshun_func)
+        for (nn=0; nn<extra.shuns->used; nn++)
+            shun_remove(extra.shuns->list[nn], 1);
+    free_string_list(extra.shuns);
+
+    if (matches)
+        reply("MSG_MATCH_COUNT", matches);
+    else
+        reply("MSG_NO_MATCHES");
+    free(discrim->alt_target_mask);
+    free(discrim);
+    return 1;
+}
+
 static int
 alert_check_user(const char *key, void *data, void *extra)
 {
@@ -4052,6 +4285,9 @@ alert_check_user(const char *key, void *data, void *extra)
         return 1;
     case REACT_GLINE:
         opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
+        return 1;
+    case REACT_SHUN:
+        opserv_shun(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
         return 1;
     default:
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s.", alert->reaction, key);
@@ -4218,6 +4454,8 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_KILL;
     else if (!irccasecmp(argv[2], "gline"))
         reaction = REACT_GLINE;
+    else if (!irccasecmp(argv[2], "shun"))
+        reaction = REACT_SHUN;
     else {
         reply("OSMSG_UNKNOWN_REACTION", argv[2]);
         return 0;
@@ -4303,10 +4541,14 @@ opserv_conf_read(void)
     str = database_get_data(conf_node, KEY_NICK, RECDB_QSTRING);
     if (opserv && str)
         NickChange(opserv, str, 0);
+
     str = database_get_data(conf_node, KEY_CLONE_GLINE_DURATION, RECDB_QSTRING);
     opserv_conf.clone_gline_duration = str ? ParseInterval(str) : 3600;
     str = database_get_data(conf_node, KEY_BLOCK_GLINE_DURATION, RECDB_QSTRING);
     opserv_conf.block_gline_duration = str ? ParseInterval(str) : 3600;
+
+    str = database_get_data(conf_node, KEY_BLOCK_SHUN_DURATION, RECDB_QSTRING);
+    opserv_conf.block_shun_duration = str ? ParseInterval(str) : 3600;
 
     if (!opserv_conf.join_policer_params)
         opserv_conf.join_policer_params = policer_params_new();
@@ -4408,6 +4650,7 @@ init_opserv(const char *nick)
     opserv_define_func("ADDALERT", cmd_addalert, 800, 0, 4);
     opserv_define_func("ADDALERT NOTICE", NULL, 0, 0, 0);
     opserv_define_func("ADDALERT GLINE", NULL, 900, 0, 0);
+    opserv_define_func("ADDALERT SHUN", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT KILL", NULL, 900, 0, 0);
     opserv_define_func("ADDBAD", cmd_addbad, 800, 0, 2);
     opserv_define_func("ADDEXEMPT", cmd_addexempt, 800, 0, 2);
@@ -4440,6 +4683,12 @@ init_opserv(const char *nick)
     opserv_define_func("GTRACE", cmd_gtrace, 100, 0, 3);
     opserv_define_func("GTRACE COUNT", NULL, 0, 0, 0);
     opserv_define_func("GTRACE PRINT", NULL, 0, 0, 0);
+    opserv_define_func("SBLOCK", cmd_sblock, 100, 0, 2);
+    opserv_define_func("SHUN", cmd_shun, 600, 0, 4);
+    opserv_define_func("SSYNC", cmd_ssync, 600, 0, 0);
+    opserv_define_func("STRACE", cmd_strace, 100, 0, 3);
+    opserv_define_func("STRACE COUNT", NULL, 0, 0, 0);
+    opserv_define_func("STRACE PRINT", NULL, 0, 0, 0);
     opserv_define_func("INVITE", cmd_invite, 100, 2, 0);
     opserv_define_func("INVITEME", cmd_inviteme, 100, 0, 0);
     opserv_define_func("JOIN", cmd_join, 601, 0, 2);
@@ -4460,6 +4709,7 @@ init_opserv(const char *nick)
     opserv_define_func("RAW", cmd_raw, 999, 0, 2);
     opserv_define_func("RECONNECT", cmd_reconnect, 900, 0, 0);
     opserv_define_func("REFRESHG", cmd_refreshg, 600, 0, 0);
+    opserv_define_func("REFRESHS", cmd_refreshs, 600, 0, 0);
     opserv_define_func("REHASH", cmd_rehash, 900, 0, 0);
     opserv_define_func("REOPEN", cmd_reopen, 900, 0, 0);
     opserv_define_func("RESERVE", cmd_reserve, 800, 0, 5);
@@ -4470,6 +4720,7 @@ init_opserv(const char *nick)
     opserv_define_func("STATS BAD", cmd_stats_bad, 0, 0, 0);
     opserv_define_func("STATS GAGS", cmd_stats_gags, 0, 0, 0);
     opserv_define_func("STATS GLINES", cmd_stats_glines, 0, 0, 0);
+    opserv_define_func("STATS SHUNS", cmd_stats_shuns, 0, 0, 0);
     opserv_define_func("STATS LINKS", cmd_stats_links, 0, 0, 0);
     opserv_define_func("STATS MAX", cmd_stats_max, 0, 0, 0);
     opserv_define_func("STATS NETWORK", cmd_stats_network, 0, 0, 0);
@@ -4488,12 +4739,15 @@ init_opserv(const char *nick)
     opserv_define_func("TRACE COUNT", NULL, 0, 0, 0);
     opserv_define_func("TRACE DOMAINS", NULL, 0, 0, 0);
     opserv_define_func("TRACE GLINE", NULL, 600, 0, 0);
+    opserv_define_func("TRACE SHUN", NULL, 600, 0, 0);
     opserv_define_func("TRACE GAG", NULL, 600, 0, 0);
     opserv_define_func("TRACE KILL", NULL, 600, 0, 0);
     opserv_define_func("UNBAN", cmd_unban, 100, 2, 2);
     opserv_define_func("UNGAG", cmd_ungag, 600, 0, 2);
     opserv_define_func("UNGLINE", cmd_ungline, 600, 0, 2);
     modcmd_register(opserv_module, "GTRACE UNGLINE", NULL, 0, 0, "template", "ungline", NULL);
+    opserv_define_func("UNSHUN", cmd_unshun, 600, 0, 2);
+    modcmd_register(opserv_module, "GTRACE UNSHUN", NULL, 0, 0, "template", "unshun", NULL);
     opserv_define_func("UNJUPE", cmd_unjupe, 900, 0, 2);
     opserv_define_func("UNRESERVE", cmd_unreserve, 800, 0, 2);
 /*    opserv_define_func("UNWARN", cmd_unwarn, 800, 0, 0); */

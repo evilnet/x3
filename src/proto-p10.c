@@ -84,6 +84,7 @@
 #define CMD_SERVSET             "SERVSET"
 #define CMD_SET			"SET"
 #define CMD_SETTIME             "SETTIME"
+#define CMD_SHUN		"SHUN"
 #define CMD_SILENCE             "SILENCE"
 #define CMD_SQUERY              "SQUERY"
 #define CMD_SQUIT               "SQUIT"
@@ -170,6 +171,7 @@
 #define TOK_SERVSET             "SERVSET"
 #define TOK_SET			"SET"
 #define TOK_SETTIME             "SE"
+#define TOK_SHUN		"SU"
 #define TOK_SILENCE             "U"
 #define TOK_SQUERY              "SQUERY"
 #define TOK_SQUIT               "SQ"
@@ -266,6 +268,7 @@
 #define P10_SERVSET             TYPE(SERVSET)
 #define P10_SET			TYPE(SET)
 #define P10_SETTIME             TYPE(SETTIME)
+#define P10_SHUN		TYPE(SHUN)
 #define P10_SILENCE             TYPE(SILENCE)
 #define P10_SQUERY              TYPE(SQUERY)
 #define P10_SQUIT               TYPE(SQUIT)
@@ -577,6 +580,13 @@ irc_gline(struct server *srv, struct gline *gline)
 }
 
 void
+irc_shun(struct server *srv, struct shun *shun)
+{
+    putsock("%s " P10_SHUN " %s +%s %ld :<%s> %s",
+            self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->issuer, shun->reason);
+}
+
+void
 irc_settime(const char *srv_name_mask, time_t new_time)
 {
     ioset_set_time(new_time);
@@ -589,6 +599,12 @@ void
 irc_ungline(const char *mask)
 {
     putsock("%s " P10_GLINE " * -%s", self->numeric, mask);
+}
+
+void
+irc_unshun(const char *mask)
+{
+    putsock("%s " P10_SHUN " * -%s", self->numeric, mask);
 }
 
 static void
@@ -1419,6 +1435,14 @@ static CMD_FUNC(cmd_num_gline)
     return 1;
 }
 
+static CMD_FUNC(cmd_num_shun)
+{
+    if (argc < 6)
+        return 0;
+    shun_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0);
+    return 1;
+}
+
 static CMD_FUNC(cmd_quit)
 {
     struct userNode *user;
@@ -1552,6 +1576,22 @@ static CMD_FUNC(cmd_gline)
         return 1;
     } else if (argv[2][0] == '-') {
         gline_remove(argv[2]+1, 0);
+        return 1;
+    } else
+        return 0;
+}
+
+static CMD_FUNC(cmd_shun)
+{
+    if (argc < 3)
+        return 0;
+    if (argv[2][0] == '+') {
+        if (argc < 5)
+            return 0;
+        shun_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, 0);
+        return 1;
+    } else if (argv[2][0] == '-') {
+        shun_remove(argv[2]+1, 0);
         return 1;
     } else
         return 0;
@@ -1704,6 +1744,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_WHOIS, cmd_whois);
     dict_insert(irc_func_dict, CMD_GLINE, cmd_gline);
     dict_insert(irc_func_dict, TOK_GLINE, cmd_gline);
+    dict_insert(irc_func_dict, CMD_SHUN, cmd_shun);
+    dict_insert(irc_func_dict, TOK_SHUN, cmd_shun);
     dict_insert(irc_func_dict, CMD_OPMODE, cmd_opmode);
     dict_insert(irc_func_dict, TOK_OPMODE, cmd_opmode);
     dict_insert(irc_func_dict, CMD_CLEARMODE, cmd_clearmode);
@@ -1757,6 +1799,7 @@ init_parse(void)
     /* ban list resetting */
     /* "stats g" responses */
     dict_insert(irc_func_dict, "247", cmd_num_gline);
+    dict_insert(irc_func_dict, "542", cmd_num_shun);
     dict_insert(irc_func_dict, "219", cmd_dummy); /* "End of /STATS report" */
     /* other numeric responses we might get */
     dict_insert(irc_func_dict, "401", cmd_dummy); /* target left network */

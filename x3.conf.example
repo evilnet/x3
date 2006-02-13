@@ -238,6 +238,9 @@
         // how long to g-line for ?block (or, by default, for trace gline)?
         "block_gline_duration" "12h";
 
+        // how long to shun for ?sblock (or, by default, for trace shun)?
+        "block_shun_duration" "12h";
+
         // When a user joins an illegal channel, O3 joins it and locks it down.
         // how long to keep an illegal channel locked down (seconds)?
         "purge_lock_delay" "60";
@@ -457,6 +460,7 @@
     // This just illustrates how you can jam every database into one huge ("mondo") file.
     "ChanServ" { "mondo_section" "ChanServ"; };
     "gline" { "mondo_section" "gline"; };
+    "shun" { "mondo_section" "shun"; };
     "Global" { "mondo_section" "Global"; };
     "HelpServ" { "mondo_section" "HelpServ"; };
     "modcmd" { "mondo_section" "modcmd"; };
