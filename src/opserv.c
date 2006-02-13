@@ -369,6 +369,7 @@ typedef struct opservDiscrim {
     unsigned int match_opers : 1, option_log : 1;
     unsigned int chan_req_modes : 2, chan_no_modes : 2;
     int authed : 2, info_space : 2;
+    unsigned int intra_scmp : 2, intra_dcmp : 2;
     time_t min_ts, max_ts;
     unsigned int use_regex : 1;
 } *discrim_t;
@@ -2757,6 +2758,8 @@ foreach_matching_user(const char *hostmask, discrim_search_func func, void *extr
     discrim->max_channels = INT_MAX;
     discrim->authed = -1;
     discrim->info_space = -1;
+    discrim->intra_scmp = 0;
+    discrim->intra_dcmp = 0;
     discrim->use_regex = 0;
     dupmask = strdup(hostmask);
     if (split_ircmask(dupmask, &discrim->mask_nick, &discrim->mask_ident, &discrim->mask_host)) {
@@ -3231,6 +3234,8 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
     discrim->max_channels = INT_MAX;
     discrim->authed = -1;
     discrim->info_space = -1;
+    discrim->intra_dcmp = 0;
+    discrim->intra_scmp = 0;
 
     for (i=0; i<argc; i++) {
         if (irccasecmp(argv[i], "log") == 0) {
@@ -3241,6 +3246,18 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         if (i == argc - 1) {
             send_message(user, bot, "MSG_MISSING_PARAMS", argv[i]);
             goto fail;
+        }
+        if (argv[i+1][0] == '&') {
+            /* Looking for intra-userNode matches */
+            char *tmp = &(argv[i+1][1]);
+            if (strcasecmp(tmp, argv[i]) != 0) { /* Don't allow "nick &nick" etc */
+                if (!strcasecmp(tmp, "nick"))
+                    discrim->intra_dcmp = 1;
+                else if (!strcasecmp(tmp, "ident"))
+                    discrim->intra_dcmp = 2;
+                else if (!strcasecmp(tmp, "info"))
+                    discrim->intra_dcmp = 3;
+            }
         }
         if (irccasecmp(argv[i], "mask") == 0) {
             if (!is_ircmask(argv[++i])) {
@@ -3255,13 +3272,25 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 goto fail;
             }
         } else if (irccasecmp(argv[i], "nick") == 0) {
-            discrim->mask_nick = argv[++i];
+            i++;
+            if (discrim->intra_dcmp > 0)
+                discrim->intra_scmp = 1;
+	    else
+                discrim->mask_nick = argv[i];
         } else if (irccasecmp(argv[i], "ident") == 0) {
-            discrim->mask_ident = argv[++i];
+            i++;
+            if (discrim->intra_dcmp > 0)
+                discrim->intra_scmp = 2;
+	    else
+                discrim->mask_ident = argv[i];
         } else if (irccasecmp(argv[i], "host") == 0) {
             discrim->mask_host = argv[++i];
         } else if (irccasecmp(argv[i], "info") == 0) {
-            discrim->mask_info = argv[++i];
+            i++;
+            if (discrim->intra_dcmp > 0)
+                discrim->intra_scmp = 3;
+	    else
+                discrim->mask_info = argv[i];
         } else if (irccasecmp(argv[i], "server") == 0) {
             discrim->server = argv[++i];
         } else if (irccasecmp(argv[i], "ip") == 0) {
@@ -3507,6 +3536,7 @@ static int
 discrim_match(discrim_t discrim, struct userNode *user)
 {
     unsigned int access;
+    char *scmp=NULL, *dcmp=NULL;
 
     if ((user->timestamp < discrim->min_ts)
         || (user->timestamp > discrim->max_ts)
@@ -3539,6 +3569,31 @@ discrim_match(discrim_t discrim, struct userNode *user)
             || (discrim->mask_info && !match_ircglob(user->info, discrim->mask_info))) {
             return 0;
         }
+    }
+
+    if ((discrim->intra_scmp > 0 && discrim->intra_dcmp > 0)) {
+       switch(discrim->intra_scmp) {
+            case 1: scmp=user->nick; break;
+            case 2: scmp=user->ident; break;
+            case 3: 
+                scmp=user->info; 
+                if (discrim->info_space == 1) scmp++;
+                break;
+        }
+        switch(discrim->intra_dcmp) {
+            case 1: dcmp=user->nick; break;
+            case 2: dcmp=user->ident; break;
+            case 3: /* When checking INFO, and info_space is enabled
+                     * ignore the first character in a search 
+                     * XXX: Should we ignore ALL leading whitespace?
+                     *      Also, what about ignoring ~ in ident?
+                     */
+                dcmp=user->info; 
+                if (discrim->info_space == 1) dcmp++;
+                break;
+        }
+        if (irccasecmp(scmp,dcmp))
+            return 0;
     }
 
     if (discrim->channel && !GetUserMode(discrim->channel, user)) return 0;

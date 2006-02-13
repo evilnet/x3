@@ -1943,13 +1943,32 @@ static MODCMD_FUNC(cmd_version) {
      * command or its accessibility to normal IRC users, except to add
      * copyright information pertaining to changes you make to X3.
      */
-    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"$b (Based on srvx 1.3), Built: "__DATE__", "__TIME__".");
-    send_message_type(4, user, cmd->parent->bot, "("CVS_VERSION")");
-    send_message_type(4, user, cmd->parent->bot, "Copyright 2000-2005 srvx Development Team.");
-    send_message_type(4, user, cmd->parent->bot, "Copyright 2004-2005 X3 Development Team.");
+
+    char *svn = NULL, *svnver = NULL, *svndate = NULL, *v = 0, ver[MAXLEN];
+    int vc = 0;
+
+    strcpy(ver, CVS_VERSION);
+    for (svn = x3_strtok(&v, ver, " "); svn;
+         svn = x3_strtok(&v, 0, " ")) {
+        if (vc == 2)
+            svnver = svn;
+        else if (vc == 3)
+            svndate = svn;
+        vc++;
+    }
+
+    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s %s]$b (Based on srvx 1.3), Built: "__DATE__", "__TIME__".", svnver, svndate);
+    send_message_type(4, user, cmd->parent->bot, "$b$b");
+    send_message_type(4, user, cmd->parent->bot, "Copyright 2000-2006 srvx Development Team.");
+    send_message_type(4, user, cmd->parent->bot, "Copyright 2004-2006 X3 Development Team.");
+    send_message_type(4, user, cmd->parent->bot, "$b$b");
     send_message_type(4, user, cmd->parent->bot, "The srvx 1.3 Development Team includes Paul Chang, Adrian Dewhurst, Miles Peterson, Michael Poole and others.");
     send_message_type(4, user, cmd->parent->bot, "The X3 Development Team includes Alex Schumann, Reed Loden, Neil Spierling.");
-    send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at http://sf.net/projects/x2serv/ or in #evilnet on irc.afternet.org.");
+    send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at http://sourceforge.net/projects/evilnet or in #evilnet on irc.afternet.org.");
+    send_message_type(4, user, cmd->parent->bot, "$b$b");
+    send_message_type(4, user, cmd->parent->bot, "Thanks goes to Adrian M (thiefmaster), Joe Hansche (joeatrr) and to any other people who have contributed to X3.");
+    send_message_type(4, user, cmd->parent->bot, "This program is free software; see COPYING in the distribution.");
+
     return 1;
 }
 
