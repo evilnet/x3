@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-01-16  Alex Schumann  <rubin@afternet.org>
+
+	* src/tools.c: created an email valididty function
+
+	* src/nickserv.c: check valididty of email better
+
+	* src/sendmail.c: check validity of email better
+
 2006-01-06  Alex Schumann  <rubin@afternet.org>
 
 	* src/opserv.c: fix gtrace, trace, csearch and alerts to work when aliased

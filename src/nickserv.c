@@ -718,12 +718,15 @@ is_registerable_nick(const char *nick)
     }
     return 1;
 }
+/*  this has been replaced with one in tools.c
 
 static int
 is_valid_email_addr(const char *email)
 {
     return strchr(email, '@') != NULL;
 }
+
+*/ 
 
 static const char *
 visible_email_addr(struct userNode *user, struct handle_info *hi)
@@ -1295,7 +1298,7 @@ static NICKSERV_FUNC(cmd_register)
         email_addr = argv[3];
 
         /* Check that the email address looks valid.. */
-        if (!is_valid_email_addr(email_addr)) {
+        if (!valid_email(email_addr)) {
             reply("NSMSG_BAD_EMAIL_ADDR");
             return 0;
         }
@@ -1394,7 +1397,7 @@ static NICKSERV_FUNC(cmd_oregister)
     }
 
     if (nickserv_conf.email_required) {
-        if (!is_valid_email_addr(argv[4])) {
+        if (!valid_email(argv[4])) {
             reply("NSMSG_BAD_EMAIL_ADDR");
             return 0;
         }
@@ -2654,7 +2657,7 @@ static OPTION_FUNC(opt_email)
 {
     if (argc > 1) {
         const char *str;
-        if (!is_valid_email_addr(argv[1])) {
+        if (!valid_email(argv[1])) {
             send_message(user, nickserv, "NSMSG_BAD_EMAIL_ADDR");
             return 0;
         }

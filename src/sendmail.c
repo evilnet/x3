@@ -100,6 +100,24 @@ send_flowed_text(FILE *where, const char *para)
     }
 }
 
+/* moved to tools.c 
+int 
+valid_email(email)
+{
+    for (i=0;i<strlen(email);i++)
+    {
+        if(!isalnum(to->email_addr[i]) &&
+               to->email_addr[i] != '.' &&
+               to->email_addr[i] != '@' &&
+               to->email_addr[i] != '-' &&
+               to->email_addr[i] != '+' &&
+               to->email_addr[i] != '_' )
+            return false;
+    }
+    return true;
+}
+*/
+
 void
 sendmail(struct userNode *from, struct handle_info *to, const char *subject, const char *body, int first_time)
 {
@@ -227,6 +245,12 @@ sendmail(struct userNode *from, struct handle_info *to, const char *subject, con
             argv[argc++] = "-f";
             argv[argc++] = fromaddr;
         }
+        if(!valid_email(to->email_addr))
+        {
+                log_module(MAIN_LOG, LOG_ERROR, "email address contained illegal chars. Refusing to execv() sendmail.");
+                _exit(1);
+        }
+
         argv[argc++] = to->email_addr;
         argv[argc++] = NULL;
         if (execv(mpath, (char**)argv) < 0) {

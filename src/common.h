@@ -170,6 +170,8 @@ int split_ircmask(char *text, char **nick, char **ident, char **host);
 char *unsplit_string(char *set[], unsigned int max, char *dest);
 extern char* x3_strtok(char** save, char* str, char* fs);
 
+int valid_email(const char *email);
+
 #define DECLARE_LIST(STRUCTNAME,ITEMTYPE) struct STRUCTNAME {\
   unsigned int used, size;\
   ITEMTYPE *list;\

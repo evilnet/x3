@@ -1010,3 +1010,21 @@ char* x3_strtok(char **save, char *str, char *fs)
   return (tmp);
 }
 
+int valid_email(const char *email)
+{
+    unsigned int i;
+    for (i=0;i<strlen(email);i++)
+    {
+        if(!isalnum(email[i]) &&
+               email[i] != '.' &&
+               email[i] != '@' &&
+               email[i] != '-' &&
+               email[i] != '+' &&
+               email[i] != '_' )
+            return false;
+    }
+    if(strchr(email, '@') == NULL)
+        return false;
+    return true;
+}
+
