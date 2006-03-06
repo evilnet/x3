@@ -156,7 +156,7 @@
 
 "ACCESS" ("/msg $O ACCESS [nick|*account] [new-level]",
         "Displays the $O access level for the specified user or account.  With no arguments, displays your own access level.  With two arguments, sets the target's $O access level to the second argument (assuming you have sufficient access to do so).",
-        "\"ACCESS *\" will show the access levels of everyone."
+        "\"ACCESS *\" will show the access levels of everyone.",
         "Access level: $b${level/access}$b",
         "$uSee Also:$u commands, modcmd"
         );
