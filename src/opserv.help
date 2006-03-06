@@ -156,6 +156,7 @@
 
 "ACCESS" ("/msg $O ACCESS [nick|*account] [new-level]",
         "Displays the $O access level for the specified user or account.  With no arguments, displays your own access level.  With two arguments, sets the target's $O access level to the second argument (assuming you have sufficient access to do so).",
+        "\"ACCESS *\" will show the access levels of everyone."
         "Access level: $b${level/access}$b",
         "$uSee Also:$u commands, modcmd"
         );
@@ -258,10 +259,11 @@
         "$bNUMCHANNELS$b 5          Specifies a number of channels the client must be in.",
         "$bLIMIT$b 50               Limits the number of responses to a certain number.",
         "$bNICKAGE$b cmp            Client has had nick this long (<Nu, <=Nu, =Nu, >=Nu or >Nu)",
+        "$bLINKED$b cmp             Connected to the network this long (<Nu, <=Nu, =Nu, >=Nu or >Nu)",
         "$bACCESS$b cmp             Access constraints (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
         "$bREASON$b reason          Reason for kill, gline or shun (must be listed last).",
         "$bDEPTH$b depth            How many domain-name parts to use for $bDOMAINS$b action.",
-        "$bDURATION$b duration      How long to apply a G-line or gag.",
+        "$bDURATION$b duration      How long to apply a G-line or gag (see $C help topic $bdurations$b).",
         "$bCLONES$b min             Ignore clients from hosts with fewer than this many connections.",
         "$bINFO_SPACE$b yes/no      Clients match only if their info starts with a space (' ') character.",
         "$bABUSE OPERS$b            Force adverse actions to affect opers as well.",
@@ -466,8 +468,9 @@
 
 "GLINE" ("/msg $O GLINE <user@host> <duration> <reason>",
         "Issues a GLINE (network ban) on the network for the speicified user@host for the specified duration (making the expiration time: net time + duration).",
+        "duration is in the form nnm, where nn is a number, and m is a charactor representing the unit (eg d for days.)",
         "Access level: $b${level/gline}$b",
-        "$uSee Also:$u trace, ungline"
+        "$uSee Also:$u trace, ungline, ($C) durations"
         );
 
 "GTRACE" ("/msg $O GTRACE <action> <criteria> [<criteria> <value>]...",

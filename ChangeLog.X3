@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-03-06  Alex Schumann  <rubin@afternet.org>
+	
+	* src/opserv.help: Added missing trace criteria to help, 
+	and fixed up a few other bits of help around that topic.
+
 2006-01-16  Alex Schumann  <rubin@afternet.org>
 
 	* src/tools.c: created an email valididty function
