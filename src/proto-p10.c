@@ -449,7 +449,11 @@ irc_delete(struct userNode *user)
 void
 irc_account(struct userNode *user, const char *stamp, time_t timestamp)
 {
-    putsock("%s " P10_ACCOUNT " %s R %s %lu", self->numeric, user->numeric, stamp, timestamp);
+    putsock("%s " P10_ACCOUNT " %s R %s %lu", self->numeric, user->numeric, stamp, timestamp); 
+
+    /*  Uncomment this, and comment above, for use on non-nefarious ircd such as undernet */
+    /* XXX: (sorry for being lame, someone who cares about undernet should make this a x3.conf setting) */
+    /* putsock("%s " P10_ACCOUNT " %s %s %lu", self->numeric, user->numeric, stamp, timestamp); */
 }
 
 void
