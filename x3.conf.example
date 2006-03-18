@@ -60,6 +60,10 @@
          "www.afternet.org", 
          "Support Staff <support@afternet.org>"
     );
+    /* extended_accounts -
+     * enable this for nefarious 0.4.x and higher. Sends 'AC R nick account'instead of
+     * 'AC nick account' and allows for renames etc. */
+    "extended_accounts" "1";
     /* the following two settings are for ircu's HEAD_IN_SAND features, and are equivelent to
      * the F: lines in ircu's ircd.conf. both can be disabled by commenting them out. */
     //"his_servername" "*.AfterNET.org"; // hidden server name, shown in remote /whois requests

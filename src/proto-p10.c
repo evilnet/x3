@@ -306,6 +306,7 @@ static unsigned int num_notice_funcs;
 static struct dict *unbursted_channels;
 static char *his_servername;
 static char *his_servercomment;
+static int extended_accounts;
 
 static struct userNode *AddUser(struct server* uplink, const char *nick, const char *ident, const char *hostname, const char *modes, const char *numeric, const char *userinfo, time_t timestamp, const char *realip);
 
@@ -437,23 +438,24 @@ irc_user(struct userNode *user)
 void
 irc_rename(struct userNode *user, const char *new_handle)
 {
-    putsock("%s " P10_ACCOUNT " %s M %s", self->numeric, user->numeric, new_handle);
+    if(extended_accounts)
+        putsock("%s " P10_ACCOUNT " %s M %s", self->numeric, user->numeric, new_handle);
 }
 
 void
 irc_delete(struct userNode *user)
 {
-    putsock("%s " P10_ACCOUNT " %s U", self->numeric, user->numeric);
+    if(extended_accounts)
+        putsock("%s " P10_ACCOUNT " %s U", self->numeric, user->numeric);
 }
 
 void
 irc_account(struct userNode *user, const char *stamp, time_t timestamp)
 {
-    putsock("%s " P10_ACCOUNT " %s R %s %lu", self->numeric, user->numeric, stamp, timestamp); 
-
-    /*  Uncomment this, and comment above, for use on non-nefarious ircd such as undernet */
-    /* XXX: (sorry for being lame, someone who cares about undernet should make this a x3.conf setting) */
-    /* putsock("%s " P10_ACCOUNT " %s %s %lu", self->numeric, user->numeric, stamp, timestamp); */
+    if(extended_accounts)
+        putsock("%s " P10_ACCOUNT " %s R %s %lu", self->numeric, user->numeric, stamp, timestamp); 
+    else
+        putsock("%s " P10_ACCOUNT " %s %s %lu", self->numeric, user->numeric, stamp, timestamp);
 }
 
 void
@@ -1107,6 +1109,9 @@ static CMD_FUNC(cmd_account)
     user = GetUserN(argv[1]);
     if (!user)
         return 1; /* A QUIT probably passed the ACCOUNT. */
+
+    if(!extended_accounts) /* any need for this function without? */
+        return 1;
     
     if(!strcmp(argv[2],"C"))
     {
@@ -1656,6 +1661,8 @@ init_parse(void)
     char numer[COMBO_NUMERIC_LEN+1];
 
     /* read config items */
+    str = conf_get_data("server/extended_accounts", RECDB_QSTRING);
+    extended_accounts = str ? enabled_string(str) : 1;
     str = conf_get_data("server/ping_freq", RECDB_QSTRING);
     ping_freq = str ? ParseInterval(str) : 120;
     str = conf_get_data("server/ping_timeout", RECDB_QSTRING);

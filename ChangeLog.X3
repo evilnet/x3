@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-03-17  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: Added conf setting for extended_accounts for
+	backward compatability with stock undernet ircd.
+
+	* x3.conf.example: Added conf setting for extended_accounts for
+	    backward compatability with stock undernet ircd.
+
 2006-03-06  Alex Schumann  <rubin@afternet.org>
 	
 	* src/opserv.help: Added missing trace criteria to help, 
