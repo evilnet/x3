@@ -3,6 +3,10 @@
 
 2006-03-17  Alex Schumann  <rubin@afternet.org>
 
+	* src/chanserv.c: more clean style changes
+
+2006-03-17  Alex Schumann  <rubin@afternet.org>
+
 	* src/chanserv.c: Added nickserv 'style' setting back. (HomeDawg
 	and dhp1080 made me do it)  Needs lots of work to remove ---- 
 	headers for 'clean' setting.

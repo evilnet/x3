@@ -443,6 +443,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_CHANNEL_OWNERSHIP_STAFF_REASON", "from %s to %s (%d access) by %s on %s reason: %s" },
     { "CSMSG_CHANNEL_OWNERSHIP_STAFF", "from %s to %s (%d access) by %s on %s" },
     { "CSMSG_CHANNEL_END",  "---------------End of Info--------------"},
+    { "CSMSG_CHANNEL_END_CLEAN",  "End of Info"},
 
     { "CSMSG_PEEK_INFO", "$bStatus of %s$b" },
     { "CSMSG_PEEK_TOPIC", "$bTopic:          $b%s" },
@@ -1813,7 +1814,8 @@ static CHANSERV_FUNC(cmd_noregister)
         dict_iterator_t it;
 
         reply("CSMSG_DNR_SEARCH_RESULTS");
-        reply("CSMSG_BAR");
+        if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+            reply("CSMSG_BAR");
         matches = 0;
         for(it = dict_first(handle_dnrs); it; it = iter_next(it))
         {
@@ -1872,7 +1874,8 @@ static CHANSERV_FUNC(cmd_noregister)
     }
 
     reply("CSMSG_DNR_SEARCH_RESULTS");
-    reply("CSMSG_BAR");
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("CSMSG_BAR");
     if(*target == '*')
         matches = chanserv_show_dnrs(user, cmd, NULL, target + 1);
     else
@@ -4049,7 +4052,8 @@ static CHANSERV_FUNC(cmd_pending)
 {
     struct adduserPending *ap;
     reply("CSMSG_ADDUSER_PENDING_HEADER");
-    reply("CSMSG_BAR");
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("CSMSG_BAR");
     for(ap = adduser_pendings;ap;ap = ap->next)
         reply("CSMSG_ADDUSER_PENDING_LIST", ap->channel->name, ap->user->nick);
     reply("CSMSG_ADDUSER_PENDING_FOOTER");
@@ -4504,7 +4508,8 @@ static CHANSERV_FUNC(cmd_info)
 
     cData = channel->channel_info;
     reply("CSMSG_CHANNEL_INFO", channel->name);
-    reply("CSMSG_BAR");
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("CSMSG_BAR");
 
     uData = GetChannelUser(cData, user->handle_info);
     if(uData && (uData->access >= UL_OP /*cData->lvlOpts[lvlGiveOps]*/))
@@ -4562,7 +4567,10 @@ static CHANSERV_FUNC(cmd_info)
         for(giveownership = cData->giveownership; giveownership; giveownership = giveownership->previous)
             show_giveownership_info(cmd, user, giveownership);
     }
-    reply("CSMSG_CHANNEL_END");
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("CSMSG_CHANNEL_END");
+    else
+        reply("CSMSG_CHANNEL_END_CLEAN");
     return 1;
 }
 
@@ -4649,7 +4657,8 @@ static CHANSERV_FUNC(cmd_peek)
     irc_make_chanmode(channel, modes);
 
     reply("CSMSG_PEEK_INFO", channel->name);
-    reply("CSMSG_BAR");
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("CSMSG_BAR");
     reply("CSMSG_PEEK_TOPIC", channel->topic);
     reply("CSMSG_PEEK_MODES", modes);
     reply("CSMSG_PEEK_USERS", channel->members.used);
@@ -5094,7 +5103,8 @@ static CHANSERV_FUNC(cmd_events)
     report.reporter = chanserv;
     report.user = user;
     reply("CSMSG_EVENT_SEARCH_RESULTS", channel->name);
-    reply("CSMSG_BAR");
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("CSMSG_BAR");
     matches = log_entry_search(&discrim, log_report_entry, &report);
     if(matches)
 	reply("MSG_MATCH_COUNT", matches);
@@ -5430,8 +5440,9 @@ static CHANSERV_FUNC(cmd_search)
 
     if(action == search_print)
     {
-	reply("CSMSG_CHANNEL_SEARCH_RESULTS");
-        reply("CSMSG_BAR");
+	    reply("CSMSG_CHANNEL_SEARCH_RESULTS");
+        if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+            reply("CSMSG_BAR");
     }
 
     matches = chanserv_channel_search(search, action, user);
@@ -5982,8 +5993,9 @@ static CHANSERV_FUNC(cmd_set)
 
     if(argc < 2)
     {
-	reply("CSMSG_CHANNEL_OPTIONS", channel->name);
-        reply("CSMSG_BAR");
+	    reply("CSMSG_CHANNEL_OPTIONS", channel->name);
+        if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+            reply("CSMSG_BAR");
         for(ii = 0; ii < set_shows_list.used; ii++)
         {
             subcmd = set_shows_list.list[ii];
