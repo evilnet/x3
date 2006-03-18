@@ -1429,7 +1429,8 @@ static int show_helper_range(struct userNode *user, struct helpserv_bot *hs, int
     }
     qsort(users.list, users.used, sizeof(users.list[0]), helpserv_user_comp);
     switch (user->handle_info->userlist_style) {
-    case HI_STYLE_DEF:
+    case default:
+    case HI_STYLE_NORMAL:
         tbl.length = users.used + 1;
         tbl.width = 3;
         tbl.flags = TABLE_NO_FREE;
@@ -1447,6 +1448,7 @@ static int show_helper_range(struct userNode *user, struct helpserv_bot *hs, int
         }
         table_send((from_opserv ? opserv : hs->helpserv), user->nick, 0, NULL, tbl);
         break;
+    /*
     case HI_STYLE_ZOOT: default:
         last_level = HlNone;
         tbl.length = 0;
@@ -1470,6 +1472,7 @@ static int show_helper_range(struct userNode *user, struct helpserv_bot *hs, int
             helpserv_notice(user, "HSMSG_USERLIST_ZOOT_LVL", hs->helpserv->nick, helpserv_level_names[last_level]);
             table_send((from_opserv ? opserv : hs->helpserv), user->nick, 0, NULL, tbl);
         }
+        */
     }
     return 1;
 }

@@ -465,6 +465,7 @@
         "$bEMAIL$b: Sets (or changes) your email address.",
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
+        "$bSTYLE$b: Your preferred output style: normal, clean, or advanced.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
@@ -482,6 +483,7 @@
         "$bEMAIL$b: Sets (or changes) your email address.",
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
+        "$bSTYLE$b: Your preferred output style: normal, clean, or advanced.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
@@ -498,6 +500,7 @@
         "$bCOLOR$b: If set, $b$N$b and $b$C$b will use $bbold$b and $uunderlines$u in text they send you.",
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
+        "$bSTYLE$b: Your preferred output style: normal, clean, or advanced.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
@@ -514,6 +517,7 @@
         "$bCOLOR$b: If set, $b$N$b and $b$C$b will use $bbold$b and $uunderlines$u in text they send you.",
         "$bINFO$b:  Your infoline for $b$N$b (which can be viewed with the $baccountinfo$b command).",
         "$bLANGUAGE$b: Your preferred language for private messages from the services.",
+        "$bSTYLE$b: Your preferred output style: normal, clean, or advanced.",
         "$bPRIVMSG$b: If set, $b$N$b and $b$C$b will send text to you using PRIVMSGs rather than NOTICEs.",
         "$bTABLEWIDTH$b: Sets the width for wrapping table-formatted text. (Use 0 for the default.)",
         "$bWIDTH$b: The width you want X3 to wrap text it sends you.  (Use 0 for the default.)",
@@ -528,6 +532,15 @@
         "Sets the language that $S and other services will use when sending you messages.",
         "If a particular message is not available in your language, it will use the closest match it has.",
         "Supported languages are: ${modcmd:languages}",
+        "$uSee Also:$u set");
+"SET STYLE" ("/msg $S SET STYLE <style>",
+        "Sets the output style that $S and other services will use when sending you messages.",
+        "The style can be:.",
+        "   Normal    - userlist has ----- seprators and does not show numeric levels.",
+        "   Clean     - userlist has no ------ seperators and does not show numeric levels.",
+        "   Advanced  - userlist has ----- seperators and also shows numeric levels.",
+        "$b $b",
+        "Many other outputs besides userlist are styled to match as well.",
         "$uSee Also:$u set");
 "STATUS" {
         "/services/nickserv/disable_nicks" (

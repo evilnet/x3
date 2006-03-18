@@ -43,11 +43,14 @@ struct svccmd;
 #define HANDLE_FLAGS "SphgscfnHbx"
 
 /* HI_STYLE_* go into handle_info.userlist_style */
-#define HI_STYLE_DEF	       'd'
-#define HI_STYLE_ZOOT	       'Z'
+#define HI_STYLE_NORMAL	       'n'
+#define HI_STYLE_CLEAN	       'c'
+#define HI_STYLE_ADVANCED      'a'
 
 #define HI_DEFAULT_FLAGS       (HI_FLAG_MIRC_COLOR)
-#define HI_DEFAULT_STYLE       HI_STYLE_DEF
+
+/* This is overridden by conf file */
+#define HI_DEFAULT_STYLE       HI_STYLE_NORMAL
 
 #define HANDLE_FLAGGED(hi, tok) ((hi)->flags & HI_FLAG_##tok)
 #define HANDLE_SET_FLAG(hi, tok) ((hi)->flags |= HI_FLAG_##tok)

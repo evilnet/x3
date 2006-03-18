@@ -354,8 +354,14 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BANS_REMOVED", "Removed all channel bans from $b%s$b." },
 
 /* Channel userlist */
-    { "CSMSG_ACCESS_ALL_HEADER", "$b%s Users From Level %s To %s$b" },
-    { "CSMSG_ACCESS_SEARCH_HEADER", "$b%s Users From Level %s To %s Matching %s$b" },
+    { "CSMSG_ACCESS_ALL_HEADER_NORMAL",      "$b%s Users From Level %s To %s$b" },
+    { "CSMSG_ACCESS_SEARCH_HEADER_NORMAL",   "$b%s Users From Level %s To %s Matching %s$b" },
+    /* uncomment if needed to adujust styles (and change code below)
+    { "CSMSG_ACCESS_ALL_HEADER_CLEAN",       "$b%s Users From Level %s To %s$b" },
+    { "CSMSG_ACCESS_SEARCH_HEADER_CLEAN",    "$b%s Users From Level %s To %s Matching %s$b" },
+    { "CSMSG_ACCESS_ALL_HEADER_ADVANCED",    "$b%s Users From Level %s To %s$b" },
+    { "CSMSG_ACCESS_SEARCH_HEADER_ADVANCED", "$b%s Users From Level %s To %s Matching %s$b" },
+    */
     { "CSMSG_INVALID_ACCESS", "$b%s$b is an invalid access level." },
     { "CSMSG_CHANGED_ACCESS", "%s now has access $b%s$b (%u) in %s." },
     { "CSMSG_LAMERS_HEADER", "$bLamers in %s$b" },
@@ -3862,13 +3868,13 @@ zoot_list(struct listData *list)
 */
 
 static void
-def_list(struct listData *list)
+normal_list(struct listData *list)
 {
     const char *msg;
     if(list->search)
-        send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest), list->search);
+        send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER_NORMAL", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest), list->search);
     else
-        send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest));
+        send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER_NORMAL", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest));
     if(list->table.length == 1)
     {
         msg = user_find_message(list->user, "MSG_NONE");
@@ -3877,6 +3883,43 @@ def_list(struct listData *list)
     else
         table_send(list->bot, list->user->nick, 0, NULL, list->table);
 }
+
+/* if these need changed, uncomment and customize 
+static void
+clean_list(struct listData *list)
+{
+    const char *msg;
+    if(list->search)
+        send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER_CLEAN", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest), list->search);
+    else
+        send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER_CLEAN", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest));
+    if(list->table.length == 1)
+    {
+        msg = user_find_message(list->user, "MSG_NONE");
+        send_message_type(4, list->user, list->bot, "  %s", msg);
+    }
+    else
+        table_send(list->bot, list->user->nick, 0, NULL, list->table);
+}
+
+static void
+advanced_list(struct listData *list)
+{
+    const char *msg;
+    if(list->search)
+        send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER_ADVANCED", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest), list->search);
+    else
+        send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER_ADVANCED", list->channel->name, user_level_name_from_level(list->lowest), user_level_name_from_level(list->highest));
+    if(list->table.length == 1)
+    {
+        msg = user_find_message(list->user, "MSG_NONE");
+        send_message_type(4, list->user, list->bot, "  %s", msg);
+    }
+    else
+        table_send(list->bot, list->user->nick, 0, NULL, list->table);
+} 
+
+*/
 
 static int
 userData_access_comp(const void *arg_a, const void *arg_b)
@@ -3899,6 +3942,8 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     struct listData lData;
     unsigned int matches;
     const char **ary;
+    int i = 0;
+    int seen_index;
 
     lData.user = user;
     lData.bot = cmd->parent->bot;
@@ -3906,20 +3951,29 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     lData.lowest = lowest;
     lData.highest = highest;
     lData.search = (argc > 1) ? argv[1] : NULL;
-    send_list = def_list;
+    send_list = normal_list;
     /* What does the following line do exactly?? */
     /*(void)zoot_list; ** since it doesn't show user levels */
 
-    /* this does nothing!! -rubin
+    /*
     if(user->handle_info)
     {
-	switch(user->handle_info->userlist_style)
-	{
-	case HI_STYLE_DEF: send_list = def_list; break;
-        case HI_STYLE_ZOOT: send_list = def_list; break;
-	}
+        switch(user->handle_info->userlist_style)
+        {
+            case HI_STYLE_CLEAN: 
+                send_list = clean_list; 
+                break;
+            case HI_STYLE_ADVANCED: 
+                send_list = advanced_list; 
+                break;
+            case HI_STYLE_NORMAL: 
+            default: 
+                send_list = normal_list; 
+                break;
+        }
     }
     */
+    send_list = normal_list;
 
     lData.users = alloca(channel->channel_info->userCount * sizeof(struct userData *));
     matches = 0;
@@ -3934,45 +3988,54 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     qsort(lData.users, matches, sizeof(lData.users[0]), userData_access_comp);
 
     lData.table.length = matches+1;
-    lData.table.width = 5;
     lData.table.flags = TABLE_NO_FREE;
     lData.table.contents = malloc(lData.table.length*sizeof(*lData.table.contents));
+
+    if(user->handle_info->userlist_style == HI_STYLE_ADVANCED)
+        lData.table.width = 5; /* with level = 5 */
+    else
+        lData.table.width = 4; /* without = 4 */
     ary = malloc(lData.table.width*sizeof(**lData.table.contents));
     lData.table.contents[0] = ary;
-    ary[0] = "Access";
-    ary[1] = "Level";
-    ary[2] = "Account";
-    ary[3] = "Last Seen";
-    ary[4] = "Status";
+    ary[i++] = "Access";
+    if(user->handle_info->userlist_style == HI_STYLE_ADVANCED)
+        ary[i++] = "Level"; /* Only on advanced view */
+    ary[i++] = "Account";
+    ary[i] = "Last Seen";
+    seen_index = i++;
+    ary[i++] = "Status";
     for(matches = 1; matches < lData.table.length; ++matches)
     {
         struct userData *uData = lData.users[matches-1];
         char seen[INTERVALLEN];
 
+        i = 0;
         ary = malloc(lData.table.width*sizeof(**lData.table.contents));
         lData.table.contents[matches] = ary;
-        /* ary[0] = strtab(uData->access);*/
-        ary[0] = user_level_name_from_level(uData->access);
-        ary[1] = strtab(uData->access);
-        ary[2] = uData->handle->handle;
+        ary[i++] = user_level_name_from_level(uData->access);
+        if(user->handle_info->userlist_style == HI_STYLE_ADVANCED)
+            ary[i++] = strtab(uData->access);
+        ary[i++] = uData->handle->handle;
         if(uData->present)
-            ary[3] = "Here";
+            ary[i] = "Here";
         else if(!uData->seen)
-            ary[3] = "Never";
+            ary[i] = "Never";
         else
-            ary[3] = intervalString(seen, now - uData->seen, user->handle_info);
-        ary[3] = strdup(ary[3]);
+            ary[i] = intervalString(seen, now - uData->seen, user->handle_info);
+        ary[i] = strdup(ary[i]);
+        i++;
         if(IsUserSuspended(uData))
-            ary[4] = "Suspended";
+            ary[i++] = "Suspended";
         else if(HANDLE_FLAGGED(uData->handle, FROZEN))
-            ary[4] = "Vacation";
+            ary[i++] = "Vacation";
         else
-            ary[4] = "Normal";
+            ary[i++] = "Normal";
     }
     send_list(&lData);
     for(matches = 1; matches < lData.table.length; ++matches)
     {
-        free((char*)lData.table.contents[matches][3]);
+        /* Free strdup above */
+        free((char*)lData.table.contents[matches][seen_index]);
         free(lData.table.contents[matches]);
     }
     free(lData.table.contents[0]);
@@ -4876,16 +4939,16 @@ note_type_settable_by_user(struct chanNode *channel, struct note_type *ntype, st
 
     switch(ntype->set_access_type)
     {
-    case NOTE_SET_CHANNEL_ACCESS:
-        if(!user->handle_info)
-            return 0;
-        if(!(uData = GetChannelUser(channel->channel_info, user->handle_info)))
-            return 0;
-        return uData->access >= ntype->set_access.min_ulevel;
-    case NOTE_SET_CHANNEL_SETTER:
-        return check_user_level(channel, user, lvlSetters, 1, 0);
-    case NOTE_SET_PRIVILEGED: default:
-        return IsHelping(user) && (user->handle_info->opserv_level >= ntype->set_access.min_opserv);
+        case NOTE_SET_CHANNEL_ACCESS:
+            if(!user->handle_info)
+                return 0;
+            if(!(uData = GetChannelUser(channel->channel_info, user->handle_info)))
+                return 0;
+            return uData->access >= ntype->set_access.min_ulevel;
+        case NOTE_SET_CHANNEL_SETTER:
+            return check_user_level(channel, user, lvlSetters, 1, 0);
+        case NOTE_SET_PRIVILEGED: default:
+            return IsHelping(user) && (user->handle_info->opserv_level >= ntype->set_access.min_opserv);
     }
 }
 
@@ -6492,13 +6555,13 @@ void eightball(char *outcome, int method, unsigned int seed)
         case 4: strcpy(tmp, "A gross kind of mucky %s.");
                 break;
         case 5: strcpy(tmp, "Brilliant whiteish %s.");
-		break;
-	case 6: case 7: case 8: case 9: strcpy(tmp, "%s.");
-		break;
-	case 10: strcpy(tmp, "Solid %s.");
-	        break;
-	case 11: strcpy(tmp, "Transparent %s.");
-		 break;
+		        break;
+        case 6: case 7: case 8: case 9: strcpy(tmp, "%s.");
+                break;
+        case 10: strcpy(tmp, "Solid %s.");
+                break;
+        case 11: strcpy(tmp, "Transparent %s.");
+		        break;
         default: strcpy(outcome, "An invalid random number was generated.");
                 return;
       }
@@ -8035,21 +8098,22 @@ chanserv_write_note_type(struct saxdb_context *ctx, struct note_type *ntype)
     saxdb_start_record(ctx, ntype->name, 0);
     switch(ntype->set_access_type)
     {
-    case NOTE_SET_CHANNEL_ACCESS:
-        saxdb_write_int(ctx, KEY_NOTE_CHANNEL_ACCESS, ntype->set_access.min_ulevel);
-        break;
-    case NOTE_SET_CHANNEL_SETTER:
-        saxdb_write_int(ctx, KEY_NOTE_SETTER_ACCESS, 1);
-        break;
-    case NOTE_SET_PRIVILEGED: default:
-        saxdb_write_int(ctx, KEY_NOTE_OPSERV_ACCESS, ntype->set_access.min_opserv);
-        break;
+        case NOTE_SET_CHANNEL_ACCESS:
+            saxdb_write_int(ctx, KEY_NOTE_CHANNEL_ACCESS, ntype->set_access.min_ulevel);
+            break;
+        case NOTE_SET_CHANNEL_SETTER:
+            saxdb_write_int(ctx, KEY_NOTE_SETTER_ACCESS, 1);
+            break;
+        case NOTE_SET_PRIVILEGED: default:
+            saxdb_write_int(ctx, KEY_NOTE_OPSERV_ACCESS, ntype->set_access.min_opserv);
+            break;
     }
     switch(ntype->visible_type)
     {
-    case NOTE_VIS_ALL: str = KEY_NOTE_VIS_ALL; break;
-    case NOTE_VIS_CHANNEL_USERS: str = KEY_NOTE_VIS_CHANNEL_USERS; break;
-    case NOTE_VIS_PRIVILEGED: default: str = KEY_NOTE_VIS_PRIVILEGED; break;
+        case NOTE_VIS_ALL: str = KEY_NOTE_VIS_ALL; break;
+        case NOTE_VIS_CHANNEL_USERS: str = KEY_NOTE_VIS_CHANNEL_USERS; break;
+        case NOTE_VIS_PRIVILEGED: 
+        default: str = KEY_NOTE_VIS_PRIVILEGED; break;
     }
     saxdb_write_string(ctx, KEY_NOTE_VISIBILITY, str);
     saxdb_write_int(ctx, KEY_NOTE_MAX_LENGTH, ntype->max_length);

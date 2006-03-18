@@ -178,7 +178,6 @@
             "drain-rate" "0.05";
         };
 
-
         // How to integrate with email cookies?
         // In order to use mail, mail must be enabled and configured
         // down below in the mail section of this config file.
@@ -197,6 +196,9 @@
         // a bunch of custom PHP scripts to make our websites SQL user db the same as authserv, every 5 minutes.
         // You have to be a pretty handy person with the shell commands and programming to make use of this..
         "sync_log" "0";  // Log account changes to a file for syncing w/ a website?
+
+        // Nickserv 'style' setting affects .userlist and other outputs.
+        "default_style" "n"; // can be: n = normal, c = clean, or a = advanced.
     };
 
     /* 

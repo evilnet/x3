@@ -3,6 +3,22 @@
 
 2006-03-17  Alex Schumann  <rubin@afternet.org>
 
+	* src/chanserv.c: Added nickserv 'style' setting back. (HomeDawg
+	and dhp1080 made me do it)  Needs lots of work to remove ---- 
+	headers for 'clean' setting.
+
+	* src/helpfile.c: Added nickserv 'style' stetting back.
+
+	* src/nickserv.help: Added help for set style.
+
+	* src/mod-helpserv.c: make style affect table outputs.
+
+	* src/nickserv.c: Added nickserv 'style' setting back.
+
+	* src/nickserv.h: Added nickserve 'style' setting back.
+
+2006-03-17  Alex Schumann  <rubin@afternet.org>
+
 	* src/proto-p10.c: Added conf setting for extended_accounts for
 	backward compatability with stock undernet ircd.
 

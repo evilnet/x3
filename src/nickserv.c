@@ -72,6 +72,7 @@
 #define KEY_COOKIE_TIMEOUT "cookie_timeout"
 #define KEY_ACCOUNTS_PER_EMAIL "accounts_per_email"
 #define KEY_EMAIL_SEARCH_LEVEL "email_search_level"
+#define KEY_DEFAULT_STYLE "default_style"
 
 #define KEY_ID "id"
 #define KEY_PASSWD "passwd"
@@ -407,6 +408,7 @@ static struct {
     unsigned char hard_maxlogins;
     const char *auto_oper;
     const char *auto_admin;
+    char default_style;
 } nickserv_conf;
 
 /* We have 2^32 unique account IDs to use. */
@@ -2408,7 +2410,7 @@ set_list(struct userNode *user, struct handle_info *hi, int override)
     option_func_t *opt;
     unsigned int i;
     char *set_display[] = {
-        "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", /* "STYLE", */
+        "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", "STYLE",
         "EMAIL", "ANNOUNCEMENTS", "AUTOHIDE", "MAXLOGINS", "LANGUAGE",
         "FAKEHOST", "TITLE", "EPITHET"
     };
@@ -2559,31 +2561,34 @@ static OPTION_FUNC(opt_autohide)
     return 1;
 }
 
-/*
 static OPTION_FUNC(opt_style)
 {
     char *style;
 
     if (argc > 1) {
-	if (!irccasecmp(argv[1], "Zoot"))
-	    hi->userlist_style = HI_STYLE_ZOOT;
-	else if (!irccasecmp(argv[1], "def"))
-	    hi->userlist_style = HI_STYLE_DEF;
-    }
+        if (!irccasecmp(argv[1], "Clean"))
+            hi->userlist_style = HI_STYLE_CLEAN;
+        else if (!irccasecmp(argv[1], "Advanced"))
+            hi->userlist_style = HI_STYLE_ADVANCED;
+        else  /* Default to normal */
+            hi->userlist_style = HI_STYLE_NORMAL;
+    } /* TODO: give error if unknow style is chosen */
 
     switch (hi->userlist_style) {
-    case HI_STYLE_DEF:
-	style = "def";
-	break;
-    case HI_STYLE_ZOOT:
-    default:
-	style = "Zoot";
+        case HI_STYLE_ADVANCED:
+            style = "Advanced";
+            break;
+        case HI_STYLE_CLEAN:
+            style = "Clean";
+            break;
+        case HI_STYLE_NORMAL:
+        default:
+        style = "Normal";
     }
 
     send_message(user, nickserv, "NSMSG_SET_STYLE", style);
     return 1;
 }
-*/
 
 static OPTION_FUNC(opt_announcements)
 {
@@ -3664,7 +3669,7 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
             hi->flags |= 1 << (handle_inverse_flags[(unsigned char)str[ii]] - 1);
     }
     str = database_get_data(obj, KEY_USERLIST_STYLE, RECDB_QSTRING);
-    hi->userlist_style = str ? str[0] : HI_STYLE_ZOOT;
+    hi->userlist_style = str ? str[0] : HI_DEFAULT_STYLE;
     str = database_get_data(obj, KEY_ANNOUNCEMENTS, RECDB_QSTRING);
     hi->announcements = str ? str[0] : '?';
     str = database_get_data(obj, KEY_SCREEN_WIDTH, RECDB_QSTRING);
@@ -3975,6 +3980,9 @@ nickserv_conf_read(void)
     str = database_get_data(conf_node, KEY_TITLEHOST_SUFFIX, RECDB_QSTRING);
     nickserv_conf.titlehost_suffix = str ? str : "example.net";
 
+    str = database_get_data(conf_node, KEY_DEFAULT_STYLE, RECDB_QSTRING);
+    nickserv_conf.default_style = str ? str[0] : HI_DEFAULT_STYLE;
+
     str = database_get_data(conf_node, KEY_AUTO_OPER, RECDB_QSTRING);
     nickserv_conf.auto_oper = str ? str : "";
 
@@ -4241,7 +4249,7 @@ init_nickserv(const char *nick)
     dict_insert(nickserv_opt_dict, "COLOR", opt_color);
     dict_insert(nickserv_opt_dict, "PRIVMSG", opt_privmsg);
     dict_insert(nickserv_opt_dict, "AUTOHIDE", opt_autohide);
-/*    dict_insert(nickserv_opt_dict, "STYLE", opt_style); */
+    dict_insert(nickserv_opt_dict, "STYLE", opt_style); 
     dict_insert(nickserv_opt_dict, "PASS", opt_password);
     dict_insert(nickserv_opt_dict, "PASSWORD", opt_password);
     dict_insert(nickserv_opt_dict, "FLAGS", opt_flags);
