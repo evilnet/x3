@@ -3994,14 +3994,14 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     lData.table.flags = TABLE_NO_FREE;
     lData.table.contents = malloc(lData.table.length*sizeof(*lData.table.contents));
 
-    if(user->handle_info->userlist_style == HI_STYLE_ADVANCED)
+    if(user->handle_info && user->handle_info->userlist_style == HI_STYLE_ADVANCED)
         lData.table.width = 5; /* with level = 5 */
     else
         lData.table.width = 4; /* without = 4 */
     ary = malloc(lData.table.width*sizeof(**lData.table.contents));
     lData.table.contents[0] = ary;
     ary[i++] = "Access";
-    if(user->handle_info->userlist_style == HI_STYLE_ADVANCED)
+    if(user->handle_info && user->handle_info->userlist_style == HI_STYLE_ADVANCED)
         ary[i++] = "Level"; /* Only on advanced view */
     ary[i++] = "Account";
     ary[i] = "Last Seen";
@@ -4016,7 +4016,7 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
         ary = malloc(lData.table.width*sizeof(**lData.table.contents));
         lData.table.contents[matches] = ary;
         ary[i++] = user_level_name_from_level(uData->access);
-        if(user->handle_info->userlist_style == HI_STYLE_ADVANCED)
+        if(user->handle_info && user->handle_info->userlist_style == HI_STYLE_ADVANCED)
             ary[i++] = strtab(uData->access);
         ary[i++] = uData->handle->handle;
         if(uData->present)

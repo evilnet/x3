@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-03-20  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: core fix; check if theres a handle_info before looking
+	at style...
+
 2006-03-17  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: more clean style changes
