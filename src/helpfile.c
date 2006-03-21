@@ -366,10 +366,10 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
         sepstr = malloc(sepsize + 1);
         memset(sepstr, '-', sepsize);
         sepstr[sepsize] = 0;
-        if(hi->userlist_style != HI_STYLE_CLEAN)
+        if(hi && hi->userlist_style != HI_STYLE_CLEAN)
             irc_send(from, to, sepstr); /* ----------------- */
         irc_send(from, to, line);   /* alpha  beta   roe */
-        if(hi->userlist_style != HI_STYLE_CLEAN)
+        if(hi && hi->userlist_style != HI_STYLE_CLEAN)
             irc_send(from, to, sepstr); /* ----------------- */
         ii = 1;
     }
@@ -406,7 +406,7 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
            sepstr[sepsize/2+1]= 'd';
         }
 
-        if(hi->userlist_style != HI_STYLE_CLEAN)
+        if(hi && hi->userlist_style != HI_STYLE_CLEAN)
             irc_send(from, to, sepstr);
         free(sepstr);
     }

@@ -6,6 +6,9 @@
 	* src/chanserv.c: core fix; check if theres a handle_info before looking
 	at style...
 
+	* src/helpfile.c: core fix; check if theres a handle_info before looking
+	at style...
+
 2006-03-17  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: more clean style changes
