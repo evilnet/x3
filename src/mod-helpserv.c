@@ -1429,7 +1429,7 @@ static int show_helper_range(struct userNode *user, struct helpserv_bot *hs, int
     }
     qsort(users.list, users.used, sizeof(users.list[0]), helpserv_user_comp);
     switch (user->handle_info->userlist_style) {
-    case default:
+    default:
     case HI_STYLE_NORMAL:
         tbl.length = users.used + 1;
         tbl.width = 3;
