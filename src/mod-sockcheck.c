@@ -207,7 +207,7 @@ sockcheck_issue_gline(sockcheck_cache_info sci)
     strcpy(target, "*@");
     strcpy(target+2, sci->hostname);
     log_module(PC_LOG, LOG_INFO, "Issuing gline for client at IP %s hostname %s: %s", inet_ntoa(sci->addr), sci->hostname, sci->reason);
-    gline_add("ProxyCheck", target, sockcheck_conf.gline_duration, sci->reason, now, 1);
+    gline_add("ProxyCheck", target, sockcheck_conf.gline_duration, sci->reason, now, 1, 1);
 }
 
 static struct sockcheck_client *
