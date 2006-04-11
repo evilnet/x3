@@ -1391,7 +1391,7 @@ static NICKSERV_FUNC(cmd_oregister)
     struct userNode *settee;
     struct handle_info *hi;
 
-    NICKSERV_MIN_PARMS(nickserv_conf.email_required ? 5 : 4);
+    NICKSERV_MIN_PARMS(nickserv_conf.email_required ? 4 : 3);
 
     if (!is_valid_handle(argv[1])) {
         reply("NSMSG_BAD_HANDLE", argv[1]);
