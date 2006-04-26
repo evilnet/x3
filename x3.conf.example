@@ -273,8 +273,14 @@
 
     "chanserv" {
         "nick" "X3";
-        // Does your ircd have off-channel services support?
-        // Bahamut has it, Nefarious has it, but its inharently flawed and will cause desynch, so don't use it.
+
+        // The off_channel setting takes one of three numerical values:
+        //   0 = off
+        //   1 = use a registered channel mode, have services op themselves
+        //   2 = all of the above, and a channel setting to have ChanServ not
+        //       idle in the channel
+        // NOTE: +z mode, needed for this to work,  is inharently flawed and 
+        //       will cause desynch, so don't use it IMO -Rubin.
         "off_channel" "no";
 
         // Infolines are sent when channel users join the channel. Users set them with USET INFO in X3.
