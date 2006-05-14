@@ -312,6 +312,8 @@ static struct userNode *AddUser(struct server* uplink, const char *nick, const c
 
 extern int off_channel;
 
+static int parse_oplevel(char *str);
+
 /* Numerics can be XYY, XYYY, or XXYYY; with X's identifying the
  * server and Y's indentifying the client on that server. */
 struct server*
@@ -381,22 +383,96 @@ irc_server(struct server *srv)
 
     inttobase64(extranum, srv->num_mask, (srv->numeric[1] || (srv->num_mask >= 64*64)) ? 3 : 2);
     if (srv == self) {
-        /* The +s, ignored by Run's ircu, means "service" to Undernet's ircu */
-        putsock(P10_SERVER " %s %d %li %li J10 %s%s +s :%s",
+        putsock(P10_SERVER " %s %d %li %li J10 %s%s +s6 :%s",
                 srv->name, srv->hops+1, srv->boot, srv->link, srv->numeric, extranum, srv->description);
     } else {
-        putsock("%s " P10_SERVER " %s %d %li %li %c10 %s%s +s :%s",
+        putsock("%s " P10_SERVER " %s %d %li %li %c10 %s%s +s6 :%s",
                 self->numeric, srv->name, srv->hops+1, srv->boot, srv->link, (srv->self_burst ? 'J' : 'P'), srv->numeric, extranum, srv->description);
+    }
+}
+
+static void
+irc_p10_pton(irc_in_addr_t *ip, const char *input)
+{
+    if (strlen(input) == 6) {
+        unsigned int value;
+        memset(ip, 0, 6 * sizeof(ip->in6[0]));
+        value = base64toint(input, 6);
+        if (value)
+            ip->in6[5] = htons(65535);
+        ip->in6[6] = htons(value >> 16);
+        ip->in6[7] = htons(value & 65535);
+    } else {
+        unsigned int pos = 0;
+        do {
+            if (*input == '_') {
+                unsigned int left;
+                for (left = (25 - strlen(input)) / 3; left; left--)
+                    ip->in6[pos++] = 0;
+                input++;
+            } else {
+                ip->in6[pos++] = ntohs(base64toint(input, 3));
+                input += 3;
+            }
+        } while (pos < 8);
+    }
+}
+
+static void
+irc_p10_ntop(char *output, const irc_in_addr_t *ip)
+{
+    if (!irc_in_addr_is_valid(*ip)) {
+        strcpy(output, "AAAAAA");
+    } else if (irc_in_addr_is_ipv4(*ip)) {
+        unsigned int in4;
+        in4 = (ntohs(ip->in6[6]) << 16) | ntohs(ip->in6[7]);
+        inttobase64(output, in4, 6);
+        output[6] = '\0';
+    } else if (irc_in_addr_is_ipv6(*ip)) {
+        unsigned int max_start, max_zeros, curr_zeros, zero, ii;
+        /* Can start by printing out the leading non-zero parts. */
+        for (ii = 0; (ip->in6[ii]) && (ii < 8); ++ii) {
+            inttobase64(output, ntohs(ip->in6[ii]), 3);
+            output += 3;
+        }
+        /* Find the longest run of zeros. */
+        for (max_start = zero = ii, max_zeros = curr_zeros = 0; ii < 8; ++ii) {
+            if (!ip->in6[ii])
+                curr_zeros++;
+            else if (curr_zeros > max_zeros) {
+                max_start = ii - curr_zeros;
+                max_zeros = curr_zeros;
+                curr_zeros = 0;
+            }
+        }
+        if (curr_zeros > max_zeros) {
+            max_start = ii - curr_zeros;
+            max_zeros = curr_zeros;
+            curr_zeros = 0;
+        }
+        /* Print the rest of the address */
+        for (ii = zero; ii < 8; ) {
+            if ((ii == max_start) && max_zeros) {
+                *output++ = '_';
+                ii += max_zeros;
+            } else {
+                inttobase64(output, ntohs(ip->in6[ii]), 3);
+                output += 3;
+            }
+        }
+        *output = '\0';
+    } else {
+        strcpy(output, "???");
     }
 }
 
 void
 irc_user(struct userNode *user)
 {
-    char b64ip[7];
+    char b64ip[25];
     if (!user)
         return;
-    inttobase64(b64ip, ntohl(user->ip.s_addr), 6);
+    irc_p10_ntop(b64ip, &user->ip);
     if (user->modes) {
         int modelen;
         char modes[32];
@@ -558,6 +634,21 @@ void
 irc_pong(const char *who, const char *data)
 {
     putsock("%s " P10_PONG " %s :%s", self->numeric, who, data);
+}
+
+void
+irc_pong_asll(const char *who, const char *orig_ts)
+{
+    char *delim;
+    struct timeval orig;
+    struct timeval now;
+    int diff;
+
+    orig.tv_sec = strtoul(orig_ts, &delim, 10);
+    orig.tv_usec = (*delim == '.') ? strtoul(delim + 1, NULL, 10) : 0;
+    gettimeofday(&now, NULL);
+    diff = (now.tv_sec - orig.tv_sec) * 1000 + (now.tv_usec - orig.tv_usec) / 1000;
+    putsock("%s " P10_PONG " %s %s %d " FMT_TIME_T ".%06u", self->numeric, who, orig_ts, diff, now.tv_sec, (unsigned)now.tv_usec);
 }
 
 void
@@ -980,8 +1071,8 @@ static CMD_FUNC(cmd_ping)
     struct server *srv;
     struct userNode *un;
 
-    if(argc > 3)
-        irc_pong(argv[2], argv[1]);
+    if (argc > 3)
+        irc_pong_asll(argv[2], argv[3]);
     else if ((srv = GetServerH(origin)))
         irc_pong(self->name, srv->numeric);
     else if ((un = GetUserH(origin)))
@@ -1158,6 +1249,7 @@ static CMD_FUNC(cmd_burst)
     struct userNode *un;
     struct modeNode *mNode;
     long mode;
+    int oplevel = -1;
     char *user, *end, sep;
     time_t in_timestamp;
     char* parm = NULL;
@@ -1175,7 +1267,8 @@ static CMD_FUNC(cmd_burst)
             const char *pos;
             int n_modes;
             for (pos=argv[next], n_modes = 1; *pos; pos++)
-                if ((*pos == 'k') || (*pos == 'l'))
+                if ((*pos == 'k') || (*pos == 'l') || (*pos == 'A')
+                    || (*pos == 'U'))
                     n_modes++;
             unsplit_string(argv+next, n_modes, modes);
             next += n_modes;
@@ -1243,14 +1336,21 @@ static CMD_FUNC(cmd_burst)
         if (sep == ':') {
             mode = 0;
             while ((sep = *end++)) {
-                if (sep == 'o')
+                if (sep == 'o') {
                     mode |= MODE_CHANOP;
-                else if (sep == 'h')
+                    oplevel = -1;
+                } else if (sep == 'h') {
                     mode |= MODE_HALFOP;
-                else if (sep == 'v')
+                    oplevel = -1;
+                } else if (sep == 'v') {
                     mode |= MODE_VOICE;
-                else if (isdigit(sep)) {
+                    oplevel = -1;
+                } else if (isdigit(sep)) {
                     mode |= MODE_CHANOP;
+                    if (oplevel >= 0)
+                        oplevel += parse_oplevel(end);
+                    else
+                        oplevel = parse_oplevel(end);
                     while (isdigit(*end)) end++;
                 } else
                     break;
@@ -1262,8 +1362,10 @@ static CMD_FUNC(cmd_burst)
             res = 0;
             continue;
         }
-        if ((mNode = AddChannelUser(un, cNode)))
+        if ((mNode = AddChannelUser(un, cNode))) {
             mNode->modes = mode;
+            mNode->oplevel = oplevel;
+        }
     }
 
     return res;
@@ -1876,15 +1978,18 @@ static void
 parse_foreach(char *target_list, foreach_chanfunc cf, foreach_nonchan nc, foreach_userfunc uf, foreach_nonuser nu, void *data)
 {
     char *j, old;
+
     do {
         j = target_list;
         while (*j != 0 && *j != ',')
             j++;
         old = *j;
         *j = 0;
+
         if (IsChannelName(target_list)
             || (target_list[0] == '0' && target_list[1] == '\0')) {
             struct chanNode *chan = GetChannel(target_list);
+
             if (chan) {
                 if (cf)
                     cf(chan, data);
@@ -2150,7 +2255,7 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     safestrncpy(uNode->info, userinfo, sizeof(uNode->info));
     safestrncpy(uNode->hostname, hostname, sizeof(uNode->hostname));
     safestrncpy(uNode->numeric, numeric, sizeof(uNode->numeric));
-    uNode->ip.s_addr = htonl(base64toint(realip, 6));
+    irc_p10_pton(&uNode->ip, realip);
     uNode->timestamp = timestamp;
     modeList_init(&uNode->channels);
     uNode->uplink = uplink;
@@ -2318,7 +2423,7 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 }
 
 struct mod_chanmode *
-mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, unsigned int flags)
+mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, unsigned int flags, short base_oplevel)
 {
     struct mod_chanmode *change;
     unsigned int ii, in_arg, ch_arg, add;
@@ -2392,6 +2497,37 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
                 }
             }
             break;
+        case 'U':
+            if (add)
+            {
+              if (in_arg >= argc)
+                  goto error;
+              change->modes_set |= MODE_UPASS;
+              safestrncpy(change->new_upass, modes[in_arg++], sizeof(change->new_upass));
+            } else {
+                change->modes_clear |= MODE_UPASS;
+                if (!(flags & MCP_UPASS_FREE)) {
+                    if (in_arg >= argc)
+                        goto error;
+                    in_arg++;
+                }
+            }
+            break;
+        case 'A':
+            if (add) {
+                if (in_arg >= argc)
+                    goto error;
+                change->modes_set |= MODE_APASS;
+                safestrncpy(change->new_apass, modes[in_arg++], sizeof(change->new_apass));
+            } else {
+                change->modes_clear |= MODE_APASS;
+                if (!(flags & MCP_APASS_FREE)) {
+                    if (in_arg >= argc)
+                      goto error;
+                    in_arg++;
+                }
+            }
+            break;
         case 'b':
             if (!(flags & MCP_ALLOW_OVB))
                 goto error;
@@ -2415,6 +2551,29 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'o': case 'h': case 'v':
         {
             struct userNode *victim;
+            char *oplevel_str;
+            int oplevel;
+
+            if (in_arg >= argc)
+                goto error;
+            oplevel_str = strchr(modes[in_arg], ':');
+            if (oplevel_str)
+            {
+                /* XXYYY M #channel +o XXYYY:<oplevel> */
+                *oplevel_str++ = '\0';
+                oplevel = parse_oplevel(oplevel_str);
+                if (oplevel <= base_oplevel && !(flags & MCP_FROM_SERVER))
+                    oplevel = base_oplevel + 1;
+            }
+            else if (channel->modes & MODE_UPASS)
+                oplevel = base_oplevel + 1;
+            else
+                oplevel = -1;
+
+            /* Check that oplevel is within bounds. */
+            if (oplevel > MAXOPLEVEL)
+                oplevel = MAXOPLEVEL;
+
             if (!(flags & MCP_ALLOW_OVB))
                 goto error;
             if (in_arg >= argc)
@@ -2436,7 +2595,11 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
             if (!victim)
                 continue;
             if ((change->args[ch_arg].u.member = GetUserMode(channel, victim)))
+            {
+                /* Apply the oplevel change */
+                change->args[ch_arg].u.member->oplevel = oplevel;
                 ch_arg++;
+            }
             break;
         }
         default:
@@ -2537,6 +2700,10 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
 #undef DO_MODE_CHAR
         if (change->modes_clear & channel->modes & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', channel->key);
+        if (change->modes_clear & channel->modes & MODE_UPASS)
+            mod_chanmode_append(&chbuf, 'U', channel->upass);
+        if (change->modes_clear * channel->modes & MODE_APASS)
+            mod_chanmode_append(&chbuf, 'A', channel->apass);
     }
     for (arg = 0; arg < change->argc; ++arg) {
         if (!(change->args[arg].mode & MODE_REMOVE))
@@ -2589,6 +2756,10 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
 #undef DO_MODE_CHAR
         if(change->modes_set & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', change->new_key);
+        if (change->modes_set & MODE_UPASS)
+            mod_chanmode_append(&chbuf, 'U', change->new_upass);
+        if (change->modes_set & MODE_APASS)
+            mod_chanmode_append(&chbuf, 'A', change->new_apass);
         if(change->modes_set & MODE_LIMIT) {
             sprintf(int_buff, "%d", change->new_limit);
             mod_chanmode_append(&chbuf, 'l', int_buff);
@@ -2642,6 +2813,8 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOPRIVMSGS, 'n');
         DO_MODE_CHAR(LIMIT, 'l');
         DO_MODE_CHAR(KEY, 'k');
+        DO_MODE_CHAR(UPASS, 'U');
+        DO_MODE_CHAR(APASS, 'A');
         DO_MODE_CHAR(DELAYJOINS, 'D');
         DO_MODE_CHAR(REGONLY, 'r');
         DO_MODE_CHAR(NOCOLORS, 'c');
@@ -2680,9 +2853,50 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
-        switch (change->modes_set & (MODE_KEY|MODE_LIMIT)) {
+        switch (change->modes_set & (MODE_KEY|MODE_LIMIT|MODE_APASS|MODE_UPASS)) {
+        /* Doing this implementation has been a pain in the arse, I hope I didn't forget a possible combination */
+        case MODE_KEY|MODE_LIMIT|MODE_APASS|MODE_UPASS:
+            used += sprintf(outbuff+used, "lkAU %d %s %s %s", change->new_limit, change->new_key,change->new_apass, change->new_upass);
+            break;
+
+        case MODE_KEY|MODE_LIMIT|MODE_APASS:
+            used += sprintf(outbuff+used, "lkA %d %s %s", change->new_limit, change->new_key, change->new_apass);
+            break;
+        case MODE_KEY|MODE_LIMIT|MODE_UPASS:
+            used += sprintf(outbuff+used, "lkU %d %s %s", change->new_limit, change->new_key, change->new_upass);
+            break;
+        case MODE_KEY|MODE_APASS|MODE_UPASS:
+            used += sprintf(outbuff+used, "kAU %s %s %s", change->new_key, change->new_apass, change->new_upass);
+            break;
+
+        case MODE_KEY|MODE_APASS:
+            used += sprintf(outbuff+used, "kA %s %s", change->new_key, change->new_apass);
+            break;
+        case MODE_KEY|MODE_UPASS:
+            used += sprintf(outbuff+used, "kU %s %s", change->new_key, change->new_upass);
+            break;
         case MODE_KEY|MODE_LIMIT:
             used += sprintf(outbuff+used, "lk %d %s", change->new_limit, change->new_key);
+            break;
+
+        case MODE_LIMIT|MODE_UPASS:
+            used += sprintf(outbuff+used, "lU %d %s", change->new_limit, change->new_upass);
+            break;
+        case MODE_LIMIT|MODE_APASS:
+            used += sprintf(outbuff+used, "lA %d %s", change->new_limit, change->new_apass);
+            break;
+        case MODE_APASS|MODE_UPASS:
+            used += sprintf(outbuff+used, "AU %s %s", change->new_apass, change->new_upass);
+
+        case MODE_LIMIT|MODE_APASS|MODE_UPASS:
+            used += sprintf(outbuff+used, "lAU %d %s %s", change->new_limit, change->new_apass, change->new_upass);
+            break;
+
+        case MODE_APASS:
+            used += sprintf(outbuff+used, "A %s", change->new_apass);
+            break;
+        case MODE_UPASS:
+            used += sprintf(outbuff+used, "U %s", change->new_upass);
             break;
         case MODE_KEY:
             used += sprintf(outbuff+used, "k %s", change->new_key);
@@ -2715,6 +2929,14 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'k':
             remove |= MODE_KEY;
             channel->key[0] = '\0';
+            break;
+        case 'A':
+            remove |= MODE_APASS;
+            channel->apass[0] = '\0';
+            break;
+        case 'U':
+            remove |= MODE_UPASS;
+            channel->upass[0] = '\0';
             break;
         case 'l':
             remove |= MODE_LIMIT;
@@ -2892,3 +3114,16 @@ send_burst(void)
     for (it = dict_first(channels); it; it = iter_next(it))
         dict_insert(unbursted_channels, iter_key(it), iter_data(it));
 }
+
+/*
+ * Oplevel parsing
+ */
+static int
+parse_oplevel(char *str)
+{
+    int oplevel = 0;
+    while (isdigit(*str))
+        oplevel = oplevel * 10 + *str++ - '0';
+    return oplevel;
+}
+

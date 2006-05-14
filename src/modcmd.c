@@ -18,7 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-#include "../ChangeLog.X3"
+#include "../ChangeLog"
 #include "chanserv.h"
 #include "conf.h"
 #include "modcmd.h"
@@ -1957,12 +1957,12 @@ static MODCMD_FUNC(cmd_version) {
         vc++;
     }
 
-    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s %s]$b (Based on srvx 1.3), Built: "__DATE__", "__TIME__".", svnver, svndate);
+    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s %s]$b (Based on srvx 1.3.x), Built: "__DATE__", "__TIME__".", svnver, svndate);
     send_message_type(4, user, cmd->parent->bot, "$b$b");
     send_message_type(4, user, cmd->parent->bot, "Copyright 2000-2006 srvx Development Team.");
     send_message_type(4, user, cmd->parent->bot, "Copyright 2004-2006 X3 Development Team.");
     send_message_type(4, user, cmd->parent->bot, "$b$b");
-    send_message_type(4, user, cmd->parent->bot, "The srvx 1.3 Development Team includes Paul Chang, Adrian Dewhurst, Miles Peterson, Michael Poole and others.");
+    send_message_type(4, user, cmd->parent->bot, "The srvx 1.3.x Development Team includes Paul Chang, Adrian Dewhurst, Miles Peterson, Michael Poole and others.");
     send_message_type(4, user, cmd->parent->bot, "The X3 Development Team includes Alex Schumann, Reed Loden, Neil Spierling.");
     send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at http://sourceforge.net/projects/evilnet or in #evilnet on irc.afternet.org.");
     send_message_type(4, user, cmd->parent->bot, "$b$b");

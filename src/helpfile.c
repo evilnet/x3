@@ -171,8 +171,10 @@ static struct language *language_read(const char *name)
 
     /* Open the directory stream; if we can't, fail. */
     snprintf(filename, sizeof(filename), "languages/%s", name);
-    if (!(dir = opendir(filename)))
+    if (!(dir = opendir(filename))) {
+        log_module(MAIN_LOG, LOG_ERROR, "Unable to open language directory languages/%s: %s", name, strerror(errno));
         return NULL;
+    }
     if (!(lang = dict_find(languages, name, NULL)))
         lang = language_alloc(name);
 
@@ -222,28 +224,25 @@ static struct language *language_read(const char *name)
 
 static void language_read_list(void)
 {
+    struct stat sbuf;
     struct dirent *dirent;
     DIR *dir;
+    char namebuf[MAXLEN];
 
     if (!(dir = opendir("languages")))
         return;
     while ((dirent = readdir(dir))) {
         if (dirent->d_name[0] == '.')
             continue;
-#ifdef HAVE_DIRENT_D_TYPE
-        if (dirent->d_type != DT_DIR)
+        snprintf(namebuf, sizeof(namebuf), "languages/%s", dirent->d_name);
+        if (stat(namebuf, &sbuf) < 0) {
+            log_module(MAIN_LOG, LOG_INFO, "Skipping language entry '%s' (unable to stat).", dirent->d_name);
             continue;
-#else
-        {
-            char namebuf[MAXLEN];
-            struct stat sbuf;
-            snprintf(namebuf, sizeof(namebuf), "languages/%s", dirent->d_name);
-            if (stat(namebuf, &sbuf) < 0)
-                continue;
-            if (!S_ISDIR(sbuf.st_mode))
-                continue;
         }
-#endif
+        if (!S_ISDIR(sbuf.st_mode)) {
+            log_module(MAIN_LOG, LOG_INFO, "Skipping language entry '%s' (not directory).", dirent->d_name);
+            continue;
+        }
         language_alloc(dirent->d_name);
     }
     closedir(dir);
@@ -888,7 +887,7 @@ helpfile_eval_identifier(const char *start, const char **end)
         *end = start + 5;
         return 0;
     } else {
-        log_module(MAIN_LOG, LOG_FATAL, "Unexpected helpfile identifier '%.*s'.", *end-start, start);
+        log_module(MAIN_LOG, LOG_FATAL, "Unexpected helpfile identifier '%.*s'.", (int)(*end-start), start);
         return -1;
     }
 }
@@ -920,7 +919,7 @@ helpfile_eval_atomicexpr(const char *start, const char **end)
     while (isspace(*sep) && (sep < *end))
         sep++;
     if ((sep == *end) || (sep[0] != ')')) {
-        log_module(MAIN_LOG, LOG_FATAL, "Expected close parenthesis at '%.*s'.", *end-sep, sep);
+        log_module(MAIN_LOG, LOG_FATAL, "Expected close parenthesis at '%.*s'.", (int)(*end-sep), sep);
         return -1;
     }
 
@@ -957,7 +956,7 @@ helpfile_eval_expr(const char *start, const char **end)
         sep += len;
     }
     if (op == OP_INVALID) {
-        log_module(MAIN_LOG, LOG_FATAL, "Unrecognized helpfile operator at '%.*s'.", *end-sep, sep);
+        log_module(MAIN_LOG, LOG_FATAL, "Unrecognized helpfile operator at '%.*s'.", (int)(*end-sep), sep);
         return -1;
     }
 
@@ -971,7 +970,7 @@ helpfile_eval_expr(const char *start, const char **end)
     while (isspace(*sep2) && (sep2 < *end))
         sep2++;
     if (sep2 != *end) {
-        log_module(MAIN_LOG, LOG_FATAL, "Trailing garbage in helpfile expression: '%.*s'.", *end-sep2, sep2);
+        log_module(MAIN_LOG, LOG_FATAL, "Trailing garbage in helpfile expression: '%.*s'.", (int)(*end-sep2), sep2);
         return -1;
     }
 
@@ -998,7 +997,7 @@ helpfile_eval_condition(const char *start, const char **end)
     for (term = start; isalnum(*term) && (term < *end); ++term) ;
     if (term != start) {
         if ((term + 2 >= *end) || (term[0] != ':') || (term[1] != ' ')) {
-            log_module(MAIN_LOG, LOG_FATAL, "In helpfile condition '%.*s' expected prefix to end with ': '.", *end-start, start);
+            log_module(MAIN_LOG, LOG_FATAL, "In helpfile condition '%.*s' expected prefix to end with ': '.",(int)(*end-start), start);
             return -1;
         }
         start = term + 2;

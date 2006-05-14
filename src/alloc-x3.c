@@ -1,7 +1,7 @@
 /* alloc-x3.c - Debug allocation wrapper
  * Copyright 2005 srvx Development Team
  *
- * This file is part of x3.
+ * This file is part of srvx.
  *
  * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 #undef malloc
 #undef free
-/* cookies for anybody who recognizes these bytes without help :) */
+
 #define ALLOC_MAGIC 0x1acf
 #define FREE_MAGIC  0xfc1d
 const char redzone[] = { '\x03', '\x47', '\x76', '\xc7' };
@@ -58,13 +58,14 @@ void *
 x3_malloc(const char *file, unsigned int line, size_t size)
 {
     struct alloc_header *block;
-    block = malloc(sizeof(*block) + size);
+
     block = malloc(sizeof(*block) + size + sizeof(redzone));
     assert(block != NULL);
     if (block->magic == ALLOC_MAGIC && block->file_id < file_ids_used) {
         /* Only report the error, due to possible false positives. */
-        log_module(MAIN_LOG, LOG_WARNING, "Detected possible reallocation: %p (called by %s:%u/%u; allocated by %u:%u/%u).",
-                   block, file, line, size, block->file_id, block->line, block->size);
+        log_module(MAIN_LOG, LOG_WARNING, "Detected possible reallocation: %p (called by %s:%u/%lu; allocated by %u:%u/%u).",
+                   block, file, line, (unsigned long)size,
+                   block->file_id, block->line, block->size);
     }
     memset(block, 0, sizeof(*block) + size);
     memcpy((char*)(block + 1) + size, redzone, sizeof(redzone));
@@ -79,9 +80,9 @@ x3_malloc(const char *file, unsigned int line, size_t size)
 
 void *
 x3_realloc(const char *file, unsigned int line, void *ptr, size_t size)
-    struct alloc_header *block = NULL, *newblock;
+{
     struct alloc_header *block, *newblock;
-    }
+
     if (!ptr)
         return x3_malloc(file, line, size);
 
@@ -90,9 +91,9 @@ x3_realloc(const char *file, unsigned int line, void *ptr, size_t size)
 
     if (block->size >= size)
         return block + 1;
-    newblock = malloc(sizeof(*newblock) + size);
+
     newblock = malloc(sizeof(*newblock) + size + sizeof(redzone));
-    memset(newblock, 0, sizeof(*newblock) + size + sizeof(redzone));
+    assert(newblock != NULL);
     memset(newblock, 0, sizeof(*newblock));
     memcpy(newblock + 1, block + 1, block->size);
     memset((char*)(newblock + 1) + block->size, 0, size - block->size);
@@ -103,7 +104,7 @@ x3_realloc(const char *file, unsigned int line, void *ptr, size_t size)
     newblock->magic = ALLOC_MAGIC;
     alloc_count++;
     alloc_size += size;
-    x3_free(block);
+
     x3_free(file, line, block + 1);
 
     return newblock + 1;
@@ -121,7 +122,7 @@ x3_strdup(const char *file, unsigned int line, const char *src)
     return target;
 }
 
-x3_free(const char *file, unsigned int line, void *ptr)
+void
 x3_free(UNUSED_ARG(const char *file), UNUSED_ARG(unsigned int line), void *ptr)
 {
     struct alloc_header *block;
@@ -130,14 +131,13 @@ x3_free(UNUSED_ARG(const char *file), UNUSED_ARG(unsigned int line), void *ptr)
     if (!ptr)
         return;
     verify(ptr);
-    assert(block->magic == ALLOC_MAGIC);
-    memset(block, 0, size);
+    block = (struct alloc_header *)ptr - 1;
     size = block->size;
     memset(block + 1, 0xde, size);
     block->magic = FREE_MAGIC;
     free(block);
-    alloc_size -= size - sizeof(*block);
-    (void)file; (void)line;
+    alloc_count--;
+    alloc_size -= size;
 }
 
 void
@@ -150,4 +150,3 @@ verify(const void *ptr)
     assert(header->magic == ALLOC_MAGIC);
     assert(!memcmp((char*)(header + 1) + header->size, redzone, sizeof(redzone)));
 }
-

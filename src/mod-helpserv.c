@@ -1073,7 +1073,7 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
             if (user->handle_info)
                 helpserv_notify(req->helper, "HSMSG_PAGE_UPD_REQUEST_AUTHED", req->id, user->nick, user->handle_info->handle, timestr, updatestr);
             else
-                helpserv_notify(req->helper, "HSMSG_PAGE_UPD_REQUESTNOT_AUTHED", req->id, user->nick, timestr, updatestr);
+                helpserv_notify(req->helper, "HSMSG_PAGE_UPD_REQUEST_NOT_AUTHED", req->id, user->nick, timestr, updatestr);
         else
             if (user->handle_info)
                 helpserv_page(PGSRC_STATUS, "HSMSG_PAGE_UPD_REQUEST_AUTHED", req->id, user->nick, user->handle_info->handle, timestr, updatestr);
@@ -1408,7 +1408,7 @@ static int show_helper_range(struct userNode *user, struct helpserv_bot *hs, int
     struct helpfile_table tbl;
     struct helpserv_user *hs_user;
     dict_iterator_t it;
-    enum helpserv_level last_level;
+/*    enum helpserv_level last_level; Zoot style */
     unsigned int ii;
 
     users.used = 0;

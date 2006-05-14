@@ -61,7 +61,7 @@ struct uplinkNode
     char		*host;
     int			port;
 
-    struct sockaddr_in 	*bind_addr;
+    struct sockaddr 	*bind_addr;
     int 		bind_addr_len;
 
     char		*password;
@@ -198,6 +198,8 @@ struct mod_chanmode {
     unsigned int alloc_argc;
 #endif
     char new_key[KEYLEN + 1];
+    char new_upass[KEYLEN + 1];
+    char new_apass[KEYLEN + 1];
     struct {
         unsigned int mode;
         union {
@@ -210,6 +212,8 @@ struct mod_chanmode {
 #define MCP_FROM_SERVER   0x0002 /* parse as from a server */
 #define MCP_KEY_FREE      0x0004 /* -k without a key argument */
 #define MCP_REGISTERED	  0x0008 /* chan is already registered; do not allow changes to MODE_REGISTERED */
+#define MCP_UPASS_FREE    0x0010 /* -U without a key argument */
+#define MCP_APASS_FREE    0x0020 /* -A without a key argument */
 #define MC_ANNOUNCE       0x0100 /* send a mod_chanmode() change out */
 #define MC_NOTIFY         0x0200 /* make local callbacks to announce */
 #ifdef NDEBUG
@@ -220,7 +224,7 @@ struct mod_chanmode {
 
 struct mod_chanmode *mod_chanmode_alloc(unsigned int argc);
 struct mod_chanmode *mod_chanmode_dup(struct mod_chanmode *orig, unsigned int extra);
-struct mod_chanmode *mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, unsigned int flags);
+struct mod_chanmode *mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, unsigned int flags, short base_oplevel);
 void mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_chanmode *change);
 void mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod_chanmode *change);
 char *mod_chanmode_format(struct mod_chanmode *desc, char *buffer);

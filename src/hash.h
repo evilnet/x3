@@ -51,6 +51,8 @@
 #define MODE_HALFOP             0x00800000 /* +h USER */
 #define MODE_EXEMPT             0x01000000 /* +e exempt */
 #define MODE_HIDEMODE		0x02000000 /* +L hide modes */
+#define MODE_APASS		0x04000000 /* +A adminpass */
+#define MODE_UPASS		0x08000000 /* +U userpass */
 #define MODE_REMOVE             0x80000000
 
 #define FLAGS_OPER		0x0001 /* Operator +O */
@@ -103,6 +105,7 @@
 #define REALLEN         50
 #define TOPICLEN        250
 #define CHANNELLEN      200
+#define MAXOPLEVEL      999
 
 #define MAXMODEPARAMS	6
 #define MAXBANS		128
@@ -130,7 +133,7 @@ struct userNode {
 #endif
     unsigned int loc;             /* Is user connecting via LOC? */
     unsigned int dead : 1;        /* Is user waiting to be recycled? */
-    struct in_addr ip;            /* User's IP address */
+    irc_in_addr_t ip;             /* User's IP address */
     long modes;                   /* user flags +isw etc... */
 
     // sethost - reed/apples
@@ -150,6 +153,8 @@ struct chanNode {
     chan_mode_t modes;
     unsigned int limit, locks;
     char key[KEYLEN + 1];
+    char upass[KEYLEN + 1];
+    char apass[KEYLEN + 1];
     time_t timestamp; /* creation time */
   
     char topic[TOPICLEN + 1];
@@ -183,7 +188,8 @@ struct exemptNode {
 struct modeNode {
     struct chanNode *channel;
     struct userNode *user;
-    long modes;
+    unsigned short modes;
+    short oplevel;
     time_t idle_since;
 };
 

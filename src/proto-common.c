@@ -135,7 +135,7 @@ create_socket_client(struct uplinkNode *target)
 
     log_module(MAIN_LOG, LOG_INFO, "Connecting to %s:%i...", addr, port);
 
-    socket_io_fd = ioset_connect((struct sockaddr*)cManager.uplink->bind_addr, sizeof(struct sockaddr), addr, port, 1, 0, NULL);
+    socket_io_fd = ioset_connect(cManager.uplink->bind_addr, cManager.uplink->bind_addr_len, addr, port, 1, 0, NULL);
     if (!socket_io_fd) {
         log_module(MAIN_LOG, LOG_ERROR, "Connection to uplink failed: %s (%d)", strerror(errno), errno);
         target->state = DISCONNECTED;
@@ -544,6 +544,8 @@ mod_chanmode_dup(struct mod_chanmode *orig, unsigned int extra)
         res->modes_clear = orig->modes_clear;
         res->new_limit = orig->new_limit;
         memcpy(res->new_key, orig->new_key, sizeof(res->new_key));
+        memcpy(res->new_upass, orig->new_upass, sizeof(res->new_upass));
+        memcpy(res->new_apass, orig->new_apass, sizeof(res->new_apass));
         res->argc = orig->argc;
         memcpy(res->args, orig->args, orig->argc*sizeof(orig->args[0]));
     }
@@ -563,6 +565,10 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
         channel->limit = change->new_limit;
     if (change->modes_set & MODE_KEY)
         strcpy(channel->key, change->new_key);
+    if (change->modes_set & MODE_UPASS)
+       strcpy(channel->upass, change->new_upass);
+    if (change->modes_set & MODE_APASS)
+       strcpy(channel->apass, change->new_apass);
     for (ii = 0; ii < change->argc; ++ii) {
         switch (change->args[ii].mode) {
         case MODE_BAN:
@@ -666,12 +672,19 @@ mod_chanmode_free(struct mod_chanmode *change)
 int
 mod_chanmode(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc, unsigned int flags)
 {
+    struct modeNode *member;
     struct mod_chanmode *change;
     unsigned int ii;
+    short base_oplevel;
+
 
     if (!modes || !modes[0])
         return 0;
-    if (!(change = mod_chanmode_parse(channel, modes, argc, flags)))
+    if (who && (member = GetUserMode(channel, who)))
+        base_oplevel = member->oplevel;
+    else
+        base_oplevel = MAXOPLEVEL;
+    if (!(change = mod_chanmode_parse(channel, modes, argc, flags, base_oplevel)))
         return 0;
     if (flags & MC_ANNOUNCE)
         mod_chanmode_announce(who, channel, change);
@@ -692,14 +705,16 @@ irc_make_chanmode(struct chanNode *chan, char *out)
     change.modes_set = chan->modes;
     change.new_limit = chan->limit;
     safestrncpy(change.new_key, chan->key, sizeof(change.new_key));
+    safestrncpy(change.new_upass, chan->upass, sizeof(change.new_upass));
+    safestrncpy(change.new_apass, chan->apass, sizeof(change.new_apass));
     return strlen(mod_chanmode_format(&change, out));
 }
 
 char *
 generate_hostmask(struct userNode *user, int options)
 {
-    char *nickname, *ident, *hostname;
-    char *mask;
+    irc_in_addr_t ip;
+    char *nickname, *ident, *hostname, *mask;
     int len, ii;
 
     /* figure out string parts */
@@ -739,30 +754,20 @@ generate_hostmask(struct userNode *user, int options)
         sprintf(hostname, "%s.%s", user->handle_info->handle, hidden_host_suffix);
     } else if (options & GENMASK_STRICT_HOST) {
         if (options & GENMASK_BYIP)
-            hostname = inet_ntoa(user->ip);
-    } else if ((options & GENMASK_BYIP) || !hostname[strspn(hostname, "0123456789.")]) {
-        /* Should generate an IP-based hostmask.  By popular acclaim, a /16
-         * hostmask is used by default. */
-        unsigned masked_ip, mask, masklen;
-        masklen = 16;
-        mask = ~0 << masklen;
-        masked_ip = ntohl(user->ip.s_addr) & mask;
-        hostname = alloca(32);
-        if (options & GENMASK_X3MASK) {
-            sprintf(hostname, "%d.%d.%d.%d/%d", (masked_ip>>24)&0xFF, (masked_ip>>16)&0xFF, (masked_ip>>8)&0xFF, masked_ip&0xFF, masklen);
+            hostname = (char*)irc_ntoa(&user->ip);
+    } else if ((options & GENMASK_BYIP) || irc_pton(&ip, NULL, hostname)) {
+        /* Should generate an IP-based hostmask. */
+        hostname = alloca(IRC_NTOP_MAX_SIZE);
+        hostname[IRC_NTOP_MAX_SIZE-1] = '\0';
+        if (irc_in_addr_is_ipv4(user->ip)) {
+            /* By popular acclaim, a /16 hostmask is used. */
+            sprintf(hostname, "%d.%d.*", user->ip.in6_8[12], user->ip.in6_8[13]);
+        } else if (irc_in_addr_is_ipv6(user->ip)) {
+            /* Who knows what the default mask should be?  Use a /48 to start with. */
+            sprintf(hostname, "%x:%x:%x:*", user->ip.in6[0], user->ip.in6[1], user->ip.in6[2]);
         } else {
-            int ofs = 0;
-            for (ii=0; ii<4; ii++) {
-                if (masklen) {
-                    ofs += sprintf(hostname+ofs, "%d.", (masked_ip>>24)&0xFF);
-                    masklen -= 8;
-                    masked_ip <<= 8;
-                } else {
-                    ofs += sprintf(hostname+ofs, "*.");
-                }
-            }
-            /* Truncate the last . */
-            hostname[ofs-1] = 0;
+            /* Unknown type; just copy IP directly. */
+            irc_ntop(hostname, IRC_NTOP_MAX_SIZE, &user->ip);
         }
     } else {
         int cnt;

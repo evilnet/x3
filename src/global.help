@@ -19,7 +19,7 @@
         "$uSee Also:$u list, messages, remove, target");
 "MESSAGES" ("/msg $G MESSAGES",
         "Sends you all messages addressed to your user class.");
-"NOTICE" ("/msg $G NOTICE <target> <message>",
+"NOTICE" ("/msg $G NOTICE <target> [from <source>] <message>",
         "Immediately sends a notice to a specific target. See $btarget$b for a list of targets.",
         "$uSee Also:$u target");
 "REMOVE" ("/msg $G REMOVE <message id>",

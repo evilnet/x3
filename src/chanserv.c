@@ -2767,7 +2767,7 @@ cmd_trim_bans(struct userNode *user, struct chanNode *channel, unsigned long dur
 }
 
 static int
-cmd_trim_users(struct userNode *user, struct chanNode *channel, unsigned short min_access, unsigned short max_access, unsigned long duration)
+cmd_trim_users(struct userNode *user, struct chanNode *channel, unsigned short min_access, unsigned short max_access, unsigned long duration, int vacation)
 {
     struct userData *actor, *uData, *next;
     char interval[INTERVALLEN];
@@ -2793,7 +2793,9 @@ cmd_trim_users(struct userNode *user, struct chanNode *channel, unsigned short m
     {
 	next = uData->next;
 
-	if((uData->seen > limit) || uData->present)
+       if((uData->seen > limit)
+           || uData->present
+           || (HANDLE_FLAGGED(uData->handle, FROZEN) && !vacation))
 	    continue;
 
 	if(((uData->access >= min_access) && (uData->access <= max_access))
@@ -2817,9 +2819,11 @@ static CHANSERV_FUNC(cmd_trim)
 {
     unsigned long duration;
     unsigned short min_level, max_level;
+    int vacation;
 
     REQUIRE_PARAMS(3);
 
+    vacation = argc > 3 && !strcmp(argv[3], "vacation");
     duration = ParseInterval(argv[2]);
     if(duration < 60)
     {
@@ -2834,17 +2838,17 @@ static CHANSERV_FUNC(cmd_trim)
     }
     else if(!irccasecmp(argv[1], "users"))
     {
-	cmd_trim_users(user, channel, 0, 0, duration);
+	cmd_trim_users(user, channel, 0, 0, duration, vacation);
 	return 1;
     }
     else if(parse_level_range(&min_level, &max_level, argv[1]))
     {
-	cmd_trim_users(user, channel, min_level, max_level, duration);
+	cmd_trim_users(user, channel, min_level, max_level, duration, vacation);
 	return 1;
     }
     else if((min_level = user_level_from_name(argv[1], UL_OWNER)))
     {
-	cmd_trim_users(user, channel, min_level, min_level, duration);
+	cmd_trim_users(user, channel, min_level, min_level, duration, vacation);
 	return 1;
     }
     else
@@ -3045,7 +3049,7 @@ bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban
         if(IsService(mn->user))
             continue;
 
-        if(!user_matches_glob(mn->user, ban, 1))
+        if(!user_matches_glob(mn->user, ban, MATCH_USENICK | MATCH_VISIBLE))
             continue;
 
         if(protect_user(mn->user, user, channel->channel_info))
@@ -3405,7 +3409,8 @@ find_matching_bans(struct banList *bans, struct userNode *actee, const char *mas
     {
         for(ii = count = 0; ii < bans->used; ++ii)
         {
-            match[ii] = user_matches_glob(actee, bans->list[ii]->ban, 1);
+            match[ii] = user_matches_glob(actee, bans->list[ii]->ban,
+                                          MATCH_USENICK | MATCH_VISIBLE);
             if(match[ii])
                 count++;
         }
@@ -3542,7 +3547,7 @@ unban_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 	while(ban)
 	{
 	    if(actee)
-		for( ; ban && !user_matches_glob(actee, ban->mask, 1);
+               for( ; ban && !user_matches_glob(actee, ban->mask, MATCH_USENICK | MATCH_VISIBLE);
 		     ban = ban->next);
 	    else
 		for( ; ban && !match_ircglobs(mask, ban->mask);
@@ -4323,7 +4328,9 @@ static CHANSERV_FUNC(cmd_topic)
 
 static CHANSERV_FUNC(cmd_mode)
 {
+    struct userData *uData;
     struct mod_chanmode *change;
+    short base_oplevel;
     
     if(argc < 2)
     {
@@ -4336,7 +4343,15 @@ static CHANSERV_FUNC(cmd_mode)
 	return 1;
     }
 
-    change = mod_chanmode_parse(channel, argv+1, argc-1, MCP_KEY_FREE|MCP_REGISTERED);
+    uData = GetChannelUser(channel->channel_info, user->handle_info);
+    if (!uData)
+        base_oplevel = MAXOPLEVEL;
+    else if (uData->access >= UL_OWNER)
+        base_oplevel = 1;
+    else
+        base_oplevel = 1 + UL_OWNER - uData->access;
+    change = mod_chanmode_parse(channel, argv+1, argc-1, MCP_KEY_FREE|MCP_REGISTERED, base_oplevel);
+
     if(!change)
     {
 	reply("MSG_INVALID_MODES", unsplit_string(argv+1, argc-1, NULL));
@@ -5617,7 +5632,7 @@ static MODCMD_FUNC(chan_opt_modes)
 	{
             memset(&channel->channel_info->modes, 0, sizeof(channel->channel_info->modes));
 	}
-	else if(!(new_modes = mod_chanmode_parse(channel, argv+1, argc-1, MCP_KEY_FREE|MCP_REGISTERED)))
+        else if(!(new_modes = mod_chanmode_parse(channel, argv+1, argc-1,MCP_KEY_FREE|MCP_REGISTERED, 0)))
 	{
             reply("CSMSG_INVALID_MODE_LOCK", unsplit_string(argv+1, argc-1, NULL));
             return 0;
@@ -6815,14 +6830,38 @@ handle_join(struct modeNode *mNode)
     if(channel->members.used > cData->max)
         cData->max = channel->members.used;
 
+    /* Check for bans.  If they're joining through a ban, one of two
+     * cases applies:
+     *   1: Join during a netburst, by riding the break.  Kick them
+     *      unless they have ops or voice in the channel.
+     *   2: They're allowed to join through the ban (an invite in
+     *   ircu2.10, or a +e on Hybrid, or something).
+     * If they're not joining through a ban, and the banlist is not
+     * full, see if they're on the banlist for the channel.  If so,
+     * kickban them.
+     */
+    if(user->uplink->burst && !mNode->modes)
+    {
+        unsigned int ii;
+        for(ii = 0; ii < channel->banlist.used; ii++)
+        {
+            if(user_matches_glob(user, channel->banlist.list[ii]->ban, MATCH_USENICK))
+            {
+                /* Riding a netburst.  Naughty. */
+                KickChannelUser(user, channel, chanserv, "User from far side of netsplit should have been banned - bye.");
+                return 1;
+            }
+        }
+    }
+
     mod_chanmode_init(&change);
     change.argc = 1;
     if(channel->banlist.used < MAXBANS)
     {
         /* Not joining through a ban. */
         for(bData = cData->bans;
-                bData && !user_matches_glob(user, bData->mask, 1);
-                bData = bData->next);
+            bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
+            bData = bData->next);
 
         if(bData)
         {
@@ -6926,6 +6965,10 @@ handle_join(struct modeNode *mNode)
             uData->present = 1;
         }
     }
+
+    /* If user joining normally (not during burst), apply op or voice,
+     * and send greeting/userinfo as appropriate.
+     */
     if(!user->uplink->burst)
     {
         if(modes)
@@ -6940,7 +6983,7 @@ handle_join(struct modeNode *mNode)
             change.args[0].u.member = mNode;
             mod_chanmode_announce(chanserv, channel, &change);
         }
-        if(greeting && !user->uplink->burst)
+        if(greeting)
             send_message_type(4, user, chanserv, "(%s) %s", channel->name, greeting);
         if(uData && info)
             send_target_message(5, channel->name, chanserv, "[%s] %s", user->nick, uData->info);
@@ -7013,14 +7056,14 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
            || IsSuspended(channel->channel_info))
             continue;
         for(jj = 0; jj < channel->banlist.used; ++jj)
-            if(user_matches_glob(user, channel->banlist.list[jj]->ban, 1))
+            if(user_matches_glob(user, channel->banlist.list[jj]->ban, MATCH_USENICK))
                 break;
         if(jj < channel->banlist.used)
             continue;
         for(ban = channel->channel_info->bans; ban; ban = ban->next)
         {
             char kick_reason[MAXLEN];
-            if(!user_matches_glob(user, ban->mask, 1))
+            if(!user_matches_glob(user, ban->mask,MATCH_USENICK | MATCH_VISIBLE))
                 continue;
             change.args[0].mode = MODE_BAN;
             change.args[0].u.hostmask = ban->mask;
@@ -7251,7 +7294,7 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
             continue;
         /* Look for a matching ban already on the channel. */
         for(jj = 0; jj < channel->banlist.used; ++jj)
-            if(user_matches_glob(user, channel->banlist.list[jj]->ban, 1))
+            if(user_matches_glob(user, channel->banlist.list[jj]->ban, MATCH_USENICK))
                 break;
         /* Need not act if we found one. */
         if(jj < channel->banlist.used)
@@ -7259,7 +7302,7 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
         /* Look for a matching ban in this channel. */
         for(bData = channel->channel_info->bans; bData; bData = bData->next)
         {
-            if(!user_matches_glob(user, bData->mask, 1))
+            if(!user_matches_glob(user, bData->mask, MATCH_USENICK | MATCH_VISIBLE))
                 continue;
             change.args[0].u.hostmask = bData->mask;
             mod_chanmode_announce(chanserv, channel, &change);
@@ -7407,7 +7450,8 @@ chanserv_conf_read(void)
         str = "+nt";
     safestrncpy(mode_line, str, sizeof(mode_line));
     ii = split_line(mode_line, 0, ArrayLength(modes), modes);
-    if((change = mod_chanmode_parse(NULL, modes, ii, MCP_KEY_FREE)) && (change->argc < 2))
+    if((change = mod_chanmode_parse(NULL, modes, ii, MCP_KEY_FREE, 0))
+       && (change->argc < 2))
     {
         chanserv_conf.default_modes = *change;
         mod_chanmode_free(change);
@@ -7829,7 +7873,7 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     if(!IsSuspended(cData)
        && (str = database_get_data(channel, KEY_MODES, RECDB_QSTRING))
        && (argc = split_line(str, 0, ArrayLength(argv), argv))
-       && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE))) {
+       && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE, 0))) {
         cData->modes = *modes;
 	if(off_channel > 0)
           cData->modes.modes_set |= MODE_REGISTERED;
