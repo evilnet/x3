@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-05-16  Neil Spierling  <sirvulcan@gmail.com>
+
+	* Most files: Heh i cant be bothered listing all files, see websvn
+	if you want specific files. I just added a new tracking module, its
+	just like snoop except it targets specified users. The actual
+	commit is in the previous revision, i just forgot to update this to
+	tick over the svn version in version output.
+
 2006-05-15  Neil Spierling  <sirvulcan@gmail.com>
 
 	* Most files: Major update off the new release of srvx 1.3.1. Also
