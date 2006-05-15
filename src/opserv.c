@@ -23,6 +23,7 @@
 #include "global.h"
 #include "nickserv.h"
 #include "modcmd.h"
+#include "modules.h"
 #include "opserv.h"
 #include "timeq.h"
 #include "saxdb.h"
@@ -286,11 +287,13 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_CHANINFO_USER_COUNT", "Users (%d):" },
     { "OSMSG_CSEARCH_CHANNEL_INFO", "%s [%d users] %s %s" },
     { "OSMSG_INVALID_REGEX", "Invalid regex: %s: %s (%d)" },
+    { "OSMSG_TRACK_DISABLED", "Tracking is not currently compiled into X3" },
     { NULL, NULL }
 };
 
 #define OPSERV_SYNTAX() svccmd_send_help_brief(user, opserv, cmd)
 
+extern void add_track_user(struct userNode *user);
 typedef int (*discrim_search_func)(struct userNode *match, void *extra);
 
 struct userNode *opserv;
@@ -393,6 +396,7 @@ typedef enum {
     REACT_KILL,
     REACT_SILENT,
     REACT_GLINE,
+    REACT_TRACK,
     REACT_SHUN
 } opserv_alert_reaction;
 
@@ -1809,6 +1813,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_KILL: reaction = "kill"; break;
         case REACT_SILENT: reaction = "silent"; break;
         case REACT_GLINE: reaction = "gline"; break;
+        case REACT_TRACK: reaction = "track"; break;
         case REACT_SHUN: reaction = "shun"; break;
         default: reaction = "<unknown>"; break;
         }
@@ -2933,6 +2938,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_SILENT;
     else if (!irccasecmp(react, "gline"))
         reaction = REACT_GLINE;
+    else if (!irccasecmp(react, "track"))
+        reaction = REACT_TRACK;
     else if (!irccasecmp(react, "shun"))
         reaction = REACT_SHUN;
     else {
@@ -3123,6 +3130,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_KILL: reaction = "kill"; break;
             case REACT_SILENT: reaction = "silent"; break;
             case REACT_GLINE: reaction = "gline"; break;
+            case REACT_TRACK: reaction = "track"; break;
             case REACT_SHUN: reaction = "shun"; break;
             default:
                 reaction = NULL;
@@ -4378,6 +4386,12 @@ alert_check_user(const char *key, void *data, void *extra)
     case REACT_NOTICE:
         opserv_alert("Alert $b%s$b triggered by user $b%s$b!%s@%s (%s).", key, user->nick, user->ident, user->hostname, alert->discrim->reason);
         break;
+    case REACT_TRACK:
+#ifdef HAVE_TRACK
+        opserv_alert("Alert $b%s$b triggered by user $b%s$b!%s@%s (%s) (Tracking).", key, user->nick, user->ident, user->hostname, alert->discrim->reason);
+	add_track_user(user);
+#endif
+	break;
     }
     return 0;
 }
@@ -4539,7 +4553,14 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_SILENT;
     else if (!irccasecmp(argv[2], "gline"))
         reaction = REACT_GLINE;
-    else if (!irccasecmp(argv[2], "shun"))
+    else if (!irccasecmp(argv[2], "track")) {
+#ifndef HAVE_TRACK
+        send_message(user, opserv, "OSMSG_TRACK_DISABLED");
+        return 0;
+#else
+        reaction = REACT_TRACK;
+#endif
+    } else if (!irccasecmp(argv[2], "shun"))
         reaction = REACT_SHUN;
     else {
         reply("OSMSG_UNKNOWN_REACTION", argv[2]);
@@ -4737,6 +4758,7 @@ init_opserv(const char *nick)
     opserv_define_func("ADDALERT SILENT", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT GLINE", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT SHUN", NULL, 900, 0, 0);
+    opserv_define_func("ADDALERT TRACK", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT KILL", NULL, 900, 0, 0);
     opserv_define_func("ADDBAD", cmd_addbad, 800, 0, 2);
     opserv_define_func("ADDEXEMPT", cmd_addexempt, 800, 0, 2);

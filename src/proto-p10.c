@@ -835,6 +835,7 @@ irc_kill(struct userNode *from, struct userNode *target, const char *message)
 void
 irc_mode(struct userNode *from, struct chanNode *target, const char *modes)
 {
+    call_channel_mode_funcs(from, target, (char **)&modes, 0);
     putsock("%s " P10_MODE " %s %s "FMT_TIME_T,
             (from ? from->numeric : self->numeric),
             target->name, modes, target->timestamp);
@@ -2345,6 +2346,9 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 
     if (!user || !mode_change)
         return;
+
+    call_user_mode_funcs(user, mode_change);
+
     while (*word != ' ' && *word) word++;
     while (*word == ' ') word++;
     while (1) {

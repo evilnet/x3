@@ -141,6 +141,11 @@ void nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd);
 
 struct handle_info *loc_auth(char *handle, char *password);
 
+typedef void (*user_mode_func_t)(struct userNode *user, const char *mode_change);
+void reg_user_mode_func(user_mode_func_t func);
+typedef void (*channel_mode_func_t)(struct userNode *who, struct chanNode *channel, char **mode, unsigned int argc);
+void reg_channel_mode_func(channel_mode_func_t func);
+
 /* auth_funcs are called when a user gets a new handle_info.  They are
  * called *after* user->handle_info has been updated.  */
 typedef void (*auth_func_t)(struct userNode *user, struct handle_info *old_handle);

@@ -421,6 +421,19 @@
         // Show new users and joins from net joins?  (off by default)
         "show_bursts" "0";
     };
+    /* Track works just like Snoop except it only sends events for users
+     * who have been specified
+     */
+    "track" {
+        // What to track by default?
+        "snomask" "nick,join,part,kick,new,del,auth,chanmode,umode";
+        // Where to send snoop messages?
+        "channel" "#MrPeanuts";
+        // Which bot?
+        "bot" "O3";
+        // Show new users and joins from net joins?  (off by default)
+        "show_bursts" "0";
+    };
     /* Memoserv lets users send messages to other users accounts.
      */
     "memoserv" {

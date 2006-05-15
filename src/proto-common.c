@@ -70,6 +70,7 @@ typedef void (*foreach_nonchan) (char *name, void *data);
 typedef void (*foreach_userfunc) (struct userNode *user, void *data);
 typedef void (*foreach_nonuser) (char *name, void *data);
 static void parse_foreach(char *target_list, foreach_chanfunc cf, foreach_nonchan nc, foreach_userfunc uf, foreach_nonuser nu, void *data);
+static void call_channel_mode_funcs(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc);
 
 static void
 uplink_readable(struct io_fd *fd) {
@@ -686,6 +687,9 @@ mod_chanmode(struct userNode *who, struct chanNode *channel, char **modes, unsig
         base_oplevel = MAXOPLEVEL;
     if (!(change = mod_chanmode_parse(channel, modes, argc, flags, base_oplevel)))
         return 0;
+
+    call_channel_mode_funcs(who, channel, modes, argc);
+
     if (flags & MC_ANNOUNCE)
         mod_chanmode_announce(who, channel, change);
     else
@@ -708,6 +712,84 @@ irc_make_chanmode(struct chanNode *chan, char *out)
     safestrncpy(change.new_upass, chan->upass, sizeof(change.new_upass));
     safestrncpy(change.new_apass, chan->apass, sizeof(change.new_apass));
     return strlen(mod_chanmode_format(&change, out));
+}
+
+static user_mode_func_t *um_list;
+static unsigned int um_size = 0, um_used = 0;
+
+void
+reg_user_mode_func(user_mode_func_t handler)
+{
+	if (um_used == um_size) {
+		if (um_size) {
+			um_size <<= 1;
+			um_list = realloc(um_list, um_size*sizeof(user_mode_func_t));
+		} else {
+			um_size = 8;
+			um_list = malloc(um_size*sizeof(user_mode_func_t));
+		}
+	}
+	um_list[um_used++] = handler;
+}
+
+void
+unreg_user_mode_func(user_mode_func_t handler)
+{
+	unsigned int i;
+	for (i=0; i<um_used; i++) {
+		if (um_list[i] == handler) break;
+	}
+	if (i == um_used) return;
+	memmove(um_list+i, um_list+i+1, (um_used-i-1)*sizeof(um_list[0]));
+	um_used--;
+}
+
+static void
+call_user_mode_funcs(struct userNode *user, const char *mode_change)
+{
+	unsigned int n;
+	for (n=0; n<um_used; n++) {
+		um_list[n](user, mode_change);
+	}
+}
+
+static channel_mode_func_t *cm_list;
+static unsigned int cm_size = 0, cm_used = 0;
+
+void
+reg_channel_mode_func(channel_mode_func_t handler)
+{
+	if (cm_used == cm_size) {
+		if (cm_size) {
+			cm_size <<= 1;
+			cm_list = realloc(cm_list, cm_size*sizeof(channel_mode_func_t));
+		} else {
+			cm_size = 8;
+			cm_list = malloc(cm_size*sizeof(channel_mode_func_t));
+		}
+	}
+	cm_list[cm_used++] = handler;
+}
+
+void
+unreg_channel_mode_func(channel_mode_func_t handler)
+{
+	unsigned int i;
+	for (i=0; i<cm_used; i++) {
+		if(cm_list[i] == handler) break;
+	}
+	if (i == cm_used) return;
+	memmove(cm_list+i, cm_list+i+1, (cm_used-i-1)*sizeof(cm_list[0]));
+	cm_used--;
+}
+
+static void
+call_channel_mode_funcs(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc)
+{
+	unsigned int n;
+	for (n=0; n<cm_used; n++) {
+		cm_list[n](who, channel, modes, argc);
+	}
 }
 
 char *
