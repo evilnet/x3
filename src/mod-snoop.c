@@ -126,6 +126,144 @@ snoop_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
 }
 
 static void
+snoop_user_mode(struct userNode *user, const char *mode_change) {
+    if (!snoop_cfg.enabled) return;
+    if (user->uplink->burst && !snoop_cfg.show_bursts) return;
+    if (!mode_change[1]) return; /* warning there has to be atleast one char in the buffer */
+    UPDATE_TIMESTAMP();
+    SNOOP("$bUMODE$b %s %s", user->nick, mode_change);
+}
+
+static void
+snoop_oper(struct userNode *user) {
+    if (!snoop_cfg.enabled) return;
+    if (user->uplink->burst && !snoop_cfg.show_bursts) return;
+    UPDATE_TIMESTAMP();
+    SNOOP("$bOPER$b %s!%s@%s [%s] on %s", user->nick, user->ident, user->hostname, irc_ntoa(&user->ip), user->uplink->name);
+}
+
+static void
+snoop_channel_mode(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc)
+{
+       if (!snoop_cfg.enabled) return;
+       if(who) {
+            if (who->uplink->burst && !snoop_cfg.show_bursts) {
+                return;
+            }
+       } else {
+              return; /* Dont show X3 etc modes */
+       }
+
+       static char targets[MAXLEN], string[MAXLEN];
+       struct userNode *un = NULL;
+       char *tmp = NULL, *tg = NULL, *md = NULL;
+       int add = 0;
+
+       string[0] = 0;
+       targets[0] = 0;
+
+       if (argc > 0)
+               unsplit_string(modes, argc, string);
+       else
+               strcpy(string, *modes);
+
+       if((tg = strchr(string, ' ')))
+       {
+               *tg++ = 0;
+               for(md = string; *md; md++)
+               {
+                       if (*md == '+')
+                       {
+                               add = 1;
+                               md++;
+                       }
+                       if (*md == '-')
+                       {
+                               add = 0;
+                               md++;
+                       }
+                       switch(*md)
+                       {
+                               case 'k':
+                                       {
+                                               strcat(targets, " ");
+                                               if ((tmp = strchr(tg, ' ')))
+                                                       *tmp++ = 0;
+                                               strcat(targets, tg);
+                                               if(tmp)
+                                                       tg = tmp;
+                                               break;
+                                       }
+                               case 'l':
+                                       {
+                                               if(add)
+                                               {
+                                                       strcat(targets, " ");
+                                                       if ((tmp = strchr(tg, ' ')))
+                                                               *tmp++ = 0;
+                                                       strcat(targets, tg);
+                                                       if(tmp)
+                                                               tg = tmp;
+                                                       break;
+                                               }
+                                       }
+                               case 'b':
+                                       {
+                                               strcat(targets, " ");
+                                               if ((tmp = strchr(tg, ' ')))
+                                                       *tmp++ = 0;
+                                               strcat(targets, tg);
+                                               if(tmp)
+                                                       tg = tmp;
+                                               break;
+                                       }
+                               case 'e':
+                                       {
+                                               strcat(targets, " ");
+                                               if ((tmp = strchr(tg, ' ')))
+                                                       *tmp++ = 0;
+                                               strcat(targets, tg);
+                                               if(tmp)
+                                                       tg = tmp;
+                                               break;
+                                       }
+                               case 'o':
+                                       {
+                                               strcat(targets, " ");
+                                               if ((tmp = strchr(tg, ' ')))
+                                                       *tmp++ = 0;
+                                               if((un = GetUserN(tg)))
+                                                       strcat(targets, un->nick);
+                                               else
+                                                       strcat(targets, tg);
+                                               if(tmp)
+                                                       tg = tmp;
+                                               break;
+                                       }
+                               case 'v':
+                                       {
+                                               strcat(targets, " ");
+                                               if ((tmp = strchr(tg, ' ')))
+                                                       *tmp++ = 0;
+                                               if((un = GetUserN(tg)))
+                                                       strcat(targets, un->nick);
+                                               else
+                                                       strcat(targets, tg);
+                                               if(tmp)
+                                                       tg = tmp;
+                                               break;
+                                       }
+                       }
+               }
+       }
+       UPDATE_TIMESTAMP();
+       if (who)
+               SNOOP("$bMODE$b %s %s%s by %s", channel->name, string, targets, who->nick);
+       else
+               SNOOP("$bMODE$b %s %s%s", channel->name, string, targets);
+}
+
+static void
 snoop_conf_read(void) {
     dict_t node;
     char *str;
@@ -163,10 +301,10 @@ snoop_init(void) {
     reg_new_user_func(snoop_new_user);
     reg_del_user_func(snoop_del_user);
     reg_auth_func(snoop_auth);
-    /* Not implemented since hooks don't exist or lack data desired:
-     * chanmode (issuing user not listed)
-     * usermode (no hook)
-     */
+    reg_channel_mode_func(snoop_channel_mode);
+    reg_user_mode_func(snoop_user_mode);
+    reg_oper_func(snoop_oper);
+
     return 1;
 }
 
