@@ -6830,6 +6830,7 @@ handle_join(struct modeNode *mNode)
     if(channel->members.used > cData->max)
         cData->max = channel->members.used;
 
+#ifdef notdef
     /* Check for bans.  If they're joining through a ban, one of two
      * cases applies:
      *   1: Join during a netburst, by riding the break.  Kick them
@@ -6853,6 +6854,7 @@ handle_join(struct modeNode *mNode)
             }
         }
     }
+#endif
 
     mod_chanmode_init(&change);
     change.argc = 1;

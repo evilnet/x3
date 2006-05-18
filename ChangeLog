@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+	* chanserv.c: re-disabled netrider kicking. Somehow this got included back
+	in.
+
+	* mod-track.c: some cleanups and textual changes, to make the commands
+	slightly more user friendly.
+
 2006-05-16  Neil Spierling  <sirvulcan@gmail.com>
 
 	* Most files: Heh i cant be bothered listing all files, see websvn

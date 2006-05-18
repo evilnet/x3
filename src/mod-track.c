@@ -407,7 +407,7 @@ track_channel_mode(struct userNode *who, struct chanNode *channel, char **modes,
 static void
 check_track_state(struct userNode *user)
 {
-       send_message_type(4, user, track_cfg.bot, "TRACK snomask is:%s%s%s%s%s%s%s%s%s",
+       send_message_type(4, user, track_cfg.bot, "TRACK is tracking: %s%s%s%s%s%s%s%s%s",
                        check_track_nick(track_cfg) ? " nick":"", check_track_join(track_cfg) ? " join":"",
                        check_track_part(track_cfg) ? " part":"", check_track_kick(track_cfg) ? " kick":"",
                        check_track_new(track_cfg) ? " new":"", check_track_del(track_cfg) ? " del":"",
@@ -423,6 +423,7 @@ MODCMD_FUNC(cmd_track)
 
        if(argc == 1)
        {
+               svccmd_send_help_brief(user, track_cfg.bot, cmd);
                check_track_state(user);
                return 0;
        }
@@ -588,6 +589,7 @@ MODCMD_FUNC(cmd_deltrack)
 	}
 	else
 		send_message_type(4, user, track_cfg.bot, "No nick or invalid nick specified.");
+        svccmd_send_help_brief(user, track_cfg.bot, cmd);
 	return 0;
 }
 
@@ -604,6 +606,7 @@ MODCMD_FUNC(cmd_addtrack)
 	}
 	else
 		send_message_type(4, user, track_cfg.bot, "No nick or invalid nick specified.");
+        svccmd_send_help_brief(user, track_cfg.bot, cmd);
 	return 0;
 }
 
