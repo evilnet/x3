@@ -441,13 +441,13 @@ MODCMD_FUNC(cmd_track)
 
 		if(add == 2)
 		{
-			if ((!strcasecmp(&data[i], "all")))
+			if ((!strcasecmp(data, "all")))
 			{
 				set_track_all(track_cfg);
 				check_track_state(user);
 				TRACK("$bALERT$b TRACK fully enabled by %s", user->nick);
 			}
-			else if (!strcasecmp(&data[i], "none"))
+			else if (!strcasecmp(data, "none"))
 			{
 				clear_track_all(track_cfg);
 				check_track_state(user);

@@ -9,7 +9,8 @@
 	reporting correctly when X3 kicks someone. This should affect mrsnoopy
 	as well, hopefully wont cause any bugs.
 
-	* src/mod-track.c: Fixed up the track module a bit more
+	* src/mod-track.c: Fixed up the track module a bit more - made track
+	all/none work
 
 2006-05-18  Alex Schumann  <rubin@afternet.org>
 
