@@ -607,11 +607,21 @@ DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reas
         DelChannel(channel);
 }
 
+static kick_func_t *kf_list;
+static unsigned int kf_size = 0, kf_used = 0;
+
 void
 KickChannelUser(struct userNode* target, struct chanNode* channel, struct userNode *kicker, const char *why)
 {
+    unsigned int n;
+
     if (!target || !channel || IsService(target) || !GetUserMode(channel, target))
         return;
+
+    /* This may break things, but lets see.. -Rubin */
+    for (n=0; n<kf_used; n++)
+        kf_list[n](kicker, target, channel);
+
     /* don't remove them from the channel, since the server will send a PART */
     irc_kick(kicker, target, channel, why);
 
@@ -622,9 +632,6 @@ KickChannelUser(struct userNode* target, struct chanNode* channel, struct userNo
 	DelChannelUser(target, channel, NULL, 0);
     }
 }
-
-static kick_func_t *kf_list;
-static unsigned int kf_size = 0, kf_used = 0;
 
 void
 reg_kick_func(kick_func_t handler)

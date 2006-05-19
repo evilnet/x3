@@ -219,7 +219,7 @@ track_part(struct modeNode *mn, const char *reason) {
 static void
 track_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *chan) {
     if (!track_cfg.enabled) return;
-    if (check_track_kick(track_cfg) && (check_track_user(kicker) || check_track_user(victim)))
+    if (check_track_kick(track_cfg) && ((check_track_user(kicker) || check_track_user(victim))))
     {
            UPDATE_TIMESTAMP();
            TRACK("$bKICK$b %s from %s by %s", victim->nick, chan->name, (kicker ? kicker->nick : "some server"));
@@ -291,7 +291,7 @@ track_channel_mode(struct userNode *who, struct chanNode *channel, char **modes,
        if(who)
        {
                if (who->uplink->burst && !track_cfg.show_bursts) return;
-               if (!check_track_chanmode(track_cfg) && !check_track_user(who)) return;
+               if (!check_track_chanmode(track_cfg) || !check_track_user(who)) return;
        } else
                return;
 
@@ -454,7 +454,10 @@ MODCMD_FUNC(cmd_track)
 				TRACK("$bALERT$b TRACK disabled by %s", user->nick);
 			}
 			else
-				TRACK("Unrecognised parameter: %s", data);
+                        {
+                                send_message_type(4, user, track_cfg.bot, "Unrecognised parameter: %s", data);
+                                svccmd_send_help_brief(user, track_cfg.bot, cmd);
+                        }
 			return 0;
 		}
 
@@ -588,8 +591,10 @@ MODCMD_FUNC(cmd_deltrack)
 			send_message_type(4, user, track_cfg.bot, "This nick isn't monitored.");
 	}
 	else
+    {
 		send_message_type(4, user, track_cfg.bot, "No nick or invalid nick specified.");
         svccmd_send_help_brief(user, track_cfg.bot, cmd);
+    }
 	return 0;
 }
 
@@ -603,10 +608,13 @@ MODCMD_FUNC(cmd_addtrack)
 		UPDATE_TIMESTAMP();
 		TRACK("$bALERT$b Manually enabled monitoring of %s!%s@%s on %s requested by %s",
 				un->nick, un->ident, un->hostname, un->uplink->name, user->nick);
+        send_message_type(4, user, track_cfg.bot, "Now tracking %s!%s@%s on %s", un->nick,un->ident,un->hostname, un->uplink->name);
 	}
 	else
+    {
 		send_message_type(4, user, track_cfg.bot, "No nick or invalid nick specified.");
         svccmd_send_help_brief(user, track_cfg.bot, cmd);
+    }
 	return 0;
 }
 
@@ -642,7 +650,9 @@ track_conf_read(void) {
     str = database_get_data(node, "channel", RECDB_QSTRING);
     if (!str)
         return;
-    track_cfg.channel = AddChannel(str, now, "+sntim", NULL, NULL);
+    // XXX - dont do addchannel if the channel is being shared with
+    // another module:
+    track_cfg.channel = AddChannel(str, now, "+sntOm", NULL, NULL);
     if (!track_cfg.channel)
         return;
     str = database_get_data(node, "show_bursts", RECDB_QSTRING);

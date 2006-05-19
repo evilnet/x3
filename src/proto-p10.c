@@ -1904,6 +1904,11 @@ init_parse(void)
     /* We have reliable clock!  Always!  Wraaa! */
     dict_insert(irc_func_dict, CMD_SETTIME, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SETTIME, cmd_dummy);
+
+    /* ignore /trace and /motd commands targetted at us */
+    dict_insert(irc_func_dict, TOK_TRACE, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_MOTD, cmd_dummy);
+
     /* handle topics */
     dict_insert(irc_func_dict, "331", cmd_num_topic);
     dict_insert(irc_func_dict, "332", cmd_num_topic);

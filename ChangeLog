@@ -3,20 +3,30 @@
 
 2006-05-18  Alex Schumann  <rubin@afternet.org>
 
-    * chanserv.c: adding 'classic' view, via patch submitted by pLaYa
+	* src/proto-p10.c: Fixed up the track module a bit more
 
-	* nickserv.c: adding 'classic' view, via patch submitted by pLaYa
+	* src/hash.c: Fixed up the track module a bit more, including
+	reporting correctly when X3 kicks someone. This should affect mrsnoopy
+	as well, hopefully wont cause any bugs.
 
-	* nickserv.h: adding 'classic' view, via patch submitted by pLaYa
-
-	* nickserv.help: adding 'classic' view, via patch submitted by pLaYa
+	* src/mod-track.c: Fixed up the track module a bit more
 
 2006-05-18  Alex Schumann  <rubin@afternet.org>
 
-	* chanserv.c: re-disabled netrider kicking. Somehow this got included back
+	* src/chanserv.c: adding 'classic' view, via patch submitted by pLaYa
+
+	* src/nickserv.c: adding 'classic' view, via patch submitted by pLaYa
+
+	* src/nickserv.h: adding 'classic' view, via patch submitted by pLaYa
+
+	* src/nickserv.help: adding 'classic' view, via patch submitted by pLaYa
+
+2006-05-18  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: re-disabled netrider kicking. Somehow this got included back
 	in.
 
-	* mod-track.c: some cleanups and textual changes, to make the commands
+	* src/mod-track.c: some cleanups and textual changes, to make the commands
 	slightly more user friendly.
 
 2006-05-16  Neil Spierling  <sirvulcan@gmail.com>
