@@ -2571,6 +2571,8 @@ static OPTION_FUNC(opt_style)
             hi->userlist_style = HI_STYLE_CLEAN;
         else if (!irccasecmp(argv[1], "Advanced"))
             hi->userlist_style = HI_STYLE_ADVANCED;
+        else if (!irccasecmp(argv[1], "Classic"))
+            hi->userlist_style = HI_STYLE_CLASSIC;
         else  /* Default to normal */
             hi->userlist_style = HI_STYLE_NORMAL;
     } /* TODO: give error if unknow style is chosen */
@@ -2578,6 +2580,9 @@ static OPTION_FUNC(opt_style)
     switch (hi->userlist_style) {
         case HI_STYLE_ADVANCED:
             style = "Advanced";
+            break;
+        case HI_STYLE_CLASSIC:
+            style = "Classic";
             break;
         case HI_STYLE_CLEAN:
             style = "Clean";

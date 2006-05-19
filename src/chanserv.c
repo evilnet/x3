@@ -361,6 +361,8 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_ACCESS_SEARCH_HEADER_CLEAN",    "$b%s Users From Level %s To %s Matching %s$b" },
     { "CSMSG_ACCESS_ALL_HEADER_ADVANCED",    "$b%s Users From Level %s To %s$b" },
     { "CSMSG_ACCESS_SEARCH_HEADER_ADVANCED", "$b%s Users From Level %s To %s Matching %s$b" },
+    { "CSMSG_ACCESS_ALL_HEADER_CLASSIC",     "$b%s Users From Level %s To %s$b" },
+    { "CSMSG_ACCESS_SEARCH_HEADER_CLASSIC",  "$b%s Users From Level %s To %s Matching %s$b" },
     */
     { "CSMSG_INVALID_ACCESS", "$b%s$b is an invalid access level." },
     { "CSMSG_CHANGED_ACCESS", "%s now has access $b%s$b (%u) in %s." },
@@ -3927,6 +3929,22 @@ advanced_list(struct listData *list)
         table_send(list->bot, list->user->nick, 0, NULL, list->table);
 } 
 
+static void
+classic_list(struct listData *list)
+{
+    const char *msg;
+    if(list->search)
+        send_message(list->user, list->bot, "CSMSG_ACCESS_SEARCH_HEADER_CLASSIC", list->channel->name, list->lowest, list->highest, list->search);
+    else
+        send_message(list->user, list->bot, "CSMSG_ACCESS_ALL_HEADER_CLASSIC", list->channel->name, list->lowest, list->highest);
+    if(list->table.length == 1)
+    {
+        msg = user_find_message(list->user, "MSG_NONE");
+        send_message_type(4, list->user, list->bot, "  %s", msg);
+    }
+    else
+        table_send(list->bot, list->user->nick, 0, NULL, list->table);
+}
 */
 
 static int
@@ -3974,6 +3992,9 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
             case HI_STYLE_ADVANCED: 
                 send_list = advanced_list; 
                 break;
+            case HI_STYLE_CLASSIC: 
+                send_list = classic_list; 
+                break;
             case HI_STYLE_NORMAL: 
             default: 
                 send_list = normal_list; 
@@ -4005,9 +4026,27 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
         lData.table.width = 4; /* without = 4 */
     ary = malloc(lData.table.width*sizeof(**lData.table.contents));
     lData.table.contents[0] = ary;
-    ary[i++] = "Access";
-    if(user->handle_info && user->handle_info->userlist_style == HI_STYLE_ADVANCED)
-        ary[i++] = "Level"; /* Only on advanced view */
+    if(user->handle_info) {
+       switch(user->handle_info->userlist_style) {
+          case HI_STYLE_CLASSIC:
+            ary[i++] = "Level";
+       break;
+          case HI_STYLE_ADVANCED:
+            ary[i++] = "Access";
+            ary[i++] = "Level";
+       break;
+          case HI_STYLE_CLEAN:
+            ary[i++] = "Access";
+       break;
+          case HI_STYLE_NORMAL:
+            default:
+            ary[i++] = "Access";
+       break;
+        }
+    }
+    else {
+      ary[i++] = "Access";
+    }  
     ary[i++] = "Account";
     ary[i] = "Last Seen";
     seen_index = i++;
@@ -4020,9 +4059,27 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
         i = 0;
         ary = malloc(lData.table.width*sizeof(**lData.table.contents));
         lData.table.contents[matches] = ary;
-        ary[i++] = user_level_name_from_level(uData->access);
-        if(user->handle_info && user->handle_info->userlist_style == HI_STYLE_ADVANCED)
-            ary[i++] = strtab(uData->access);
+        if(user->handle_info) {
+           switch(user->handle_info->userlist_style) {
+              case HI_STYLE_CLASSIC:
+                ary[i++] = strtab(uData->access);
+           break;
+              case HI_STYLE_ADVANCED:
+                ary[i++] = user_level_name_from_level(uData->access);
+                ary[i++] = strtab(uData->access);
+           break;
+              case HI_STYLE_CLEAN:
+                ary[i++] = user_level_name_from_level(uData->access);
+           break;
+              case HI_STYLE_NORMAL:
+                default:
+                ary[i++] = user_level_name_from_level(uData->access);
+           break;
+            }
+        }
+     else {
+           ary[i++] = user_level_name_from_level(uData->access);
+        }
         ary[i++] = uData->handle->handle;
         if(uData->present)
             ary[i] = "Here";

@@ -1,6 +1,18 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-05-18  Alex Schumann  <rubin@afternet.org>
+
+    * chanserv.c: adding 'classic' view, via patch submitted by pLaYa
+
+	* nickserv.c: adding 'classic' view, via patch submitted by pLaYa
+
+	* nickserv.h: adding 'classic' view, via patch submitted by pLaYa
+
+	* nickserv.help: adding 'classic' view, via patch submitted by pLaYa
+
+2006-05-18  Alex Schumann  <rubin@afternet.org>
+
 	* chanserv.c: re-disabled netrider kicking. Somehow this got included back
 	in.
 

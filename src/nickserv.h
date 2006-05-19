@@ -46,6 +46,7 @@ struct svccmd;
 #define HI_STYLE_NORMAL	       'n'
 #define HI_STYLE_CLEAN	       'c'
 #define HI_STYLE_ADVANCED      'a'
+#define HI_STYLE_CLASSIC       'k'
 
 #define HI_DEFAULT_FLAGS       (HI_FLAG_MIRC_COLOR)
 
