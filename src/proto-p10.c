@@ -903,13 +903,18 @@ irc_part(struct userNode *who, struct chanNode *what, const char *reason)
 void
 irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what, const char *topic)
 {
-/* UNCOMMENT FOR NEFARIOUS 0.5.0 TOPIC SUPPORT
- *    putsock("%s " P10_TOPIC " %s %s " FMT_TIME_T " " FMT_TIME_T " :%s", service->numeric, what->name, who->nick, what->timestamp, now, topic);
- * UNCOMMENT FOR NEFARIOUS 0.5.0 TOPIC SUPPORT */
 
-    who = service; /* REMOVE LINE FOR NEFARIOUS 0.5.0 */
+   int type = 4;
+   const char *str;
+   str = conf_get_data("server/type", RECDB_QSTRING);
+   type = atoi(str);
 
-    putsock("%s " P10_TOPIC " %s :%s", who->numeric, what->name, topic);
+   if (type == 5) {
+     putsock("%s " P10_TOPIC " %s %s " FMT_TIME_T " " FMT_TIME_T " :%s", service->numeric, what->name, who->nick, what->timestamp, now, topic);
+   } else {
+     who = service; /* REMOVE LINE FOR NEFARIOUS 0.5.0 */
+     putsock("%s " P10_TOPIC " %s :%s", who->numeric, what->name, topic);
+   }
 }
 
 void
