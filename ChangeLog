@@ -1,6 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-05-16  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/proto-p10.c: Changed 050 specfic topic stuff to a conf setting
+
+	* src/x3.conf.example.: adding 050 'type' to server config (rubin
+	fixed missing ';' and changelog entries)
+
 2006-05-18  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: Fixed up the track module a bit more

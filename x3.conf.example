@@ -48,7 +48,7 @@
      * x3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
     "numeric" "51"; // hint: If you get collisions on link, CHANGE THIS.
-    "type" "4" // Only change this to 5 if you are using Nefarious 0.5.0 off SVN
+    "type" "4"; // Only change this to 5 if you are using Nefarious 0.5.0 off SVN
     "max_users" "256"; // You can save a little memory by setting this to a lower value.
     "force_n2k" "1"; // Use extended (5-digit) numnick for self, even if 3 are possible.
     "ping_freq" "60";
