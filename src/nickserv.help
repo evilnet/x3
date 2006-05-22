@@ -25,6 +25,7 @@
                 "  $bEMAIL$b        Email based commands",
                 "                 such as recovering forgotten",
                 "                 passwords.",
+                "  $bIGNORE$b       Ignore list management.",
         	"  $bINFORMATION$b  Informational functions.",
                 "  $bOPER$b         Commands for IRC Operators.",
                 "$b$b",
@@ -56,6 +57,7 @@
 	        " $b$N$b help categories:",
         	"  $bACCOUNT$b      Account management.",
         	"  $bINFORMATION$b  Informational functions.",
+                "  $bIGNORE$b       Ignore list management.",
                 "  $bOPER$b         Commands for IRC Operators.",
                 "$b$b",
                 " $b$N is $uNOT$u a NickServ$b!        ",
@@ -164,6 +166,8 @@
                 "*$bOUNREGNICK$b  Remove a nick from someone's account.",
                 " $bOADDMASK$b    Add a mask to someone's account.",
                 " $bODELMASK$b    Remove a mask from someone's account.",
+                " $bOADDIGNORE$b  Add an ignore to someone's account.",
+                " $bODELIGNORE$b  Remove an ignore from someone's account.",
                 " $bMERGEDB$b     Load a database into memory."
         );
 
@@ -629,7 +633,32 @@
         "$uSee Also:$u rename"
         );
 };
+
 "MERGEDB" ("/msg $N MERGEDB <dbfilename>",
         "Merge contents of $bdbfilename$b into in-memory database.  Any accounts in both will be $bOVERWRITTEN$b with the information from $bdbfilename$b, although authed users will be authed to the new account.",
         "This command is only accessible to IRC operators.",
         "$uSee Also:$u OperServ.write");
+
+"IGNORE" ("Ignore list management commands are:",
+        " $bADDIGNORE$b   Adds a hostmask to your ignore list.",
+        " $bDELIGNORE$b   Remove an entry from your ignore list.",
+        " $bACCOUNTINFO$b Displays information about an account including ignores.",
+        );
+
+"ADDIGNORE" ("/msg $N ADDIGNORE [user@host]",
+        "Adds the specified user@host to the account ignore list that you are authenticated to with $b$N$b.",
+        "$uSee Also:$u delignore");
+
+"DELIGNORE" ("/msg $N DELIGNORE <user@host>",
+        "Removes a hostmask from the account ignore list that you are authenticated on.",
+        "$uSee Also:$u addignore");
+
+"OADDIGNORE" ("/msg $N OADDIGNORE <nick|*account> <user@host>",
+        "Adds a hostmask to the specified account's ignore list.",
+        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "$uSee Also:$u odelignore");
+
+"ODELIGNORE" ("/msg $N ODELIGNORE <nick|*account> <user@host>",
+        "Removes a hostmask from the specified account's ignore list.",
+        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "$uSee Also:$u oaddignore");

@@ -7055,7 +7055,7 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 {
     struct mod_chanmode change;
     struct userData *channel;
-    unsigned int ii, jj;
+    unsigned int ii, jj, i;
 
     if(!user->handle_info)
 	return;
@@ -7143,6 +7143,12 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
                 HANDLE_SET_FLAG(user->handle_info, HELPING);
                 break;
             }
+        }
+    }
+
+    if (user->handle_info->ignores->used) {
+        for (i=0; i < user->handle_info->ignores->used; i++) {
+            irc_silence(user, user->handle_info->ignores->list[i], 1);
         }
     }
 }

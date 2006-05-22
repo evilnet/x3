@@ -78,6 +78,7 @@
 #define KEY_PASSWD "passwd"
 #define KEY_NICKS "nicks"
 #define KEY_MASKS "masks"
+#define KEY_IGNORES "ignores"
 #define KEY_OPSERV_LEVEL "opserv_level"
 #define KEY_FLAGS "flags"
 #define KEY_REGISTER_ON "register"
@@ -214,6 +215,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_LAST_HOST_UNKNOWN", "Last quit hostmask: Unknown" },
     { "NSMSG_HANDLEINFO_NICKS", "Nickname(s): %s" },
     { "NSMSG_HANDLEINFO_MASKS", "Hostmask(s): %s" },
+    { "NSMSG_HANDLEINFO_IGNORES", "Ignore(s): %s" },
     { "NSMSG_HANDLEINFO_CHANNELS", "Channel(s): %s" },
     { "NSMSG_HANDLEINFO_CURRENT", "Current nickname(s): %s" },
     { "NSMSG_HANDLEINFO_DNR", "Do-not-register (by %s): %s" },
@@ -240,6 +242,8 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_MASK_INVALID", "$b%s$b is an invalid hostmask." },
     { "NSMSG_ADDMASK_ALREADY", "$b%s$b is already a hostmask in your account." },
     { "NSMSG_ADDMASK_SUCCESS", "Hostmask %s added." },
+    { "NSMSG_ADDIGNORE_ALREADY", "$b%s$b is already an ignored hostmask in your account." },
+    { "NSMSG_ADDIGNORE_SUCCESS", "Hostmask %s added." },
     { "NSMSG_DELMASK_NOTLAST", "You may not delete your last hostmask." },
     { "NSMSG_DELMASK_SUCCESS", "Hostmask %s deleted." },
     { "NSMSG_DELMASK_NOT_FOUND", "Unable to find mask to be deleted." },
@@ -561,6 +565,7 @@ free_handle_info(void *vhi)
 #endif
 
     free_string_list(hi->masks);
+    free_string_list(hi->ignores);
     assert(!hi->users);
 
     while (hi->nicks)
@@ -1067,6 +1072,7 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     cryptpass(passwd, crypted);
     hi = register_handle(handle, crypted, 0);
     hi->masks = alloc_string_list(1);
+    hi->ignores = alloc_string_list(1);
     hi->users = NULL;
     hi->language = lang_C;
     hi->registered = now;
@@ -1442,6 +1448,75 @@ static NICKSERV_FUNC(cmd_oregister)
     return 1;
 }
 
+static int
+nickserv_ignore(struct userNode *user, struct handle_info *hi, const char *mask)
+{
+    unsigned int i;
+    char *new_mask = canonicalize_hostmask(strdup(mask));
+    for (i=0; i<hi->ignores->used; i++) {
+        if (!irccasecmp(new_mask, hi->ignores->list[i])) {
+            send_message(user, nickserv, "NSMSG_ADDIGNORE_ALREADY", new_mask);
+            free(new_mask);
+            return 0;
+        }
+    }
+    string_list_append(hi->ignores, new_mask);
+    send_message(user, nickserv, "NSMSG_ADDIGNORE_SUCCESS", new_mask);
+
+    irc_silence(user, new_mask, 1);
+    return 1;
+}
+
+static NICKSERV_FUNC(cmd_addignore)
+{
+    NICKSERV_MIN_PARMS(2);
+
+    return nickserv_ignore(user, user->handle_info, argv[1]);
+}
+
+static NICKSERV_FUNC(cmd_oaddignore)
+{
+    struct handle_info *hi;
+
+    NICKSERV_MIN_PARMS(3);
+    if (!(hi = get_victim_oper(user, argv[1])))
+        return 0;
+    return nickserv_ignore(user, hi, argv[2]);
+}
+
+static int
+nickserv_delignore(struct userNode *user, struct handle_info *hi, const char *del_mask)
+{
+    unsigned int i;
+    for (i=0; i<hi->ignores->used; i++) {
+	if (!strcmp(del_mask, hi->ignores->list[i])) {
+	    char *old_mask = hi->ignores->list[i];
+	    hi->ignores->list[i] = hi->ignores->list[--hi->ignores->used];
+	    send_message(user, nickserv, "NSMSG_DELMASK_SUCCESS", old_mask);
+            irc_silence(user, old_mask, 0);
+	    free(old_mask);
+	    return 1;
+	}
+    }
+    send_message(user, nickserv, "NSMSG_DELMASK_NOT_FOUND");
+    return 0;
+}
+
+static NICKSERV_FUNC(cmd_delignore)
+{
+    NICKSERV_MIN_PARMS(2);
+    return nickserv_delignore(user, user->handle_info, argv[1]);
+}
+
+static NICKSERV_FUNC(cmd_odelignore)
+{
+    struct handle_info *hi;
+    NICKSERV_MIN_PARMS(3);
+    if (!(hi = get_victim_oper(user, argv[1])))
+        return 0;
+    return nickserv_delignore(user, hi, argv[2]);
+}
+
 static NICKSERV_FUNC(cmd_handleinfo)
 {
     char buff[400];
@@ -1584,6 +1659,26 @@ static NICKSERV_FUNC(cmd_handleinfo)
         }
     } else {
         reply("NSMSG_HANDLEINFO_MASKS", nsmsg_none);
+    }
+
+    if (hi->ignores->used) {
+        for (i=0; i < hi->ignores->used; i++) {
+            herelen = strlen(hi->ignores->list[i]);
+            if (pos + herelen + 1 > ArrayLength(buff)) {
+                i--;
+                goto print_ignore_buff;
+            }
+            memcpy(buff+pos, hi->ignores->list[i], herelen);
+            pos += herelen; buff[pos++] = ' ';
+            if (i+1 == hi->ignores->used) {
+              print_ignore_buff:
+                buff[pos-1] = 0;
+                reply("NSMSG_HANDLEINFO_IGNORES", buff);
+                pos = 0;
+            }
+        }
+    } else {
+        reply("NSMSG_HANDLEINFO_IGNORES", nsmsg_none);
     }
 
     if (hi->channels) {
@@ -3112,6 +3207,8 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
         saxdb_write_int(ctx, KEY_LAST_SEEN, hi->lastseen);
         if (hi->masks->used)
             saxdb_write_string_list(ctx, KEY_MASKS, hi->masks);
+        if (hi->ignores->used)
+            saxdb_write_string_list(ctx, KEY_IGNORES, hi->ignores);
         if (hi->maxlogins)
             saxdb_write_int(ctx, KEY_MAXLOGINS, hi->maxlogins);
         if (hi->nicks) {
@@ -3139,6 +3236,7 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
         saxdb_write_string(ctx, KEY_USERLIST_STYLE, flags);
         saxdb_end_record(ctx);
     }
+
     return 0;
 }
 
@@ -3201,6 +3299,16 @@ static NICKSERV_FUNC(cmd_merge)
                 break;
         if (jj==hi_to->masks->used) /* Nothing from the "to" handle covered this mask, so add it. */
             string_list_append(hi_to->masks, strdup(mask));
+    }
+
+    /* Merge the ignores. */
+    for (ii=0; ii<hi_from->ignores->used; ii++) {
+        char *ignore = hi_from->ignores->list[ii];
+        for (jj=0; jj<hi_to->ignores->used; jj++)
+            if (match_ircglobs(hi_to->ignores->list[jj], ignore))
+                break;
+        if (jj==hi_to->ignores->used) /* Nothing from the "to" handle covered this mask, so add it. */
+            string_list_append(hi_to->ignores, strdup(ignore));
     }
 
     /* Merge the lists of authed users. */
@@ -3611,7 +3719,7 @@ static void
 nickserv_db_read_handle(const char *handle, dict_t obj)
 {
     const char *str;
-    struct string_list *masks, *slist;
+    struct string_list *masks, *slist, *ignores;
     struct handle_info *hi;
     struct userNode *authed_users;
     struct userData *channels;
@@ -3649,6 +3757,8 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
     hi->channels = channels;
     masks = database_get_data(obj, KEY_MASKS, RECDB_STRING_LIST);
     hi->masks = masks ? string_list_copy(masks) : alloc_string_list(1);
+    ignores = database_get_data(obj, KEY_IGNORES, RECDB_STRING_LIST);
+    hi->ignores = ignores ? string_list_copy(ignores) : alloc_string_list(1);
     str = database_get_data(obj, KEY_MAXLOGINS, RECDB_QSTRING);
     hi->maxlogins = str ? strtoul(str, NULL, 0) : 0;
     str = database_get_data(obj, KEY_LANGUAGE, RECDB_QSTRING);
@@ -4198,6 +4308,7 @@ init_nickserv(const char *nick)
     conf_register_reload(nickserv_conf_read);
     nickserv_opt_dict = dict_new();
     nickserv_email_dict = dict_new();
+
     dict_set_free_keys(nickserv_email_dict, free);
     dict_set_free_data(nickserv_email_dict, nickserv_free_email_addr);
 
@@ -4242,6 +4353,11 @@ init_nickserv(const char *nick)
         dict_insert(nickserv_opt_dict, "EMAIL", opt_email);
     }
     nickserv_define_func("GHOST", cmd_ghost, -1, 1, 0);
+    /* ignore commands */
+    nickserv_define_func("ADDIGNORE", cmd_addignore, -1, 1, 0);
+    nickserv_define_func("OADDIGNORE", cmd_oaddignore, 0, 1, 0);
+    nickserv_define_func("DELIGNORE", cmd_delignore, -1, 1, 0);
+    nickserv_define_func("ODELIGNORE", cmd_odelignore, 0, 1, 0);
     /* miscellaneous commands */
     nickserv_define_func("STATUS", cmd_status, -1, 0, 0);
     nickserv_define_func("SEARCH", cmd_search, 100, 1, 0);
