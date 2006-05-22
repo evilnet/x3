@@ -101,6 +101,7 @@
 #define NICKLEN         30
 #define USERLEN         10
 #define HOSTLEN         63
+#define SOCKIPLEN       15
 #define ACCOUNTLEN      15
 #define REALLEN         50
 #define TOPICLEN        250
@@ -127,6 +128,8 @@ struct userNode {
     char info[REALLEN + 1];       /* Free form additional client information */
     char hostname[HOSTLEN + 1];   /* DNS name or IP address */
     char fakehost[HOSTLEN + 1];   /* Assigned fake host */
+    char crypthost[HOSTLEN + 30]; /* Crypted hostname */
+    char cryptip[SOCKIPLEN + 30]; /* Crypted IP */
 #ifdef WITH_PROTOCOL_P10
     char numeric[COMBO_NUMERIC_LEN+1];
     unsigned int num_local : 18;

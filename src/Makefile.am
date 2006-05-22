@@ -22,6 +22,7 @@ x3_SOURCES = \
 	hash.c hash.h \
 	heap.c heap.h \
 	helpfile.c helpfile.h \
+	hosthiding.c hosthiding.h \
 	ioset.c ioset.h \
 	log.c log.h \
 	main.c common.h \

@@ -129,19 +129,21 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_OPALL_DONE", "Opped everyone on $b%s$b." },
     { "OSMSG_HOP_DONE", "Halfopped the requested lusers." },
     { "OSMSG_HOPALL_DONE", "Halfopped everyone on $b%s$b." },
-    { "OSMSG_WHOIS_IDENT", "%s (%s@%s) from %d.%d.%d.%d" },
-    { "OSMSG_WHOIS_NICK", "Nick    : %s" },
-    { "OSMSG_WHOIS_HOST", "Host    : %s@%s" },
-    { "OSMSG_WHOIS_FAKEHOST", "Fakehost: %s" },
-    { "OSMSG_WHOIS_IP",   "Real IP : %s" },
-    { "OSMSG_WHOIS_MODES", "Modes   : +%s " },
-    { "OSMSG_WHOIS_INFO", "Info    : %s" },
-    { "OSMSG_WHOIS_NUMERIC", "Numnick : %s" },
-    { "OSMSG_WHOIS_SERVER", "Server  : %s" },
-    { "OSMSG_WHOIS_NICK_AGE", "Nick Age: %s" },
-    { "OSMSG_WHOIS_ACCOUNT", "Account : %s" },
-    { "OSMSG_WHOIS_CHANNELS", "Channels: %s" },
-    { "OSMSG_WHOIS_HIDECHANS", "Channel list omitted for your sanity." },
+    { "OSMSG_WHOIS_IDENT",      "%s (%s@%s) from %d.%d.%d.%d" },
+    { "OSMSG_WHOIS_NICK",       "Nick       : %s" },
+    { "OSMSG_WHOIS_HOST",       "Host       : %s@%s" },
+    { "OSMSG_WHOIS_FAKEHOST",   "Fakehost   : %s" },
+    { "OSMSG_WHOIS_CRYPT_HOST", "Crypt Host : %s" },
+    { "OSMSG_WHOIS_CRYPT_IP",   "Crypt IP   : %s" },
+    { "OSMSG_WHOIS_IP",         "Real IP    : %s" },
+    { "OSMSG_WHOIS_MODES",      "Modes      : +%s " },
+    { "OSMSG_WHOIS_INFO",       "Info       : %s" },
+    { "OSMSG_WHOIS_NUMERIC",    "Numnick    : %s" },
+    { "OSMSG_WHOIS_SERVER",     "Server     : %s" },
+    { "OSMSG_WHOIS_NICK_AGE",   "Nick Age   : %s" },
+    { "OSMSG_WHOIS_ACCOUNT",    "Account    : %s" },
+    { "OSMSG_WHOIS_CHANNELS",   "Channels   : %s" },
+    { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
     { "OSMSG_CHANNEL_VOICED", "All users on %s voiced." },
     { "OSMSG_CHANNEL_DEVOICED", "All voiced users on %s de-voiced." },
@@ -1448,6 +1450,8 @@ static MODCMD_FUNC(cmd_whois)
     reply("OSMSG_WHOIS_HOST", target->ident, target->hostname);
     if (IsFakeHost(target))
         reply("OSMSG_WHOIS_FAKEHOST", target->fakehost);
+    reply("OSMSG_WHOIS_CRYPT_HOST", target->crypthost);
+    reply("OSMSG_WHOIS_CRYPT_IP", target->cryptip);
     reply("OSMSG_WHOIS_IP", irc_ntoa(&target->ip));
     if (target->modes) {
         bpos = 0;

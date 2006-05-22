@@ -63,12 +63,12 @@ globtest_LDADD = $(LDADD)
 am_x3_OBJECTS = chanserv.$(OBJEXT) compat.$(OBJEXT) conf.$(OBJEXT) \
 	dict-splay.$(OBJEXT) getopt.$(OBJEXT) getopt1.$(OBJEXT) \
 	gline.$(OBJEXT) global.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
-	helpfile.$(OBJEXT) ioset.$(OBJEXT) log.$(OBJEXT) \
-	main.$(OBJEXT) math.$(OBJEXT) md5.$(OBJEXT) modcmd.$(OBJEXT) \
-	modules.$(OBJEXT) nickserv.$(OBJEXT) opserv.$(OBJEXT) \
-	policer.$(OBJEXT) recdb.$(OBJEXT) saxdb.$(OBJEXT) \
-	sendmail.$(OBJEXT) shun.$(OBJEXT) timeq.$(OBJEXT) \
-	tools.$(OBJEXT)
+	helpfile.$(OBJEXT) hosthiding.$(OBJEXT) ioset.$(OBJEXT) \
+	log.$(OBJEXT) main.$(OBJEXT) math.$(OBJEXT) md5.$(OBJEXT) \
+	modcmd.$(OBJEXT) modules.$(OBJEXT) nickserv.$(OBJEXT) \
+	opserv.$(OBJEXT) policer.$(OBJEXT) recdb.$(OBJEXT) \
+	saxdb.$(OBJEXT) sendmail.$(OBJEXT) shun.$(OBJEXT) \
+	timeq.$(OBJEXT) tools.$(OBJEXT)
 x3_OBJECTS = $(am_x3_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I.
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -216,6 +216,7 @@ x3_SOURCES = \
 	hash.c hash.h \
 	heap.c heap.h \
 	helpfile.c helpfile.h \
+	hosthiding.c hosthiding.h \
 	ioset.c ioset.h \
 	log.c log.h \
 	main.c common.h \
@@ -325,6 +326,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/heap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/helpfile.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hosthiding.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ioset.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/log.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
@@ -351,21 +353,21 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	if $(COMPILE) $(TRACK) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
+@am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/$*.Tpo" "$(DEPDIR)/$*.Po"; else rm -f "$(DEPDIR)/$*.Tpo"; exit 1; fi
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	if $(COMPILE) $(TRACK) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ `$(CYGPATH_W) '$<'`; \
+@am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ `$(CYGPATH_W) '$<'`; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/$*.Tpo" "$(DEPDIR)/$*.Po"; else rm -f "$(DEPDIR)/$*.Tpo"; exit 1; fi
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	if $(LTCOMPILE) $(TRACK) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
+@am__fastdepCC_TRUE@	if $(LTCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/$*.Tpo" "$(DEPDIR)/$*.Plo"; else rm -f "$(DEPDIR)/$*.Tpo"; exit 1; fi
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@

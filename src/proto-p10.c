@@ -20,6 +20,7 @@
 
 #include "nickserv.h"
 #include "chanserv.h"
+#include "hosthiding.h"
 #include "proto-common.c"
 
 /* Full commands. */
@@ -2273,6 +2274,10 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     safestrncpy(uNode->hostname, hostname, sizeof(uNode->hostname));
     safestrncpy(uNode->numeric, numeric, sizeof(uNode->numeric));
     irc_p10_pton(&uNode->ip, realip);
+
+    make_virtip((char*)irc_ntoa(&uNode->ip), (char*)irc_ntoa(&uNode->ip), uNode->cryptip);
+    make_virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
+
     uNode->timestamp = timestamp;
     modeList_init(&uNode->channels);
     uNode->uplink = uplink;

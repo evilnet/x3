@@ -1,6 +1,25 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-05-23  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/hash.h: Bits needed for other type of host hiding.
+
+	* src/hosthiding.h: Nefarious style 2 host hiding declerations.
+
+	* src/hosthiding.c: This will generated crypted style 2 Nefarious
+	hidden hosts and ips. Currently they are just displayed in O3
+	WHOIS. Im yet to expand this.
+
+	* src/Makefile.am: Added hosthiding.c and hosthiding.h.
+
+	* src/Makefile.in: Regenerated.
+
+	* src/opserv.c: Display crypted hosts n ips in WHOIS.
+
+	* src/proto-p10.c: Generate crypted hosts n ips on everyone and
+	save them in user->crypthost user->cryptip.
+
 2006-05-22  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/chanserv.c: Set ignores when you authenticate.
