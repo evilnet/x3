@@ -7151,6 +7151,9 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
             irc_silence(user, user->handle_info->ignores->list[i], 1);
         }
     }
+
+    if (user->handle_info->epithet)
+      irc_swhois(chanserv, user, user->handle_info->epithet);
 }
 
 static void

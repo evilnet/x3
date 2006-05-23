@@ -260,6 +260,9 @@ make_ipv6virthost (char *curr, char *host, char *new)
   int parc = 0, parc2 = 0;
   unsigned int hash[8];
 
+  if ((strlen(host) < 3) || (strlen(curr) < 3))
+    return;
+
   strncpy (s, curr, HOSTLEN);
   strncpy (s2, host, HOSTLEN);
 

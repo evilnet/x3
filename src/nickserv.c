@@ -2861,6 +2861,8 @@ static OPTION_FUNC(opt_epithet)
 {
     if ((argc > 1) && oper_has_access(user, nickserv, nickserv_conf.set_epithet_level, 0)) {
         char *epithet;
+        struct userNode *target, *next_un;
+
         if (!override) {
             send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
             return 0;
@@ -2874,6 +2876,12 @@ static OPTION_FUNC(opt_epithet)
             hi->epithet = NULL;
         else
             hi->epithet = strdup(epithet);
+
+        for (target = hi->users; target; target = next_un) {
+          irc_swhois(nickserv, target, hi->epithet);
+
+          next_un = target->next_authed;
+        }
     }
 
     if (hi->epithet)

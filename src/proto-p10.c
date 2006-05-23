@@ -91,6 +91,7 @@
 #define CMD_SQUIT               "SQUIT"
 #define CMD_STATS               "STATS"
 #define CMD_SVSNICK             "SVSNICK"
+#define CMD_SWHOIS              "SWHOIS"
 #define CMD_TIME                "TIME"
 #define CMD_TOPIC               "TOPIC"
 #define CMD_TRACE               "TRACE"
@@ -178,6 +179,7 @@
 #define TOK_SQUIT               "SQ"
 #define TOK_STATS               "R"
 #define TOK_SVSNICK             "SN"
+#define TOK_SWHOIS              "SW"
 #define TOK_TIME                "TI"
 #define TOK_TOPIC               "T"
 #define TOK_TRACE               "TR"
@@ -275,6 +277,7 @@
 #define P10_SQUIT               TYPE(SQUIT)
 #define P10_STATS               TYPE(STATS)
 #define P10_SVSNICK             TYPE(SVSNICK)
+#define P10_SWHOIS              TYPE(SWHOIS)
 #define P10_TIME                TYPE(TIME)
 #define P10_TOPIC               TYPE(TOPIC)
 #define P10_TRACE               TYPE(TRACE)
@@ -895,6 +898,14 @@ void
 irc_svsnick(struct userNode *from, struct userNode *target, const char *newnick)
 {
     putsock("%s " P10_SVSNICK " %s %s "FMT_TIME_T, from->uplink->numeric, target->numeric, newnick, now);
+}
+
+void
+irc_swhois(struct userNode *from, struct userNode *target, const char *message)
+{
+    putsock("%s " P10_SWHOIS " %s %s%s", from->uplink->numeric, target->numeric, message ? ":" : "",
+                                         message ? message : "");
+
 }
 
 void
@@ -1866,6 +1877,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_STATS, cmd_stats);
     dict_insert(irc_func_dict, CMD_SVSNICK, cmd_svsnick);
     dict_insert(irc_func_dict, TOK_SVSNICK, cmd_svsnick);
+    dict_insert(irc_func_dict, CMD_SWHOIS, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_SWHOIS, cmd_dummy);
     dict_insert(irc_func_dict, CMD_WHOIS, cmd_whois);
     dict_insert(irc_func_dict, TOK_WHOIS, cmd_whois);
     dict_insert(irc_func_dict, CMD_GLINE, cmd_gline);

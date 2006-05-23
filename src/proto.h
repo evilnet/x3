@@ -151,6 +151,7 @@ void irc_kill(struct userNode *from, struct userNode *target, const char *messag
 void irc_raw(const char *what);
 void irc_stats(struct userNode *from, struct server *target, char type);
 void irc_svsnick(struct userNode *from, struct userNode *target, const char *newnick);
+void irc_swhois(struct userNode *from, struct userNode *target, const char *message);
 
 /* account maintenance */
 void irc_rename(struct userNode *user, const char *new_handle);

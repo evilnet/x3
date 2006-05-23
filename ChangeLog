@@ -3,6 +3,18 @@
 
 2006-05-23  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/chanserv.c: Set SWHOIS's when a user auths.
+
+	* src/hosthiding.c: Fixed a segfault.
+
+	* src/nickserv.c: Epithets now use SWHOIS.
+
+	* src/proto.h: Declerations for irc_swhois.
+
+	* src/proto-p10.c: Handle SWHOIS's.
+
+2006-05-23  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/hash.h: Bumped SOCKIPLEN
 
 	* src/hosthiding.c: Functions to crypt IPv6 addresses.
