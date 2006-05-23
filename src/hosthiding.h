@@ -34,4 +34,8 @@ extern unsigned long crc32 (const unsigned char *, unsigned int);
 extern void make_virthost (char *curr, char *host, char *virt);
 extern void make_virtip (char *curr, char *host, char *virt);
 
+/* IPv6 Stuff */
+extern void ip62arr (char *, char *);
+extern void make_ipv6virthost (char *curr, char *host, char *new);
+
 #endif

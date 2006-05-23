@@ -3,6 +3,17 @@
 
 2006-05-23  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/hash.h: Bumped SOCKIPLEN
+
+	* src/hosthiding.c: Functions to crypt IPv6 addresses.
+
+	* src/hosthiding.h: IPv6 function declerations.
+
+	* src/proto-p10.c: If the users ip address is IPv6 then crypt it
+	with the ipv6 crypting function.
+
+2006-05-23  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/hash.h: Bits needed for other type of host hiding.
 
 	* src/hosthiding.h: Nefarious style 2 host hiding declerations.

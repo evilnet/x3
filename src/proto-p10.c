@@ -2275,8 +2275,12 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     safestrncpy(uNode->numeric, numeric, sizeof(uNode->numeric));
     irc_p10_pton(&uNode->ip, realip);
 
-    make_virtip((char*)irc_ntoa(&uNode->ip), (char*)irc_ntoa(&uNode->ip), uNode->cryptip);
-    make_virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
+    if (irc_in_addr_is_ipv4(uNode->ip)) {
+      make_virtip((char*)irc_ntoa(&uNode->ip), (char*)irc_ntoa(&uNode->ip), uNode->cryptip);
+      make_virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
+    } else if (irc_in_addr_is_ipv6(uNode->ip)) {
+      make_ipv6virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
+    }
 
     uNode->timestamp = timestamp;
     modeList_init(&uNode->channels);

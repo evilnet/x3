@@ -123,7 +123,6 @@ static unsigned long crc32_tab[] = {
 };
 
 /* Return a 32-bit CRC of the contents of the buffer. */
-
 unsigned long
 crc32 (const unsigned char *s, unsigned int len)
 {
@@ -132,7 +131,7 @@ crc32 (const unsigned char *s, unsigned int len)
 
   crc32val = 0;
   for (i = 0; i < len; i++) {
-      crc32val = crc32_tab[(crc32val ^ s[i]) & 0xff] ^ (crc32val >> 8);
+    crc32val = crc32_tab[(crc32val ^ s[i]) & 0xff] ^ (crc32val >> 8);
   }
   return crc32val;
 }
@@ -146,14 +145,13 @@ str2arr (char **pparv, char *string, char *delim)
 
   tok = (char *) strtok (string, delim);
   while (tok != NULL) {
-      pparv[pparc++] = tok;
-      tok = (char *) strtok (NULL, delim);
+    pparv[pparc++] = tok;
+    tok = (char *) strtok (NULL, delim);
   }
 
   return pparc;
 }
 
-/* Regular user host */
 void
 make_virthost (char *curr, char *host, char *virt)
 {
@@ -253,3 +251,116 @@ make_virtip (char *curr, char *host, char *virt)
   return;
 }
 
+void
+make_ipv6virthost (char *curr, char *host, char *new)
+{
+  static char mask[HOSTLEN + 1];
+  char *parv[HOSTLEN + 1], *parv2[HOSTLEN + 1], s[HOSTLEN + 1],
+    s2[HOSTLEN + 2], s3[HOSTLEN + 2];
+  int parc = 0, parc2 = 0;
+  unsigned int hash[8];
+
+  strncpy (s, curr, HOSTLEN);
+  strncpy (s2, host, HOSTLEN);
+
+  ip62arr (s, s3);
+
+  parc = str2arr (parv, s3, ":");
+  parc2 = str2arr (parv2, s2, ".");
+
+  hash[0] = ((crc32 ((unsigned char *)parv[0], strlen (parv[0])) + KEY2) ^ KEY) ^ KEY3;
+  hash[1] = ((crc32 ((unsigned char *)parv[1], strlen (parv[1])) + KEY2) ^ KEY) ^ KEY3;
+
+  hash[0] <<= 2;
+  hash[0] >>= 2;
+
+  hash[1] <<= 2;
+  hash[1] >>= 2;
+
+  if (parc2 >= 2) {
+    snprintf(mask, HOSTLEN, "%x.%x.%s.%s.%s",
+             hash[0], hash[1], parv2[parc2 - 3], parv2[parc2 - 2],
+             parv2[parc2 - 1]);
+  } else {
+    hash[2] = ((crc32 ((unsigned char *)parv[2], strlen (parv[2])) + KEY2) ^ KEY) ^ KEY3;
+    hash[3] = ((crc32 ((unsigned char *)parv[3], strlen (parv[3])) + KEY2) ^ KEY) ^ KEY3;
+    hash[4] = ((crc32 ((unsigned char *)parv[4], strlen (parv[4])) + KEY2) ^ KEY) ^ KEY3;
+    hash[5] = ((crc32 ((unsigned char *)parv[5], strlen (parv[5])) + KEY2) ^ KEY) ^ KEY3;
+    hash[6] = ((crc32 ((unsigned char *)parv[6], strlen (parv[6])) + KEY2) ^ KEY) ^ KEY3;
+    hash[7] = ((crc32 ((unsigned char *)parv[7], strlen (parv[7])) + KEY2) ^ KEY) ^ KEY3;
+
+    hash[2] <<= 2;
+    hash[2] >>= 2;
+
+    hash[3] <<= 2;
+    hash[3] >>= 2;
+
+    hash[4] <<= 2;
+    hash[4] >>= 2;
+
+    hash[5] <<= 2;
+    hash[5] >>= 2;
+
+    hash[6] <<= 2;
+    hash[6] >>= 2;
+
+    hash[7] <<= 2;
+    hash[7] >>= 2;
+
+    snprintf(mask, HOSTLEN, "%x:%x:%x:%x:%x:%x:%x:%x",
+             hash[0] / 10000, hash[1] / 10000, hash[2] / 10000,
+             hash[3] / 10000, hash[4] / 10000, hash[5] / 10000,
+             hash[6] / 10000, hash[7] / 10000);
+  }
+
+  strncpy (new, mask, HOSTLEN);
+  return;
+}
+
+void
+ip62arr (char *string, char *dest)
+{
+  char fields[8][5], temp[HOSTLEN + 1];
+  char *pointer = string;
+  int numberOfColons = 0, i = 0, j = 0, k = 0;
+  int length = strlen (string), missing = 8;
+
+  while ((*pointer++)) {
+    if ((*pointer) == ':')
+      numberOfColons++;
+  }
+
+  memset (fields, 0, sizeof (fields));
+
+  for (i = 0; i < length + 1; i++) {
+    if (string[i] == ':') {
+      k = 0;
+      j++;
+      if (string[i + 1] == ':') {
+        if (string[i + 2] == '\0') {
+          missing = 9 - numberOfColons;
+        } else {
+          missing = 8 - numberOfColons;
+        }
+
+        while (missing > 0) {
+          fields[j][0] = '0';
+          j++;
+          missing--;
+        }
+        j--;
+      }
+    } else {
+      fields[j][k++] = string[i];
+    }
+  }
+
+  strcpy (temp, fields[0]);
+  strcat (temp, ":");
+  for (i = 1; i < 8; i++) {
+    strcat (temp, fields[i]);
+    if (i != 7)
+      strcat (temp, ":");
+  }
+  strcpy (dest, temp);
+}
