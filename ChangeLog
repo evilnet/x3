@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-05-25  Alex Schumann  <rubin@afternet.org>
+
+	* src/nickserv.help: Added newby tip to authserv registration 
+	help (about < and >)
+
+	* src/mod-track.c: Fixed crash when a server kicks a person (tried to
+	deref null kicker)
+
 2006-05-23  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/chanserv.c: Set SWHOIS's when a user auths.

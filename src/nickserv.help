@@ -433,6 +433,7 @@
 "REGISTER" {
         "0: /services/nickserv/email_required" (
         "/msg $N@$s REGISTER <account> <password> <email>",
+        "$bDO NOT TYPE THE < and >!$b <> indicates required fields. ",
         "Register is the command to create an an account with $b$N$b. ",
         "Having an account provides a single login identity for the network, and for use with $b$C$b.",
 	"$b$b",
@@ -445,6 +446,7 @@
         );
         "1: /services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password> [email]",
+        "$bDO NOT TYPE THE < and >!$b <> indicates required fields. ",
         "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
         "Having an account provides a single login identity for use with $b$C$b.",
         "Email activation is not required: But, if you specify an email address, an email will be sent to it containing a cookie that will let you activate your account.  Once you have that cookie, use the $bcookie$b command to activate your account.",

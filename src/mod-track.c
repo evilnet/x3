@@ -122,6 +122,8 @@ static int
 check_track_user(struct userNode *user)
 {
        int found;
+       if(!user)
+         return NULL;
        dict_find(track_db, (const char *)user->nick, &found);
        return found;
 }
