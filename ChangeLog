@@ -3,6 +3,8 @@
 
 2006-05-25  Alex Schumann  <rubin@afternet.org>
 
+	* src/proto-p10.c: make non-existant server type setting not crash x3.
+
 	* src/nickserv.help: Added newby tip to authserv registration 
 	help (about < and >)
 
