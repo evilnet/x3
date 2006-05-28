@@ -1,4 +1,4 @@
-/* main.c - srvx
+/* main.c - X3
  * Copyright 2000-2004 srvx Development Team
  *
  * This file is part of x3.
@@ -521,21 +521,6 @@ conf_globals(void)
     const char *info;
     dict_t dict;
 
-    info = conf_get_data("services/global/nick", RECDB_QSTRING);
-    if (info && (info[0] == '.'))
-        info = NULL;
-    init_global(info);
-
-    info = conf_get_data("services/nickserv/nick", RECDB_QSTRING);
-    if (info && (info[0] == '.'))
-        info = NULL;
-    init_nickserv(info);
-
-    info = conf_get_data("services/chanserv/nick", RECDB_QSTRING);
-    if (info && (info[0] == '.'))
-        info = NULL;
-    init_chanserv(info);
-
     god_policer_params = policer_params_new();
     if ((dict = conf_get_data("policers/commands-god", RECDB_OBJECT))) {
         dict_foreach(dict, set_policer_param, god_policer_params);
@@ -562,6 +547,21 @@ conf_globals(void)
     if (info && (info[0] == '.'))
         info = NULL;
     init_opserv(info);
+
+    info = conf_get_data("services/global/nick", RECDB_QSTRING);
+    if (info && (info[0] == '.'))
+        info = NULL;
+    init_global(info);
+
+    info = conf_get_data("services/nickserv/nick", RECDB_QSTRING);
+    if (info && (info[0] == '.'))
+        info = NULL;
+    init_nickserv(info);
+
+    info = conf_get_data("services/chanserv/nick", RECDB_QSTRING);
+    if (info && (info[0] == '.'))
+        info = NULL;
+    init_chanserv(info);
 }
 
 #ifdef HAVE_SYS_RESOURCE_H

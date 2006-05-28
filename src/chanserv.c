@@ -124,6 +124,8 @@
 #define KEY_EXPIRES             "expires"
 #define KEY_TRIGGERED		"triggered"
 
+#define KEY_GOD_TIMEOUT         "god_timeout"
+
 #define CHANNEL_DEFAULT_FLAGS   (CHANNEL_OFFCHANNEL)
 #define CHANNEL_DEFAULT_OPTIONS "lmoooanpcnat"
 
@@ -287,6 +289,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_TOYS",          "$bToys        $b %d - %s" },
     { "CSMSG_SET_CTCPREACTION",  "$bCTCPReaction$b %d - %s" },
     { "CSMSG_SET_TOPICREFRESH",  "$bTopicRefresh$b %d - %s" },
+    { "CSMSG_SET_RESYNC",        "$bResync      $b %d - %s" },
     { "CSMSG_SET_BANTIMEOUT",    "$bBanTimeout  $b %d - %s" },
 
     { "CSMSG_USET_AUTOOP",       "$bAutoOp      $b %s" },
@@ -326,6 +329,12 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_TOPICREFRESH_6_HOURS", "Refresh every 6 hours." },
     { "CSMSG_TOPICREFRESH_12_HOURS", "Refresh every 12 hours." },
     { "CSMSG_TOPICREFRESH_24_HOURS", "Refresh every 24 hours." },
+
+    { "CSMSG_RESYNC_NEVER", "Never automaticly resync userlist." },
+    { "CSMSG_RESYNC_3_HOURS", "Resync userlist every 3 hours." },
+    { "CSMSG_RESYNC_6_HOURS", "Resync userlist every 6 hours." },
+    { "CSMSG_RESYNC_12_HOURS", "Resync userlist every 12 hours." },
+    { "CSMSG_RESYNC_24_HOURS", "Resync userlist every 24 hours." },
 
     { "CSMSG_CTCPREACTION_NONE", "CTCPs are allowed" },
     { "CSMSG_CTCPREACTION_KICK", "Kick on disallowed CTCPs" },
@@ -535,10 +544,12 @@ static int eject_user(struct userNode *user, struct chanNode *channel, unsigned 
 struct userNode *chanserv;
 dict_t note_types;
 int off_channel;
+extern struct string_list *autojoin_channels;
 static dict_t plain_dnrs, mask_dnrs, handle_dnrs;
 static struct log_type *CS_LOG;
 struct adduserPending* adduser_pendings = NULL;
 unsigned int adduser_pendings_count = 0;
+unsigned long god_timeout;
 
 static struct
 {
@@ -700,6 +711,13 @@ struct charOptionValues {
     { '3', "CSMSG_BANTIMEOUT_4H" },
     { '4', "CSMSG_BANTIMEOUT_1D" },
     { '5', "CSMSG_BANTIMEOUT_1W" }
+},
+resyncValues[] = {
+    { 'n', "CSMSG_RESYNC_NEVER" },
+    { '1', "CSMSG_RESYNC_3_HOURS" },
+    { '2', "CSMSG_RESYNC_6_HOURS" },
+    { '3', "CSMSG_RESYNC_12_HOURS" },
+    { '4', "CSMSG_RESYNC_24_HOURS" }
 };
 
 static const struct {
@@ -715,7 +733,8 @@ static const struct {
     { "CSMSG_SET_TOYS",         "toys",         'p', 6, ArrayLength(toysValues), toysValues },
     { "CSMSG_SET_TOPICREFRESH", "topicrefresh", 'n', 8, ArrayLength(topicRefreshValues), topicRefreshValues },
     { "CSMSG_SET_CTCPREACTION", "ctcpreaction", 'n', 10, ArrayLength(ctcpReactionValues), ctcpReactionValues },
-    { "CSMSG_SET_BANTIMEOUT",   "bantimeout", '0', 11, ArrayLength(banTimeoutValues), banTimeoutValues }
+    { "CSMSG_SET_BANTIMEOUT",   "bantimeout",   '0', 11, ArrayLength(banTimeoutValues), banTimeoutValues },
+    { "CSMSG_SET_RESYNC",       "resync",       'n', 12, ArrayLength(resyncValues), resyncValues },
 };
 
 struct userData *helperList;
@@ -4785,7 +4804,8 @@ static MODCMD_FUNC(cmd_wipeinfo)
     return 1;
 }
 
-static CHANSERV_FUNC(cmd_resync)
+static void
+resync_channel(struct chanNode *channel)
 {
     struct mod_chanmode *changes;
     struct chanData *cData = channel->channel_info;
@@ -4927,8 +4947,13 @@ static CHANSERV_FUNC(cmd_resync)
         }
     }
     changes->argc = used;
-    modcmd_chanmode_announce(changes);
+    mod_chanmode_announce(chanserv, channel, changes);
     mod_chanmode_free(changes);
+}
+
+static CHANSERV_FUNC(cmd_resync)
+{
+    resync_channel(channel);
     reply("CSMSG_RESYNCED_USERS", channel->name);
     return 1;
 }
@@ -6025,6 +6050,11 @@ static MODCMD_FUNC(chan_opt_topicrefresh)
     return channel_multiple_option(chTopicRefresh, CSFUNC_ARGS);
 }
 
+static MODCMD_FUNC(chan_opt_resync)
+{
+    return channel_multiple_option(chResync, CSFUNC_ARGS);
+}
+
 static struct svccmd_list set_shows_list;
 
 static void
@@ -6508,6 +6538,25 @@ chanserv_refresh_topics(UNUSED_ARG(void *data))
         cData->last_refresh = refresh_num;
     }
     timeq_add(now + chanserv_conf.refresh_period, chanserv_refresh_topics, NULL);
+}
+
+static void
+chanserv_auto_resync(UNUSED_ARG(void *data))
+{
+    unsigned int refresh_num = (now - self->link) / chanserv_conf.refresh_period;
+    struct chanData *cData;
+    char opt;
+
+    for(cData = channelList; cData; cData = cData->next)
+    {
+        if(IsSuspended(cData)) continue;
+        opt = cData->chOpts[chResync];
+        if(opt == 'n') continue;
+        if((refresh_num - cData->last_resync) < (unsigned int)(1 << (opt - '1'))) continue;
+		resync_channel(cData->channel);
+        cData->last_resync = refresh_num;
+    }
+    timeq_add(now + chanserv_conf.refresh_period, chanserv_auto_resync, NULL);
 }
 
 static CHANSERV_FUNC(cmd_unf)
@@ -7513,6 +7562,8 @@ chanserv_conf_read(void)
     chanserv_conf.network_helper_epithet = str ? str : "a wannabe tyrant";
     str = database_get_data(conf_node, KEY_SUPPORT_HELPER_EPITHET, RECDB_QSTRING);
     chanserv_conf.support_helper_epithet = str ? str : "a wannabe tyrant";
+    str = database_get_data(conf_node, KEY_GOD_TIMEOUT, RECDB_QSTRING);
+    god_timeout = str ? ParseInterval(str) : 60*15;
     str = database_get_data(conf_node, "default_modes", RECDB_QSTRING);
     if(!str)
         str = "+nt";
@@ -7537,7 +7588,7 @@ chanserv_conf_read(void)
             "PubCmd", "InviteMe", "UserInfo","EnfOps",
             "EnfHalfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", 
             /* multiple choice options */
-            "AutoMode", "CtcpReaction", "Protect", "Toys", "TopicRefresh",
+            "AutoMode", "CtcpReaction", "Protect", "Toys", "TopicRefresh", "Resync",
             /* binary options */
             "DynLimit", "NoDelete", "BanTimeout",
             /* delimiter */
@@ -8328,6 +8379,8 @@ chanserv_db_cleanup(void) {
 void
 init_chanserv(const char *nick)
 {
+    struct chanNode *chan;
+    unsigned int i;
     CS_LOG = log_register_type("ChanServ", "file:chanserv.log");
     conf_register_reload(chanserv_conf_read);
 
@@ -8481,6 +8534,7 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(toys);
     DEFINE_CHANNEL_OPTION(setters);
     DEFINE_CHANNEL_OPTION(topicrefresh);
+    DEFINE_CHANNEL_OPTION(resync);
     DEFINE_CHANNEL_OPTION(ctcpreaction);
     DEFINE_CHANNEL_OPTION(bantimeout);
     DEFINE_CHANNEL_OPTION(inviteme);
@@ -8522,6 +8576,14 @@ init_chanserv(const char *nick)
         time_t next_refresh;
         next_refresh = (now + chanserv_conf.refresh_period - 1) / chanserv_conf.refresh_period * chanserv_conf.refresh_period;
         timeq_add(next_refresh, chanserv_refresh_topics, NULL);
+        timeq_add(next_refresh, chanserv_auto_resync, NULL);
+    }
+
+    if (autojoin_channels && chanserv) {
+        for (i = 0; i < autojoin_channels->used; i++) {
+            chan = AddChannel(autojoin_channels->list[i], now, "+nt", NULL, NULL);
+            AddChannelUser(chanserv, chan)->modes |= MODE_CHANOP;
+        }    
     }
 
     reg_exit_func(chanserv_db_cleanup);

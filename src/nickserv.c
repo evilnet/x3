@@ -49,6 +49,7 @@
 #define KEY_SET_EPITHET_LEVEL "set_epithet_level"
 #define KEY_SET_TITLE_LEVEL "set_title_level"
 #define KEY_SET_FAKEHOST_LEVEL "set_fakehost_level"
+#define KEY_DENIED_FAKEHOST_WORDS "denied_fakehost_words"
 #define KEY_TITLEHOST_SUFFIX "titlehost_suffix"
 #define KEY_AUTO_OPER "auto_oper"
 #define KEY_AUTO_ADMIN "auto_admin"
@@ -126,6 +127,7 @@ struct userNode *nickserv;
 struct userList curr_helpers;
 const char *handle_flags = HANDLE_FLAGS;
 
+extern struct string_list *autojoin_channels;
 static struct module *nickserv_module;
 static struct service *nickserv_service;
 static struct log_type *NS_LOG;
@@ -356,6 +358,11 @@ static const struct message_entry msgtab[] = {
     { "NSEMAIL_EMAIL_VERIFY_BODY", "This email has been sent to verify that this address belongs to the same person as %5$s on %1$s.  Your cookie is %2$s.\nTo verify your address as associated with this account, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s %2$s\nIf you did NOT request this email address to be associated with this account, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
     { "NSEMAIL_ALLOWAUTH_SUBJECT", "Authentication allowed for %s" },
     { "NSEMAIL_ALLOWAUTH_BODY", "This email has been sent to let you authenticate (auth) to account %5$s on %1$s.  Your cookie is %2$s.\nTo auth to that account, log on to %1$s and type the following command:\n    /msg %3$s@%4$s COOKIE %5$s %2$s\nIf you did NOT request this authorization, you do not need to do anything.  Please contact the %1$s staff if you have questions." },
+    { "NSMSG_NOT_VALID_FAKEHOST_DOT", "$b%s$b is not a valid vhost. (needs at least one dot)" },
+    { "NSMSG_NOT_VALID_FAKEHOST_AT", "$b%s$b is not a valid vhost. (it can not have a '@')" },
+    { "NSMSG_DENIED_FAKEHOST_WORD", "Access denied because there's a prohibited word in $b%s$b (%s)." },
+    { "NSMSG_NOT_VALID_FAKEHOST_LEN", "$b%s$b is not a valid vhost. (can only be 63 characters)" },
+    { "NSMSG_NOT_VALID_FAKEHOST_TLD_LEN", "$b%s$b is not a valid vhost. (TLD can only be 4 characters and less)" },
     { "CHECKPASS_YES", "Yes." },
     { "CHECKPASS_NO", "No." },
     { NULL, NULL }
@@ -413,6 +420,7 @@ static struct {
     const char *auto_oper;
     const char *auto_admin;
     char default_style;
+    struct string_list *denied_fakehost_words;
 } nickserv_conf;
 
 /* We have 2^32 unique account IDs to use. */
@@ -2931,6 +2939,55 @@ static OPTION_FUNC(opt_title)
     return 1;
 }
 
+int 
+check_vhost(char *vhost, struct userNode *user) 
+{
+    unsigned int y, depth;
+    char *hostname;
+
+    // check for a dot in the vhost
+    if(strchr(vhost, '.') == NULL) {
+        send_message(user, nickserv, "NSMSG_NOT_VALID_FAKEHOST_DOT", vhost);
+        return 0;  
+    }
+
+    // check for a @ in the vhost
+    if(strchr(vhost, '@') != NULL) {
+        send_message(user, nickserv, "NSMSG_NOT_VALID_FAKEHOST_AT", vhost);
+        return 0;  
+    }
+
+    // check for denied words, inspired by monk at paki.sex
+    for(y = 0; y < nickserv_conf.denied_fakehost_words->used; y++) {
+        if(strstr(vhost, nickserv_conf.denied_fakehost_words->list[y]) != NULL) {
+            send_message(user, nickserv, "NSMSG_DENIED_FAKEHOST_WORD", vhost, nickserv_conf.denied_fakehost_words->list[y]);
+            return 0;
+        }
+    } 
+
+   // check for ircu's HOSTLEN length.
+   if(strlen(vhost) >= HOSTLEN) {
+       send_message(user, nickserv, "NSMSG_NOT_VALID_FAKEHOST_LEN", vhost);
+       return 0;
+   }
+
+   if (vhost[strspn(vhost, "0123456789.")]) {
+       hostname = vhost + strlen(vhost);
+       for (depth = 1; depth && (hostname > vhost); depth--) {
+           hostname--;
+           while ((hostname > vhost) && (*hostname != '.')) hostname--;
+       }
+
+       if (*hostname == '.') hostname++; /* advance past last dot we saw */
+       if(strlen(hostname) > 4) {
+           send_message(user, nickserv, "NSMSG_NOT_VALID_FAKEHOST_TLD_LEN", vhost);
+           return 0;
+       }
+   }
+
+   return 1;
+}
+
 static OPTION_FUNC(opt_fakehost)
 {
     const char *fake;
@@ -2947,14 +3004,19 @@ static OPTION_FUNC(opt_fakehost)
             return 0;
         }
         free(hi->fakehost);
-        if (!strcmp(fake, "*"))
+        if (!strcmp(fake, "*")) {
             hi->fakehost = NULL;
-        else
+        } else {
+            if (!check_vhost(argv[1], user)) 
+                return 0;
+
             hi->fakehost = strdup(fake);
+        }
         fake = hi->fakehost;
         apply_fakehost(hi);
-    } else
+    } else {
         fake = generate_fakehost(hi);
+    }
     if (!fake)
         fake = user_find_message(user, "MSG_NONE");
     send_message(user, nickserv, "NSMSG_SET_FAKEHOST", fake);
@@ -3827,6 +3889,7 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
     str = database_get_data(obj, KEY_FAKEHOST, RECDB_QSTRING);
     if (str)
         hi->fakehost = strdup(str);
+
     subdb = database_get_data(obj, KEY_COOKIE, RECDB_OBJECT);
     if (subdb) {
         const char *data, *type, *expires, *cookie_str;
@@ -3972,6 +4035,7 @@ nickserv_conf_read(void)
     dict_t conf_node, child;
     const char *str;
     dict_iterator_t it;
+    struct string_list *strlist;
 
     if (!(conf_node = conf_get_data(NICKSERV_CONF_NAME, RECDB_OBJECT))) {
 	log_module(NS_LOG, LOG_ERROR, "config node `%s' is missing or has wrong type.", NICKSERV_CONF_NAME);
@@ -4103,6 +4167,17 @@ nickserv_conf_read(void)
     nickserv_conf.email_search_level = str ? strtoul(str, NULL, 0) : 600;
     str = database_get_data(conf_node, KEY_TITLEHOST_SUFFIX, RECDB_QSTRING);
     nickserv_conf.titlehost_suffix = str ? str : "example.net";
+
+    free_string_list(nickserv_conf.denied_fakehost_words);
+    strlist = database_get_data(conf_node, KEY_DENIED_FAKEHOST_WORDS, RECDB_STRING_LIST);
+    if(strlist)
+        strlist = string_list_copy(strlist);
+    else {
+        strlist = alloc_string_list(4);
+        string_list_append(strlist, strdup("sex"));
+        string_list_append(strlist, strdup("fuck"));
+    }
+    nickserv_conf.denied_fakehost_words = strlist;
 
     str = database_get_data(conf_node, KEY_DEFAULT_STYLE, RECDB_QSTRING);
     nickserv_conf.default_style = str ? str[0] : HI_DEFAULT_STYLE;
@@ -4299,6 +4374,7 @@ nickserv_db_cleanup(void)
 void
 init_nickserv(const char *nick)
 {
+    struct chanNode *chan;
     unsigned int i;
     NS_LOG = log_register_type("NickServ", "file:nickserv.log");
     reg_new_user_func(handle_new_user);
@@ -4418,5 +4494,13 @@ init_nickserv(const char *nick)
     reg_exit_func(nickserv_db_cleanup);
     if(nickserv_conf.handle_expire_frequency)
         timeq_add(now + nickserv_conf.handle_expire_frequency, expire_handles, NULL);
+
+    if(autojoin_channels && nickserv) {
+        for (i = 0; i < autojoin_channels->used; i++) {
+            chan = AddChannel(autojoin_channels->list[i], now, "+nt", NULL, NULL);
+            AddChannelUser(nickserv, chan)->modes |= MODE_CHANOP;
+        }
+    }
+
     message_register_table(msgtab);
 }

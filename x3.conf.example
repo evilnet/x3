@@ -193,6 +193,11 @@
         "set_title_level" "900"; // Access to use 'uset title'.
         "set_fakehost_level" "1000"; //Access to set a freeform fakehost. (uset fakehost)
 
+        // A list of denied words in the fakehosts
+        "denied_fakehost_words" ("sex",
+                                 "fuck",
+                                 "asshole");
+
         // This is a hacked in feature which exports every account change to a file sync.log. Afternet uses this and
         // a bunch of custom PHP scripts to make our websites SQL user db the same as authserv, every 5 minutes.
         // You have to be a pretty handy person with the shell commands and programming to make use of this..
@@ -231,6 +236,9 @@
         // who to tell about staff auths?
         "staff_auth_channel" "#OperServ"; // Bot will join this channel, also.
         "staff_auth_channel_modes" "+tnOs"; // modes get set every time X3 starts up
+
+         // which channels should all services autojoin?
+         "autojoin_channels" ("#TheOps", "#OperServ");
 
         // how many clones to allow from an untrusted host?
         // Use this carefully, users with half the # of clones will trigger this
@@ -346,8 +354,8 @@
         // maximum number of channels a user may have. ( FORCE can override )
         "max_owned" "2";
 
-        // how long between automatic topic refreshes with TopicRefresh 0
-        "refresh_period" "99d"; // Nefarious sync's topics so we'll practically disable this..
+        // how long between automatic topic and userlist refreshes with TopicRefresh/Resync
+        "refresh_period" "10h";
 
         // what should !access say for various staff?
         "irc_operator_epithet" "AfterNET IRC Operator";
@@ -359,6 +367,9 @@
 
         // minimum opserv access to set, clear or override channel nodelete setting?
         "nodelete_level" "1";
+
+        // when does god mode time out?
+        "god_timeout" "30m";
     };
 
     /* Global is a service bot that can send out network-wide messages for you. I

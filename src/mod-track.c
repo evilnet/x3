@@ -123,7 +123,7 @@ check_track_user(struct userNode *user)
 {
        int found;
        if(!user)
-         return NULL;
+         return 0;
        dict_find(track_db, (const char *)user->nick, &found);
        return found;
 }

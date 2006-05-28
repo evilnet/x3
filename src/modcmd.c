@@ -22,7 +22,9 @@
 #include "chanserv.h"
 #include "conf.h"
 #include "modcmd.h"
+#include "opserv.h"
 #include "saxdb.h"
+#include "timeq.h"
 
 struct pending_template {
     struct svccmd *cmd;
@@ -30,6 +32,7 @@ struct pending_template {
     struct pending_template *next;
 };
 
+extern unsigned long god_timeout;
 static struct dict *modules;
 static struct dict *services;
 static struct pending_template *pending_templates;
@@ -130,6 +133,7 @@ static const struct message_entry msgtab[] = {
     { "MCMSG_COMMAND_ACCOUNT_FLAGS", "Requires account flags +%s, prohibits account flags +%s." },
     { "MCMSG_COMMAND_ACCESS_LEVEL", "Requires channel access %d and $O access %d." },
     { "MCMSG_COMMAND_USES", "%s has been used %d times." },
+    { "MCMSG_GOD_EXPIRED", "Security override expired." },
     { NULL, NULL }
 };
 struct userData *_GetChannelUser(struct chanData *channel, struct handle_info *handle, int override, int allow_suspended);
@@ -1521,6 +1525,18 @@ static MODCMD_FUNC(cmd_modcmd) {
     return changed;
 }
 
+static void 
+timeout_god(void *data)
+{
+    extern struct userNode *chanserv;
+    struct userNode *user = data;
+
+    if(!user || !IsHelping(user)) return;
+
+    HANDLE_CLEAR_FLAG(user->handle_info, HELPING);
+    send_message(user, chanserv, "MCMSG_GOD_EXPIRED");
+}
+
 static MODCMD_FUNC(cmd_god) {
     int helping;
 
@@ -1547,9 +1563,11 @@ static MODCMD_FUNC(cmd_god) {
 
     if (helping) {
         HANDLE_SET_FLAG(user->handle_info, HELPING);
+        timeq_add(now + god_timeout, timeout_god, user);
         reply("MCMSG_NOW_HELPING");
     } else {
         HANDLE_CLEAR_FLAG(user->handle_info, HELPING);
+        timeq_del(0, timeout_god, user, TIMEQ_IGNORE_WHEN);
         reply("MCMSG_NOW_NOT_HELPING");
     }
 
@@ -1966,7 +1984,7 @@ static MODCMD_FUNC(cmd_version) {
     send_message_type(4, user, cmd->parent->bot, "The X3 Development Team includes Alex Schumann, Reed Loden, Neil Spierling.");
     send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at http://sourceforge.net/projects/evilnet or in #evilnet on irc.afternet.org.");
     send_message_type(4, user, cmd->parent->bot, "$b$b");
-    send_message_type(4, user, cmd->parent->bot, "Thanks goes to Adrian M (thiefmaster), Joe Hansche (joeatrr) and to any other people who have contributed to X3.");
+    send_message_type(4, user, cmd->parent->bot, "Thanks goes to Adrian M (thiefmaster), Joe Hansche (joeatrr), Martijn Smit (wasted), and to any other people who have contributed to X3.");
     send_message_type(4, user, cmd->parent->bot, "This program is free software; see COPYING in the distribution.");
 
     return 1;

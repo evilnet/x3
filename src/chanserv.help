@@ -482,11 +482,12 @@
         "PROTECT:      The protection level $b$C$b provides.",
 	"TOYS:         Toggles how $b$C$b will respond to toy commands (!8ball etc).",
         "TOPICREFRESH: Controls if (and how often) $b$C$b will reset the topic.",
+        "RESYNC:       Controls if (and how often) $b$C$b will reset the userlist.",
         "DYNLIMIT:     Adjusts user limit (+l channel mode) to prevent join floods.",
         "$bIRCOP ONLY$b:",
         "NODELETE:  Prevents channel deletion.",
         "If you wish to reset your channel to the default settings, you can use the $bSET DEFAULTS$b command.",
-        "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set ctcpreaction, set defaults");
+        "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set resync, set ctcpreaction, set defaults");
 
 "SET DEFAULTTOPIC" ("/msg $C SET <#channel> DEFAULTTOPIC <New default topic>",
         "This changes the default topic for the channel.  $C will set the IRC topic to this value when the $btopic$b command is used with no arguments, when the topic refresh happens (if you have $bset topicrefresh$b), or when an unauthorized user changes the topic to something else.",
@@ -573,6 +574,15 @@
         "$b3$b  Refresh every 12 hours.",
         "$b4$b  Refresh every 24 hours.",
         "$uSee Also:$u set, set topic");
+
+"SET RESYNC" ("/msg $C SET <#channel> RESYNC <value>",
+        "This setting controls if (and how often) $C refreshes the userlist to the current list.  Valid settings are:",
+        "$b0$b  Never refresh userlist.",
+        "$b1$b  Refresh every 3 hours.",
+        "$b2$b  Refresh every 6 hours.",
+        "$b3$b  Refresh every 12 hours.",
+        "$b4$b  Refresh every 24 hours.",
+        "$uSee Also:$u set");
 
 "SET CTCPREACTION" ("/msg $C SET <#channel> CTCPREACTION <value>",
         "This setting controls what happens to those who send disallowed CTCPs to the channel:",

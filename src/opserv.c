@@ -55,6 +55,7 @@
 #define KEY_NICK "nick"
 #define KEY_JOIN_POLICER "join_policer"
 #define KEY_NEW_USER_POLICER "new_user_policer"
+#define KEY_AUTOJOIN_CHANNELS "autojoin_channels"
 #define KEY_REASON "reason"
 #define KEY_RESERVES "reserves"
 #define KEY_IDENT "username" /* for compatibility with 1.0 DBs */
@@ -290,6 +291,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_CSEARCH_CHANNEL_INFO", "%s [%d users] %s %s" },
     { "OSMSG_INVALID_REGEX", "Invalid regex: %s: %s (%d)" },
     { "OSMSG_TRACK_DISABLED", "Tracking is not currently compiled into X3" },
+    { "OSMSG_MAXUSERS_RESET", "Max clients has been reset to $b%d$b" },
     { NULL, NULL }
 };
 
@@ -314,6 +316,7 @@ static struct module *opserv_module;
 static struct log_type *OS_LOG;
 static unsigned int new_user_flood;
 static char *level_strings[1001];
+struct string_list *autojoin_channels;
 
 static struct {
     struct chanNode *debug_channel;
@@ -434,6 +437,7 @@ opserv_free_user_alert(void *data)
 
 #define opserv_debug(format...) do { if (opserv_conf.debug_channel) send_channel_notice(opserv_conf.debug_channel , opserv , ## format); } while (0)
 #define opserv_alert(format...) do { if (opserv_conf.alert_channel) send_channel_notice(opserv_conf.alert_channel , opserv , ## format); } while (0)
+
 
 /* A lot of these commands are very similar to what ChanServ can do,
  * but OpServ can do them even on channels that aren't registered.
@@ -724,6 +728,14 @@ static MODCMD_FUNC(cmd_dehopall)
     }
     mod_chanmode_free(change);
     reply("OSMSG_DEHOPALL_DONE", channel->name);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_resetmax)
+{
+    max_clients = dict_size(clients);
+    max_clients_time = now;
+    reply("OSMSG_MAXUSERS_RESET", max_clients);
     return 1;
 }
 
@@ -2738,8 +2750,10 @@ opserv_define_func(const char *name, modcmd_func_t *func, int min_level, int req
 
 int add_reserved(const char *key, void *data, void *extra)
 {
+    struct chanNode *chan;
     struct record_data *rd = data;
     const char *ident, *hostname, *desc;
+    unsigned int i;
     struct userNode *reserve;
     ident = database_get_data(rd->d.object, KEY_IDENT, RECDB_QSTRING);
     if (!ident) {
@@ -2760,6 +2774,14 @@ int add_reserved(const char *key, void *data, void *extra)
         reserve->modes |= FLAGS_PERSISTENT;
         dict_insert(extra, reserve->nick, reserve);
     }
+
+    if (autojoin_channels && reserve) {
+        for (i = 0; i < autojoin_channels->used; i++) {
+            chan = AddChannel(autojoin_channels->list[i], now, "+nt", NULL, NULL);
+            AddChannelUser(reserve, chan)->modes |= MODE_VOICE;
+        }
+    }
+
     return 0;
 }
 
@@ -4594,6 +4616,8 @@ static MODCMD_FUNC(cmd_delalert)
 static void
 opserv_conf_read(void)
 {
+    struct chanNode *chan;
+    unsigned int i;
     struct record_data *rd;
     dict_t conf_node, child;
     const char *str, *str2;
@@ -4656,6 +4680,19 @@ opserv_conf_read(void)
     opserv_conf.clone_gline_duration = str ? ParseInterval(str) : 3600;
     str = database_get_data(conf_node, KEY_BLOCK_GLINE_DURATION, RECDB_QSTRING);
     opserv_conf.block_gline_duration = str ? ParseInterval(str) : 3600;
+
+    free_string_list(autojoin_channels);
+    autojoin_channels = database_get_data(conf_node, KEY_AUTOJOIN_CHANNELS, RECDB_STRING_LIST);
+
+    if(autojoin_channels)
+        autojoin_channels = string_list_copy(autojoin_channels);
+
+    if (autojoin_channels && opserv) {
+        for (i = 0; i < autojoin_channels->used; i++) {
+            chan = AddChannel(autojoin_channels->list[i], now, "+nt", NULL, NULL);
+            AddChannelUser(opserv, chan)->modes |= MODE_CHANOP;
+        }
+    }
 
     str = database_get_data(conf_node, KEY_BLOCK_SHUN_DURATION, RECDB_QSTRING);
     opserv_conf.block_shun_duration = str ? ParseInterval(str) : 3600;
@@ -4824,6 +4861,7 @@ init_opserv(const char *nick)
     opserv_define_func("REFRESHS", cmd_refreshs, 600, 0, 0);
     opserv_define_func("REHASH", cmd_rehash, 900, 0, 0);
     opserv_define_func("REOPEN", cmd_reopen, 900, 0, 0);
+    opserv_define_func("RESETMAX", cmd_resetmax, 900, 0, 0);
     opserv_define_func("RESERVE", cmd_reserve, 800, 0, 5);
     opserv_define_func("RESTART", cmd_restart, 900, 0, 2);
     opserv_define_func("SET", cmd_set, 900, 0, 3);

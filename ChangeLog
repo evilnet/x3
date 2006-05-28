@@ -1,6 +1,43 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-05-28  Neil Spierling  <sirvulcan@gmail.com>
+
+	* Below functions by Wasted (Martijn Smit) <wasted@lostdomain.org>
+
+	* x3.example.conf: Added new options- god_timeout, autojoin_channels,
+	and denied_fakehost_words. Also dropped refresh_period for chanserv
+	set resync.
+
+	* src/chanserv.c: Added god_timeout, disable god mode automatically
+	when the period times out. Also added a new set option- resync, auto
+	resyncs the userlist every 3, 6, 9, or 12 hours (or not at all).
+
+	* src/chanserv.help: Added entry for SET RESYNC.
+
+	* src/global.c: Join global into autojoin_channels if enabled.
+
+	* src/main.c: Some tweaking for autojoin_channels.
+
+	* src/mod-memoserv.c: If a user has memos and notify on login
+	enabled then only display the notify notice on login and not
+	during a netburst.
+
+	* src/mod-track.c: Quashed a warning.
+
+	* src/modcmd.c: Added functions for god_timeout. Also added wasted
+	to VERSION output for credits for these features.
+
+	* src/nickserv.c: Added denied_fakehost_words, deny the words set
+	there if an oper trys to use them in a fakehost. Also autojoin
+	chanserv if enabled into autojoin_channels.
+
+	* src/opserv.c: Added REFRESHMAX to reset the max count, ie for 
+	after a drone attack. Also join opserv and reserved nicks into
+	autojoin_channels if opserv/reserved is enabled.
+
+	* src/opserv.help: Added entry for REFRESHMAX.
+
 2006-05-25  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: make non-existant server type setting not crash x3.

@@ -548,16 +548,18 @@ memoserv_check_messages(struct userNode *user, UNUSED_ARG(struct handle_info *ol
     struct memo_account *ma;
     struct memo *memo;
 
-    if (!(ma = memoserv_get_account(user->handle_info))
-        || !(ma->flags & MEMO_NOTIFY_LOGIN))
-        return;
-    for (ii = unseen = 0; ii < ma->recvd.used; ++ii) {
-        memo = ma->recvd.list[ii];
-        if (!memo->is_read)
-            unseen++;
+    if (!user->uplink->burst) {
+        if (!(ma = memoserv_get_account(user->handle_info))
+            || !(ma->flags & MEMO_NOTIFY_LOGIN))
+            return;
+        for (ii = unseen = 0; ii < ma->recvd.used; ++ii) {
+            memo = ma->recvd.list[ii];
+            if (!memo->is_read)
+                unseen++;
+        }
+        if (ma->recvd.used && memoserv_conf.bot)
+            send_message(user, memoserv_conf.bot, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
     }
-    if (ma->recvd.used && memoserv_conf.bot)
-        send_message(user, memoserv_conf.bot, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
 }
 
 static void

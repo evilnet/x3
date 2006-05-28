@@ -160,7 +160,9 @@
              "  $bDELEXEMPT$b     Remove an exception of the illegal word list.",
              "  $b$b",
              "  $bDUMP$b          Drop safetychecked server protocol to the server. ",
-             "  $bRAW$b           Drop raw server protocol to the server. (DANGEROUS!)"
+             "  $bRAW$b           Drop raw server protocol to the server. (DANGEROUS!)",
+             "  $b$b",
+             "  $bRESETMAX$b      Reset the maximum recorded users. (used in the event of a clone flood)"
             );
 
 
@@ -793,6 +795,10 @@
 "LISTTRACK" ("/msg $O LISTTRACK",
         "Lists all currently active tracks.",
         "$uSee Also:$u addtrack deltrack");
+
+"RESETMAX" ("/msg $O RESETMAX",
+        "Resets the max clients number to the current ammount of connected clients. Use with caution.",
+        "$uSee Also:$u stats max");
 
 "INDEX" "${index}";
 

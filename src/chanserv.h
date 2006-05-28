@@ -54,6 +54,7 @@ enum charOption {
     chTopicRefresh,
     chCTCPReaction,
     chBanTimeout,
+    chResync,
     NUM_CHAR_OPTIONS
 };
 
@@ -101,6 +102,7 @@ struct chanData
     unsigned int        may_opchan : 1;
     unsigned int        max;
     unsigned int        last_refresh;
+    unsigned int        last_resync;
     unsigned short      banCount; /* Lamers, really */
     unsigned short      userCount;
     unsigned short      lvlOpts[NUM_LEVEL_OPTIONS];

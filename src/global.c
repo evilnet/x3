@@ -88,6 +88,7 @@ struct userNode *global;
 static struct module *global_module;
 static struct service *global_service;
 static struct globalMessage *messageList;
+extern struct string_list *autojoin_channels;
 static long messageCount;
 static time_t last_max_alert;
 static struct log_type *G_LOG;
@@ -692,6 +693,8 @@ global_db_cleanup(void)
 void
 init_global(const char *nick)
 {
+    struct chanNode *chan;
+    unsigned int i;
     G_LOG = log_register_type("Global", "file:global.log");
     reg_new_user_func(global_process_user);
     reg_auth_func(global_process_auth);
@@ -712,6 +715,14 @@ init_global(const char *nick)
         global = AddService(nick, modes ? modes : NULL, "Global Services", NULL);
         global_service = service_register(global);
     }
+
+    if(autojoin_channels && global) {
+        for (i = 0; i < autojoin_channels->used; i++) {
+            chan = AddChannel(autojoin_channels->list[i], now, "+nt", NULL, NULL);
+            AddChannelUser(global, chan)->modes |= MODE_CHANOP;
+        }    
+    }
+
     saxdb_register("Global", global_saxdb_read, global_saxdb_write);
     reg_exit_func(global_db_cleanup);
     message_register_table(msgtab);
