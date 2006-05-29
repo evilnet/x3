@@ -478,6 +478,8 @@
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
         "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
+        "$bAUTOHIDE$b: Automatically sets +x (hides your host) when you login.",
+        "$bADVANCED$b: If set advanced options and commands will be shown to you.",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, userinfo"
         );
@@ -496,6 +498,8 @@
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
         "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
+        "$bAUTOHIDE$b: Automatically sets +x (hides your host) when you login.",
+        "$bADVANCED$b: If set advanced options and commands will be shown to you.",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, nickinfo, userinfo"
         );
@@ -513,6 +517,8 @@
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
         "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
+        "$bAUTOHIDE$b: Automatically sets +x (hides your host) when you login.",
+        "$bADVANCED$b: If set advanced options and commands will be shown to you.",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, userinfo"
         );
@@ -530,6 +536,8 @@
         "$bMAXLOGINS$b: The number of users that can log into your account at once.  (Use 0 for the default.)",
         "$bTITLE$b: A title set on your account by network staff (affects hidden hosts).",
         "$bEPITHET$b: An epithet set on your account by network staff (shows in whois).",
+        "$bAUTOHIDE$b: Automatically sets +x (hides your host) when you login.",
+        "$bADVANCED$b: If set advanced options and commands will be shown to you.",
         "$bset$b with no arguments returns your current settings.",
         "$uSee Also:$u accountinfo, nickinfo, userinfo"
         );

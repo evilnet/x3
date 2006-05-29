@@ -186,6 +186,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_USER_PREV_AUTH", "$b%s$b is already authenticated." },
     { "NSMSG_USER_PREV_STAMP", "$b%s$b has authenticated to an account once and cannot authenticate again." },
     { "NSMSG_BAD_MAX_LOGINS", "MaxLogins must be at most %d." },
+    { "NSMSG_BAD_ADVANCED", "Advanced must be either 1 to enable it or 0 to disable it." },
     { "NSMSG_LANGUAGE_NOT_FOUND", "Language $b%s$b is not supported; $b%s$b was the closest available match." },
     { "NSMSG_MAX_LOGINS", "Your account already has its limit of %d user(s) logged in." },
     { "NSMSG_STAMPED_REGISTER", "You have already authenticated to an account once this session; you may not register a new account." },
@@ -300,11 +301,12 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SET_PRIVMSG", "$bPRIVMSG:      $b%s" },
     { "NSMSG_SET_STYLE", "$bSTYLE:        $b%s" },
     { "NSMSG_SET_ANNOUNCEMENTS", "$bANNOUNCEMENTS: $b%s" },
-    { "NSMSG_SET_AUTOHIDE", "$bAUTOHIDE: $b%s" },
+    { "NSMSG_SET_AUTOHIDE", "$bAUTOHIDE:     $b%s" },
     { "NSMSG_SET_PASSWORD", "$bPASSWORD:     $b%s" },
     { "NSMSG_SET_FLAGS", "$bFLAGS:        $b%s" },
     { "NSMSG_SET_EMAIL", "$bEMAIL:        $b%s" },
     { "NSMSG_SET_MAXLOGINS", "$bMAXLOGINS:    $b%d" },
+    { "NSMSG_SET_ADVANCED", "$bADVANCED:      $b%s" },
     { "NSMSG_SET_LANGUAGE", "$bLANGUAGE:     $b%s" },
     { "NSMSG_SET_LEVEL", "$bLEVEL:        $b%d" },
     { "NSMSG_SET_EPITHET", "$bEPITHET:      $b%s" },
@@ -2516,7 +2518,7 @@ set_list(struct userNode *user, struct handle_info *hi, int override)
     char *set_display[] = {
         "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", "STYLE",
         "EMAIL", "ANNOUNCEMENTS", "AUTOHIDE", "MAXLOGINS", "LANGUAGE",
-        "FAKEHOST", "TITLE", "EPITHET"
+        "FAKEHOST", "TITLE", "EPITHET", "ADVANCED"
     };
 
     send_message(user, nickserv, "NSMSG_SETTING_LIST");
@@ -2807,6 +2809,23 @@ static OPTION_FUNC(opt_maxlogins)
     }
     maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
     send_message(user, nickserv, "NSMSG_SET_MAXLOGINS", maxlogins);
+    return 1;
+}
+
+static OPTION_FUNC(opt_advanced)
+{
+    if (argc > 1) {
+	if (enabled_string(argv[1]))
+	    HANDLE_SET_FLAG(hi, ADVANCED);
+        else if (disabled_string(argv[1]))
+	    HANDLE_CLEAR_FLAG(hi, ADVANCED);
+	else {
+	    send_message(user, nickserv, "MSG_INVALID_BINARY", argv[1]);
+	    return 0;
+	}
+    }
+
+    send_message(user, nickserv, "NSMSG_SET_ADVANCED", user_find_message(user, HANDLE_FLAGGED(hi, ADVANCED) ? "MSG_ON" : "MSG_OFF"));
     return 1;
 }
 
@@ -4469,6 +4488,7 @@ init_nickserv(const char *nick)
     }
     dict_insert(nickserv_opt_dict, "ANNOUNCEMENTS", opt_announcements);
     dict_insert(nickserv_opt_dict, "MAXLOGINS", opt_maxlogins);
+    dict_insert(nickserv_opt_dict, "ADVANCED", opt_advanced);
     dict_insert(nickserv_opt_dict, "LANGUAGE", opt_language);
 
     nickserv_handle_dict = dict_new();

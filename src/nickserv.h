@@ -39,6 +39,7 @@ struct svccmd;
 #define HI_FLAG_NETWORK_HELPER 0x00000100
 #define HI_FLAG_BOT            0x00000200
 #define HI_FLAG_AUTOHIDE       0x00000400
+#define HI_FLAG_ADVANCED       0x00000800
 /* Flag characters for the above.  First char is LSB, etc. */
 #define HANDLE_FLAGS "SphgscfnHbx"
 
