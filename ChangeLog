@@ -3,6 +3,16 @@
 
 2006-05-29  Neil Spierling  <sirvulcan@gmail.com>
 
+	* Below functions by Wasted (Martijn Smit) <wasted@lostdomain.org>
+
+	* src/chanserv.c: Added selectable bantypes.
+
+	* src/chanserv.h: Added selectable bantypes.
+
+	* src/chanserv.help: Added help entries.
+
+2006-05-29  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/nickserv.c: Added user option ADVANCED, when we add more
 	advanced commands users will need to set this to see the options
 	in help. Further work in helpfile is still needed afaik. This is

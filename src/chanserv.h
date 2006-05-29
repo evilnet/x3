@@ -55,6 +55,7 @@ enum charOption {
     chCTCPReaction,
     chBanTimeout,
     chResync,
+    chBanType,
     NUM_CHAR_OPTIONS
 };
 

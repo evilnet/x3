@@ -290,6 +290,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_CTCPREACTION",  "$bCTCPReaction$b %d - %s" },
     { "CSMSG_SET_TOPICREFRESH",  "$bTopicRefresh$b %d - %s" },
     { "CSMSG_SET_RESYNC",        "$bResync      $b %d - %s" },
+    { "CSMSG_SET_BANTYPE",       "$bBanType     $b %d - %s" },
     { "CSMSG_SET_BANTIMEOUT",    "$bBanTimeout  $b %d - %s" },
 
     { "CSMSG_USET_AUTOOP",       "$bAutoOp      $b %s" },
@@ -348,6 +349,16 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BANTIMEOUT_4H", "Bans will be removed after 4 hours."},
     { "CSMSG_BANTIMEOUT_1D", "Bans will be removed after 24 hours."},
     { "CSMSG_BANTIMEOUT_1W", "Bans will be removed after 1 week."},
+
+    { "CSMSG_BANTYPE_A", "*!user@host" },
+    { "CSMSG_BANTYPE_B", "*!*user@host" },
+    { "CSMSG_BANTYPE_C", "*!*@host" },
+    { "CSMSG_BANTYPE_D", "*!*user@*.host" },
+    { "CSMSG_BANTYPE_E", "*!*@*.host" },
+    { "CSMSG_BANTYPE_F", "nick!user@host" },
+    { "CSMSG_BANTYPE_G", "nick!*@host" },
+    { "CSMSG_BANTYPE_H", "nick!*user@*.host" },
+    { "CSMSG_BANTYPE_I", "nick!*@*.host" },
 
     { "CSMSG_INVITED_USER", "Invited $b%s$b to join %s." },
     { "CSMSG_INVITING_YOU_REASON", "$b%s$b invites you to join %s: %s" },
@@ -548,6 +559,7 @@ extern struct string_list *autojoin_channels;
 static dict_t plain_dnrs, mask_dnrs, handle_dnrs;
 static struct log_type *CS_LOG;
 struct adduserPending* adduser_pendings = NULL;
+extern const char *hidden_host_suffix;
 unsigned int adduser_pendings_count = 0;
 unsigned long god_timeout;
 
@@ -711,13 +723,22 @@ struct charOptionValues {
     { '3', "CSMSG_BANTIMEOUT_4H" },
     { '4', "CSMSG_BANTIMEOUT_1D" },
     { '5', "CSMSG_BANTIMEOUT_1W" }
-},
-resyncValues[] = {
+}, resyncValues[] = {
     { 'n', "CSMSG_RESYNC_NEVER" },
     { '1', "CSMSG_RESYNC_3_HOURS" },
     { '2', "CSMSG_RESYNC_6_HOURS" },
     { '3', "CSMSG_RESYNC_12_HOURS" },
     { '4', "CSMSG_RESYNC_24_HOURS" }
+}, banTypeValues[] = {
+    { '1', "CSMSG_BANTYPE_A" },
+    { '2', "CSMSG_BANTYPE_B" },
+    { '3', "CSMSG_BANTYPE_C" },
+    { '4', "CSMSG_BANTYPE_D" },
+    { '5', "CSMSG_BANTYPE_E" },
+    { '6', "CSMSG_BANTYPE_F" },
+    { '7', "CSMSG_BANTYPE_G" },
+    { '8', "CSMSG_BANTYPE_H" },
+    { '9', "CSMSG_BANTYPE_I" }
 };
 
 static const struct {
@@ -735,6 +756,7 @@ static const struct {
     { "CSMSG_SET_CTCPREACTION", "ctcpreaction", 'n', 10, ArrayLength(ctcpReactionValues), ctcpReactionValues },
     { "CSMSG_SET_BANTIMEOUT",   "bantimeout",   '0', 11, ArrayLength(banTimeoutValues), banTimeoutValues },
     { "CSMSG_SET_RESYNC",       "resync",       'n', 12, ArrayLength(resyncValues), resyncValues },
+    { "CSMSG_SET_BANTYPE",      "bantype",      '4', 13, ArrayLength(banTypeValues), banTypeValues },
 };
 
 struct userData *helperList;
@@ -3082,13 +3104,113 @@ bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban
     return 0;
 }
 
+#define i_isdigit(x) isdigit((int) (unsigned char) (x))
+
+int is_ipv4_address(const char *host)
+{
+    while (*host != '\0') {
+       if (*host != '.' && !i_isdigit(*host))
+       return 0;
+       host++;
+   }
+    return 1;
+}
+
+static char *get_domain_mask(char *host)
+{
+    char *ptr;
+
+    if (strchr(host, '.') == NULL) {
+       /* no dots - toplevel domain or IPv6 address */
+       ptr = strrchr(host, ':');
+       if (ptr != NULL) {
+          /* IPv6 address, ban the last 64k addresses */
+          if (ptr[1] != '\0') strcpy(ptr+1, "*");
+       }
+       return host;
+    }
+
+    if (is_ipv4_address(host)) {
+       /* it's an IP address, change last digit to * */
+       ptr = strrchr(host, '.');
+       if (ptr != NULL && i_isdigit(ptr[1]))
+           strcpy(ptr+1, "*");
+    } else {
+       /* if more than one dot, skip the first
+          (dyn123.blah.net -> *.blah.net) */
+          ptr = strchr(host, '.');
+          if (ptr != NULL && strchr(ptr+1, '.') != NULL) {
+             host = ptr-1;
+             host[0] = '*';
+          }
+    }
+    return host;
+}
+
+char *generate_ban_hostmask(struct userNode *user, const char banopt)
+{
+    char *nickname = NULL;
+    char *ident = "*";
+    char *hostname = NULL;
+    char *mask = NULL;
+    char *usemask = NULL;
+    int len;
+
+    usemask = user->hostname;
+    if (IsFakeHost(user) && IsHiddenHost(user))
+        usemask = user->fakehost;
+    else if (IsSetHost(user))
+        usemask = strchr(user->sethost, '@') + 1;
+    else if (IsHiddenHost(user) && user->handle_info && hidden_host_suffix) {
+        usemask = alloca(strlen(user->handle_info->handle) + strlen(hidden_host_suffix) + 2);
+        sprintf(usemask, "%s.%s", user->handle_info->handle, hidden_host_suffix);
+    }
+
+    if((banopt == '6') || (banopt == '7') || (banopt == '8') || (banopt == '9'))
+       nickname = user->nick;
+    else
+       nickname = "*";
+
+    if((banopt == '4') || (banopt == '5') || (banopt == '8') || (banopt == '9'))
+        hostname = get_domain_mask(usemask);
+    else
+        hostname = usemask;
+
+    if((banopt == '1') || (banopt == '6')) {
+        if (IsSetHost(user)) {
+            ident = alloca(strcspn(user->sethost, "@")+2);
+            safestrncpy(ident, user->sethost, strcspn(user->sethost, "@")+1);
+        } else
+            ident = user->ident;
+    }
+    else if((banopt == '2') || (banopt == '4') || (banopt == '8')) {
+        if (IsSetHost(user)) {
+            ident = alloca(strcspn(user->sethost, "@")+3);
+            ident[0] = '*';
+            safestrncpy(ident+1, user->sethost, strcspn(user->sethost, "@")+1);
+        } else {
+            ident = malloc(strlen(user->ident)+1);
+            sprintf(ident, "*%s", user->ident);
+        }
+    } else
+        ident = "*";
+
+    /* Put it all together. */
+    len = strlen(ident) + strlen(hostname) + strlen(nickname) + 3;
+    mask = malloc(len);
+    sprintf(mask, "%s!%s@%s", nickname, ident, hostname);
+
+    return mask;
+}
+
 static int
 eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, char *argv[], struct svccmd *cmd, int action)
 {
     struct userNode *victim;
     struct modeNode **victims;
+    struct chanData *cData;
     unsigned int offset, n, victimCount, duration = 0;
-    char *reason = "Bye.", *ban, *name;
+    char *reason = "Bye.", *ban, *name, banopt;
     char interval[INTERVALLEN];
 
     offset = (action & ACTION_ADD_TIMED_LAMER) ? 3 : 2;
@@ -3139,7 +3261,17 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 	    return 0;
 	}
 
-	ban = generate_hostmask(victim, GENMASK_STRICT_HOST|GENMASK_ANY_IDENT);
+        if(!(cData = channel->channel_info)) {
+            banopt = '4';
+        }
+
+        if (!(cData->chOpts[chBanType])) {
+            banopt = '4';
+        } else {
+            banopt = cData->chOpts[chBanType];
+        }
+
+        ban = generate_ban_hostmask(victim, banopt);
 	name = victim->nick;
     }
     else
@@ -6055,6 +6187,11 @@ static MODCMD_FUNC(chan_opt_resync)
     return channel_multiple_option(chResync, CSFUNC_ARGS);
 }
 
+static MODCMD_FUNC(chan_opt_bantype)
+{
+    return channel_multiple_option(chBanType, CSFUNC_ARGS);
+}
+
 static struct svccmd_list set_shows_list;
 
 static void
@@ -7588,7 +7725,8 @@ chanserv_conf_read(void)
             "PubCmd", "InviteMe", "UserInfo","EnfOps",
             "EnfHalfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", 
             /* multiple choice options */
-            "AutoMode", "CtcpReaction", "Protect", "Toys", "TopicRefresh", "Resync",
+            "AutoMode", "CtcpReaction", "Protect", "Toys", "TopicRefresh",
+            "Resync", "BanType"
             /* binary options */
             "DynLimit", "NoDelete", "BanTimeout",
             /* delimiter */
@@ -8535,6 +8673,7 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(setters);
     DEFINE_CHANNEL_OPTION(topicrefresh);
     DEFINE_CHANNEL_OPTION(resync);
+    DEFINE_CHANNEL_OPTION(bantype);
     DEFINE_CHANNEL_OPTION(ctcpreaction);
     DEFINE_CHANNEL_OPTION(bantimeout);
     DEFINE_CHANNEL_OPTION(inviteme);
