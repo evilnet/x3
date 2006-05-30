@@ -382,6 +382,59 @@
         // opt into (or out of, depending on this setting)
         "announcements_default" "on";
     };
+
+
+    "spamserv" {
+        // You may disable this service by removing its "nick" config item.
+        "nick" "SpamServ";
+
+        // debug channel
+        "debug_channel" "#operserv";
+
+        // url of the network rules. if you don't have network rules, remove this key.
+        "network_rules" "http://www.afternet.org/aup";
+
+        // trigger for spamserv; remove this key to disable the trigger
+        "trigger" "%";
+
+        // ban duration of a short timedban.
+        "short_ban_duration" "15m";
+
+        // ban duration of a long timedban.
+        "long_ban_duration" "1h";
+
+        // duration of a gline. SpamServ will issue it after several violations and a kill.
+        "gline_duration" "1h";
+
+        // users may add "exception_max" exceptions to the list. IRCOps can override "exception_max".
+        "exception_max" "10";
+
+        // minimum & maximum length of an exception.
+        "exception_min_len" "4";
+        "exception_max_len" "12";
+
+        // users may add "badword_max" badwords to the list. IRCOps can override badword_max".
+        "badword_max" "10";
+
+        // minimum & maximum length of an badword.
+        "badword_min_len" "4";
+        "badword_max_len" "12";
+
+        // if someone advertises a channel, which doesn't exist (channel is empty, no users),
+        // SpamServ doesn't punish the user.
+        // enable this setting, if SpamServ has to ignore advertisements of channels, which do not exist.
+        // disable this setting, if SpamServ has to punish the users whenever they advertise.
+        "adv_chan_must_exist" "1";
+
+        // remove all mirc codes from messages before checking for advertisements.
+        // if this setting is disabled and someone spams a url which
+        // contains a bold char, SpamServ doesn't punish him.
+        "strip_mirc_codes" "1";
+
+        // enable this, if SpamServ has to "follow" ChanServ, when a channel moves or merges.
+        // disable it, if it shouldn't be possible to move or merge SpamServ with /msg chanserv move|merge.
+        "allow_move_merge" "1";
+    };
 };
 
 /* MODULES (optional components) *************************************************
@@ -504,6 +557,7 @@
     "NickServ" { "mondo_section" "NickServ"; };
     "OpServ" { "mondo_section" "OpServ"; };
     "sendmail" { "mondo_section" "sendmail"; };
+    "SpamServ" { "mondo_section" "SpamServ"; };
 
     // These are the options if you want a database to be in its own file.
     "mondo" {

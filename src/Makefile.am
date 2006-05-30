@@ -4,7 +4,7 @@ TRACK = @TRACK@
 
 noinst_PROGRAMS = x3
 EXTRA_PROGRAMS = checkdb globtest
-noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help
+noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help spamserv.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help
 EXTRA_DIST = $(noinst_DATA)
 
 EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-bahamut.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
@@ -37,6 +37,7 @@ x3_SOURCES = \
 	recdb.c recdb.h \
 	saxdb.c saxdb.h \
 	sendmail.c sendmail.h \
+	spamserv.c spamserv.h \
 	shun.c shun.h \
 	timeq.c timeq.h \
 	tools.c

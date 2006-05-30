@@ -2420,6 +2420,7 @@ create_default_binds(int rebind) {
         { "Global", { "Global", NULL } },
         { "NickServ", { "NickServ", NULL } },
         { "OpServ", { "OpServ", "modcmd", "sendmail", "saxdb", "proxycheck", NULL } },
+        { "SpamServ", { "SpamServ", NULL } },
         { NULL, { NULL } }
     };
     unsigned int ii, jj;

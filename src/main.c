@@ -26,6 +26,7 @@
 #include "modcmd.h"
 #include "saxdb.h"
 #include "sendmail.h"
+#include "spamserv.h"
 #include "shun.h"
 #include "timeq.h"
 
@@ -547,6 +548,11 @@ conf_globals(void)
     if (info && (info[0] == '.'))
         info = NULL;
     init_opserv(info);
+
+    info = conf_get_data("services/spamserv/nick", RECDB_QSTRING);
+    if (info && (info[0] == '.'))
+        info = NULL;
+    init_spamserv(info);
 
     info = conf_get_data("services/global/nick", RECDB_QSTRING);
     if (info && (info[0] == '.'))

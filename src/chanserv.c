@@ -24,6 +24,7 @@
 #include "modcmd.h"
 #include "opserv.h" /* for opserv_bad_channel() */
 #include "saxdb.h"
+#include "spamserv.h"
 #include "timeq.h"
 
 #define CHANSERV_CONF_NAME	"services/chanserv"
@@ -767,7 +768,6 @@ unsigned int chanserv_read_version = 0; /* db version control */
 
 #define CHANSERV_DB_VERSION 2
 
-#define GetChannelUser(channel, handle) _GetChannelUser(channel, handle, 1, 0)
 #define GetChannelAccess(channel, handle) _GetChannelUser(channel, handle, 0, 0)
 #define GetTrueChannelAccess(channel, handle) _GetChannelUser(channel, handle, 0, 1)
 
@@ -1312,8 +1312,10 @@ del_channel_user(struct userData *user, int do_gc)
 
     free(user->info);
     free(user);
-    if(do_gc && !channel->users && !IsProtected(channel))
+    if(do_gc && !channel->users && !IsProtected(channel)) {
+        spamserv_cs_unregister(NULL, channel->channel, lost_all_users, NULL);
         unregister_channel(channel, "lost all users.");
+    }
 }
 
 static struct adduserPending* 
@@ -1431,7 +1433,7 @@ expire_adduser_pending()
 
 static void expire_ban(void *data);
 
-static struct banData*
+struct banData*
 add_channel_ban(struct chanData *channel, const char *mask, char *owner, time_t set, time_t triggered, time_t expires, char *reason)
 {
     struct banData *bd;
@@ -1642,6 +1644,7 @@ expire_channels(UNUSED_ARG(void *data))
 
         /* Unregister the channel */
         log_module(CS_LOG, LOG_INFO, "(%s) Channel registration expired.", channel->channel->name);
+        spamserv_cs_unregister(NULL, channel->channel, expire, NULL);
         unregister_channel(channel, "registration expired.");
     }
 
@@ -2184,9 +2187,37 @@ static CHANSERV_FUNC(cmd_unregister)
     sprintf(reason, "unregistered by %s.", user->handle_info->handle);
     name = strdup(channel->name);
     unregister_channel(cData, reason);
+    spamserv_cs_unregister(user, channel, manually, "unregistered");
     reply("CSMSG_UNREG_SUCCESS", name);
     free(name);
     return 1;
+}
+
+static void
+ss_cs_join_channel(struct chanNode *channel, int spamserv_join)
+{
+    extern struct userNode *spamserv;
+    struct mod_chanmode *change;
+
+    if(spamserv && spamserv_join && get_chanInfo(channel->name))
+    {
+        change = mod_chanmode_alloc(2);
+        change->argc = 2;
+        change->args[0].mode = MODE_CHANOP;
+        change->args[0].u.member = AddChannelUser(chanserv, channel);
+        change->args[1].mode = MODE_CHANOP;
+        change->args[1].u.member = AddChannelUser(spamserv, channel);
+    }
+    else
+    {
+        change = mod_chanmode_alloc(1);
+        change->argc = 1;
+        change->args[0].mode = MODE_CHANOP;
+        change->args[0].u.member = AddChannelUser(chanserv, channel);
+    }
+
+    mod_chanmode_announce(chanserv, channel, change);
+       mod_chanmode_free(change);
 }
 
 static CHANSERV_FUNC(cmd_move)
@@ -2197,6 +2228,7 @@ static CHANSERV_FUNC(cmd_move)
     struct userData *uData;
     char reason[MAXLEN];
     struct do_not_register *dnr;
+    int chanserv_join = 0, spamserv_join;
 
     REQUIRE_PARAMS(2);
 
@@ -2238,7 +2270,7 @@ static CHANSERV_FUNC(cmd_move)
     {
         target = AddChannel(argv[1], now, NULL, NULL, NULL);
         if(!IsSuspended(channel->channel_info))
-            AddChannelUser(chanserv, target);
+            chanserv_join = 1;
     }
     else if(target->channel_info)
     {
@@ -2252,12 +2284,7 @@ static CHANSERV_FUNC(cmd_move)
         return 0;
     }
     else if(!IsSuspended(channel->channel_info))
-    {
-        change.argc = 1;
-        change.args[0].mode = MODE_CHANOP;
-        change.args[0].u.member = AddChannelUser(chanserv, target);
-        mod_chanmode_announce(chanserv, target, &change);
-    }
+        chanserv_join = 1;
 
     if(off_channel > 0)
     {
@@ -2277,7 +2304,10 @@ static CHANSERV_FUNC(cmd_move)
     target->channel_info->channel = target;
     channel->channel_info = NULL;
 
-    reply("CSMSG_MOVE_SUCCESS", target->name);
+    spamserv_join = spamserv_cs_move_merge(user, channel, target, 1);
+
+    if (chanserv_join)
+        ss_cs_join_channel(target, spamserv_join);
 
     sprintf(reason, "%s moved to %s by %s.", channel->name, target->name, user->handle_info->handle);
     if(!IsSuspended(target->channel_info))
@@ -2289,6 +2319,7 @@ static CHANSERV_FUNC(cmd_move)
     UnlockChannel(channel);
     LockChannel(target);
     global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+    reply("CSMSG_MOVE_SUCCESS", target->name);
     return 1;
 }
 
@@ -2522,6 +2553,7 @@ static CHANSERV_FUNC(cmd_merge)
 
     /* Merge the channel structures and associated data. */
     merge_channel(channel->channel_info, target->channel_info);
+    spamserv_cs_move_merge(user, channel, target, 0);
     sprintf(reason, "merged into %s by %s.", target->name, user->handle_info->handle);
     unregister_channel(channel->channel_info, reason);
     reply("CSMSG_MERGE_SUCCESS", target->name);
@@ -5415,12 +5447,8 @@ chanserv_expire_suspension(void *data)
     suspended->cData->flags &= ~CHANNEL_SUSPENDED;
     if(!IsOffChannel(suspended->cData))
     {
-        struct mod_chanmode change;
-        mod_chanmode_init(&change);
-        change.argc = 1;
-        change.args[0].mode = MODE_CHANOP;
-        change.args[0].u.member = AddChannelUser(chanserv, channel);
-        mod_chanmode_announce(chanserv, channel, &change);
+        spamserv_cs_suspend(channel, 0, 0, NULL);
+        ss_cs_join_channel(channel, 1);
     }
 }
 
@@ -5495,6 +5523,7 @@ static CHANSERV_FUNC(cmd_csuspend)
 
         /* Mark the channel as suspended, then part. */
         channel->channel_info->flags |= CHANNEL_SUSPENDED;
+        spamserv_cs_suspend(channel, expiry, 1, suspended->reason);
         DelChannelUser(chanserv, channel, suspended->reason, 0);
         reply("CSMSG_SUSPENDED", channel->name);
         sprintf(reason, "%s suspended by %s.", channel->name, suspended->suspender);

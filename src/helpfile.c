@@ -23,6 +23,7 @@
 #include "log.h"
 #include "modcmd.h"
 #include "nickserv.h"
+#include "spamserv.h"
 
 #if defined(HAVE_DIRENT_H)
 #include <dirent.h>
@@ -41,7 +42,7 @@ static const struct message_entry msgtab[] = {
 #define DEFAULT_LINE_SIZE	MAX_LINE_SIZE
 #define DEFAULT_TABLE_SIZE      80
 
-extern struct userNode *global, *chanserv, *opserv, *nickserv;
+extern struct userNode *global, *chanserv, *opserv, *nickserv, *spamserv;
 struct userNode *message_dest;
 struct userNode *message_source;
 struct language *lang_C;
@@ -559,6 +560,9 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
 	    break;
 	case 'N':
             value = nickserv ? nickserv->nick : "NickServ";
+            break;
+        case 'X':
+            value = spamserv ? spamserv->nick : "SpamServ";
             break;
         case 's':
             value = self->name;

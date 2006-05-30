@@ -1,0 +1,153 @@
+"<INDEX>" (
+	" Hello there!",
+	" Im $b$X$b, your channel spam protection service.",
+	"$b$b",
+	" With this service you can have your channel checked",
+	" for spam, flood, join flood, and disallowed",
+	" advertisements.",
+	"=---------------------------------------=",
+        "  ADDBADWORD    Adds a word to the badword list.",
+        "  DELBADWORD    Deletes a word from the badword list.",
+	"$b$b",
+        "  ADDEXCEPTION  Adds a word to the exception list.",
+        "  DELEXCEPTION  Deletes a word from the exception list.",
+	"$b$b",
+        "  SET           Changes various channel settings.",
+        "  STATUS        Shows general information about $X.",
+	"$b$b",
+        " $bPrivileged Commands:$b",
+        "  REGISTER      Registers a new channel.",
+        "  UNREGISTER    Removes $X from a registered channel.",
+	"$b$b",
+        " See $b/msg $X help <command>$b for syntax",
+	" and usage for a command. Before you can start",
+	" using $X your channel must be registered in $X",
+	" by an IRC Operator, please join #afternet and ask",
+	" if you wish to get $X in your channel.");
+
+"ADDBADWORD" ("/msg $X ADDBADWORD [word]",
+        "Without an argument, it will show all existing badwords.",
+	  "With an argument, it will add the given word to the badword list.",
+	  "$X checks, if one of the words in the sentence of a user is in the badword list; if so, $X will not punish the user, doesn't matter, if it's a bad advertisement.",
+	  "This means, you have to make sure, all badwords are adequate.",
+	  "$bFirst example$b: You added the word \"gamesurge.net\" to the badword list and someone posts \"www.gamesurge.net/aup\", he won't get punished.",
+	  "$bSecond example$b: You added the word \"support\" to the list and someone tells another person to join #support, he won't get punished.",
+	  "$bThird example$b: You added \"GameSurge\" to the list and someone posts \"JOIN #channelxyz on GameSurge\", he will NOT get punished, because the word \"GameSurge\" is in the sentence.",
+	  "If he would say \"JOIN #channelxyz\", $X would punish him.",
+	  "$uSee Also:$u delbadword");
+
+"DELBADWORD" ("/msg $X DELBADWORD",
+        "Without an argument, it will show all existing badwords.",
+        "With an argument, it will delete the given word from the badword list.",
+        "$uSee Also:$u addbadword");
+
+"ADDEXCEPTION" ("/msg $X ADDEXCEPTION [word]",
+        "Without an argument, it will show all existing exceptions.",
+	  "With an argument, it will add the given word to the exception list.",
+	  "$X checks, if one of the words in the sentence of a user is in the exception list; if so, $X will not punish the user, doesn't matter, if it's a bad advertisement.",
+	  "This means, you have to make sure, all exceptions are adequate.",
+	  "$bFirst example$b: You added the word \"gamesurge.net\" to the exception list and someone posts \"www.gamesurge.net/aup\", he won't get punished.",
+	  "$bSecond example$b: You added the word \"support\" to the list and someone tells another person to join #support, he won't get punished.",
+	  "$bThird example$b: You added \"GameSurge\" to the list and someone posts \"JOIN #channelxyz on GameSurge\", he will NOT get punished, because the word \"GameSurge\" is in the sentence.",
+	  "If he would say \"JOIN #channelxyz\", $X would punish him.",
+	  "$uSee Also:$u delexception");
+
+"DELEXCEPTION" ("/msg $X DELEXCEPTION",
+        "Without an argument, it will show all existing exceptions.",
+        "With an argument, it will delete the given word from the exception list.",
+        "$uSee Also:$u addexception");
+
+"SET" ("/msg $X SET <#channel> [<parameter> [setting]]",
+        "This command will set various channel options. With no arguments, it will show the current values of all channel options.",
+        "Only channel owners and coowners may change settings.",
+        "SPAMLIMIT:      Number of equal lines, a user may send.",
+        "BADREACTION:    What happens when someone says a badword after warning.",
+        "ADVREACTION:    What happens when someone advertises after warning.",
+        "WARNREACTION:   What happens when someone continues spamming/flooding after warning.",
+        "ADVSCAN:        Enables/Disables scanning for advertisements.",
+        "BADWORDSCAN:    Enables/Disables scanning for badwords.",
+        "SPAMSCAN:       Enables/Disables scanning for spam.",
+        "CHANFLOODSCAN:  Enables/Disables scanning for channel flood.",
+        "JOINFLOODSCAN:  Enables/Disables scanning for joinflood.",
+        "SCANCHANOPS:    Indicates whether $X has to scan messages from channel ops.",
+        "SCANHALFOPS:    Indicates whether $X has to scan messages from channel halfops.",
+        "SCANVOICED:     Indicates whether $X has to scan messages from voiced users.",
+        "$uSee Also:$u set spamlimit, set badreaction, set advreaction, set warnreaction, set advscan, set badwordscan, set spamscan, set chanfloodscan, set joinfloodscan, set scanchanops, set scanhalfops, set scanvoiced");
+
+"SET SPAMLIMIT" ("/msg $X SET <#channel> SPAMLIMIT <value>",
+        "You can specify the number of equal messages, a user may send.  Valid settings are:",
+        "$b0$b  Users may send the same message $b2$b times.",
+        "$b1$b  Users may send the same message $b3$b times.",
+        "$b2$b  Users may send the same message $b4$b times.",
+        "$b3$b  Users may send the same message $b5$b times.",
+        "$b4$b  Users may send the same message $b6$b times.",
+        "$uSee Also:$u set spamscan");
+
+"SET BADREACTION" ("/msg $X SET <#channel> BADREACTION <value>",
+        "This setting controls what happens to those who send disallowed badwords to the channel after a warning:",
+        "$b0$b  Kick on disallowed badwords.",
+        "$b1$b  Kickban on disallowed badwords.",
+        "$b2$b  Short timed ban (default: 15 minutes) on disallowed badwords.",
+        "$b3$b  Long timed ban (default: 1 hour) on disallowed badwords.",
+        "$b4$b  Kill on disallowed badwords. Only settable by irc operators.",
+        "$uSee Also:$u set badscan");
+
+"SET ADVREACTION" ("/msg $X SET <#channel> ADVREACTION <value>",
+        "This setting controls what happens to those who send disallowed advertisements to the channel after a warning:",
+        "$b0$b  Kick on disallowed advertising.",
+        "$b1$b  Kickban on disallowed advertising.",
+        "$b2$b  Short timed ban (default: 15 minutes) on disallowed advertising.",
+        "$b3$b  Long timed ban (default: 1 hour) on disallowed advertising.",
+        "$b4$b  Kill on disallowed advertising. Only settable by irc operators.",
+        "$uSee Also:$u set advscan");
+
+"SET WARNREACTION" ("/msg $X SET <#channel> WARNREACTION <value>",
+        "This setting controls what happens to those who spam or flood the channel after a warning:",
+        "$b0$b  Kick after warning.",
+        "$b1$b  Kickban after warning.",
+        "$b2$b  Short timed ban (default: 15 minutes) after warning.",
+        "$b3$b  Long timed ban (default: 1 hour) after warning.",
+        "$b4$b  Kill after warning. Only settable by irc operators.",
+        "$uSee Also:$u set spamscan, set chanfloodscan");
+
+"SET ADVSCAN" ("/msg $X SET <#channel> ADVSCAN <1/0>",
+        "If this setting is enabled, $X checks all messages for advertisements.",
+        "Advertisements are: www.*, http:*, ftp.*, ftp:* and #*; e.g. #srvx, http://www.srvx.net etc ..");
+
+"SET BADSCAN" ("/msg $X SET <#channel> BADSCAN <1/0>",
+        "If this setting is enabled, $X checks all messages for badwords.");
+
+"SET SPAMSCAN" ("/msg $X SET <#channel> SPAMSCAN <1/0>",
+        "If this setting is enabled, $X checks all incoming channel messages for spam.",
+        "Posting the same message multiple times is considered as spam, which means, if someone posts the same message more than the number of times, which is allowed (/msg $X set SPAMLIMIT), $X will punish him.");
+
+"SET CHANFLOODSCAN" ("/msg $X SET <#channel> CHANFLOODSCAN <1/0>",
+        "If this setting is enabled, $X checks, if a person tries to flood the channel.",
+        "Posting messages in a small amount of time is considered as flood, so if someone tries to flood the channel, $X will punish him.");
+
+"SET JOINFLOODSCAN" ("/msg $X SET <#channel> JOINFLOODSCAN <1/0>",
+        "If this setting is enabled, $X checks, if a person joins the channel more than one time.",
+        "Normally users join a channel and stay in the channel or part and do not rejoin after a few seconds.",
+        "If they want to cause trouble, they join/part the channel very often. $X will punish every user, who does that.");
+
+"SET SCANCHANOPS" ("/msg $X SET <#channel> SCANCHANOPS <1/0>",
+        "If this setting is disabled, $X doesn't check messages from oped users for spam, flood and advertisements.");
+
+"SET SCANHALFOPS" ("/msg $X SET <#channel> SCANHALFOPS <1/0>",
+        "If this setting is disabled, $X doesn't check messages from halfopped users for spam, flood and advertisements.");
+
+"SET SCANVOICED" ("/msg $X SET <#channel> SCANVOICED <1/0>",
+        "If this setting is disabled, $X doesn't check messages from voiced users for spam, flood and advertisements.");
+
+"REGISTER" ("/msg $X REGISTER <#channel>",
+        "Registers a channel with $X.",
+        "The Channel must be registered with $C and may not be suspended.",
+        "$uSee Also:$u unregister");
+
+"STATUS" ("/msg $X STATUS [MEMORY|CHANNELS]",
+        "$bSTATUS$b shows you general information about $X. An irc operator can get information about the memory usage and a list of all registered channels.");
+
+"UNREGISTER" ("/msg $X UNREGISTER <#channel> [CONFIRM]",
+        "Removes $X from the given channel.",
+        "If you are not network staff, you must add $bCONFIRM$b to the end of your line to confirm unregistration.",
+        "$bSee Also:$b register");

@@ -204,6 +204,10 @@ struct do_not_register
     char   reason[1];
 };
 
+#define GetChannelUser(channel, handle) _GetChannelUser(channel, handle, 1, 0)
+struct userData *_GetChannelUser(struct chanData *channel, struct handle_info *handle, int override, int allow_suspended);
+struct banData *add_channel_ban(struct chanData *channel, const char *mask, char *owner, time_t set, time_t triggered, time_t expires, char *reason);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);

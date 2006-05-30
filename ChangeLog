@@ -1,6 +1,37 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-05-30  Neil Spierling  <sirvulcan@gmail.com>
+
+	* configure: Regenerated.
+
+	* configure.in: Bumped version and changed list email.
+
+	* x3.example.conf: Added SpamServ options.
+
+	* src/chanserv.c: Join SpamServ if enabled when chanserv joins.
+
+	* src/chanserv.h: Declerations
+
+	* src/main.c: Init the new SpamServ service.
+
+	* src/Makefile.am: Added SpamServ files.
+
+	* src/Makefile.in: Regenerated
+
+	* src/modcmd.c: Added SpamServ to REBINDALL.
+
+	* src/opserv.c: Slab/X3 malloc STATS MEMORY updates.
+
+	* src/proto-common.c: Make sure SpamServ gets notices.
+
+	* src/spamserv.c: New service that checks for spamming, floods etc.
+	Requires an oper to register it to a channel for it to work.
+
+	* src/spamserv.h: Decelerations.
+
+	* src/spamserv.help: Help entries for SpamServ.
+
 2006-05-29  Neil Spierling  <sirvulcan@gmail.com>
 
 	* Below functions by Wasted (Martijn Smit) <wasted@lostdomain.org>

@@ -1913,9 +1913,9 @@ static MODCMD_FUNC(cmd_stats_memory) {
     send_message_type(MSG_TYPE_NOXLATE, user, cmd->parent->bot,
                       "%u allocations in %u slabs totalling %u bytes.",
                       slab_alloc_count, slab_count, slab_alloc_size);
-/*    send_message_type(MSG_TYPE_NOXLATE, user, cmd->parent->bot,
+    send_message_type(MSG_TYPE_NOXLATE, user, cmd->parent->bot,
                       "%u big allocations totalling %u bytes.",
- */ 
+                      big_alloc_count, big_alloc_size);
     return 1;
 }
 #endif

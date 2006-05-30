@@ -23,6 +23,7 @@
 #include "ioset.h"
 #include "log.h"
 #include "nickserv.h"
+#include "spamserv.h"
 #include "shun.h"
 #include "timeq.h"
 #ifdef HAVE_SYS_SOCKET_H
@@ -445,6 +446,8 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
     if (!pd->is_notice && cf->func
         && ((cn->modes & MODE_REGISTERED) || GetUserMode(cn, cf->service)))
          cf->func(pd->user, cn, pd->text+1, cf->service);
+    else
+        spamserv_channel_message(cn, pd->user, pd->text);
 
     /* This catches *all* text sent to the channel that the services server sees */
     for (x = 0; x < ALLCHANMSG_FUNCS_MAX; x++) {
