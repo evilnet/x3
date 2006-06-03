@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-04  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/main.c: Moved spamserv initilization to after chanserv.
+
+	* src/spamserv.c: Read the db earlier.
+
 2006-05-30  Neil Spierling  <sirvulcan@gmail.com>
 
 	* configure: Regenerated.

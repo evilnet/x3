@@ -2104,6 +2104,7 @@ spamserv_saxdb_read(struct dict *database)
 		}
 
 		channel = GetChannel(iter_key(it));
+
 		strlist = database_get_data(hir->d.object, KEY_EXCEPTIONS, RECDB_STRING_LIST);
 		strlist2 = database_get_data(hir->d.object, KEY_BADWORDS, RECDB_STRING_LIST);
 
@@ -2283,6 +2284,8 @@ init_spamserv(const char *nick)
 	connected_users_dict = dict_new();
 	killed_users_dict = dict_new();
 
+	saxdb_register("SpamServ", spamserv_saxdb_read, spamserv_saxdb_write);
+
 	reg_new_user_func(spamserv_new_user_func);
 	reg_del_user_func(spamserv_del_user_func);
 	reg_nick_change_func(spamserv_nick_change_func);
@@ -2328,7 +2331,6 @@ init_spamserv(const char *nick)
             }
         }
 
-	saxdb_register("SpamServ", spamserv_saxdb_read, spamserv_saxdb_write);
 	reg_exit_func(spamserv_db_cleanup);
 	message_register_table(msgtab);
 	crc32_init();

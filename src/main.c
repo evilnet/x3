@@ -549,11 +549,6 @@ conf_globals(void)
         info = NULL;
     init_opserv(info);
 
-    info = conf_get_data("services/spamserv/nick", RECDB_QSTRING);
-    if (info && (info[0] == '.'))
-        info = NULL;
-    init_spamserv(info);
-
     info = conf_get_data("services/global/nick", RECDB_QSTRING);
     if (info && (info[0] == '.'))
         info = NULL;
@@ -568,6 +563,11 @@ conf_globals(void)
     if (info && (info[0] == '.'))
         info = NULL;
     init_chanserv(info);
+
+    info = conf_get_data("services/spamserv/nick", RECDB_QSTRING);
+    if (info && (info[0] == '.'))
+        info = NULL;
+    init_spamserv(info);
 }
 
 #ifdef HAVE_SYS_RESOURCE_H
