@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-04  Alex Schumann  <rubin@afternet.org>
+	* src/nickserv.c: Send silences to every nick of a handle, not the
+	nick that did the command.
+
 2006-06-04  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/main.c: Moved spamserv initilization to after chanserv.

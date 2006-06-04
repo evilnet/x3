@@ -1462,6 +1462,7 @@ static int
 nickserv_ignore(struct userNode *user, struct handle_info *hi, const char *mask)
 {
     unsigned int i;
+    struct userNode *target;
     char *new_mask = canonicalize_hostmask(strdup(mask));
     for (i=0; i<hi->ignores->used; i++) {
         if (!irccasecmp(new_mask, hi->ignores->list[i])) {
@@ -1473,7 +1474,9 @@ nickserv_ignore(struct userNode *user, struct handle_info *hi, const char *mask)
     string_list_append(hi->ignores, new_mask);
     send_message(user, nickserv, "NSMSG_ADDIGNORE_SUCCESS", new_mask);
 
-    irc_silence(user, new_mask, 1);
+    for (target = hi->users; target; target = target->next_authed) {
+        irc_silence(target, new_mask, 1);
+    }
     return 1;
 }
 
@@ -1498,12 +1501,15 @@ static int
 nickserv_delignore(struct userNode *user, struct handle_info *hi, const char *del_mask)
 {
     unsigned int i;
+    struct userNode *target;
     for (i=0; i<hi->ignores->used; i++) {
 	if (!strcmp(del_mask, hi->ignores->list[i])) {
 	    char *old_mask = hi->ignores->list[i];
 	    hi->ignores->list[i] = hi->ignores->list[--hi->ignores->used];
 	    send_message(user, nickserv, "NSMSG_DELMASK_SUCCESS", old_mask);
-            irc_silence(user, old_mask, 0);
+            for (target = hi->users; target; target = target->next_authed) {
+                irc_silence(user, old_mask, 0);
+            }
 	    free(old_mask);
 	    return 1;
 	}
