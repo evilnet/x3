@@ -1,7 +1,22 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-05  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/common.h: pretty_mask etc declerations.
+
+	* src/nickserv.c: Parse the mask through pretty_mask before adding
+	it. Normal ircd side silences go through this, this just keeps
+	things looking the same and if a user tries to remove a silence
+	added by ADDIGNORE they will be able to. Oh and I HATE GLIBC :P
+
+	* src/proto-p10.c: Send a + if adding a silence.
+
+	* src/tools.c: pretty_mask and one other function for reformatting
+	a hostname so its pretty :) from IRCu.
+
 2006-06-04  Alex Schumann  <rubin@afternet.org>
+
 	* src/nickserv.c: Send silences to every nick of a handle, not the
 	nick that did the command.
 

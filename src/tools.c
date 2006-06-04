@@ -1158,3 +1158,112 @@ int valid_email(const char *email)
     return true;
 }
 
+/*
+ * Create a string of form "foo!bar@fubar" given foo, bar and fubar
+ * as the parameters.  If NULL, they become "*".
+ */
+#define NUH_BUFSIZE	(NICKLEN + USERLEN + HOSTLEN + 10)
+static char *make_nick_user_host(char *namebuf, const char *nick,
+				 const char *name, const char *host)
+{
+  snprintf(namebuf, NUH_BUFSIZE, "%s!%s@%s", nick, name, host);
+  return namebuf;
+}
+
+/*
+ * pretty_mask
+ *
+ * by Carlo Wood (Run), 05 Oct 1998.
+ *
+ * Canonify a mask.
+ *
+ * When the nick is longer then NICKLEN, it is cut off (its an error of course).
+ * When the user name or host name are too long (USERLEN and HOSTLEN
+ * respectively) then they are cut off at the start with a '*'.
+ *
+ * The following transformations are made:
+ *
+ * 1)   xxx             -> nick!*@*
+ * 2)   xxx.xxx         -> *!*@host
+ * 3)   xxx!yyy         -> nick!user@*
+ * 4)   xxx@yyy         -> *!user@host
+ * 5)   xxx!yyy@zzz     -> nick!user@host
+ */
+char *pretty_mask(char *mask)
+{
+  static char star[2] = { '*', 0 };
+  static char retmask[NUH_BUFSIZE] = "";
+  char *last_dot = NULL;
+  char *ptr = NULL;
+
+  /* Case 1: default */
+  char *nick = mask;
+  char *user = star;
+  char *host = star;
+
+  /* Do a _single_ pass through the characters of the mask: */
+  for (ptr = mask; *ptr; ++ptr)
+  {
+    if (*ptr == '!')
+    {
+      /* Case 3 or 5: Found first '!' (without finding a '@' yet) */
+      user = ++ptr;
+      host = star;
+    }
+    else if (*ptr == '@')
+    {
+      /* Case 4: Found last '@' (without finding a '!' yet) */
+      nick = star;
+      user = mask;
+      host = ++ptr;
+    }
+    else if (*ptr == '.')
+    {
+      /* Case 2: Found last '.' (without finding a '!' or '@' yet) */
+      last_dot = ptr;
+      continue;
+    }
+    else
+      continue;
+    for (; *ptr; ++ptr)
+    {
+      if (*ptr == '@')
+      {
+        /* Case 4 or 5: Found last '@' */
+        host = ptr + 1;
+      }
+    }
+    break;
+  }
+  if (user == star && last_dot)
+  {
+    /* Case 2: */
+    nick = star;
+    user = star;
+    host = mask;
+  }
+  /* Check lengths */
+  if (nick != star)
+  {
+    char *nick_end = (user != star) ? user - 1 : ptr;
+    if (nick_end - nick > NICKLEN)
+      nick[NICKLEN] = 0;
+    *nick_end = 0;
+  }
+  if (user != star)
+  {
+    char *user_end = (host != star) ? host - 1 : ptr;
+    if (user_end - user > USERLEN)
+    {
+      user = user_end - USERLEN;
+      *user = '*';
+    }
+    *user_end = 0;
+  }
+  if (host != star && ptr - host > HOSTLEN)
+  {
+    host = ptr - HOSTLEN;
+    *host = '*';
+  }
+  return make_nick_user_host(retmask, nick, user, host);
+}

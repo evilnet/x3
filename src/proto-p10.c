@@ -864,7 +864,7 @@ irc_invite(struct userNode *from, struct userNode *who, struct chanNode *to)
 void
 irc_silence(struct userNode *who, const char *mask, int add)
 {
-    putsock("%s " P10_SILENCE " %s %s%s", self->numeric, who->numeric, add ? "" : "-", mask);
+    putsock("%s " P10_SILENCE " %s %s%s", self->numeric, who->numeric, add ? "+" : "-", mask);
 }
 
 void
