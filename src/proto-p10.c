@@ -1632,6 +1632,48 @@ static CMD_FUNC(cmd_part)
     return 1;
 }
 
+static CMD_FUNC(cmd_silence)
+{
+    struct userNode *user;
+    char *mask;
+    unsigned int i;
+
+    if (argc < 2)
+        return 0;
+
+    user = GetUserN(argv[1]);
+
+    /* Sanity, go nuts if this happens */
+    if (!user)
+        return 0;
+
+    /*  We can safely ignore this if a user adding a silence is not
+     *  ignored. However this brings up a TODO. If a user logs in and
+     *  they have silences on the IRCd then we need to set them here
+     *  somehow
+     */
+    if (!user->handle_info)
+        return 1;
+
+    mask = strdup(argv[2]);
+
+    if (*mask == '-') {
+        for (i=0; i<user->handle_info->ignores->used; i++) {
+            if (!irccasecmp(mask+1, user->handle_info->ignores->list[i]))
+                user->handle_info->ignores->list[i] = user->handle_info->ignores->list[--user->handle_info->ignores->used];
+        }
+    } else {
+        for (i=0; i<user->handle_info->ignores->used; i++) {
+            if (!strcmp(mask+1, user->handle_info->ignores->list[i]))
+                return 1; /* Already on the users NickServ ignore list, safely ignore */
+        }
+
+        string_list_append(user->handle_info->ignores, mask+1);
+    }
+
+    return 1;
+}
+
 static CMD_FUNC(cmd_kick)
 {
     if (argc < 3)
@@ -1866,8 +1908,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_TOPIC, cmd_topic);
     dict_insert(irc_func_dict, CMD_AWAY, cmd_away);
     dict_insert(irc_func_dict, TOK_AWAY, cmd_away);
-    dict_insert(irc_func_dict, CMD_SILENCE, cmd_dummy);
-    dict_insert(irc_func_dict, TOK_SILENCE, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_SILENCE, cmd_silence);
+    dict_insert(irc_func_dict, TOK_SILENCE, cmd_silence);
     dict_insert(irc_func_dict, CMD_KICK, cmd_kick);
     dict_insert(irc_func_dict, TOK_KICK, cmd_kick);
     dict_insert(irc_func_dict, CMD_SQUIT, cmd_squit);

@@ -3,6 +3,10 @@
 
 2006-06-05  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/proto-p10.c: Properly handle incomming manual silences.
+
+2006-06-05  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/common.h: pretty_mask etc declerations.
 
 	* src/nickserv.c: Parse the mask through pretty_mask before adding
