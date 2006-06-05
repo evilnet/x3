@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-04  Alex Schumann  <rubin@afternet.org>
+
+	* src/nickserv.c: Fix oregister
+
 2006-06-05  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/proto-p10.c: Properly handle incomming manual silences.

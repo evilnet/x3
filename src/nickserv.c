@@ -176,7 +176,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_ATE_FOREIGN_COOKIE", "I ate the cookie for account $b%s$b.  It may now have another." },
     { "NSMSG_USE_RENAME", "You are already authenticated to account $b%s$b -- contact the support staff to rename your account." },
     { "NSMSG_ALREADY_REGISTERING", "You have already used $bREGISTER$b once this session; you may not use it again." },
-    { "NSMSG_REGISTER_BAD_NICKMASK", "Could not recognize $b%s$b as either a current nick or a hostmask." },
+    { "NSMSG_REGISTER_BAD_NICKMASK", "You must provide a hostmask, or online nick to generate one automatically. (or set a default hostmask in the config such as *@*)." },
     { "NSMSG_NICK_NOT_REGISTERED", "Nick $b%s$b has not been registered to any account." },
     { "NSMSG_HANDLE_NOT_FOUND", "Could not find your account -- did you register yet?" },
     { "NSMSG_ALREADY_AUTHED", "You are already authed to account $b%s$b; you must reconnect to auth to a different account." },
@@ -1404,57 +1404,78 @@ static NICKSERV_FUNC(cmd_register)
 
 static NICKSERV_FUNC(cmd_oregister)
 {
-    char *mask;
-    struct userNode *settee;
+    struct userNode *settee = NULL;
     struct handle_info *hi;
+    char* account = NULL;
+    char* pass = NULL;
+    char* email = NULL;
+    char* mask = NULL;
+    char* nick = NULL;
 
-    NICKSERV_MIN_PARMS(nickserv_conf.email_required ? 4 : 3);
-
-    if (!is_valid_handle(argv[1])) {
-        reply("NSMSG_BAD_HANDLE", argv[1]);
+    NICKSERV_MIN_PARMS(3);
+   
+    account = argv[1];
+    pass = argv[2];
+    if (nickserv_conf.email_required) {
+        NICKSERV_MIN_PARMS(4);
+        email = argv[3];
+        if (argc >= 5) {/* take: "acct pass email mask nick" or "acct pass email mask" or "acct pass email nick" */
+            if (strchr(argv[4], '@') || argc >= 6) /* If @, its mask not nick */
+                mask = argv[4];
+            else
+                nick = argv[4];
+        }
+        if (argc >= 6) {
+            nick = argv[5];
+        }
+    }
+    else {
+        if (argc >= 4) {/* take: "account pass mask nick" or "account pass mask" or "account pass nick" */
+            if (strchr(argv[3], '@') || argc >= 5) /* If @, its mask not nick */
+                mask = argv[3];
+            else
+                nick = argv[3];
+        }
+        if (argc >= 5) {
+            nick = argv[4];
+        }
+    }
+    /* If they passed a nick, look for that user.. */
+    if (nick && !(settee = GetUserH(nick))) {
+        reply("MSG_NICK_UNKNOWN", argv[4]);
         return 0;
     }
-
-    if (nickserv_conf.email_required) {
-        if (!valid_email(argv[4])) {
-            reply("NSMSG_BAD_EMAIL_ADDR");
+    /* If the setee is already authed, we cant add a 2nd account for them.. */
+    if (settee && settee->handle_info) {
+        reply("NSMSG_USER_PREV_AUTH", settee->nick);
+        return 0;
+    }
+    /* If there is no default mask in the conf, and they didn't pass a mask, 
+     * but we did find a user by nick, generate the mask */
+    if (!mask) {
+        if (nickserv_conf.default_hostmask)
+            mask = "*@*";
+        else if (settee)
+            mask = generate_hostmask(settee, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+        else {
+            reply("NSMSG_REGISTER_BAD_NICKMASK");
             return 0;
         }
     }
 
-    if (strchr(argv[3], '@')) {
-	mask = canonicalize_hostmask(strdup(argv[3]));
-	if (argc > 4) {
-	    settee = GetUserH(nickserv_conf.email_required ? argv[5] : argv[4]);
-	    if (!settee) {
-		reply("MSG_NICK_UNKNOWN", nickserv_conf.email_required ? argv[5] : argv[4]);
-                free(mask);
-		return 0;
-	    }
-	} else {
-	    settee = NULL;
-	}
-    } else if ((settee = GetUserH(argv[3]))) {
-	mask = generate_hostmask(settee, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
-    } else {
-	reply("NSMSG_REGISTER_BAD_NICKMASK", argv[3]);
-	return 0;
+    if (!(hi = nickserv_register(user, settee, account, pass, 0))) {
+        return 0; /* error reply handled by above */
     }
-    if (settee && settee->handle_info) {
-        reply("NSMSG_USER_PREV_AUTH", settee->nick);
-        free(mask);
-        return 0;
+    if (email) {
+        nickserv_set_email_addr(hi, email);
     }
-    if (!(hi = nickserv_register(user, settee, argv[1], argv[2], 0))) {
-        if (nickserv_conf.email_required) {
-            nickserv_set_email_addr(hi, argv[4]);
-            if (nickserv_conf.sync_log)
-                SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, argv[4], user->info);
-        }
-        free(mask);
-        return 0;
+    if (mask) {
+        char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+        string_list_append(hi->masks, mask_canonicalized);
     }
-    string_list_append(hi->masks, mask);
+
+    if (nickserv_conf.sync_log)
+        SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, email ? email : "@", user->info); /* Send just @ for email if none */
     return 1;
 }
 
