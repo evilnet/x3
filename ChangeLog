@@ -5,6 +5,8 @@
 
 	* src/nickserv.c: Fix oregister
 
+	* src/nickserv.help: Update help for oregister
+
 2006-06-05  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/proto-p10.c: Properly handle incomming manual silences.
