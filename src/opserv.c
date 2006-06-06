@@ -84,6 +84,7 @@
 #define KEY_ISSUER "issuer"
 #define KEY_ISSUED "issued"
 #define KEY_ADMIN_LEVEL "admin_level"
+#define KEY_SILENT_LEVEL "silent_level"
 
 #define IDENT_FORMAT            "%s [%s@%s/%s]"
 #define IDENT_DATA(user)        user->nick, user->ident, user->hostname, irc_ntoa(&user->ip)
@@ -332,6 +333,7 @@ static struct {
     unsigned long join_flood_moderate;
     unsigned long join_flood_moderate_threshold;
     unsigned long admin_level;
+    unsigned long silent_level;
 } opserv_conf;
 
 struct trusted_host {
@@ -381,6 +383,7 @@ typedef struct opservDiscrim {
     int authed : 2, info_space : 2;
     unsigned int intra_scmp : 2, intra_dcmp : 2;
     unsigned int use_regex : 1;
+    unsigned int silent : 1;
 } *discrim_t;
 
 struct discrim_and_source {
@@ -399,7 +402,7 @@ static int ungag_helper_func(struct userNode *match, void *extra);
 typedef enum {
     REACT_NOTICE,
     REACT_KILL,
-    REACT_SILENT,
+//    REACT_SILENT,
     REACT_GLINE,
     REACT_TRACK,
     REACT_SHUN
@@ -1827,7 +1830,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         switch (alert->reaction) {
         case REACT_NOTICE: reaction = "notice"; break;
         case REACT_KILL: reaction = "kill"; break;
-        case REACT_SILENT: reaction = "silent"; break;
+//        case REACT_SILENT: reaction = "silent"; break;
         case REACT_GLINE: reaction = "gline"; break;
         case REACT_TRACK: reaction = "track"; break;
         case REACT_SHUN: reaction = "shun"; break;
@@ -2803,6 +2806,7 @@ foreach_matching_user(const char *hostmask, discrim_search_func func, void *extr
     discrim->intra_scmp = 0;
     discrim->intra_dcmp = 0;
     discrim->use_regex = 0;
+    discrim->silent = 0;
     dupmask = strdup(hostmask);
     if (split_ircmask(dupmask, &discrim->mask_nick, &discrim->mask_ident, &discrim->mask_host)) {
         if (!irc_pton(&discrim->ip_mask, &discrim->ip_mask_bits, discrim->mask_host))
@@ -2960,8 +2964,10 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_NOTICE;
     else if (!irccasecmp(react, "kill"))
         reaction = REACT_KILL;
+    /*
     else if (!irccasecmp(react, "silent"))
         reaction = REACT_SILENT;
+    */
     else if (!irccasecmp(react, "gline"))
         reaction = REACT_GLINE;
     else if (!irccasecmp(react, "track"))
@@ -3154,7 +3160,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             switch (alert->reaction) {
             case REACT_NOTICE: reaction = "notice"; break;
             case REACT_KILL: reaction = "kill"; break;
-            case REACT_SILENT: reaction = "silent"; break;
+//            case REACT_SILENT: reaction = "silent"; break;
             case REACT_GLINE: reaction = "gline"; break;
             case REACT_TRACK: reaction = "track"; break;
             case REACT_SHUN: reaction = "shun"; break;
@@ -3274,6 +3280,8 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
     discrim->info_space = -1;
     discrim->intra_dcmp = 0;
     discrim->intra_scmp = 0;
+    discrim->use_regex = 0;
+    discrim->silent = 0;
 
     for (i=0; i<argc; i++) {
         if (irccasecmp(argv[i], "log") == 0) {
@@ -3376,6 +3384,18 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
             discrim->use_regex = 1;
         } else if (false_string(argv[i])) {
             discrim->use_regex = 0;
+        } else {
+            send_message(user, opserv, "MSG_INVALID_BINARY", argv[i]);
+            goto fail;
+        }
+    } else if (irccasecmp(argv[i], "silent") == 0) {
+        i++;
+        if(!oper_has_access(user, opserv, opserv_conf.silent_level, 0)) {
+            goto fail;
+        } else if (true_string(argv[i])) {
+            discrim->silent = 1;
+        } else if (false_string(argv[i])) {
+            discrim->silent = 0;
         } else {
             send_message(user, opserv, "MSG_INVALID_BINARY", argv[i]);
             goto fail;
@@ -3755,7 +3775,7 @@ trace_gline_func(struct userNode *match, void *extra)
     struct discrim_and_source *das = extra;
 
     if (is_oper_victim(das->source, match, das->discrim->match_opers)) {
-        opserv_block(match, das->source->handle_info->handle, das->discrim->reason, das->discrim->duration, 0);
+        opserv_block(match, das->source->handle_info->handle, das->discrim->reason, das->discrim->duration, das->discrim->silent);
     }
 
     return 0;
@@ -4397,11 +4417,13 @@ alert_check_user(const char *key, void *data, void *extra)
     case REACT_KILL:
         DelUser(user, opserv, 1, alert->discrim->reason);
         return 1;
+/*
     case REACT_SILENT:
         opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration, 1);
         return 1;
+*/
     case REACT_GLINE:
-        opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration, 0);
+        opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration, alert->discrim->silent);
         return 1;
     case REACT_SHUN:
         opserv_shun(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
@@ -4575,8 +4597,10 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_NOTICE;
     else if (!irccasecmp(argv[2], "kill"))
         reaction = REACT_KILL;
+/*
     else if (!irccasecmp(argv[2], "silent"))
         reaction = REACT_SILENT;
+*/
     else if (!irccasecmp(argv[2], "gline"))
         reaction = REACT_GLINE;
     else if (!irccasecmp(argv[2], "track")) {
@@ -4663,6 +4687,9 @@ opserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_ADMIN_LEVEL, RECDB_QSTRING);
     opserv_conf.admin_level = str ? strtoul(str, NULL, 0): 800;
+
+    str = database_get_data(conf_node, KEY_SILENT_LEVEL, RECDB_QSTRING);
+    opserv_conf.silent_level = str ? strtoul(str, NULL, 0): 700;
 
     str = database_get_data(conf_node, KEY_UNTRUSTED_MAX, RECDB_QSTRING);
     opserv_conf.untrusted_max = str ? strtoul(str, NULL, 0) : 5;

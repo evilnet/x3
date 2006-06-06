@@ -278,6 +278,9 @@
                 "size" "200";
                 "drain-rate" "3";
             };
+        // Min opserv level needed to set 'silent' glines in trace/addalert 
+        // (nefarious only)
+        "silent_level" "700";
     };
 
     "chanserv" {

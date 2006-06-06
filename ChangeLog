@@ -1,6 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-06  Alex Schumann  <rubin@afternet.org>
+
+	* src/opserv.c: Change how addalert silence works, so tha its a
+	paramiter instead of an action, and also works with trace now. 
+	* x3.conf.example: Added a config setting of level needed to use 
+	'silent yes' in trace/addalert.
+
 2006-06-04  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: Fix oregister
