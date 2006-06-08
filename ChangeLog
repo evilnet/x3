@@ -4,6 +4,9 @@
 2006-06-07  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.help: Added a couple set helps that were missing.
+	
+	* src/helpfile.c: fix missing space in multi-column table output such
+	as /msg opserv commands * (with nickserv tablewidth setting >60)
 
 2006-06-06  Alex Schumann  <rubin@afternet.org>
 

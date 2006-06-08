@@ -360,6 +360,7 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
                         line[pos++] = ' ';
                 line[pos++] = ' ';
             }
+            line[pos++] = ' ';
         }
         line[pos] = 0;
         sepsize = strlen_vis(line);
