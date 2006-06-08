@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-07  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.help: Added a couple set helps that were missing.
+
 2006-06-06  Alex Schumann  <rubin@afternet.org>
 
 	* src/opserv.c: Change how addalert silence works, so tha its a

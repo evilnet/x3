@@ -611,6 +611,18 @@
         "With no confirmation string, displays the appropriate confirmation string.",
         "$uSee Also:$u set");
 
+"SET GREETING" ("/msg $C SET <#channel> GREETING <message>",
+        "Sets a message X3 will send to everyone who joins your channel, unless they are on your userlist.",
+        "This feature should be used sparingly, as many people find it annoying.",
+        "Another set command, SET USERGREETING, is shown to people who ARE on your userlist.",
+        "$uSee Also:$u set usergreeting"
+
+"SET USERGREETING" ("/msg $C SET <#channel> USERGREETING <message>",
+        "Sets a message X3 will send to your users (PEONs, OPs, etc) when they join your channel.",
+        "This feature should be used sparingly, as many people find it annoying.",
+        "Another set command, SET GREETING, is shown to people who are NOT on your userlist.",
+        "$uSee Also:$u set greeting"
+
 "STAFF" ("/msg $C STAFF",
         "Lists all the IRC operators and helpers currently online. Nicknames enclosed in parentheses are away, and likely unavailable.",
         "$uSee Also:$u helpers, ircops, netinfo");
