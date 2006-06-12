@@ -49,6 +49,7 @@
 #include "chanserv.h"
 #include "conf.h"
 #include "modcmd.h"
+#include "nickserv.h"
 #include "saxdb.h"
 #include "timeq.h"
 
@@ -77,12 +78,21 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_NEW_MESSAGE", "You have a new message from $b%s$b. /msg $S LIST" },
     { "MSMSG_DELETED_ALL", "Deleted all of your messages." },
     { "MSMSG_USE_CONFIRM", "Please use /msg $S DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
+
     { "MSMSG_STATUS_TOTAL", "I have $b%u$b memos in my database." },
     { "MSMSG_STATUS_EXPIRED", "$b%ld$b memos expired during the time I am awake." },
     { "MSMSG_STATUS_SENT", "$b%ld$b memos have been sent." },
-    { "MSMSG_SET_NOTIFY",     "$bNotify:       $b %s" },
-    { "MSMSG_SET_AUTHNOTIFY", "$bAuthNotify:   $b %s" },
-    { "MSMSG_SET_PRIVATE",    "$bPrivate:      $b %s" },
+
+    { "MSMSG_INVALID_BINARY",  "$b%s$b is an invalid binary value." },
+    { "MSMSG_SET_NOTIFY",      "$bNotify:       $b %s" },
+    { "MSMSG_SET_AUTHNOTIFY",  "$bAuthNotify:   $b %s" },
+    { "MSMSG_SET_PRIVATE",     "$bPrivate:      $b %s" },
+    { "MSMSG_SET_OPTIONS",     "$bMessaging Options$b" },
+    { "MSMSG_SET_OPTIONS_END", "-------------End of Options-------------" },
+
+    { "MSMSG_LIST_END",        "--------------End of Memos--------------" },
+    { "MSMSG_BAR",             "----------------------------------------"},
+
     { NULL, NULL }
 };
 
@@ -114,11 +124,16 @@ static struct {
     int message_expiry;
 } memoserv_conf;
 
+extern struct string_list *autojoin_channels;
 const char *memoserv_module_deps[] = { NULL };
 static struct module *memoserv_module;
 static struct log_type *MS_LOG;
 static unsigned long memosSent, memosExpired;
 static struct dict *memos; /* memo_account->handle->handle -> memo_account */
+static dict_t memoserv_opt_dict; /* contains option_func_t* */
+
+#define OPTION_FUNC(NAME) int NAME(struct userNode *user, UNUSED_ARG(struct handle_info *hi), UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
+typedef OPTION_FUNC(option_func_t);
 
 static struct memo_account *
 memoserv_get_account(struct handle_info *hi)
@@ -278,7 +293,12 @@ static MODCMD_FUNC(cmd_list)
 
     if (!(ma = memoserv_get_account(user->handle_info)))
         return 0;
+
     reply("MSMSG_LIST_HEAD");
+
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("MSMSG_BAR");
+
     for (ii = 0; (ii < ma->recvd.used) && (ii < 15); ++ii) {
         memo = ma->recvd.list[ii];
         localtime_r(&memo->sent, &tm);
@@ -291,6 +311,9 @@ static MODCMD_FUNC(cmd_list)
         reply("MSMSG_CLEAN_INBOX", ii);
     else
         reply("MSMSG_MEMOS_FOUND", ii);
+
+    reply("MSMSG_LIST_END");
+
     return 1;
 }
 
@@ -362,7 +385,75 @@ static MODCMD_FUNC(cmd_expiry)
     return 1;
 }
 
-static MODCMD_FUNC(cmd_set_notify)
+
+static void
+set_list(struct userNode *user, struct handle_info *hi, int override)
+{
+    option_func_t *opt;
+    unsigned int i = 0;
+    char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE"};
+
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS");
+
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        send_message(user, memoserv_conf.bot, "MSMSG_BAR");
+
+    /* Do this so options are presented in a consistent order. */
+    while(i < ArrayLength(set_display))
+    {
+        if((opt = dict_find(memoserv_opt_dict, set_display[i++], NULL)))
+        {
+            opt(user, hi, override, 0, NULL);
+        }
+    }
+
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS_END");
+}
+
+static MODCMD_FUNC(cmd_set)
+{
+    struct handle_info *hi;
+    option_func_t *opt;
+
+    hi = user->handle_info;
+
+    if (argc < 2) 
+    {
+        set_list(user, hi, 0);
+        return 1;
+    }
+
+    if (!(opt = dict_find(memoserv_opt_dict, argv[1], NULL))) 
+    {
+        reply("MSMSG_INVALID_OPTION", argv[1]);
+        return 0;
+    }
+    return opt(user, hi, 0, argc-1, argv+1);
+}
+
+static MODCMD_FUNC(cmd_oset)
+{
+    struct handle_info *hi;
+    option_func_t *opt;
+
+    if (!(hi = get_victim_oper(user, argv[1]))) return 0;
+
+    if (argc < 3) 
+    {
+        set_list(user, hi, 0);
+        return 1;
+    }
+
+    if (!(opt = dict_find(memoserv_opt_dict, argv[2], NULL))) 
+    {
+        reply("MSMSG_INVALID_OPTION", argv[2]);
+        return 0;
+    }
+
+    return opt(user, hi, 1, argc-2, argv+2);
+}
+
+static OPTION_FUNC(opt_notify)
 {
     struct memo_account *ma;
     char *choice;
@@ -376,17 +467,17 @@ static MODCMD_FUNC(cmd_set_notify)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_NOTIFY_NEW;
         } else {
-            reply("MSG_INVALID_BINARY", choice);
+            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_NOTIFY_NEW) ? "on" : "off";
-    reply("MSMSG_SET_NOTIFY", choice);
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_NOTIFY", choice);
     return 1;
 }
 
-static MODCMD_FUNC(cmd_set_authnotify)
+static MODCMD_FUNC(opt_authnotify)
 {
     struct memo_account *ma;
     char *choice;
@@ -400,17 +491,17 @@ static MODCMD_FUNC(cmd_set_authnotify)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_NOTIFY_LOGIN;
         } else {
-            reply("MSG_INVALID_BINARY", choice);
+            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_NOTIFY_LOGIN) ? "on" : "off";
-    reply("MSMSG_SET_AUTHNOTIFY", choice);
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_AUTHNOTIFY", choice);
     return 1;
 }
 
-static MODCMD_FUNC(cmd_set_private)
+static MODCMD_FUNC(opt_private)
 {
     struct memo_account *ma;
     char *choice;
@@ -424,13 +515,13 @@ static MODCMD_FUNC(cmd_set_private)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_DENY_NONCHANNEL;
         } else {
-            reply("MSG_INVALID_BINARY", choice);
+            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_DENY_NONCHANNEL) ? "on" : "off";
-    reply("MSMSG_SET_PRIVATE", choice);
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_PRIVATE", choice);
     return 1;
 }
 
@@ -558,7 +649,7 @@ memoserv_check_messages(struct userNode *user, UNUSED_ARG(struct handle_info *ol
                 unseen++;
         }
         if (ma->recvd.used && memoserv_conf.bot)
-            send_message(user, memoserv_conf.bot, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
+            if(unseen) send_message(user, memoserv_conf.bot, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
     }
 }
 
@@ -592,25 +683,33 @@ memoserv_init(void)
     saxdb_register("MemoServ", memoserv_saxdb_read, memoserv_saxdb_write);
 
     memoserv_module = module_register("MemoServ", MS_LOG, "mod-memoserv.help", NULL);
-    modcmd_register(memoserv_module, "send", cmd_send, 3, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "list", cmd_list, 1, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "read", cmd_read, 2, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "send",   cmd_send,   3, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "list",   cmd_list,   1, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "read",   cmd_read,   2, MODCMD_REQUIRE_AUTHED, NULL);
     modcmd_register(memoserv_module, "delete", cmd_delete, 2, MODCMD_REQUIRE_AUTHED, NULL);
     modcmd_register(memoserv_module, "expire", cmd_expire, 1, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
-    modcmd_register(memoserv_module, "expiry", cmd_expiry, 1, 0, NULL);
-    modcmd_register(memoserv_module, "status", cmd_status, 1, 0, NULL);
-    modcmd_register(memoserv_module, "set notify", cmd_set_notify, 1, 0, NULL);
-    modcmd_register(memoserv_module, "set authnotify", cmd_set_authnotify, 1, 0, NULL);
-    modcmd_register(memoserv_module, "set private", cmd_set_private, 1, 0, NULL);
+    modcmd_register(memoserv_module, "expiry", cmd_expiry, 1,                        0, NULL);
+    modcmd_register(memoserv_module, "status", cmd_status, 1,                        0, NULL);
+    modcmd_register(memoserv_module, "set",    cmd_set,    1, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "oset",   cmd_oset,   1, MODCMD_REQUIRE_AUTHED, "flags", "+helping", NULL);
+
+    memoserv_opt_dict = dict_new();
+    dict_insert(memoserv_opt_dict, "AUTHNOTIFY", opt_authnotify);
+    dict_insert(memoserv_opt_dict, "NOTIFY", opt_notify);
+    dict_insert(memoserv_opt_dict, "PRIVATE", opt_private);
+
     message_register_table(msgtab);
 
     if (memoserv_conf.message_expiry)
         timeq_add(now + memoserv_conf.message_expiry, expire_memos, NULL);
+
     return 1;
 }
 
 int
 memoserv_finalize(void) {
+    struct chanNode *chan;
+    unsigned int i;
     dict_t conf_node;
     const char *str;
 
@@ -623,5 +722,13 @@ memoserv_finalize(void) {
     str = database_get_data(conf_node, "bot", RECDB_QSTRING);
     if (str)
         memoserv_conf.bot = GetUserH(str);
+
+    if (autojoin_channels && memoserv_conf.bot) {
+        for (i = 0; i < autojoin_channels->used; i++) {
+            chan = AddChannel(autojoin_channels->list[i], now, "+nt", NULL, NULL);
+            AddChannelUser(memoserv_conf.bot, chan)->modes |= MODE_CHANOP;
+        }
+    }
+
     return 1;
 }

@@ -6,16 +6,17 @@
 	" messages to other users, wether they be on",
 	" or offline.",
 	"=---------------------------------------=",
-        "  SEND    - Sends a message.",
-        "  READ    - Reads a message.",
-        "  DELETE  - Deletes a message.",
-        "  LIST    - Lists your messages.",
-        "  SET     - Sets certain options in relation with $S.",
-        "  EXPIRY  - Displays when old unread messages will be deleted.",
-        "  STATUS  - Displays a few details about $S's status.",
+        "  $bSEND$b    - Sends a message.",
+        "  $bREAD$b    - Reads a message.",
+        "  $bDELETE$b  - Deletes a message.",
+        "  $bLIST$b    - Lists your messages.",
+        "  $bSET$b     - Sets certain options in relation with $S.",
+        "  $bEXPIRY$b  - Displays when old unread messages will be deleted.",
+        "  $bSTATUS$b  - Displays a few details about $S's status.",
 	"$b$b",
         " $bPrivileged Commands:$b",
-        "  EXPIRE  - Expires messages.",
+        "  $bEXPIRE$b  - Expires messages.",
+        "  $bOSET$b    - Modify account options in relation with $S.",
 	"$b$b",
         " See $b/msg $S help <command>$b for syntax",
 	" and usage for a command. Before you can",
@@ -25,11 +26,19 @@
 
 "COMMANDS" "${index}";
 
-"SET" ("/msg $S SET <setting> <value>",
+"SET" ("/msg $S SET [<setting> <value>]",
        "Changes your $S settings. Settings are:",
 	"$bAUTHNOTIFY$b - Indicates wether $S should notify you of any new messages when you authenticate with $N.",
 	"$bNOTIFY$b     - Indicates wether $S should notify you of the messages in your inbox, on authentication with $N AND when someone sends you a new message.",
 	"$bPRIVATE$b    - Indicates wether $S will allow people to send messages to you.");
+
+"OSET" ("/msg $S OSET <nick|*account> [<setting> <value>]",
+        "Allows opers/helpers to change a user $S settings. You may set:",
+	"$bAUTHNOTIFY$b - Indicates wether $S should notify the user of any new messages when they authenticate with $N.",
+	"$bNOTIFY$b     - Indicates wether $S should notify the user of the messages in your inbox, on authentication with $N AND when someone sends the user a new message.",
+	"$bPRIVATE$b    - Indicates wether $S will allow people to send messages to the user.",
+        "You may use *Account instead of Nick as the name argument; the * makes $S use the name of an account directly (useful if the user is not online).",
+        "$uSee Also:$u set");
 
 "EXPIRY" ("/msg $S EXPIRY ",
          "Sends you the current time set in which any old unread messages will be deleted.");

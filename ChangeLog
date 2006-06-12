@@ -1,6 +1,25 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-12  Neil Spierling <sirvulcan@gmail.com>
+
+	* x3.conf.example: Commented out SpamServ module as there are bugs
+	and i cant give a definate date as to when i can fix it. Im not
+	home much these days.
+
+	* src/mod-memoserv.c: Redid the SET code using some whatnet code
+	by wasted. Tweaked here and there. Also added some formatting in
+	LIST and SET like chanserv SET. Oh and MemoServ will join
+	autojoin_channels if MemoServ is in a seperate nickname.
+
+	* src/mod-memoserv.help: Added OSET and done some tweaking.
+
+	* src/nickserv.c: Allow the use of get_victim_oper outside of
+	nickserv.c.
+
+	* src/nickserv.h: Allow the use of get_victim_oper outside of
+	nickserv.c.
+
 2006-06-07  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.help: Added a couple set helps that were missing.
@@ -10,8 +29,9 @@
 
 2006-06-06  Alex Schumann  <rubin@afternet.org>
 
-	* src/opserv.c: Change how addalert silence works, so tha its a
-	paramiter instead of an action, and also works with trace now. 
+	* src/opserv.c: Change how addalert silence works, so that its a
+	parameter instead of an action, and also works with trace now. 
+
 	* x3.conf.example: Added a config setting of level needed to use 
 	'silent yes' in trace/addalert.
 

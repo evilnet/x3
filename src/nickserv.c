@@ -809,7 +809,7 @@ oper_outranks(struct userNode *user, struct handle_info *hi) {
     return 0;
 }
 
-static struct handle_info *
+struct handle_info *
 get_victim_oper(struct userNode *user, const char *target)
 {
     struct handle_info *hi;

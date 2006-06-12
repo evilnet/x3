@@ -388,8 +388,9 @@
 
 
     "spamserv" {
-        // You may disable this service by removing its "nick" config item.
-        "nick" "SpamServ";
+        // You may enable this service by removing the double slashes from the config
+        // item. To disable it again add the double slashes back.
+        // "nick" "SpamServ";
 
         // debug channel
         "debug_channel" "#operserv";
