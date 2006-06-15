@@ -1,3 +1,9 @@
+Installing
+----------
+* Add helpserv to the --enable-modules list in ./configure
+* /msg opserv bind opserv helpserv *helpserv.helpserv
+See the FAQ for more info re helpserv and memoserv.
+
 How HelpServ Works
 ------------------
 
