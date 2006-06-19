@@ -3,6 +3,10 @@
 
 2006-06-20  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: Small bug fix.
+
+2006-06-20  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/mod-memoserv.c: Added read recipient support via SEND using
 	-r as a flag. Messages with requested read recipients have a (r)
 	shown beside the sender nick in LIST. People can ignore a read

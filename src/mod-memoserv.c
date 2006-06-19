@@ -149,6 +149,7 @@ memoserv_get_account(struct handle_info *hi)
         return ma;
     ma->handle = hi;
     ma->flags = MEMO_NOTIFY_NEW | MEMO_NOTIFY_LOGIN;
+    ma->limit = memoserv_conf.limit;
     dict_insert(memos, ma->handle->handle, ma);
     return ma;
 }
