@@ -67,6 +67,7 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_MESSAGES_EXPIRED", "$b%lu$b message(s) expired." },
     { "MSMSG_MEMOS_INBOX", "You have $b%d$b new message(s) in your inbox and %d old messages.  Use /msg $S LIST to list them." },
     { "MSMSG_NEW_MESSAGE", "You have a new message from $b%s$b. /msg $S LIST" },
+    { "MSMSG_FULL_INBOX",  "$b%s$b cannot recieve anymore memos as their inbox is full" },
     { "MSMSG_DELETED_ALL", "Deleted all of your messages." },
     { "MSMSG_USE_CONFIRM", "Please use /msg $S DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
 
@@ -74,7 +75,7 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_STATUS_EXPIRED", "$b%ld$b memos expired during the time I am awake." },
     { "MSMSG_STATUS_SENT",    "$b%ld$b memos have been sent." },
 
-    { "MSMSG_INVALID_OPTION",  "$b%s$b is not a valid %s option." },
+    { "MSMSG_INVALID_OPTION",  "$b%s$b is not a valid option." },
     { "MSMSG_INVALID_BINARY",  "$b%s$b is an invalid binary value." },
     { "MSMSG_SET_NOTIFY",      "$bNotify:       $b %s" },
     { "MSMSG_SET_AUTHNOTIFY",  "$bAuthNotify:   $b %s" },
@@ -108,7 +109,7 @@ DEFINE_LIST(memoList, struct memo*);
 struct memo_account {
     struct handle_info *handle;
     unsigned int flags;
-    int limit;
+    unsigned int limit;
     struct memoList sent;
     struct memoList recvd;
 };
@@ -116,7 +117,7 @@ struct memo_account {
 static struct {
     struct userNode *bot;
     int message_expiry;
-    int limit;
+    unsigned int limit;
 } memoserv_conf;
 
 #define MEMOSERV_FUNC(NAME) MODCMD_FUNC(NAME)
@@ -226,11 +227,25 @@ memoserv_can_send(struct userNode *bot, struct userNode *user, struct memo_accou
 
     if (!user->handle_info)
         return 0;
+
+    /* Sanity checks here because if the user doesnt have a limit set
+       the limit comes out at like 21233242 if you try and use it. */
+    if (acct->limit > memoserv_conf.limit)
+          acct->limit = memoserv_conf.limit;
+
+    if (acct->recvd.used > acct->limit) {
+        send_message(user, bot, "MSMSG_FULL_INBOX", acct->handle->handle);
+        send_message(user, bot, "MSMSG_CANNOT_SEND", acct->handle->handle);
+        return 0;
+    }
+
     if (!(acct->flags & MEMO_DENY_NONCHANNEL))
         return 1;
+
     for (dest = acct->handle->channels; dest; dest = dest->u_next)
         if (_GetChannelUser(dest->channel, user->handle_info, 1, 0))
             return 1;
+
     send_message(user, bot, "MSMSG_CANNOT_SEND", acct->handle->handle);
     return 0;
 }
@@ -261,20 +276,26 @@ static MODCMD_FUNC(cmd_send)
 
     if (!(hi = modcmd_get_handle_info(user, argv[1])))
         return 0;
+
     if (!(sender = memoserv_get_account(user->handle_info))
         || !(ma = memoserv_get_account(hi))) {
         reply("MSG_INTERNAL_FAILURE");
         return 0;
     }
+
     if (!(memoserv_can_send(cmd->parent->bot, user, ma)))
         return 0;
+
     message = unsplit_string(argv + 2, argc - 2, NULL);
     add_memo(now, ma, sender, message);
+
     if (ma->flags & MEMO_NOTIFY_NEW) {
         struct userNode *other;
+
         for (other = ma->handle->users; other; other = other->next_authed)
             send_message(other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", user->nick);
     }
+
     reply("MSMSG_MEMO_SENT", ma->handle->handle);
     return 1;
 }
@@ -514,7 +535,7 @@ static OPTION_FUNC(opt_private)
 static OPTION_FUNC(opt_limit)
 {
     struct memo_account *ma;
-    int choice;
+    unsigned int choice;
 
     if (!(ma = memoserv_get_account(hi)))
         return 0;
