@@ -47,13 +47,13 @@
          "Runs an expire process through $S's messages, deleting any messages that are over date.",
          "$uSee Also:$u expiry");
 
-"SEND" ("/msg $S SEND <nick|*account> <message>",
-        "Sends a message to an user.",
+"SEND" ("/msg $S SEND <nick|*account> <-flags> <message>",
+        "Sends a message to an user. Flags can be $br$b to request a read recipient.",
         "You may use *Account instead of Nick as the name argument; the * makes $S use the name of an account directly (useful if the user is not online).",
         "$uSee also:$u read, list");
 
-"READ" ("/msg $S READ <memo id>",
-        "Shows you the message behind <memo id>",
+"READ" ("/msg $S READ <memo id> <-flags>",
+        "Shows you the message behind <memo id>. Flags can be $bi$b to ignore a read recipient request.",
         "$uSee also:$u send, list");
 
 "DELETE" ("/msg $S DELETE <memo id/*>",
@@ -61,7 +61,7 @@
           "NOTE: You may supply $b*$b or $ball$b as the memo id, which will result in $S deleting all your messages.");
 
 "LIST" ("/msg $S LIST",
-        "This will list all the messages in your inbox.",
+        "This will list all the messages in your inbox. Messages marked with (r) have a read recipient reqiested",
         "$uSee also:$u read, send");
         
 "STATUS" ("/msg $S STATUS",

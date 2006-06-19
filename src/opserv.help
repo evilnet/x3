@@ -71,6 +71,8 @@
 "CHANNEL"  (
             "  $bOP$b      Op someone.",
             "  $bDEOP$b    Deop someone.",
+            "  $bHOP$b     Half Op someone.",
+            "  $bDEHOP$b   DeHalfop someone.",
             "  $bVOICE$b   Voice someone.",
             "  $bDEVOICE$b Devoice someone.",
             "  $bKICK$b    Kick someone.",
@@ -79,6 +81,8 @@
             "  $b$b",
             "  $bOPALL$b      Op everyone in a channel.",
             "  $bDEOPALL$b    Deop everyone in a channel.",
+            "  $bHOPALL$b     Half Op everyone in a channel.",
+            "  $bDEHOPALL$b   Dehalfop everyone in a channel.",
             "  $bVOICEALL$b   Voice everyone in a channel.",
             "  $bDEVOICEALL$b Devoice everyone in a channel.",
             "  $bKICKALL$b    Kick everyone from a channel.",
@@ -400,6 +404,20 @@
         "$uSee Also:$u deop, devoiceall, op, opall"
         );
 
+"DEHOP" ("/msg $O DEHOP <#channel> <nick> [nick]...",
+        "Dehalfops the specified user from the specified channel.",
+        "If the channel is omitted, then $bdehop$b will be done in the channel where the command was given.",
+        "Access level: $b${level/dehalfop}$b",
+        "$uSee Also:$u dehalfopall, hop, hopall"
+        );
+
+"DEHOPALL" ("/msg $O DEHOPALL <#channel>",
+        "Dehalfops all members of the specified channel.",
+        "If the channel is omitted, then $bdehopall$b will be done in the channel where the command was given.",
+        "Access level: $b${level/dehopall}$b",
+        "$uSee Also:$u dehop, hop, hopall"
+        );
+
 "DEVOICEALL" ("/msg $O DEVOICEALL <#channel>",
         "Devoice all members of the specified channel who do not have channel ops.",
         "If the channel is omitted, then $bdevoiceall$b will be done in the channel where the command was given.",
@@ -454,6 +472,20 @@
         "If the channel is omitted, then $bopall$b will be done in the channel where the command was given.",
         "Access level: $b${level/opall}$b",
         "$uSee Also:$u deopall"
+        );
+
+"HOP" ("/msg $O HOP <#channel> <nick> [nick]...",
+        "Half ops specified nicknames the specified channel.",
+        "If the channel is omitted, then $bhop$b will be done in the channel where the command was given.",
+        "Access level: $b${level/hop}$b",
+        "$uSee Also:$u dehop, dehopall, hopall"
+        );
+
+"HOPALL" ("/msg $O HOPALL <#channel>",
+        "Half ops all members of the specified channel.",
+        "If the channel is omitted, then $bhopall$b will be done in the channel where the command was given.",
+        "Access level: $b${level/hopall}$b",
+        "$uSee Also:$u dehopall"
         );
 
 "VOICEALL" ("/msg $O VOICEALL <#channel>",

@@ -49,6 +49,7 @@
 #define KEY_FROM "from"
 #define KEY_MESSAGE "msg"
 #define KEY_READ "read"
+#define KEY_RECIEPT "reciept"
 
 static const struct message_entry msgtab[] = {
     { "MSMSG_CANNOT_SEND", "You cannot send to account $b%s$b." },
@@ -56,9 +57,10 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_NO_MESSAGES", "You have no messages." },
     { "MSMSG_MEMOS_FOUND", "Found $b%d$b matches.\nUse /msg $S READ <ID> to read a message." },
     { "MSMSG_CLEAN_INBOX", "You have $b%d$b or more messages, please clean out your inbox.\nUse /msg $S READ <ID> to read a message." },
-    { "MSMSG_LIST_HEAD", "$bID$b   $bFrom$b       $bTime Sent$b" },
-    { "MSMSG_LIST_FORMAT", "%-2u     %s           %s" },
+    { "MSMSG_LIST_HEAD",   "$bID$b   $bFrom$b       $bTime Sent$b" },
+    { "MSMSG_LIST_FORMAT", "%-2u     %s $b%s$b          %s" },
     { "MSMSG_MEMO_HEAD", "Memo %u From $b%s$b, received on %s:" },
+    { "MSMSG_MEMO_RECIEPT", "$bRead Reciept$b requested, %s." },
     { "MSMSG_BAD_MESSAGE_ID", "$b%s$b is not a valid message ID (it should be a number between 0 and %u)." },
     { "MSMSG_NO_SUCH_MEMO", "You have no memo with that ID." },
     { "MSMSG_MEMO_DELETED", "Memo $b%d$b deleted." },
@@ -96,6 +98,7 @@ struct memo {
     char *message;
     time_t sent;
     unsigned int is_read : 1;
+    unsigned int reciept : 1;
 };
 
 DECLARE_LIST(memoList, struct memo*);
@@ -271,8 +274,11 @@ static struct memo *find_memo(struct userNode *user, struct svccmd *cmd, struct 
 static MODCMD_FUNC(cmd_send)
 {
     char *message;
+    int s = 0, brk = 0;
+    int reciept = 0, inc = 2;
     struct handle_info *hi;
     struct memo_account *ma, *sender;
+    struct memo *memo;
 
     if (!(hi = modcmd_get_handle_info(user, argv[1])))
         return 0;
@@ -286,8 +292,38 @@ static MODCMD_FUNC(cmd_send)
     if (!(memoserv_can_send(cmd->parent->bot, user, ma)))
         return 0;
 
-    message = unsplit_string(argv + 2, argc - 2, NULL);
-    add_memo(now, ma, sender, message);
+    char *flags = argv[2];
+    while (*flags) {
+        switch (*flags) {
+            case '-':
+                if (s != 0)
+                    brk = 1;
+                break;
+
+            case 'r':
+                if (s > 0)
+                    reciept = 1;
+                break;
+
+            default:
+                break;
+        }
+
+        if (brk == 1)
+            break;
+        else {
+            s++;
+            flags++;
+        }
+    }
+
+    if (s > 0)
+        inc = 3;
+
+    message = unsplit_string(argv + inc, argc - inc, NULL);
+    memo = add_memo(now, ma, sender, message);
+    if (reciept == 1)
+        memo->reciept = 1;
 
     if (ma->flags & MEMO_NOTIFY_NEW) {
         struct userNode *other;
@@ -320,7 +356,7 @@ static MODCMD_FUNC(cmd_list)
         memo = ma->recvd.list[ii];
         localtime_r(&memo->sent, &tm);
         strftime(posted, sizeof(posted), "%I:%M %p, %m/%d/%Y", &tm);
-        reply("MSMSG_LIST_FORMAT", ii, memo->sender->handle->handle, posted);
+        reply("MSMSG_LIST_FORMAT", ii, memo->sender->handle->handle, memo->reciept ? "(r)" : "", posted);
     }
     if (ii == 0)
         reply("MSG_NONE");
@@ -338,6 +374,7 @@ static MODCMD_FUNC(cmd_read)
 {
     struct memo_account *ma;
     unsigned int memoid;
+    int rignore = 0, brk = 0, s = 0;
     struct memo *memo;
     char posted[24];
     struct tm tm;
@@ -346,11 +383,65 @@ static MODCMD_FUNC(cmd_read)
         return 0;
     if (!(memo = find_memo(user, cmd, ma, argv[1], &memoid)))
         return 0;
+
+    if (argv[2]) {
+        char *argtwo = argv[2];
+        while (*argtwo) {
+            switch (*argtwo) {
+                case '-':
+                    if (s != 0)
+                        brk = 1;
+                    break;
+
+                case 'i':
+                    if (s > 0)
+                        rignore = 1;
+                    break;
+
+                default: break;
+            }
+
+            if (brk == 1)
+                break;
+            else {
+                s++;
+                argtwo++;
+            }
+        }
+    }
+
     localtime_r(&memo->sent, &tm);
     strftime(posted, sizeof(posted), "%I:%M %p, %m/%d/%Y", &tm);
+
     reply("MSMSG_MEMO_HEAD", memoid, memo->sender->handle->handle, posted);
     send_message_type(4, user, cmd->parent->bot, "%s", memo->message);
     memo->is_read = 1;
+
+    if (memo->reciept == 1) {
+        memo->reciept = 0;
+        reply("MSMSG_MEMO_RECIEPT", rignore ? "ignoring" : "sending");
+        if (rignore == 0) {
+	    struct memo_account *ma;
+	    struct memo_account *sender;
+            char content[MAXLEN];
+
+            ma = memoserv_get_account(user->handle_info);
+            sender = memoserv_get_account(memo->sender->handle);
+
+            sprintf(content, "%s has read your memo dated %s.", ma->handle->handle, posted);
+
+            memo = add_memo(now, sender, ma, content);
+
+            if (sender->flags & MEMO_NOTIFY_NEW) {
+                struct userNode *other;
+
+                for (other = sender->handle->users; other; other = other->next_authed)
+                    send_message(other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", ma->handle->handle);
+            }
+
+
+        }
+    }
     return 1;
 }
 
@@ -625,6 +716,9 @@ memoserv_saxdb_read(struct dict *db)
         memo = add_memo(sent, memoserv_get_account(recipient), memoserv_get_account(sender), str);
         if ((str = database_get_data(hir->d.object, KEY_READ, RECDB_QSTRING)))
             memo->is_read = 1;
+
+        if ((str = database_get_data(hir->d.object, KEY_RECIEPT, RECDB_QSTRING)))
+            memo->reciept = 1;
     }
     return 0;
 }
@@ -649,6 +743,9 @@ memoserv_saxdb_write(struct saxdb_context *ctx)
             saxdb_write_string(ctx, KEY_MESSAGE, memo->message);
             if (memo->is_read)
                 saxdb_write_int(ctx, KEY_READ, 1);
+
+            if (memo->reciept)
+                saxdb_write_int(ctx, KEY_RECIEPT, 1);
             saxdb_end_record(ctx);
         }
     }

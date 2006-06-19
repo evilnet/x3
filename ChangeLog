@@ -1,6 +1,18 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-20  Neil Spierling <sirvulcan@gmail.com>
+
+	* src/mod-memoserv.c: Added read recipient support via SEND using
+	-r as a flag. Messages with requested read recipients have a (r)
+	shown beside the sender nick in LIST. People can ignore a read
+	recipient using -i when reading the message via READ. Its all
+	in the help file.
+
+	* src/mod-memoserv.help: Added read recipient relevent bits.
+
+	* src/opserv.help: Added halfopping functions.
+
 2006-06-19  Neil Spierling <sirvulcan@gmail.com>
 
 	* src/x3.conf.example: Forgot a ;.
