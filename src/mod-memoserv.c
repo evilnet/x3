@@ -18,16 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-/* Adds new section to srvx.conf:
- * "modules" {
- *     "memoserv" {
- *         "bot" "NickServ";
- *         "message_expiry" "30d"; // age when messages are deleted; set
- *                                 // to 0 to disable message expiration
- *     };
- *  };
- *
- * After that, to make the module active on an existing bot:
+/*
  * /msg opserv bind nickserv * *memoserv.*
  *
  * If you want a dedicated MemoServ bot, make sure the service control
@@ -79,14 +70,16 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_DELETED_ALL", "Deleted all of your messages." },
     { "MSMSG_USE_CONFIRM", "Please use /msg $S DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
 
-    { "MSMSG_STATUS_TOTAL", "I have $b%u$b memos in my database." },
+    { "MSMSG_STATUS_TOTAL",   "I have $b%u$b memos in my database." },
     { "MSMSG_STATUS_EXPIRED", "$b%ld$b memos expired during the time I am awake." },
-    { "MSMSG_STATUS_SENT", "$b%ld$b memos have been sent." },
+    { "MSMSG_STATUS_SENT",    "$b%ld$b memos have been sent." },
 
+    { "MSMSG_INVALID_OPTION",  "$b%s$b is not a valid %s option." },
     { "MSMSG_INVALID_BINARY",  "$b%s$b is an invalid binary value." },
     { "MSMSG_SET_NOTIFY",      "$bNotify:       $b %s" },
     { "MSMSG_SET_AUTHNOTIFY",  "$bAuthNotify:   $b %s" },
     { "MSMSG_SET_PRIVATE",     "$bPrivate:      $b %s" },
+    { "MSMSG_SET_LIMIT",       "$bLimit:        $b %d" },
     { "MSMSG_SET_OPTIONS",     "$bMessaging Options$b" },
     { "MSMSG_SET_OPTIONS_END", "-------------End of Options-------------" },
 
@@ -115,6 +108,7 @@ DEFINE_LIST(memoList, struct memo*);
 struct memo_account {
     struct handle_info *handle;
     unsigned int flags;
+    int limit;
     struct memoList sent;
     struct memoList recvd;
 };
@@ -122,6 +116,7 @@ struct memo_account {
 static struct {
     struct userNode *bot;
     int message_expiry;
+    int limit;
 } memoserv_conf;
 
 extern struct string_list *autojoin_channels;
@@ -391,7 +386,7 @@ set_list(struct userNode *user, struct handle_info *hi, int override)
 {
     option_func_t *opt;
     unsigned int i = 0;
-    char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE"};
+    char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE", "LIMIT"};
 
     send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS");
 
@@ -522,6 +517,25 @@ static MODCMD_FUNC(opt_private)
 
     choice = (ma->flags & MEMO_DENY_NONCHANNEL) ? "on" : "off";
     send_message(user, memoserv_conf.bot, "MSMSG_SET_PRIVATE", choice);
+    return 1;
+}
+
+static MODCMD_FUNC(opt_limit)
+{
+    struct memo_account *ma;
+    int choice;
+
+    if (!(ma = memoserv_get_account(user->handle_info)))
+        return 0;
+    if (argc > 1) {
+        choice = atoi(argv[1]);
+        if (choice > memoserv_conf.limit)
+          choice = memoserv_conf.limit;
+
+        ma->limit = choice;
+    }
+
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_LIMIT", choice);
     return 1;
 }
 
@@ -697,6 +711,7 @@ memoserv_init(void)
     dict_insert(memoserv_opt_dict, "AUTHNOTIFY", opt_authnotify);
     dict_insert(memoserv_opt_dict, "NOTIFY", opt_notify);
     dict_insert(memoserv_opt_dict, "PRIVATE", opt_private);
+    dict_insert(memoserv_opt_dict, "LIMIT", opt_limit);
 
     message_register_table(msgtab);
 

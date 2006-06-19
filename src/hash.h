@@ -191,7 +191,7 @@ struct exemptNode {
 struct modeNode {
     struct chanNode *channel;
     struct userNode *user;
-    unsigned short modes;
+    long modes;
     short oplevel;
     time_t idle_since;
 };

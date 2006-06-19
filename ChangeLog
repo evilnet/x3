@@ -1,6 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-19  Neil Spierling <sirvulcan@gmail.com>
+
+	* x3.conf.example: Max limit for Memoserv LIMIT option.
+
+	* src/hash.h: Fixed halfops issue.
+
+	* src/mod-memoserv.c: Added SET LIMIT option for the maximum
+	amount of memos you can have. This does not do anything yet as
+	im committing the half ops fix now. This code is fine it just
+	allows you to adjust the limit for now.
+
 2006-06-12  Neil Spierling <sirvulcan@gmail.com>
 
 	* x3.conf.example: Commented out SpamServ module as there are bugs
