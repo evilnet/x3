@@ -1,5 +1,6 @@
 /* mod-memoserv.c - MemoServ module for srvx
  * Copyright 2003-2004 Martijn Smit and srvx Development Team
+ * Copyright 2005-2006 X3 Development Team
  *
  * This file is part of x3.
  *
@@ -44,6 +45,11 @@
 #include "saxdb.h"
 #include "timeq.h"
 
+#define KEY_MAIN_ACCOUNTS "accounts"
+#define KEY_FLAGS "flags"
+#define KEY_LIMIT "limit"
+
+#define KEY_MAIN_MEMOS "memos"
 #define KEY_SENT "sent"
 #define KEY_RECIPIENT "to"
 #define KEY_FROM "from"
@@ -671,56 +677,145 @@ memoserv_conf_read(void)
 }
 
 static int
-memoserv_saxdb_read(struct dict *db)
+memoserv_user_read(const char *key, struct record_data *hir)
+{
+    char *str;
+    struct memo_account *ma;
+    struct handle_info *hi;
+
+    if (!(hi = get_handle_info(key)))
+        return 0;
+
+    ma = dict_find(memos, hi->handle, NULL);
+    if (ma)
+        return 0;
+
+
+    ma = calloc(1, sizeof(*ma));
+    if (!ma)
+        return 0;
+
+    ma->handle = hi;
+
+    str = database_get_data(hir->d.object, KEY_FLAGS, RECDB_QSTRING);
+    if (!str) {
+        log_module(MS_LOG, LOG_ERROR, "Flags not present in memo %s; skipping", key);
+        return 0;
+    }
+    ma->flags = strtoul(str, NULL, 0);
+
+    str = database_get_data(hir->d.object, KEY_LIMIT, RECDB_QSTRING);
+    if (!str) {
+        log_module(MS_LOG, LOG_ERROR, "Limit not present in memo %s; skipping", key);
+        return 0;
+    }
+    ma->limit = strtoul(str, NULL, 0);
+
+    dict_insert(memos, ma->handle->handle, ma);
+
+    return 0;
+}
+
+static int
+memoserv_memo_read(const char *key, struct record_data *hir)
 {
     char *str;
     struct handle_info *sender, *recipient;
-    struct record_data *hir;
     struct memo *memo;
-    dict_iterator_t it;
     time_t sent;
 
-    for (it = dict_first(db); it; it = iter_next(it)) {
-        hir = iter_data(it);
-        if (hir->type != RECDB_OBJECT) {
-            log_module(MS_LOG, LOG_WARNING, "Unexpected rectype %d for %s.", hir->type, iter_key(it));
-            continue;
-        }
-
-        if (!(str = database_get_data(hir->d.object, KEY_SENT, RECDB_QSTRING))) {
-            log_module(MS_LOG, LOG_ERROR, "Date sent not present in memo %s; skipping", iter_key(it));
-            continue;
-        }
-        sent = atoi(str);
-
-        if (!(str = database_get_data(hir->d.object, KEY_RECIPIENT, RECDB_QSTRING))) {
-            log_module(MS_LOG, LOG_ERROR, "Recipient not present in memo %s; skipping", iter_key(it));
-            continue;
-        } else if (!(recipient = get_handle_info(str))) {
-            log_module(MS_LOG, LOG_ERROR, "Invalid recipient %s in memo %s; skipping", str, iter_key(it));
-            continue;
-        }
-
-        if (!(str = database_get_data(hir->d.object, KEY_FROM, RECDB_QSTRING))) {
-            log_module(MS_LOG, LOG_ERROR, "Sender not present in memo %s; skipping", iter_key(it));
-            continue;
-        } else if (!(sender = get_handle_info(str))) {
-            log_module(MS_LOG, LOG_ERROR, "Invalid sender %s in memo %s; skipping", str, iter_key(it));
-            continue;
-        }
-
-        if (!(str = database_get_data(hir->d.object, KEY_MESSAGE, RECDB_QSTRING))) {
-            log_module(MS_LOG, LOG_ERROR, "Message not present in memo %s; skipping", iter_key(it));
-            continue;
-        }
-
-        memo = add_memo(sent, memoserv_get_account(recipient), memoserv_get_account(sender), str);
-        if ((str = database_get_data(hir->d.object, KEY_READ, RECDB_QSTRING)))
-            memo->is_read = 1;
-
-        if ((str = database_get_data(hir->d.object, KEY_RECIEPT, RECDB_QSTRING)))
-            memo->reciept = 1;
+    if (hir->type != RECDB_OBJECT) {
+        log_module(MS_LOG, LOG_WARNING, "Unexpected rectype %d for %s.", hir->type, key);
+        return 0;
     }
+
+    if (!(str = database_get_data(hir->d.object, KEY_SENT, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "Date sent not present in memo %s; skipping", key);
+        return 0;
+    }
+
+    sent = atoi(str);
+
+    if (!(str = database_get_data(hir->d.object, KEY_RECIPIENT, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "Recipient not present in memo %s; skipping", key);
+        return 0;
+    } else if (!(recipient = get_handle_info(str))) {
+        log_module(MS_LOG, LOG_ERROR, "Invalid recipient %s in memo %s; skipping", str, key);
+        return 0;
+    }
+
+    if (!(str = database_get_data(hir->d.object, KEY_FROM, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "Sender not present in memo %s; skipping", key);
+        return 0;
+    } else if (!(sender = get_handle_info(str))) {
+        log_module(MS_LOG, LOG_ERROR, "Invalid sender %s in memo %s; skipping", str, key);
+        return 0;
+    }
+
+    if (!(str = database_get_data(hir->d.object, KEY_MESSAGE, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "Message not present in memo %s; skipping", key);
+        return 0;
+    }
+
+    memo = add_memo(sent, memoserv_get_account(recipient), memoserv_get_account(sender), str);
+    if ((str = database_get_data(hir->d.object, KEY_READ, RECDB_QSTRING)))
+        memo->is_read = 1;
+
+    if ((str = database_get_data(hir->d.object, KEY_RECIEPT, RECDB_QSTRING)))
+        memo->reciept = 1;
+
+    return 0;
+}
+
+static int
+memoserv_saxdb_read(struct dict *database)
+{
+    struct dict *section;
+    dict_iterator_t it;
+
+    if((section = database_get_data(database, KEY_MAIN_ACCOUNTS, RECDB_OBJECT)))
+        for(it = dict_first(section); it; it = iter_next(it))
+            memoserv_user_read(iter_key(it), iter_data(it));
+
+    if((section = database_get_data(database, KEY_MAIN_MEMOS, RECDB_OBJECT)))
+        for(it = dict_first(section); it; it = iter_next(it))
+            memoserv_memo_read(iter_key(it), iter_data(it));
+
+    return 0;
+}
+
+static int
+memoserv_write_users(struct saxdb_context *ctx, struct memo_account *ma)
+{
+    saxdb_start_record(ctx, ma->handle->handle, 0);
+
+    saxdb_write_int(ctx, KEY_FLAGS, ma->flags);
+    saxdb_write_int(ctx, KEY_LIMIT, ma->limit);
+
+    saxdb_end_record(ctx);
+    return 0;
+}
+
+static int
+memoserv_write_memos(struct saxdb_context *ctx, struct memo *memo)
+{
+    char str[7];
+    unsigned int id = 0;
+
+    saxdb_start_record(ctx, inttobase64(str, id++, sizeof(str)), 0);
+
+    saxdb_write_int(ctx, KEY_SENT, memo->sent);
+    saxdb_write_string(ctx, KEY_RECIPIENT, memo->recipient->handle->handle);
+    saxdb_write_string(ctx, KEY_FROM, memo->sender->handle->handle);
+    saxdb_write_string(ctx, KEY_MESSAGE, memo->message);
+
+    if (memo->is_read)
+        saxdb_write_int(ctx, KEY_READ, 1);
+
+    if (memo->reciept)
+        saxdb_write_int(ctx, KEY_RECIEPT, 1);
+
+    saxdb_end_record(ctx);
     return 0;
 }
 
@@ -730,26 +825,27 @@ memoserv_saxdb_write(struct saxdb_context *ctx)
     dict_iterator_t it;
     struct memo_account *ma;
     struct memo *memo;
-    char str[7];
-    unsigned int id = 0, ii;
+    unsigned int ii;
 
+    /* Accounts */
+    saxdb_start_record(ctx, KEY_MAIN_ACCOUNTS, 1);
+    for (it = dict_first(memos); it; it = iter_next(it)) {
+        ma = iter_data(it);
+        memoserv_write_users(ctx, ma);
+    }
+    saxdb_end_record(ctx);
+
+    /* Channels */
+    saxdb_start_record(ctx, KEY_MAIN_MEMOS, 1);
     for (it = dict_first(memos); it; it = iter_next(it)) {
         ma = iter_data(it);
         for (ii = 0; ii < ma->recvd.used; ++ii) {
             memo = ma->recvd.list[ii];
-            saxdb_start_record(ctx, inttobase64(str, id++, sizeof(str)), 0);
-            saxdb_write_int(ctx, KEY_SENT, memo->sent);
-            saxdb_write_string(ctx, KEY_RECIPIENT, memo->recipient->handle->handle);
-            saxdb_write_string(ctx, KEY_FROM, memo->sender->handle->handle);
-            saxdb_write_string(ctx, KEY_MESSAGE, memo->message);
-            if (memo->is_read)
-                saxdb_write_int(ctx, KEY_READ, 1);
-
-            if (memo->reciept)
-                saxdb_write_int(ctx, KEY_RECIEPT, 1);
-            saxdb_end_record(ctx);
+            memoserv_write_memos(ctx, memo);
         }
     }
+    saxdb_end_record(ctx);
+
     return 0;
 }
 

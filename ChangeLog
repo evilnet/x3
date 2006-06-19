@@ -3,6 +3,11 @@
 
 2006-06-20  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: Redid the db stuff, it now writes users
+	settings and memos to the memoserv database.
+
+2006-06-20  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/mod-memoserv.c: Small bug fix.
 
 2006-06-20  Neil Spierling <sirvulcan@gmail.com>
