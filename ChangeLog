@@ -3,6 +3,10 @@
 
 2006-06-19  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: On Second thoughts dont enable LIMIT now.
+
+2006-06-19  Neil Spierling <sirvulcan@gmail.com>
+
 	* x3.conf.example: Max limit for Memoserv LIMIT option.
 
 	* src/hash.h: Fixed halfops issue.

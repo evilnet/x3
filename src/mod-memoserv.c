@@ -711,7 +711,7 @@ memoserv_init(void)
     dict_insert(memoserv_opt_dict, "AUTHNOTIFY", opt_authnotify);
     dict_insert(memoserv_opt_dict, "NOTIFY", opt_notify);
     dict_insert(memoserv_opt_dict, "PRIVATE", opt_private);
-    dict_insert(memoserv_opt_dict, "LIMIT", opt_limit);
+/*    dict_insert(memoserv_opt_dict, "LIMIT", opt_limit); */
 
     message_register_table(msgtab);
 
