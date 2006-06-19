@@ -3,6 +3,10 @@
 
 2006-06-19  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: Fixed SET bugs and renabled LIMIT now.
+
+2006-06-19  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/mod-memoserv.c: On Second thoughts dont enable LIMIT now.
 
 2006-06-19  Neil Spierling <sirvulcan@gmail.com>

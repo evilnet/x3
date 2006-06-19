@@ -119,6 +119,10 @@ static struct {
     int limit;
 } memoserv_conf;
 
+#define MEMOSERV_FUNC(NAME) MODCMD_FUNC(NAME)
+#define OPTION_FUNC(NAME) int NAME(struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
+typedef OPTION_FUNC(option_func_t);
+
 extern struct string_list *autojoin_channels;
 const char *memoserv_module_deps[] = { NULL };
 static struct module *memoserv_module;
@@ -126,9 +130,6 @@ static struct log_type *MS_LOG;
 static unsigned long memosSent, memosExpired;
 static struct dict *memos; /* memo_account->handle->handle -> memo_account */
 static dict_t memoserv_opt_dict; /* contains option_func_t* */
-
-#define OPTION_FUNC(NAME) int NAME(struct userNode *user, UNUSED_ARG(struct handle_info *hi), UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
-typedef OPTION_FUNC(option_func_t);
 
 static struct memo_account *
 memoserv_get_account(struct handle_info *hi)
@@ -385,23 +386,16 @@ static void
 set_list(struct userNode *user, struct handle_info *hi, int override)
 {
     option_func_t *opt;
-    unsigned int i = 0;
+    unsigned int i;
     char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE", "LIMIT"};
 
     send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS");
-
-    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
-        send_message(user, memoserv_conf.bot, "MSMSG_BAR");
+    send_message(user, memoserv_conf.bot, "MSMSG_BAR");
 
     /* Do this so options are presented in a consistent order. */
-    while(i < ArrayLength(set_display))
-    {
-        if((opt = dict_find(memoserv_opt_dict, set_display[i++], NULL)))
-        {
+    for (i = 0; i < ArrayLength(set_display); ++i)
+        if ((opt = dict_find(memoserv_opt_dict, set_display[i], NULL)))
             opt(user, hi, override, 0, NULL);
-        }
-    }
-
     send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS_END");
 }
 
@@ -411,18 +405,16 @@ static MODCMD_FUNC(cmd_set)
     option_func_t *opt;
 
     hi = user->handle_info;
-
-    if (argc < 2) 
-    {
+    if (argc < 2) {
         set_list(user, hi, 0);
         return 1;
     }
 
-    if (!(opt = dict_find(memoserv_opt_dict, argv[1], NULL))) 
-    {
+    if (!(opt = dict_find(memoserv_opt_dict, argv[1], NULL))) {
         reply("MSMSG_INVALID_OPTION", argv[1]);
         return 0;
     }
+
     return opt(user, hi, 0, argc-1, argv+1);
 }
 
@@ -431,16 +423,15 @@ static MODCMD_FUNC(cmd_oset)
     struct handle_info *hi;
     option_func_t *opt;
 
-    if (!(hi = get_victim_oper(user, argv[1]))) return 0;
+    if (!(hi = get_victim_oper(user, argv[1])))
+        return 0;
 
-    if (argc < 3) 
-    {
+    if (argc < 3) {
         set_list(user, hi, 0);
         return 1;
     }
 
-    if (!(opt = dict_find(memoserv_opt_dict, argv[2], NULL))) 
-    {
+    if (!(opt = dict_find(memoserv_opt_dict, argv[2], NULL))) {
         reply("MSMSG_INVALID_OPTION", argv[2]);
         return 0;
     }
@@ -453,7 +444,7 @@ static OPTION_FUNC(opt_notify)
     struct memo_account *ma;
     char *choice;
 
-    if (!(ma = memoserv_get_account(user->handle_info)))
+    if (!(ma = memoserv_get_account(hi)))
         return 0;
     if (argc > 1) {
         choice = argv[1];
@@ -472,12 +463,12 @@ static OPTION_FUNC(opt_notify)
     return 1;
 }
 
-static MODCMD_FUNC(opt_authnotify)
+static OPTION_FUNC(opt_authnotify)
 {
     struct memo_account *ma;
     char *choice;
 
-    if (!(ma = memoserv_get_account(user->handle_info)))
+    if (!(ma = memoserv_get_account(hi)))
         return 0;
     if (argc > 1) {
         choice = argv[1];
@@ -496,12 +487,12 @@ static MODCMD_FUNC(opt_authnotify)
     return 1;
 }
 
-static MODCMD_FUNC(opt_private)
+static OPTION_FUNC(opt_private)
 {
     struct memo_account *ma;
     char *choice;
 
-    if (!(ma = memoserv_get_account(user->handle_info)))
+    if (!(ma = memoserv_get_account(hi)))
         return 0;
     if (argc > 1) {
         choice = argv[1];
@@ -520,12 +511,12 @@ static MODCMD_FUNC(opt_private)
     return 1;
 }
 
-static MODCMD_FUNC(opt_limit)
+static OPTION_FUNC(opt_limit)
 {
     struct memo_account *ma;
     int choice;
 
-    if (!(ma = memoserv_get_account(user->handle_info)))
+    if (!(ma = memoserv_get_account(hi)))
         return 0;
     if (argc > 1) {
         choice = atoi(argv[1]);
@@ -535,7 +526,7 @@ static MODCMD_FUNC(opt_limit)
         ma->limit = choice;
     }
 
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_LIMIT", choice);
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_LIMIT", ma->limit);
     return 1;
 }
 
@@ -558,6 +549,9 @@ memoserv_conf_read(void)
         log_module(MS_LOG, LOG_ERROR, "config node `%s' is missing or has wrong type.", str);
         return;
     }
+
+    str = database_get_data(conf_node, "limit", RECDB_QSTRING);
+    memoserv_conf.limit = atoi(str) ? : 50;
 
     str = database_get_data(conf_node, "message_expiry", RECDB_QSTRING);
     memoserv_conf.message_expiry = str ? ParseInterval(str) : 60*24*30;
@@ -711,7 +705,7 @@ memoserv_init(void)
     dict_insert(memoserv_opt_dict, "AUTHNOTIFY", opt_authnotify);
     dict_insert(memoserv_opt_dict, "NOTIFY", opt_notify);
     dict_insert(memoserv_opt_dict, "PRIVATE", opt_private);
-/*    dict_insert(memoserv_opt_dict, "LIMIT", opt_limit); */
+    dict_insert(memoserv_opt_dict, "LIMIT", opt_limit);
 
     message_register_table(msgtab);
 
