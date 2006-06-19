@@ -3,6 +3,10 @@
 
 2006-06-19  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/x3.conf.example: Forgot a ;.
+
+2006-06-19  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/mod-memoserv.c: Make use of SET LIMIT.
 
 2006-06-19  Neil Spierling <sirvulcan@gmail.com>
