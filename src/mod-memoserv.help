@@ -29,9 +29,12 @@
 
 "SET" ("/msg $S SET [<setting> <value>]",
        "Changes your $S settings. Settings are:",
-	"$bAUTHNOTIFY$b - Indicates wether $S should notify you of any new messages when you authenticate with $N.",
-	"$bNOTIFY$b     - Indicates wether $S should notify you of the messages in your inbox, on authentication with $N AND when someone sends you a new message.",
-	"$bPRIVATE$b    - Indicates wether $S will allow people to send messages to you.");
+	"$bAUTHNOTIFY$b     - Indicates wether $S should notify you of any new messages when you authenticate with $N.",
+	"$bNOTIFY$b         - Indicates wether $S should notify you of the messages in your inbox, on authentication with $N AND when someone sends you a new message.",
+	"$bPRIVATE$b        - Indicates wether $S will allow people to send messages to you.",
+        "$bIGNORERECIEPTS$b - Indicates wether $S will always ignore read reciept requests.",
+        "$bSENDRECIEPTS$b   - Indicates wether $S will always send read receipts with your messages.",
+        "$bLIMIT$b          - Indicates how many messages $S will accept before denying them. Set to 0 to recieve no messages.");
 
 "OSET" ("/msg $S OSET <nick|*account> [<setting> <value>]",
         "Allows opers/helpers to change a user $S settings. You may set:",
@@ -52,12 +55,12 @@
          "Cancels the messaged marked with <id> as long as you have sent the message.");
 
 "SEND" ("/msg $S SEND <nick|*account> <-flags> <message>",
-        "Sends a message to an user. Flags can be $br$b to request a read recipient. Take note of the ID number if you wish to cancel the message in the future. The ID number is required in the CANCEL command.",
+        "Sends a message to an user. Flags can be $br$b to request a read reciept. Take note of the ID number if you wish to cancel the message in the future. The ID number is required in the CANCEL command.",
         "You may use *Account instead of Nick as the name argument; the * makes $S use the name of an account directly (useful if the user is not online).",
         "$uSee also:$u read, list");
 
 "READ" ("/msg $S READ <memo id> <-flags>",
-        "Shows you the message behind <memo id>. Flags can be $bi$b to ignore a read recipient request.",
+        "Shows you the message behind <memo id>. Flags can be $bi$b to ignore a read reciept request.",
         "$uSee also:$u send, list");
 
 "DELETE" ("/msg $S DELETE <memo id/*>",
@@ -65,7 +68,7 @@
           "NOTE: You may supply $b*$b or $ball$b as the memo id, which will result in $S deleting all your messages.");
 
 "LIST" ("/msg $S LIST",
-        "This will list all the messages in your inbox. Messages marked with (r) have a read recipient reqiested",
+        "This will list all the messages in your inbox. Messages marked with (r) have a read reciept reqiested",
         "$uSee also:$u read, send");
         
 "STATUS" ("/msg $S STATUS",

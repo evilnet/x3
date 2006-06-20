@@ -3,6 +3,14 @@
 
 2006-06-20  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: Added new flags, see below.
+
+	* src/mod-memoserv.help: Opps forgot the read reciept stuff. Also
+	added flags for always ignoring read reciepts and always sending
+	read reciepts.
+
+2006-06-20  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/mod-memoserv.c: Added CANCEL command for cancelling memos
 	that you have sent, aslong as they have not been read yet.
 

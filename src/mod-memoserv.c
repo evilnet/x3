@@ -90,11 +90,13 @@ static const struct message_entry msgtab[] = {
 
     { "MSMSG_INVALID_OPTION",  "$b%s$b is not a valid option." },
     { "MSMSG_INVALID_BINARY",  "$b%s$b is an invalid binary value." },
-    { "MSMSG_SET_NOTIFY",      "$bNotify:       $b %s" },
-    { "MSMSG_SET_AUTHNOTIFY",  "$bAuthNotify:   $b %s" },
-    { "MSMSG_SET_PRIVATE",     "$bPrivate:      $b %s" },
-    { "MSMSG_SET_LIMIT",       "$bLimit:        $b %d" },
-    { "MSMSG_SET_OPTIONS",     "$bMessaging Options$b" },
+    { "MSMSG_SET_NOTIFY",          "$bNotify:        $b %s" },
+    { "MSMSG_SET_AUTHNOTIFY",      "$bAuthNotify:    $b %s" },
+    { "MSMSG_SET_PRIVATE",         "$bPrivate:       $b %s" },
+    { "MSMSG_SET_IGNORERECIEPTS",  "$bIgnoreReciepts:$b %s" },
+    { "MSMSG_SET_SENDRECIEPTS",    "$bSendReciepts:  $b %s" },
+    { "MSMSG_SET_LIMIT",           "$bLimit:         $b %d" },
+    { "MSMSG_SET_OPTIONS",         "$bMessaging Options$b" },
     { "MSMSG_SET_OPTIONS_END", "-------------End of Options-------------" },
 
     { "MSMSG_LIST_END",        "--------------End of Memos--------------" },
@@ -117,9 +119,11 @@ DECLARE_LIST(memoList, struct memo*);
 DEFINE_LIST(memoList, struct memo*);
 
 /* memo_account.flags fields */
-#define MEMO_NOTIFY_NEW   1
-#define MEMO_NOTIFY_LOGIN 2
-#define MEMO_DENY_NONCHANNEL 4
+#define MEMO_NOTIFY_NEW      0x00000001
+#define MEMO_NOTIFY_LOGIN    0x00000002
+#define MEMO_DENY_NONCHANNEL 0x00000004
+#define MEMO_IGNORE_RECIEPTS 0x00000008
+#define MEMO_ALWAYS_RECIEPTS 0x00000010
 
 struct memo_account {
     struct handle_info *handle;
@@ -342,7 +346,7 @@ static MODCMD_FUNC(cmd_send)
 
     message = unsplit_string(argv + inc, argc - inc, NULL);
     memo = add_memo(now, ma, sender, message, 1);
-    if (reciept == 1)
+    if ((reciept == 1) || (ma->flags & MEMO_ALWAYS_RECIEPTS))
         memo->reciept = 1;
 
     if (ma->flags & MEMO_NOTIFY_NEW) {
@@ -436,6 +440,9 @@ static MODCMD_FUNC(cmd_read)
     reply("MSMSG_MEMO_HEAD", memoid, memo->sender->handle->handle, posted);
     send_message_type(4, user, cmd->parent->bot, "%s", memo->message);
     memo->is_read = 1;
+
+    if (ma->flags & MEMO_IGNORE_RECIEPTS)
+        rignore = 1;
 
     if (memo->reciept == 1) {
         memo->reciept = 0;
@@ -562,7 +569,8 @@ set_list(struct userNode *user, struct handle_info *hi, int override)
 {
     option_func_t *opt;
     unsigned int i;
-    char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE", "LIMIT"};
+    char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE", "LIMIT",
+                           "IGNORERECIEPTS", "SENDRECIEPTS"};
 
     send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS");
     send_message(user, memoserv_conf.bot, "MSMSG_BAR");
@@ -659,6 +667,54 @@ static OPTION_FUNC(opt_authnotify)
 
     choice = (ma->flags & MEMO_NOTIFY_LOGIN) ? "on" : "off";
     send_message(user, memoserv_conf.bot, "MSMSG_SET_AUTHNOTIFY", choice);
+    return 1;
+}
+
+static OPTION_FUNC(opt_ignorereciepts)
+{
+    struct memo_account *ma;
+    char *choice;
+
+    if (!(ma = memoserv_get_account(hi)))
+        return 0;
+    if (argc > 1) {
+        choice = argv[1];
+        if (enabled_string(choice)) {
+            ma->flags |= MEMO_IGNORE_RECIEPTS;
+        } else if (disabled_string(choice)) {
+            ma->flags &= ~MEMO_IGNORE_RECIEPTS;
+        } else {
+            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
+            return 0;
+        }
+    }
+
+    choice = (ma->flags & MEMO_IGNORE_RECIEPTS) ? "on" : "off";
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_IGNORERECIEPTS", choice);
+    return 1;
+}
+
+static OPTION_FUNC(opt_sendreciepts)
+{ 
+    struct memo_account *ma;
+    char *choice;
+
+    if (!(ma = memoserv_get_account(hi)))
+        return 0;
+    if (argc > 1) {
+        choice = argv[1];
+        if (enabled_string(choice)) {
+            ma->flags |= MEMO_ALWAYS_RECIEPTS;
+        } else if (disabled_string(choice)) {
+            ma->flags &= ~MEMO_ALWAYS_RECIEPTS;
+        } else {
+            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
+            return 0;
+        }
+    }
+
+    choice = (ma->flags & MEMO_ALWAYS_RECIEPTS) ? "on" : "off";
+    send_message(user, memoserv_conf.bot, "MSMSG_SET_SENDRECIEPTS", choice);
     return 1;
 }
 
@@ -988,6 +1044,8 @@ memoserv_init(void)
     dict_insert(memoserv_opt_dict, "AUTHNOTIFY", opt_authnotify);
     dict_insert(memoserv_opt_dict, "NOTIFY", opt_notify);
     dict_insert(memoserv_opt_dict, "PRIVATE", opt_private);
+    dict_insert(memoserv_opt_dict, "IGNORERECIEPTS", opt_ignorereciepts);
+    dict_insert(memoserv_opt_dict, "SENDRECIEPTS", opt_sendreciepts);
     dict_insert(memoserv_opt_dict, "LIMIT", opt_limit);
 
     message_register_table(msgtab);
