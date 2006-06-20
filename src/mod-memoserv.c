@@ -56,10 +56,11 @@
 #define KEY_MESSAGE "msg"
 #define KEY_READ "read"
 #define KEY_RECIEPT "reciept"
+#define KEY_ID "id"
 
 static const struct message_entry msgtab[] = {
     { "MSMSG_CANNOT_SEND", "You cannot send to account $b%s$b." },
-    { "MSMSG_MEMO_SENT", "Message sent to $b%s$b." },
+    { "MSMSG_MEMO_SENT", "Message sent to $b%s$b (ID# %d)." },
     { "MSMSG_NO_MESSAGES", "You have no messages." },
     { "MSMSG_MEMOS_FOUND", "Found $b%d$b matches.\nUse /msg $S READ <ID> to read a message." },
     { "MSMSG_CLEAN_INBOX", "You have $b%d$b or more messages, please clean out your inbox.\nUse /msg $S READ <ID> to read a message." },
@@ -70,6 +71,10 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_BAD_MESSAGE_ID", "$b%s$b is not a valid message ID (it should be a number between 0 and %u)." },
     { "MSMSG_NO_SUCH_MEMO", "You have no memo with that ID." },
     { "MSMSG_MEMO_DELETED", "Memo $b%d$b deleted." },
+    { "MSMSG_MEMO_CANCEL_NUMBER", "You must specify a number id" },
+    { "MSMSG_MEMO_DONT_OWN", "You did not send memo# %d" },
+    { "MSMSG_MEMO_READ", "Memo# %d has already been read, you cannot cancel it." },
+    { "MSMSG_MEMO_CANT_LOCATE", "Could not locate memo# %d" },
     { "MSMSG_EXPIRY_OFF", "I am currently not expiring messages. (turned off)" },
     { "MSMSG_EXPIRY", "Messages will be expired when they are %s old (%d seconds)." },
     { "MSMSG_MESSAGES_EXPIRED", "$b%lu$b message(s) expired." },
@@ -103,6 +108,7 @@ struct memo {
     struct memo_account *sender;
     char *message;
     time_t sent;
+    unsigned long id;
     unsigned int is_read : 1;
     unsigned int reciept : 1;
 };
@@ -132,6 +138,8 @@ static struct {
 #define MEMOSERV_FUNC(NAME) MODCMD_FUNC(NAME)
 #define OPTION_FUNC(NAME) int NAME(struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
 typedef OPTION_FUNC(option_func_t);
+
+unsigned long memo_id;
 
 extern struct string_list *autojoin_channels;
 const char *memoserv_module_deps[] = { NULL };
@@ -211,13 +219,18 @@ expire_memos(UNUSED_ARG(void *data))
 }
 
 static struct memo*
-add_memo(time_t sent, struct memo_account *recipient, struct memo_account *sender, char *message)
+add_memo(time_t sent, struct memo_account *recipient, struct memo_account *sender, char *message, int nfrom_read)
 {
     struct memo *memo;
 
     memo = calloc(1, sizeof(*memo));
     if (!memo)
         return NULL;
+
+    if (nfrom_read) {
+        memo_id++;
+        memo->id = memo_id;
+    }
 
     memo->recipient = recipient;
     memoList_append(&recipient->recvd, memo);
@@ -328,7 +341,7 @@ static MODCMD_FUNC(cmd_send)
         inc = 3;
 
     message = unsplit_string(argv + inc, argc - inc, NULL);
-    memo = add_memo(now, ma, sender, message);
+    memo = add_memo(now, ma, sender, message, 1);
     if (reciept == 1)
         memo->reciept = 1;
 
@@ -339,7 +352,7 @@ static MODCMD_FUNC(cmd_send)
             send_message(other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", user->nick);
     }
 
-    reply("MSMSG_MEMO_SENT", ma->handle->handle);
+    reply("MSMSG_MEMO_SENT", ma->handle->handle, memo_id);
     return 1;
 }
 
@@ -437,7 +450,8 @@ static MODCMD_FUNC(cmd_read)
 
             sprintf(content, "%s has read your memo dated %s.", ma->handle->handle, posted);
 
-            memo = add_memo(now, sender, ma, content);
+            memo = add_memo(now, sender, ma, content, 1);
+            reply("MSMSG_MEMO_SENT", memo->sender->handle, memo_id);
 
             if (sender->flags & MEMO_NOTIFY_NEW) {
                 struct userNode *other;
@@ -476,6 +490,48 @@ static MODCMD_FUNC(cmd_delete)
     delete_memo(memo);
     reply("MSMSG_MEMO_DELETED", memoid);
     return 1;
+}
+
+static MODCMD_FUNC(cmd_cancel)
+{
+    unsigned long id;
+    unsigned int ii;
+    dict_iterator_t it;
+    struct memo *memo;
+    struct memo_account *ma;
+
+    if (isdigit(argv[1][0])) {
+        id = strtoul(argv[1], NULL, 0);
+    } else {
+        reply("MSMSG_MEMO_CANCEL_NUMBER");
+        return 0;
+    }
+
+    for (it = dict_first(memos); it; it = iter_next(it)) {
+        ma = iter_data(it);
+        for (ii = 0; ii < ma->recvd.used; ++ii) {
+            memo = ma->recvd.list[ii];
+
+            if (id == memo->id) {
+                if (!strcasecmp(memo->sender->handle->handle, user->handle_info->handle)) {
+                    if (memo->is_read) {
+                        reply("MSMSG_MEMO_READ", id);
+                        return 0;
+                    } else {
+                        delete_memo(memo);
+                        reply("MSMSG_MEMO_DELETED", id);
+                        return 1;
+                    }
+                } else {
+                    reply("MSMSG_MEMO_DONT_OWN", id);
+                    return 0;
+                }
+            }
+        }
+    }
+
+    reply("MSMSG_MEMO_CANT_LOCATE", id);
+    return 0;
 }
 
 static MODCMD_FUNC(cmd_expire)
@@ -722,6 +778,7 @@ memoserv_memo_read(const char *key, struct record_data *hir)
     char *str;
     struct handle_info *sender, *recipient;
     struct memo *memo;
+    unsigned long id;
     time_t sent;
 
     if (hir->type != RECDB_OBJECT) {
@@ -735,6 +792,14 @@ memoserv_memo_read(const char *key, struct record_data *hir)
     }
 
     sent = atoi(str);
+
+    if (!(str = database_get_data(hir->d.object, KEY_ID, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "ID sent not present in memo %s; skipping", key);
+        return 0;
+    }
+    id = strtoul(str, NULL, 0);
+    if (id > memo_id)
+      memo_id = id;
 
     if (!(str = database_get_data(hir->d.object, KEY_RECIPIENT, RECDB_QSTRING))) {
         log_module(MS_LOG, LOG_ERROR, "Recipient not present in memo %s; skipping", key);
@@ -757,12 +822,14 @@ memoserv_memo_read(const char *key, struct record_data *hir)
         return 0;
     }
 
-    memo = add_memo(sent, memoserv_get_account(recipient), memoserv_get_account(sender), str);
+    memo = add_memo(sent, memoserv_get_account(recipient), memoserv_get_account(sender), str, 0);
     if ((str = database_get_data(hir->d.object, KEY_READ, RECDB_QSTRING)))
         memo->is_read = 1;
 
     if ((str = database_get_data(hir->d.object, KEY_RECIEPT, RECDB_QSTRING)))
         memo->reciept = 1;
+
+    memo->id = id;
 
     return 0;
 }
@@ -800,11 +867,11 @@ static int
 memoserv_write_memos(struct saxdb_context *ctx, struct memo *memo)
 {
     char str[7];
-    unsigned int id = 0;
 
-    saxdb_start_record(ctx, inttobase64(str, id++, sizeof(str)), 0);
+    saxdb_start_record(ctx, inttobase64(str, memo->id, sizeof(str)), 0);
 
     saxdb_write_int(ctx, KEY_SENT, memo->sent);
+    saxdb_write_int(ctx, KEY_ID, memo->id);
     saxdb_write_string(ctx, KEY_RECIPIENT, memo->recipient->handle->handle);
     saxdb_write_string(ctx, KEY_FROM, memo->sender->handle->handle);
     saxdb_write_string(ctx, KEY_MESSAGE, memo->message);
@@ -910,6 +977,7 @@ memoserv_init(void)
     modcmd_register(memoserv_module, "list",   cmd_list,   1, MODCMD_REQUIRE_AUTHED, NULL);
     modcmd_register(memoserv_module, "read",   cmd_read,   2, MODCMD_REQUIRE_AUTHED, NULL);
     modcmd_register(memoserv_module, "delete", cmd_delete, 2, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "cancel", cmd_cancel, 2, MODCMD_REQUIRE_AUTHED, NULL);
     modcmd_register(memoserv_module, "expire", cmd_expire, 1, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     modcmd_register(memoserv_module, "expiry", cmd_expiry, 1,                        0, NULL);
     modcmd_register(memoserv_module, "status", cmd_status, 1,                        0, NULL);

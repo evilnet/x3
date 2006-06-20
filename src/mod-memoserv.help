@@ -10,6 +10,7 @@
         "  $bREAD$b    - Reads a message.",
         "  $bDELETE$b  - Deletes a message.",
         "  $bLIST$b    - Lists your messages.",
+        "  $bCANCEL$b  - Cancels a message you have sent.",
         "  $bSET$b     - Sets certain options in relation with $S.",
         "  $bEXPIRY$b  - Displays when old unread messages will be deleted.",
         "  $bSTATUS$b  - Displays a few details about $S's status.",
@@ -47,8 +48,11 @@
          "Runs an expire process through $S's messages, deleting any messages that are over date.",
          "$uSee Also:$u expiry");
 
+"CANCEL" ("/msg $S CANCEL <id>",
+         "Cancels the messaged marked with <id> as long as you have sent the message.");
+
 "SEND" ("/msg $S SEND <nick|*account> <-flags> <message>",
-        "Sends a message to an user. Flags can be $br$b to request a read recipient.",
+        "Sends a message to an user. Flags can be $br$b to request a read recipient. Take note of the ID number if you wish to cancel the message in the future. The ID number is required in the CANCEL command.",
         "You may use *Account instead of Nick as the name argument; the * makes $S use the name of an account directly (useful if the user is not online).",
         "$uSee also:$u read, list");
 
