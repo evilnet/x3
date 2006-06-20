@@ -443,6 +443,7 @@ static MODCMD_FUNC(cmd_read)
     unsigned int memoid;
     int rignore = 0, brk = 0, s = 0;
     struct memo *memo;
+    struct memo *memob;
     char posted[24];
     struct tm tm;
 
@@ -483,6 +484,7 @@ static MODCMD_FUNC(cmd_read)
     reply("MSMSG_MEMO_HEAD", memoid, memo->sender->handle->handle, posted);
     send_message_type(4, user, cmd->parent->bot, "%s", memo->message);
     memo->is_read = 1;
+    memob = memo;
 
     if (ma->flags & MEMO_IGNORE_RECIEPTS)
         rignore = 1;
@@ -501,7 +503,7 @@ static MODCMD_FUNC(cmd_read)
             sprintf(content, "%s has read your memo dated %s.", ma->handle->handle, posted);
 
             memo = add_memo(now, sender, ma, content, 1);
-            reply("MSMSG_MEMO_SENT", memo->sender->handle, memo_id);
+            reply("MSMSG_MEMO_SENT", memob->sender->handle->handle, memo_id);
 
             if (sender->flags & MEMO_NOTIFY_NEW) {
                 struct userNode *other;
