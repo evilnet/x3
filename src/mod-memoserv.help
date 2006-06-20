@@ -11,6 +11,7 @@
         "  $bDELETE$b  - Deletes a message.",
         "  $bLIST$b    - Lists your messages.",
         "  $bCANCEL$b  - Cancels a message you have sent.",
+        "  $bHISTORY$b - Lists any existing memos that you have sent.",
         "  $bSET$b     - Sets certain options in relation with $S.",
         "  $bEXPIRY$b  - Displays when old unread messages will be deleted.",
         "  $bSTATUS$b  - Displays a few details about $S's status.",
@@ -53,6 +54,9 @@
 
 "CANCEL" ("/msg $S CANCEL <id>",
          "Cancels the messaged marked with <id> as long as you have sent the message.");
+
+"HISTORY" ("/msg $S HISTORY",
+         "Shows you any messages that you have sent, provided that the recipient has not deleted them yet..");
 
 "SEND" ("/msg $S SEND <nick|*account> <-flags> <message>",
         "Sends a message to an user. Flags can be $br$b to request a read reciept. Take note of the ID number if you wish to cancel the message in the future. The ID number is required in the CANCEL command.",

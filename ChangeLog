@@ -3,6 +3,14 @@
 
 2006-06-20  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: Added basic HISTORY command. At the moment
+	if the recipient deletes the memo it will not be listed in the
+	HISTORY list.
+
+	* src/mod-memoserv.help: HISTORY entry.
+
+2006-06-20  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/mod-memoserv.c: Added new flags, see below.
 
 	* src/mod-memoserv.help: Opps forgot the read reciept stuff. Also

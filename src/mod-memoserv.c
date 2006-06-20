@@ -64,8 +64,10 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_NO_MESSAGES", "You have no messages." },
     { "MSMSG_MEMOS_FOUND", "Found $b%d$b matches.\nUse /msg $S READ <ID> to read a message." },
     { "MSMSG_CLEAN_INBOX", "You have $b%d$b or more messages, please clean out your inbox.\nUse /msg $S READ <ID> to read a message." },
-    { "MSMSG_LIST_HEAD",   "$bID$b   $bFrom$b       $bTime Sent$b" },
-    { "MSMSG_LIST_FORMAT", "%-2u     %s $b%s$b          %s" },
+    { "MSMSG_LIST_HEAD",      "$bID$b   $bFrom$b       $bTime Sent$b" },
+    { "MSMSG_LIST_FORMAT",    "%-2u     %s $b%s$b          %s" },
+    { "MSMSG_HISTORY_HEADER", "$bID$b   $bTo$b          $bTime Sent$b" },
+    { "MSMSG_HISTORY_FORMAT", "%-2u     %s              %s" },
     { "MSMSG_MEMO_HEAD", "Memo %u From $b%s$b, received on %s:" },
     { "MSMSG_MEMO_RECIEPT", "$bRead Reciept$b requested, %s." },
     { "MSMSG_BAD_MESSAGE_ID", "$b%s$b is not a valid message ID (it should be a number between 0 and %u)." },
@@ -388,6 +390,47 @@ static MODCMD_FUNC(cmd_list)
         reply("MSMSG_CLEAN_INBOX", ii);
     else
         reply("MSMSG_MEMOS_FOUND", ii);
+
+    reply("MSMSG_LIST_END");
+
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_history)
+{
+    struct memo_account *ma;
+    struct memo *memo;
+    dict_iterator_t it;
+    unsigned int ii = 0;
+    unsigned int cc = 0;
+    char posted[24];
+    struct tm tm;
+
+    if (!(ma = memoserv_get_account(user->handle_info)))
+        return 0;
+
+    reply("MSMSG_HISTORY_HEADER");
+
+    if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
+        reply("MSMSG_BAR");
+
+    for (it = dict_first(memos); it; it = iter_next(it)) {
+        ma = iter_data(it);
+        for (ii = 0; ii < ma->recvd.used; ++ii) {
+            memo = ma->recvd.list[ii];
+            if (!strcasecmp(memo->sender->handle->handle, user->handle_info->handle)) {
+                cc++;
+                localtime_r(&memo->sent, &tm);
+                strftime(posted, sizeof(posted), "%I:%M %p, %m/%d/%Y", &tm);
+                reply("MSMSG_HISTORY_FORMAT", memo->id, memo->sender->handle->handle, posted);
+            }
+        }
+    }
+
+    if (cc == 0)
+        reply("MSG_NONE");
+    else
+        reply("MSMSG_MEMOS_FOUND", cc);
 
     reply("MSMSG_LIST_END");
 
@@ -1029,16 +1072,17 @@ memoserv_init(void)
     saxdb_register("MemoServ", memoserv_saxdb_read, memoserv_saxdb_write);
 
     memoserv_module = module_register("MemoServ", MS_LOG, "mod-memoserv.help", NULL);
-    modcmd_register(memoserv_module, "send",   cmd_send,   3, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "list",   cmd_list,   1, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "read",   cmd_read,   2, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "delete", cmd_delete, 2, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "cancel", cmd_cancel, 2, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "expire", cmd_expire, 1, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
-    modcmd_register(memoserv_module, "expiry", cmd_expiry, 1,                        0, NULL);
-    modcmd_register(memoserv_module, "status", cmd_status, 1,                        0, NULL);
-    modcmd_register(memoserv_module, "set",    cmd_set,    1, MODCMD_REQUIRE_AUTHED, NULL);
-    modcmd_register(memoserv_module, "oset",   cmd_oset,   1, MODCMD_REQUIRE_AUTHED, "flags", "+helping", NULL);
+    modcmd_register(memoserv_module, "send",    cmd_send,    3, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "list",    cmd_list,    1, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "read",    cmd_read,    2, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "delete",  cmd_delete,  2, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "cancel",  cmd_cancel,  2, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "history", cmd_history, 1, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "expire",  cmd_expire,  1, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
+    modcmd_register(memoserv_module, "expiry",  cmd_expiry,  1,                        0, NULL);
+    modcmd_register(memoserv_module, "status",  cmd_status,  1,                        0, NULL);
+    modcmd_register(memoserv_module, "set",     cmd_set,     1, MODCMD_REQUIRE_AUTHED, NULL);
+    modcmd_register(memoserv_module, "oset",    cmd_oset,    1, MODCMD_REQUIRE_AUTHED, "flags", "+helping", NULL);
 
     memoserv_opt_dict = dict_new();
     dict_insert(memoserv_opt_dict, "AUTHNOTIFY", opt_authnotify);
