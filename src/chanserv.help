@@ -483,12 +483,11 @@
 	"TOYS:         Toggles how $b$C$b will respond to toy commands (!8ball etc).",
         "TOPICREFRESH: Controls if (and how often) $b$C$b will reset the topic.",
         "RESYNC:       Controls if (and how often) $b$C$b will reset the userlist.",
-        "BANTYPE:      Indicated what type of ban $C will set will case of a ban command.",
         "DYNLIMIT:     Adjusts user limit (+l channel mode) to prevent join floods.",
         "$bIRCOP ONLY$b:",
         "NODELETE:  Prevents channel deletion.",
         "If you wish to reset your channel to the default settings, you can use the $bSET DEFAULTS$b command.",
-        "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set resync, set bantype, set ctcpreaction, set defaults");
+        "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set resync, set ctcpreaction, set defaults");
 
 "SET DEFAULTTOPIC" ("/msg $C SET <#channel> DEFAULTTOPIC <New default topic>",
         "This changes the default topic for the channel.  $C will set the IRC topic to this value when the $btopic$b command is used with no arguments, when the topic refresh happens (if you have $bset topicrefresh$b), or when an unauthorized user changes the topic to something else.",
@@ -584,18 +583,6 @@
         "$b3$b  Refresh every 12 hours.",
         "$b4$b  Refresh every 24 hours.",
         "$uSee Also:$u set");
-
-"SET BANTYPE" ("/msg $C SET <#channel> BANTYPE <value>",
-        "This settings control what banmask $C sets upon a ban command. Valid settings are:",
-        "$b0$b *!user@host",
-        "$b1$b *!*user@host",
-        "$b2$b *!*@host",
-        "$b3$b *!*user@*.host",
-        "$b4$b *!*@*.host",
-        "$b5$b nick!user@host",
-        "$b6$b nick!*@host",
-        "$b7$b nick!*user@*.host",
-        "$b8$b nick!*@*.host");
 
 "SET CTCPREACTION" ("/msg $C SET <#channel> CTCPREACTION <value>",
         "This setting controls what happens to those who send disallowed CTCPs to the channel:",
