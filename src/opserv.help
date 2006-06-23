@@ -17,7 +17,12 @@
             "  $bADMIN$b       Misc Administrator Commands. ",
             "  $bOWNERONLY$b   $O operator only commands.   "
 );
-"COMMANDS" "${index}";
+"COMMANDS" ("The following commands are available in $O:",
+            "${index}",
+            "$uSee Also$u: modcmd, access, command");
+"INDEX" ("The following commands are available in $O:",
+            "${index}",
+            "$uSee Also$u: modcmd, access, command");
 
 "PUNISH"   (
             "  $bGLINE$b       Global Ban a host.",
@@ -214,7 +219,6 @@
         "Valid alert actions (to be taken when an alert is hit) are:",
         "$bNOTICE$b:       Send a notice to the $b$O$b alert channel",
         "$bKILL$b:         Disconnect the user",
-        "$bSILENT$b        Same as GLINE, except AUTO: is appended to make the gline silent",
         "$bGLINE$b:        Gline the user that tripped the alert",
         "$bTRACK$b:        Send a notice to the $b$O$b alert channel and track the user (if the tracking module is loaded)",
         "$bSHUN$b :        Shun the user that tripped the alert",
@@ -286,6 +290,7 @@
         "$bABUSE OPERS$b            Force adverse actions to affect opers as well.",
         "$bLOG$b                    Record matching users in $O's log file (in addition to acting).",
         "$bREGEX$b yes/no           Specifies if NICK/IDENT/HOST/INFO should be treated as a regular expression.",
+        "$bSILENT$b yes/no          If yes, AUTO is prepended to the gline message, making the gline silent in nefarious ircd.",
         "Additionally, the $bCHANNEL$b target may be prefixed with @ to select channel operators, + to select voiced users (will not select chanops unless @ is also used), or - to select non-voiced non-chanop users.  For example, CHANNEL #foo will select all users in #foo; CHANNEL +#foo will select only users voiced in #foo; CHANNEL @+#foo will select ops and voiced users in #foo; etc.",
         "When searching on the criteria of nick, ident, or info, the search string can be another of the three, prefixed with a & character, to indicate that the match should compare each user's individual data.  For example, $binfo &nick$b would search for all users whose info matches their nick.  To search for that phrase explicitly, prefix the & with a backslash; e.g.: $binfo \&ident$b.",
         "$uSee Also:$u trace action, trace"
@@ -832,5 +837,4 @@
         "Resets the max clients number to the current ammount of connected clients. Use with caution.",
         "$uSee Also:$u stats max");
 
-"INDEX" "${index}";
 

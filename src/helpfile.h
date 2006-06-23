@@ -37,6 +37,7 @@ extern struct userNode *message_dest; /* message destination; useful in expansio
 #define TABLE_REPEAT_ROWS    0x0004 /* put more than one row on a line? */
 #define TABLE_NO_FREE        0x0008 /* don't free the contents? */
 #define TABLE_NO_HEADERS     0x0010 /* is there actually no header? */
+#define TABLE_NO_FOOTER      0x0020 /* Dont send a -----End---- footer */
 
 struct helpfile_table {
     unsigned int length : 16;

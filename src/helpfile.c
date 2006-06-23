@@ -276,7 +276,7 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
     char line[MAX_LINE_SIZE+1];
     struct handle_info *hi;
     char *sepstr = NULL;
-    int sepsize = 0;
+    unsigned int sepsize = 0;
 
     if (IsChannelName(to) || *to == '$') {
         message_dest = NULL;
@@ -363,14 +363,18 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
             line[pos++] = ' ';
         }
         line[pos] = 0;
-        sepsize = strlen_vis(line);
-        sepstr = malloc(sepsize + 1);
-        memset(sepstr, '-', sepsize);
-        sepstr[sepsize] = 0;
-        if(hi && hi->userlist_style != HI_STYLE_CLEAN)
+
+        /* Dont show ---- bars in 'clean' style. */
+        if(!(hi && hi->userlist_style == HI_STYLE_CLEAN)) {
+            //sepsize = strlen_vis(line);
+            sepsize = tot_width * nreps;
+            sepstr = malloc(sepsize + 1);
+            memset(sepstr, '-', sepsize);
+            sepstr[sepsize] = 0;
             irc_send(from, to, sepstr); /* ----------------- */
-        irc_send(from, to, line);   /* alpha  beta   roe */
-        if(hi && hi->userlist_style != HI_STYLE_CLEAN)
+        }
+        irc_send(from, to, line);       /* alpha  beta   roe */
+        if(!(hi && hi->userlist_style == HI_STYLE_CLEAN)) 
             irc_send(from, to, sepstr); /* ----------------- */
         ii = 1;
     }
@@ -398,19 +402,26 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
             line[pos++] = ' ';
         }
     }
-    if (!(table.flags & TABLE_NO_HEADERS)) {
-        /* Send end bar & free its memory */
-        if(sepsize > 5)
-        {
-           sepstr[sepsize/2-1] = 'E';
-           sepstr[sepsize/2] = 'n';
-           sepstr[sepsize/2+1]= 'd';
-        }
+    /* Send end bar */
+    if (!(table.flags & TABLE_NO_HEADERS) && 
+        !(table.flags & TABLE_NO_FOOTER) && 
+        !(hi && hi->userlist_style == HI_STYLE_CLEAN)) {
+        char endstr[MAX_LINE_SIZE+1];
+        sprintf(endstr, "End (%d rows)", table.length);
 
-        if(hi && hi->userlist_style != HI_STYLE_CLEAN)
-            irc_send(from, to, sepstr);
-        free(sepstr);
+        /* Copy above into the sepstr, centered */
+        if(sepsize > strlen(endstr)+2)
+        {
+           char* eptr = endstr;
+           char* sptr = sepstr+(sepsize/2) - (strlen(endstr)+2)/2;
+           while(*eptr)
+               *sptr++ = *eptr++;
+        }
+        irc_send(from, to, sepstr);
     }
+
+    if(!(hi && hi->userlist_style == HI_STYLE_CLEAN))
+      free(sepstr);
 
     if (!(table.flags & TABLE_NO_FREE)) {
         /* Deallocate table memory (but not the string memory). */

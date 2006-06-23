@@ -3752,7 +3752,7 @@ nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd)
     qsort(hil.list, hil.used, sizeof(hil.list[0]), nickserv_sort_accounts_by_access);
     tbl.length = hil.used + 1;
     tbl.width = 2;
-    tbl.flags = TABLE_NO_FREE;
+    tbl.flags = TABLE_NO_FREE | TABLE_REPEAT_ROWS | TABLE_REPEAT_HEADERS;
     tbl.contents = malloc(tbl.length * sizeof(tbl.contents[0]));
     tbl.contents[0] = ary = malloc(tbl.width * sizeof(ary[0]));
     ary[0] = "Account";
@@ -3764,7 +3764,7 @@ nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd)
         tbl.contents[++ii] = ary;
     }
     table_send(cmd->parent->bot, user->nick, 0, NULL, tbl);
-    reply("MSG_MATCH_COUNT", hil.used);
+    /*reply("MSG_MATCH_COUNT", hil.used); */
     for (ii = 0; ii < hil.used; ii++)
         free(tbl.contents[ii]);
     free(tbl.contents);

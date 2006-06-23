@@ -33,7 +33,9 @@
         "$b$b",
         "$uSee also:$u unbind, joiner, modcmd, rebindall");
 
-"commands" "${index}";
+"commands" ("The following commands are available:",
+            "${index}",
+            "$uSee Also$u: modcmd, command");
 
 "rebindall" ("/msg $S REBINDALL",
         "Rebinds all available delault commands and aliases for each service and module currently loaded.",

@@ -827,7 +827,7 @@ memoserv_conf_read(void)
     }
 
     str = database_get_data(conf_node, "limit", RECDB_QSTRING);
-    memoserv_conf.limit = atoi(str) ? : 50;
+    memoserv_conf.limit = str ? atoi(str) : 50;
 
     str = database_get_data(conf_node, "message_expiry", RECDB_QSTRING);
     memoserv_conf.message_expiry = str ? ParseInterval(str) : 60*24*30;

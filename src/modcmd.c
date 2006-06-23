@@ -2140,10 +2140,10 @@ modcmd_expand(const char *variable) {
         exp.type = HF_TABLE;
         exp.value.table.length = 1;
         exp.value.table.width = 1;
-        exp.value.table.flags = TABLE_REPEAT_ROWS;
+        exp.value.table.flags = TABLE_REPEAT_ROWS | TABLE_NO_HEADERS;
         exp.value.table.contents = calloc(dict_size(service->commands)+1, sizeof(char**));
         exp.value.table.contents[0] = calloc(1, sizeof(char*));
-        exp.value.table.contents[0][0] = "Commands:";
+        exp.value.table.contents[0][0] = "Commands";
         dict_foreach(service->commands, append_entry, &exp);
         return exp;
     } else if (!irccasecmp(variable, "languages")) {
