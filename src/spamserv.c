@@ -729,6 +729,9 @@ timeq_flood(UNUSED_ARG(void *data))
 	{
 		uInfo = iter_data(it);
 
+                if (!uInfo)
+                    continue;
+
 		if(!(fNode = uInfo->flood))
 			continue;
 

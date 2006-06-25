@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-25  Neil Spierling <sirvulcan@gmail.com>
+
+	* src/spamserv.c: Crash fix (finally). Been meaning to do this
+	for a while now.
+
 2006-06-23  Alex Schumann  <rubin@afternet.org>
 
 	* src/modcmd.help, src/opserv.help, src/helpfile.c, src/helpfile.h,
