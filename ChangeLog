@@ -3,6 +3,11 @@
 
 2006-06-25  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: Make use of ignore lists when trying to
+	send memos.
+
+2006-06-25  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/spamserv.c: Crash fix (finally). Been meaning to do this
 	for a while now.
 

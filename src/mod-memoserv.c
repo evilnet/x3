@@ -253,6 +253,7 @@ memoserv_can_send(struct userNode *bot, struct userNode *user, struct memo_accou
 {
     extern struct userData *_GetChannelUser(struct chanData *channel, struct handle_info *handle, int override, int allow_suspended);
     struct userData *dest;
+    unsigned int i = 0, match = 0;
 
     if (!user->handle_info)
         return 0;
@@ -266,6 +267,20 @@ memoserv_can_send(struct userNode *bot, struct userNode *user, struct memo_accou
         send_message(user, bot, "MSMSG_FULL_INBOX", acct->handle->handle);
         send_message(user, bot, "MSMSG_CANNOT_SEND", acct->handle->handle);
         return 0;
+    }
+
+    if (acct->handle->ignores->used) {
+        for (i=0; i < acct->handle->ignores->used; i++) {
+            if (user_matches_glob(user, acct->handle->ignores->list[i], MATCH_USENICK)) {
+                match = 1;
+                break;
+            }
+        }
+
+        if (match) {
+            send_message(user, bot, "MSMSG_CANNOT_SEND", acct->handle->handle);
+            return 0;
+        }
     }
 
     if (!(acct->flags & MEMO_DENY_NONCHANNEL))
