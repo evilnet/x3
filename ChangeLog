@@ -3,6 +3,20 @@
 
 2006-06-25  Neil Spierling <sirvulcan@gmail.com>
 
+	* src/mod-memoserv.c: Better history implementation. A seperate
+	table is used for history entries. Entries contain the same
+	fields as the memo table except for the message, read, and flags.
+	Entries are only removed from the history db when they get
+	expired by do_expire (older than message_expire). Also fixed
+	up a issue with STATUS. On AfterNET we were getting huge large
+	for the amount of memos. I now realise it was reading the amount
+	of users. It now reads the proper amount of memos. I also a count
+	for history entries.
+
+	* src/mod-memoserv.help: EXPIRE handles history and memos now.
+
+2006-06-25  Neil Spierling <sirvulcan@gmail.com>
+
 	* src/mod-memoserv.c: Make use of ignore lists when trying to
 	send memos.
 

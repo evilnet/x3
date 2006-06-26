@@ -49,6 +49,7 @@
 #define KEY_FLAGS "flags"
 #define KEY_LIMIT "limit"
 
+#define KEY_MAIN_HISTORY "history"
 #define KEY_MAIN_MEMOS "memos"
 #define KEY_SENT "sent"
 #define KEY_RECIPIENT "to"
@@ -57,6 +58,7 @@
 #define KEY_READ "read"
 #define KEY_RECIEPT "reciept"
 #define KEY_ID "id"
+
 
 static const struct message_entry msgtab[] = {
     { "MSMSG_CANNOT_SEND", "You cannot send to account $b%s$b." },
@@ -86,6 +88,7 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_DELETED_ALL", "Deleted all of your messages." },
     { "MSMSG_USE_CONFIRM", "Please use /msg $S DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
 
+    { "MSMSG_STATUS_HIST_TOTAL",   "I have $b%u$b history entries in my database." },
     { "MSMSG_STATUS_TOTAL",   "I have $b%u$b memos in my database." },
     { "MSMSG_STATUS_EXPIRED", "$b%ld$b memos expired during the time I am awake." },
     { "MSMSG_STATUS_SENT",    "$b%ld$b memos have been sent." },
@@ -117,8 +120,17 @@ struct memo {
     unsigned int reciept : 1;
 };
 
+struct history {
+    struct memo_account *recipient;
+    struct memo_account *sender;
+    time_t sent;
+    unsigned long id;
+};
+
 DECLARE_LIST(memoList, struct memo*);
 DEFINE_LIST(memoList, struct memo*);
+DECLARE_LIST(historyList, struct history*);
+DEFINE_LIST(historyList, struct history*);
 
 /* memo_account.flags fields */
 #define MEMO_NOTIFY_NEW      0x00000001
@@ -133,6 +145,8 @@ struct memo_account {
     unsigned int limit;
     struct memoList sent;
     struct memoList recvd;
+    struct historyList hsent;
+    struct historyList hrecvd;
 };
 
 static struct {
@@ -153,6 +167,7 @@ static struct module *memoserv_module;
 static struct log_type *MS_LOG;
 static unsigned long memosSent, memosExpired;
 static struct dict *memos; /* memo_account->handle->handle -> memo_account */
+static struct dict *historys;
 static dict_t memoserv_opt_dict; /* contains option_func_t* */
 
 static struct memo_account *
@@ -171,6 +186,7 @@ memoserv_get_account(struct handle_info *hi)
     ma->flags = MEMO_NOTIFY_NEW | MEMO_NOTIFY_LOGIN;
     ma->limit = memoserv_conf.limit;
     dict_insert(memos, ma->handle->handle, ma);
+    dict_insert(historys, ma->handle->handle, ma);
     return ma;
 }
 
@@ -184,6 +200,14 @@ delete_memo(struct memo *memo)
 }
 
 static void
+delete_history(struct history *history)
+{
+    historyList_remove(&history->recipient->hrecvd, history);
+    historyList_remove(&history->sender->hsent, history);
+    free(history);
+}
+
+static void
 delete_memo_account(void *data)
 {
     struct memo_account *ma = data;
@@ -194,6 +218,13 @@ delete_memo_account(void *data)
         delete_memo(ma->sent.list[0]);
     memoList_clean(&ma->recvd);
     memoList_clean(&ma->sent);
+
+    while (ma->hrecvd.used)
+        delete_history(ma->hrecvd.list[0]);
+    while (ma->hsent.used)
+        delete_history(ma->hsent.list[0]);
+    historyList_clean(&ma->hrecvd);
+    historyList_clean(&ma->hsent);
     free(ma);
 }
 
@@ -213,6 +244,19 @@ do_expire(void)
             }
         }
     }
+
+    for (it = dict_first(historys); it; it = iter_next(it)) {
+        struct memo_account *acct = iter_data(it);
+        unsigned int ii;
+        for (ii = 0; ii < acct->hsent.used; ++ii) {
+            struct history *history = acct->hsent.list[ii];
+            if ((now - history->sent) > memoserv_conf.message_expiry) {
+                delete_history(history);
+                memosExpired++;
+                ii--;
+            }
+        }
+    }
 }
 
 static void
@@ -224,10 +268,31 @@ expire_memos(UNUSED_ARG(void *data))
     }
 }
 
+static struct history*
+add_history(time_t sent, struct memo_account *recipient, struct memo_account *sender, unsigned long id)
+{
+    struct history *history;
+
+    history = calloc(1, sizeof(*history));
+    if (!history)
+        return NULL;
+
+    history->id = id;
+    history->recipient = recipient;
+    historyList_append(&recipient->hrecvd, history);
+    history->sender = sender;
+    historyList_append(&sender->hsent, history);
+    history->sent = sent;
+
+    return history;
+}
+
+
 static struct memo*
 add_memo(time_t sent, struct memo_account *recipient, struct memo_account *sender, char *message, int nfrom_read)
 {
     struct memo *memo;
+    struct history *history;
 
     memo = calloc(1, sizeof(*memo));
     if (!memo)
@@ -245,6 +310,10 @@ add_memo(time_t sent, struct memo_account *recipient, struct memo_account *sende
     memo->sent = sent;
     memo->message = strdup(message);
     memosSent++;
+
+    if (nfrom_read)
+        history = add_history(sent, recipient, sender, memo->id);
+
     return memo;
 }
 
@@ -414,7 +483,7 @@ static MODCMD_FUNC(cmd_list)
 static MODCMD_FUNC(cmd_history)
 {
     struct memo_account *ma;
-    struct memo *memo;
+    struct history *history;
     dict_iterator_t it;
     unsigned int ii = 0;
     unsigned int cc = 0;
@@ -429,15 +498,15 @@ static MODCMD_FUNC(cmd_history)
     if(user->handle_info && user->handle_info->userlist_style != HI_STYLE_CLEAN)
         reply("MSMSG_BAR");
 
-    for (it = dict_first(memos); it; it = iter_next(it)) {
+    for (it = dict_first(historys); it; it = iter_next(it)) {
         ma = iter_data(it);
-        for (ii = 0; ii < ma->recvd.used; ++ii) {
-            memo = ma->recvd.list[ii];
-            if (!strcasecmp(memo->sender->handle->handle, user->handle_info->handle)) {
+        for (ii = 0; ii < ma->hrecvd.used; ++ii) {
+            history = ma->hrecvd.list[ii];
+            if (!strcasecmp(history->sender->handle->handle, user->handle_info->handle)) {
                 cc++;
-                localtime_r(&memo->sent, &tm);
+                localtime_r(&history->sent, &tm);
                 strftime(posted, sizeof(posted), "%I:%M %p, %m/%d/%Y", &tm);
-                reply("MSMSG_HISTORY_FORMAT", memo->id, memo->sender->handle->handle, posted);
+                reply("MSMSG_HISTORY_FORMAT", history->id, history->recipient->handle->handle, posted);
             }
         }
     }
@@ -823,7 +892,25 @@ static OPTION_FUNC(opt_limit)
 
 static MODCMD_FUNC(cmd_status)
 {
-    reply("MSMSG_STATUS_TOTAL", dict_size(memos));
+    struct memo_account *ma;
+    dict_iterator_t it;
+    int mc = 0, hc = 0;
+    unsigned int ii;
+
+    for (it = dict_first(memos); it; it = iter_next(it)) {
+        ma = iter_data(it);
+        for (ii = 0; ii < ma->recvd.used; ++ii)
+            mc++;
+    }
+
+    for (it = dict_first(historys); it; it = iter_next(it)) {
+        ma = iter_data(it);
+        for (ii = 0; ii < ma->hrecvd.used; ++ii)
+            hc++;
+    }
+
+    reply("MSMSG_STATUS_HIST_TOTAL", hc);
+    reply("MSMSG_STATUS_TOTAL", mc);
     reply("MSMSG_STATUS_EXPIRED", memosExpired);
     reply("MSMSG_STATUS_SENT", memosSent);
     return 1;
@@ -884,6 +971,7 @@ memoserv_user_read(const char *key, struct record_data *hir)
     ma->limit = strtoul(str, NULL, 0);
 
     dict_insert(memos, ma->handle->handle, ma);
+    dict_insert(historys, ma->handle->handle, ma);
 
     return 0;
 }
@@ -951,6 +1039,54 @@ memoserv_memo_read(const char *key, struct record_data *hir)
 }
 
 static int
+memoserv_history_read(const char *key, struct record_data *hir)
+{
+    char *str;
+    struct handle_info *sender, *recipient;
+    struct history *history;
+    unsigned long id;
+    time_t sent;
+
+    if (hir->type != RECDB_OBJECT) {
+        log_module(MS_LOG, LOG_WARNING, "Unexpected rectype %d for %s.", hir->type, key);
+        return 0;
+    }
+
+    if (!(str = database_get_data(hir->d.object, KEY_SENT, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "Date sent not present in history %s; skipping", key);
+        return 0;
+    }
+
+    sent = atoi(str);
+
+    if (!(str = database_get_data(hir->d.object, KEY_ID, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "ID sent not present in history %s; skipping", key);
+        return 0;
+    }
+    id = strtoul(str, NULL, 0);
+
+    if (!(str = database_get_data(hir->d.object, KEY_RECIPIENT, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "Recipient not present in history %s; skipping", key);
+        return 0;
+    } else if (!(recipient = get_handle_info(str))) {
+        log_module(MS_LOG, LOG_ERROR, "Invalid recipient %s in history %s; skipping", str, key);
+        return 0;
+    }
+
+    if (!(str = database_get_data(hir->d.object, KEY_FROM, RECDB_QSTRING))) {
+        log_module(MS_LOG, LOG_ERROR, "Sender not present in history %s; skipping", key);
+        return 0;
+    } else if (!(sender = get_handle_info(str))) {
+        log_module(MS_LOG, LOG_ERROR, "Invalid sender %s in history %s; skipping", str, key);
+        return 0;
+    }
+
+    history = add_history(sent, memoserv_get_account(recipient), memoserv_get_account(sender), id);
+
+    return 0;
+}
+
+static int
 memoserv_saxdb_read(struct dict *database)
 {
     struct dict *section;
@@ -963,6 +1099,10 @@ memoserv_saxdb_read(struct dict *database)
     if((section = database_get_data(database, KEY_MAIN_MEMOS, RECDB_OBJECT)))
         for(it = dict_first(section); it; it = iter_next(it))
             memoserv_memo_read(iter_key(it), iter_data(it));
+
+    if((section = database_get_data(database, KEY_MAIN_HISTORY, RECDB_OBJECT)))
+        for(it = dict_first(section); it; it = iter_next(it))
+            memoserv_history_read(iter_key(it), iter_data(it));
 
     return 0;
 }
@@ -1003,11 +1143,28 @@ memoserv_write_memos(struct saxdb_context *ctx, struct memo *memo)
 }
 
 static int
+memoserv_write_history(struct saxdb_context *ctx, struct history *history)
+{
+    char str[7];
+
+    saxdb_start_record(ctx, inttobase64(str, history->id, sizeof(str)), 0);
+
+    saxdb_write_int(ctx, KEY_SENT, history->sent);
+    saxdb_write_int(ctx, KEY_ID, history->id);
+    saxdb_write_string(ctx, KEY_RECIPIENT, history->recipient->handle->handle);
+    saxdb_write_string(ctx, KEY_FROM, history->sender->handle->handle);
+
+    saxdb_end_record(ctx);
+    return 0;
+}
+
+static int
 memoserv_saxdb_write(struct saxdb_context *ctx)
 {
     dict_iterator_t it;
     struct memo_account *ma;
     struct memo *memo;
+    struct history *history;
     unsigned int ii;
 
     /* Accounts */
@@ -1018,13 +1175,24 @@ memoserv_saxdb_write(struct saxdb_context *ctx)
     }
     saxdb_end_record(ctx);
 
-    /* Channels */
+    /* Memos */
     saxdb_start_record(ctx, KEY_MAIN_MEMOS, 1);
     for (it = dict_first(memos); it; it = iter_next(it)) {
         ma = iter_data(it);
         for (ii = 0; ii < ma->recvd.used; ++ii) {
             memo = ma->recvd.list[ii];
             memoserv_write_memos(ctx, memo);
+        }
+    }
+    saxdb_end_record(ctx);
+
+    /* History */
+    saxdb_start_record(ctx, KEY_MAIN_HISTORY, 1);
+    for (it = dict_first(historys); it; it = iter_next(it)) {
+        ma = iter_data(it);
+        for (ii = 0; ii < ma->hrecvd.used; ++ii) {
+            history = ma->hrecvd.list[ii];
+            memoserv_write_history(ctx, history);
         }
     }
     saxdb_end_record(ctx);
@@ -1036,6 +1204,7 @@ static void
 memoserv_cleanup(void)
 {
     dict_delete(memos);
+    dict_delete(historys);
 }
 
 static void
@@ -1067,12 +1236,16 @@ memoserv_rename_account(struct handle_info *hi, const char *old_handle)
         return;
     dict_remove2(memos, old_handle, 1);
     dict_insert(memos, hi->handle, ma);
+
+    dict_remove2(historys, old_handle, 1);
+    dict_insert(historys, hi->handle, ma);
 }
 
 static void
 memoserv_unreg_account(UNUSED_ARG(struct userNode *user), struct handle_info *handle)
 {
     dict_remove(memos, handle->handle);
+    dict_remove(historys, handle->handle);
 }
 
 int
@@ -1080,6 +1253,7 @@ memoserv_init(void)
 {
     MS_LOG = log_register_type("MemoServ", "file:memoserv.log");
     memos = dict_new();
+    historys = dict_new();
     dict_set_free_data(memos, delete_memo_account);
     reg_auth_func(memoserv_check_messages);
     reg_handle_rename_func(memoserv_rename_account);
