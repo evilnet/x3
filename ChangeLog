@@ -1,6 +1,40 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-06-27  Neil Spierling <sirvulcan@gmail.com>
+
+	* configure: Regenerated.
+
+	* configure.in: Make use of TRE regexp library. Its more powerful
+	than the standard library (http://laurikari.net/tre/index.html).
+	Im also pondering adding services side regexp bans, X3 would
+	probably required a channel flag called say advanced that can
+	only be set by the owner. If enabled then regexp bans can be
+	used. I also added an output saying what modules are enabled,
+	what protocol is enabled, what malloc is choosen and if debugging
+	is enabled. Just a bit of a message as the user will of seen
+	programs just finish compiling and he/she/it may think it
+	was X3 compiling, but it was just TRE compiling. They still need
+	to compile X3.
+
+	* src/config.h.in: Regenerated.
+
+	* src/Makefile.am: Tweak for TRE.
+
+	* src/Makefile.in: Regenerated.
+
+	* src/nickserv.c: Use the new regex.h Im sure -I includes get
+	called before system includes like /usr/include.
+
+	* src/opserv.c: Use the new regex.h Im sure -I includes get
+	called before system includes like /usr/include.
+
+	* src/tools/tre.tar.gz: TRE 0.7.4. Configure will untar and
+	compile this just before configure finishes up. Sits around
+	470KB, rather than another 2.5MB if i TRE untarred. I suppose
+	i could get it down a bit more using Bzip but there are some
+	boxes out there still without bzip.
+
 2006-06-25  Neil Spierling <sirvulcan@gmail.com>
 
 	* src/mod-memoserv.c: Better history implementation. A seperate

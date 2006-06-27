@@ -29,6 +29,8 @@
 #include "saxdb.h"
 #include "shun.h"
 
+#include <regex.h>
+
 #ifdef HAVE_SYS_TIMES_H
 #include <sys/times.h>
 #endif
@@ -38,9 +40,7 @@
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-#ifdef HAVE_REGEX_H
-#include <regex.h>
-#endif
+
 
 #define OPSERV_CONF_NAME "services/opserv"
 

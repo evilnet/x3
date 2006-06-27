@@ -25,6 +25,7 @@ AC_PROG_LIBTOOL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_GCC_TRADITIONAL
+AC_CHECK_PROG(MAKER, gmake, gmake, make)
 
 dnl nice that unixes can all follow a standard.
 case $target in
@@ -33,8 +34,6 @@ case $target in
     ;;
   *-freebsd3* | *-freebsdelf3* | *-freebsd*out3*)
     ANSI_SRC=""
-    AC_DEFINE(BROKEN_REGEX, 1, [Define if the system regex library is unreliable.])
-        BROKEN_REGEX=yes
     ;;
   *-solaris*)
     EXTRA_DEFINE="-D__SOLARIS__"
@@ -67,7 +66,7 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 
 dnl Would rather not bail on headers, BSD has alot of the functions elsewhere. -Jedi
-AC_CHECK_HEADERS(fcntl.h tgmath.h malloc.h netdb.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h regex.h arpa/inet.h sys/mman.h sys/stat.h dirent.h,,)
+AC_CHECK_HEADERS(fcntl.h tgmath.h malloc.h netdb.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h arpa/inet.h sys/mman.h sys/stat.h dirent.h,,)
 
 dnl portability stuff, hurray! -Jedi
 AC_CHECK_MEMBER([struct sockaddr.sa_len],
@@ -85,7 +84,7 @@ if test $ac_cv_func_gettimeofday = no; then
 fi
 
 dnl We have fallbacks in case these are missing, so just check for them.
-AC_CHECK_FUNCS(freeaddrinfo getaddrinfo getnameinfo getpagesize memcpy memset strdup strerror strsignal localtime_r setrlimit getopt getopt_long regcomp regexec regfree sysconf,,)
+AC_CHECK_FUNCS(freeaddrinfo getaddrinfo getnameinfo getpagesize memcpy memset strdup strerror strsignal localtime_r setrlimit getopt getopt_long sysconf,,)
 
 dnl Check for absolutely required library functions.
 AC_CHECK_FUNCS(select socket strcspn strspn strtod strtoul,,AC_MSG_ERROR([a required function was not found. X3 build will fail.]))
@@ -190,11 +189,13 @@ AC_ARG_WITH(malloc,
 if test "x$withval" = "xsystem" ; then
   AC_MSG_RESULT(system)
   AC_DEFINE(WITH_MALLOC_SYSTEM, 1, [Define if using the system's malloc])
+  x3_malloc="System"
 elif test "x$withval" = "xdmalloc" ; then
   AC_MSG_RESULT(dmalloc)
   AC_CHECK_HEADERS(dmalloc.h,,AC_MSG_ERROR([dmalloc header file missing.  dmalloc build will fail.]))
   AC_CHECK_LIB(dmalloc,malloc,,AC_MSG_ERROR([dmalloc library is missing.  dmalloc build will fail.]))
   AC_DEFINE(WITH_MALLOC_DMALLOC, 1, [Define if using the dmalloc debugging malloc package])
+  x3_malloc="DMalloc"
 elif test "x$withval" = "xmpatrol" ; then
   AC_MSG_RESULT(mpatrol)
   AC_CHECK_HEADERS(mpatrol.h,,AC_MSG_ERROR([mpatrol header file missing.  mpatrol build will fail.]))
@@ -202,20 +203,24 @@ elif test "x$withval" = "xmpatrol" ; then
   AC_CHECK_LIB(elf, elf_begin)
   AC_CHECK_LIB(mpatrol,__mp_atexit,,AC_MSG_ERROR([mpatrol library is missing completely.  mpatrol build will fail.]))
   AC_DEFINE(WITH_MALLOC_MPATROL, 1, [Define if using the mpatrol malloc debugging package])
+  x3_malloc="MPatrol"
 elif test "x$withval" = "xboehm-gc" ; then
   AC_MSG_RESULT(boehm-gc)
   AC_CHECK_HEADERS(gc/gc.h,,AC_MSG_ERROR([Boehm GC header file missing.  boehm-gc build will fail.]))
   AC_CHECK_LIB(dl, dlopen, , AC_MSG_ERROR([libdl library is missing.  boehm-gc build will fail.]))
   AC_CHECK_LIB(gc, GC_gcollect, , AC_MSG_ERROR([Boehm GC library is missing.  boehm-gc build will fail.]))
   AC_DEFINE(WITH_MALLOC_BOEHM_GC, 1, [Define if using the Boehm GC to garbage collect and check memory leaks])
+  x3_malloc="Boehm"
 elif test "x$withval" = "xx3" ; then
   AC_MSG_RESULT(x3)
   AC_DEFINE(WITH_MALLOC_X3, 1, [Define if using the X3 internal debug allocator])
   MODULE_OBJS="$MODULE_OBJS alloc-x3.\$(OBJEXT)"
+  x3_malloc="X3"
 elif test "x$withval" = "xslab" ; then
   AC_MSG_RESULT(slab)
   AC_DEFINE(WITH_MALLOC_SLAB, 1, [Define if using the slab internal debug allocator])
   MODULE_OBJS="$MODULE_OBJS alloc-slab.\$(OBJEXT)"
+  x3_malloc="Slab"
 else
   AC_MSG_ERROR([Unknown malloc type $withval])
 fi
@@ -231,10 +236,12 @@ if test "x$withval" = "xp10" ; then
   AC_DEFINE(WITH_PROTOCOL_P10, 1, [Define if using the P10 dialect of IRC])
   MODULE_OBJS="$MODULE_OBJS proto-p10.\$(OBJEXT)"
   PROTO_FILES=proto-p10.c
+  x3_ircd="P10"
 elif test "x$withval" = "xbahamut" ; then
   AC_MSG_RESULT(Bahamut)
   AC_DEFINE(WITH_PROTOCOL_BAHAMUT, 1, [Define if using the Bahamut dialect of IRC])
   MODULE_OBJS="$MODULE_OBJS proto-bahamut.\$(OBJEXT)"
+  x3_ircd="Bahamut"
 else
   AC_MSG_ERROR([Unknown IRC dialect $withval])
 fi
@@ -263,10 +270,12 @@ AC_ARG_ENABLE(debug,
 [
   CPPFLAGS="$CPPFLAGS"
   AC_MSG_RESULT(yes)
+  x3_debug="Enabled"
 ],
 [
   CPPFLAGS="$CPPFLAGS -DNDEBUG"
   AC_MSG_RESULT(no)
+  x3_debug="Disabled"
 ])
 
 if test -e src ; then
@@ -319,6 +328,38 @@ if test "z$USE_MAINTAINER_MODE" = zyes ; then
   CFLAGS="$CFLAGS -Werror"
 fi
 
+dnl REMEMBER TO CHANGE WITH A NEW TRE RELEASE!
+tre_version="0.7.4"
+AC_MSG_RESULT(extracting TRE regex library)
+cur_dir=`pwd`
+cd tools
+dnl remove old tre directory to force a recompile...
+rm -rf tre-$tre_version
+if test "x$ac_cv_path_GUNZIP" = "x" ; then
+        tar xfz tre.tar.gz
+else
+        cp tre.tar.gz tre.tar.gz.bak
+        gunzip -f tre.tar.gz
+        cp tre.tar.gz.bak tre.tar.gz
+        tar xf tre.tar
+fi
+AC_MSG_RESULT(configuring TRE regex library)
+cd tre-$tre_version
+./configure --disable-agrep --disable-shared --disable-system-abi --disable-wchar --disable-multibyte --prefix=$prefix || exit 1
+AC_MSG_RESULT(compiling TRE regex library)
+$ac_cv_prog_MAKER || exit 1
+AC_MSG_RESULT(installing TRE regex library)
+$ac_cv_prog_MAKER install || exit 1
+TREINCDIR="$prefix/include"
+AC_SUBST(TREINCDIR)
+if test "x$ac_cv_path_PKGCONFIG" = "x" ; then
+        TRELIBS="-L$prefix/lib -ltre"
+else
+        TRELIBS=`$ac_cv_path_PKGCONFIG --libs tre.pc`
+fi
+AC_SUBST(TRELIBS)
+cd $cur_dir
+
 AC_DEFINE_UNQUOTED(CODENAME, "${CODENAME}", [Code name for this release])
 AC_SUBST(MODULE_OBJS)
 AC_SUBST(MY_SUBDIRS)
@@ -327,3 +368,36 @@ AC_SUBST(RX_LIBS)
 AC_SUBST(TRACK)
 AC_CONFIG_FILES(Makefile rx/Makefile src/Makefile)
 AC_OUTPUT
+
+
+dnl Print configuration summary
+
+cat <<EOF
+
+Configuration summary
+=====================
+
+X3 is now configured as follows:
+
+* Compilation environment
+
+  CC       = $CC
+  CFLAGS   = $CFLAGS
+  CPP      = $CPP
+  CPPFLAGS = $CPPFLAGS
+  LD       = $LD
+  LDFLAGS  = $LDFLAGS
+  LIBS     = $LIBS
+
+* X3 options
+
+  Debug:             $x3_debug
+  Extra Modules:    $module_list
+  Malloc:            $x3_malloc
+  Protocol:          $x3_ircd
+  Regexp Library     TRE $tre_version
+
+Now you can proceed with compiling X3
+
+EOF
+

@@ -1,8 +1,5 @@
 /* src/config.h.in.  Generated from configure.in by autoheader.  */
 
-/* Define if the system regex library is unreliable. */
-#undef BROKEN_REGEX
-
 /* Code name for this release */
 #undef CODENAME
 
@@ -125,18 +122,6 @@
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #undef HAVE_NETINET_IN_H
-
-/* Define to 1 if you have the `regcomp' function. */
-#undef HAVE_REGCOMP
-
-/* Define to 1 if you have the `regexec' function. */
-#undef HAVE_REGEXEC
-
-/* Define to 1 if you have the <regex.h> header file. */
-#undef HAVE_REGEX_H
-
-/* Define to 1 if you have the `regfree' function. */
-#undef HAVE_REGFREE
 
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
