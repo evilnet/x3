@@ -407,7 +407,7 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
         !(table.flags & TABLE_NO_FOOTER) && 
         !(hi && hi->userlist_style == HI_STYLE_CLEAN)) {
         char endstr[MAX_LINE_SIZE+1];
-        sprintf(endstr, "End (%d rows)", table.length);
+        sprintf(endstr, "End (%d rows)", table.length-1);
 
         /* Copy above into the sepstr, centered */
         if(sepsize > strlen(endstr)+2)

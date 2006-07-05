@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-05  Alex Schumann  <rubin@afternet.org>
+
+	* src/helpfile.c: pLaYa pointed out the table code row count is off by
+	one. Fixed.
+
 2006-06-27  Neil Spierling <sirvulcan@gmail.com>
 
 	* configure: Regenerated.
