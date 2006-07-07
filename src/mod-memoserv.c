@@ -62,6 +62,7 @@
 
 static const struct message_entry msgtab[] = {
     { "MSMSG_CANNOT_SEND", "You cannot send to account $b%s$b." },
+    { "MSMSG_UNKNOWN_SEND_FLAG", "Unreccognised send flag '%c', message not sent." },
     { "MSMSG_MEMO_SENT", "Message sent to $b%s$b (ID# %d)." },
     { "MSMSG_NO_MESSAGES", "You have no messages." },
     { "MSMSG_MEMOS_FOUND", "Found $b%d$b matches.\nUse /msg $S READ <ID> to read a message." },
@@ -384,7 +385,6 @@ static struct memo *find_memo(struct userNode *user, struct svccmd *cmd, struct 
 static MODCMD_FUNC(cmd_send)
 {
     char *message;
-    int s = 0, brk = 0;
     int reciept = 0, inc = 2;
     struct handle_info *hi;
     struct memo_account *ma, *sender;
@@ -402,33 +402,25 @@ static MODCMD_FUNC(cmd_send)
     if (!(memoserv_can_send(cmd->parent->bot, user, ma)))
         return 0;
 
-    char *flags = argv[2];
-    while (*flags) {
-        switch (*flags) {
-            case '-':
-                if (s != 0)
-                    brk = 1;
-                break;
-
-            case 'r':
-                if (s > 0)
+    inc = 2; /* Start of message on 3rd ([2]) word */
+    if(argv[2][0] == '-' && argv[2][1] != '-') { /* first word is flags ('-r')*/
+        char *flags = argv[2];
+        inc++; /* Start of message is now 1 word later */
+        for(flags++;*flags;flags++) {
+            switch (*flags) {
+                case 'r':
                     reciept = 1;
                 break;
 
             default:
-                break;
-        }
-
-        if (brk == 1)
-            break;
-        else {
-            s++;
-            flags++;
+                /* Unknown mode. Give an error */
+                reply("MSMSG_UNKNOWN_SEND_FLAG", *flags);
+                return 0;
+            }
         }
     }
-
-    if (s > 0)
-        inc = 3;
+    else
+        inc = 2; /* Start of message is word 2 */
 
     message = unsplit_string(argv + inc, argc - inc, NULL);
     memo = add_memo(now, ma, sender, message, 1);

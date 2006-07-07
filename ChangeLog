@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-07  Alex Schumann  <rubin@afternet.org>
+
+	* src/mod-memoserv.c: pLaYa reported a crash/corruption bug in
+	memoserv most easily seen when sending short memos. Rewrote the flag
+	handling part of memo send to correct it.
+
 2006-07-05  Alex Schumann  <rubin@afternet.org>
 
 	* src/helpfile.c: pLaYa pointed out the table code row count is off by
