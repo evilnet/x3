@@ -4,7 +4,7 @@
 2006-07-09  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: Fixes for addignore/delignore corruption +missed a
-	spot
+	spot. Ugh, messed up the fix. Trying again :)
 
 2006-07-10  Neil Spierling <sirvulcan@gmail.com>
 

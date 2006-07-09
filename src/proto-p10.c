@@ -1656,7 +1656,7 @@ static CMD_FUNC(cmd_silence)
     if (!user->handle_info)
         return 1;
 
-    mask = strdup(argv[2]);
+    mask = argv[2];
 
     if (*mask == '-') {
         for (i=0; i<user->handle_info->ignores->used; i++) {
@@ -1670,9 +1670,8 @@ static CMD_FUNC(cmd_silence)
         }
 
         new_mask = strdup(mask+1);
-        string_list_append(user->handle_info->ignores, mask+1);
+        string_list_append(user->handle_info->ignores, new_mask);
     }
-    free(mask);
     return 1;
 }
 
