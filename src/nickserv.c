@@ -1478,15 +1478,15 @@ static NICKSERV_FUNC(cmd_oregister)
 }
 
 static int
-nickserv_ignore(struct userNode *user, struct handle_info *hi, const char *mask)
+nickserv_ignore(struct userNode *user, struct handle_info *hi, char *mask)
 {
     unsigned int i;
     struct userNode *target;
-    char *new_mask = pretty_mask(strdup(mask));
+    char *new_mask = strdup(pretty_mask(mask));
     for (i=0; i<hi->ignores->used; i++) {
         if (!irccasecmp(new_mask, hi->ignores->list[i])) {
             send_message(user, nickserv, "NSMSG_ADDIGNORE_ALREADY", new_mask);
-/*            free(new_mask); i hate glibc */
+            free(new_mask);
             return 0;
         }
     }
@@ -1496,6 +1496,7 @@ nickserv_ignore(struct userNode *user, struct handle_info *hi, const char *mask)
     for (target = hi->users; target; target = target->next_authed) {
         irc_silence(target, new_mask, 1);
     }
+    /* does string_list_append make a copy of new_mask and we should free() it here? */
     return 1;
 }
 
@@ -1518,20 +1519,21 @@ static NICKSERV_FUNC(cmd_oaddignore)
 }
 
 static int
-nickserv_delignore(struct userNode *user, struct handle_info *hi, const char *del_mask)
+nickserv_delignore(struct userNode *user, struct handle_info *hi, char *del_mask)
 {
     unsigned int i;
     struct userNode *target;
-    char *dmask = pretty_mask(strdup(del_mask));
+    char *pmask = strdup(pretty_mask(del_mask));
     for (i=0; i<hi->ignores->used; i++) {
-	if (!strcmp(dmask, hi->ignores->list[i])) {
+	if (!strcmp(pmask, hi->ignores->list[i]) || !strcmp(del_mask, hi->ignores->list[i])) {
 	    char *old_mask = hi->ignores->list[i];
 	    hi->ignores->list[i] = hi->ignores->list[--hi->ignores->used];
 	    send_message(user, nickserv, "NSMSG_DELMASK_SUCCESS", old_mask);
             for (target = hi->users; target; target = target->next_authed) {
                 irc_silence(user, old_mask, 0);
             }
-/*	    free(old_mask); i hate glibc */
+	    free(old_mask);
+            free(pmask);
 	    return 1;
 	}
     }
