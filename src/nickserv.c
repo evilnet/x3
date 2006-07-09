@@ -1496,7 +1496,6 @@ nickserv_ignore(struct userNode *user, struct handle_info *hi, char *mask)
     for (target = hi->users; target; target = target->next_authed) {
         irc_silence(target, new_mask, 1);
     }
-    /* does string_list_append make a copy of new_mask and we should free() it here? */
     return 1;
 }
 

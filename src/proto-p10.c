@@ -1636,6 +1636,7 @@ static CMD_FUNC(cmd_silence)
 {
     struct userNode *user;
     char *mask;
+    char *new_mask;
     unsigned int i;
 
     if (argc < 2)
@@ -1668,9 +1669,10 @@ static CMD_FUNC(cmd_silence)
                 return 1; /* Already on the users NickServ ignore list, safely ignore */
         }
 
+        new_mask = strdup(mask+1);
         string_list_append(user->handle_info->ignores, mask+1);
     }
-
+    free(mask);
     return 1;
 }
 
