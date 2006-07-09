@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-10  Neil Spierling <sirvulcan@gmail.com>
+
+	* src/chanserv.c: INVITE now checks the targets ignore/silence list.
+	If the target is ignoring the person inviting them then the invite
+	is denied.
+
 2006-07-07  Alex Schumann  <rubin@afternet.org>
 
 	* src/mod-memoserv.c: pLaYa reported a crash/corruption bug in

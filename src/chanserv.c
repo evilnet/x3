@@ -353,6 +353,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_INVITED_USER", "Invited $b%s$b to join %s." },
     { "CSMSG_INVITING_YOU_REASON", "$b%s$b invites you to join %s: %s" },
     { "CSMSG_INVITING_YOU", "$b%s$b invites you to join %s." },
+    { "CSMSG_CANNOT_INVITE", "You cannot invite %s to %s." },
     { "CSMSG_ALREADY_PRESENT", "%s is already in $b%s$b." },
     { "CSMSG_YOU_ALREADY_PRESENT", "You are already in $b%s$b." },
     { "CSMSG_LOW_CHANNEL_ACCESS", "You lack sufficient access in %s to use this command." },
@@ -4515,6 +4516,17 @@ static CHANSERV_FUNC(cmd_invite)
         else
             send_message(invite, chanserv, "CSMSG_INVITING_YOU", user->nick, channel->name);
     }
+
+    if (invite->handle_info->ignores->used && (argc > 1)) {
+        unsigned int i;
+        for (i=0; i < invite->handle_info->ignores->used; i++) {
+            if (user_matches_glob(user, invite->handle_info->ignores->list[i], MATCH_USENICK)) {
+              reply("CSMSG_CANNOT_INVITE", argv[1], channel->name);
+              return 0;
+            }
+        }
+    }
+
     irc_invite(chanserv, invite, channel);
     if(argc > 1)
 	reply("CSMSG_INVITED_USER", argv[1], channel->name);
