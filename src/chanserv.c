@@ -4517,7 +4517,7 @@ static CHANSERV_FUNC(cmd_invite)
             send_message(invite, chanserv, "CSMSG_INVITING_YOU", user->nick, channel->name);
     }
 
-    if (invite->handle_info->ignores->used && (argc > 1)) {
+    if (invite->handle_info && invite->handle_info->ignores->used && (argc > 1)) {
         unsigned int i;
         for (i=0; i < invite->handle_info->ignores->used; i++) {
             if (user_matches_glob(user, invite->handle_info->ignores->list[i], MATCH_USENICK)) {

@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-10  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: fixed crash bug trying to deref the handleinfo of a
+	non-logged-in user (null pointer)
+
 2006-07-09  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: fixed bug where unignores were getting sent to the
