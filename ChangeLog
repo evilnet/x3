@@ -3,6 +3,11 @@
 
 2006-07-09  Alex Schumann  <rubin@afternet.org>
 
+	* src/nickserv.c: fixed bug where unignores were getting sent to the
+	user multiple times, instead of to each online nick once.
+
+2006-07-09  Alex Schumann  <rubin@afternet.org>
+
 	* src/nickserv.c: Fixes for addignore/delignore corruption +missed a
 	spot. Ugh, messed up the fix. Trying again :)
 

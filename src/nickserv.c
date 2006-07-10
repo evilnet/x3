@@ -1529,7 +1529,7 @@ nickserv_delignore(struct userNode *user, struct handle_info *hi, char *del_mask
 	    hi->ignores->list[i] = hi->ignores->list[--hi->ignores->used];
 	    send_message(user, nickserv, "NSMSG_DELMASK_SUCCESS", old_mask);
             for (target = hi->users; target; target = target->next_authed) {
-                irc_silence(user, old_mask, 0);
+                irc_silence(target, old_mask, 0);
             }
 	    free(old_mask);
             free(pmask);
