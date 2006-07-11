@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-11  Alex Schumann  <rubin@afternet.org>
+
+	* src/modcmd.c: if pubcmd is set higher than your level, only respond
+	with the denied msg if the command was actually found. this closes bug
+	number 1509382.
+
 2006-07-10  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: fixed crash bug trying to deref the handleinfo of a

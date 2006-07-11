@@ -639,13 +639,6 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
     unsigned int cmd_arg, perms, flags, options;
     char channel_name[CHANNELLEN+1];
 
-    /* First check pubcmd for the channel. */
-    if (channel && (channel->channel_info) && (service->bot == chanserv)
-        && !check_user_level(channel, user, lvlPubCmd, 1, 0)) {
-        send_message(user, service->bot, "MCMSG_PUBLIC_DENY", channel->name);
-        return 0;
-    }
-
     options = (server_qualified ? SVCCMD_QUALIFIED : 0) | SVCCMD_DEBIT | SVCCMD_NOISY;
     /* Find the command argument. */
     cmd_arg = IsChannelName(argv[0]) ? 1 : 0;
@@ -663,6 +656,14 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
             send_message(user, service->bot, "MSG_COMMAND_UNKNOWN", argv[cmd_arg]);
         return 0;
     }
+
+    /* Check pubcmd for the channel. */
+    if (channel && (channel->channel_info) && (service->bot == chanserv)
+        && !check_user_level(channel, user, lvlPubCmd, 1, 0)) {
+        send_message(user, service->bot, "MCMSG_PUBLIC_DENY", channel->name);
+        return 0;
+    }
+
     flags = cmd->effective_flags;
     /* If they put a channel name first, check if the command allows
      * it.  If so, swap it with the command name.
