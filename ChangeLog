@@ -3,6 +3,10 @@
 
 2006-07-11  Alex Schumann  <rubin@afternet.org>
 
+	* src/opserv.c: add sanity checking to jupe to avoid catastrophic loop
+	when adding an invalid jupe servername or numeric.
+	this closes bug number 1513510.
+
 	* src/modcmd.c: if pubcmd is set higher than your level, only respond
 	with the denied msg if the command was actually found. this closes bug
 	number 1509382.

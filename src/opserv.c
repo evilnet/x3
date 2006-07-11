@@ -257,6 +257,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_NAME_COLLIDE", "That name is already in use." },
     { "OSMSG_SRV_CREATE_FAILED", "Server creation failed -- check log files." },
     { "OSMSG_SERVER_JUPED", "Added new jupe server %s." },
+    { "OSMSG_INVALID_NUMERIC", "Invalid numeric" },
+    { "OSMSG_INVALID_SERVERNAME", "Server name must contain a '.'." },
     { "OSMSG_SERVER_NOT_JUPE", "That server is not a juped server." },
     { "OSMSG_SERVER_UNJUPED", "Server jupe removed." },
     /*
@@ -775,6 +777,10 @@ static MODCMD_FUNC(cmd_jupe)
     char numeric[COMBO_NUMERIC_LEN+1], srvdesc[SERVERDESCRIPTMAX+1];
 
     num = atoi(argv[2]);
+    if(num == 0) {
+        reply("OSMSG_INVALID_NUMERIC");
+        return 0;
+    }
     if ((num < 64) && !force_n2k) {
         inttobase64(numeric, num, 1);
         inttobase64(numeric+1, 64*64-1, 2);
@@ -793,6 +799,10 @@ static MODCMD_FUNC(cmd_jupe)
         return 0;
     }
     snprintf(srvdesc, sizeof(srvdesc), "JUPE %s", unsplit_string(argv+3, argc-3, NULL));
+    if(!strchr(argv[1], '.')) {
+        reply("OSMSG_INVALID_SERVERNAME");
+        return 0;
+    }
     newsrv = AddServer(self, argv[1], 1, now, now, numeric, srvdesc);
     if (!newsrv) {
         reply("OSMSG_SRV_CREATE_FAILED");
