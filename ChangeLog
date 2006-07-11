@@ -3,6 +3,11 @@
 
 2006-07-11  Alex Schumann  <rubin@afternet.org>
 
+	* x3.conf.example: Improved server/type setting documentation,
+	and changed default to 5.
+
+2006-07-11  Alex Schumann  <rubin@afternet.org>
+
 	* src/opserv.c: fixed silent alerts not getting picked up from db file
 	on read/load.
 
