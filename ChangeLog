@@ -3,6 +3,11 @@
 
 2006-07-11  Alex Schumann  <rubin@afternet.org>
 
+	* src/opserv.c: fixed silent alerts not getting picked up from db file
+	on read/load.
+
+2006-07-11  Alex Schumann  <rubin@afternet.org>
+
 	* src/opserv.c: add sanity checking to jupe to avoid catastrophic loop
 	when adding an invalid jupe servername or numeric.
 	this closes bug number 1513510.

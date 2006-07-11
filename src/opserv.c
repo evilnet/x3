@@ -3400,7 +3400,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         }
     } else if (irccasecmp(argv[i], "silent") == 0) {
         i++;
-        if(!oper_has_access(user, opserv, opserv_conf.silent_level, 0)) {
+        if(user != opserv && !oper_has_access(user, opserv, opserv_conf.silent_level, 0)) {
             goto fail;
         } else if (true_string(argv[i])) {
             discrim->silent = 1;
