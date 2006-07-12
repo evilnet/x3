@@ -4383,6 +4383,7 @@ static CHANSERV_FUNC(cmd_topic)
     {
         if(cData->topic)
         {
+            /*XXX Why would we ever want to send chanserv as the setter? I dont understand  -Rubin */
             SetChannelTopic(channel, chanserv, p10 ? user : chanserv, cData->topic, 1);
             reply("CSMSG_TOPIC_SET", cData->topic);
             return 1;
@@ -5650,7 +5651,7 @@ static MODCMD_FUNC(chan_opt_defaulttopic)
                && !match_ircglob(channel->channel_info->topic, channel->channel_info->topic_mask))
                 reply("CSMSG_TOPIC_MISMATCH", channel->name);
 	}
-        SetChannelTopic(channel, chanserv, chanserv, topic ? topic : "", 1);
+        SetChannelTopic(channel, chanserv, user, topic ? topic : "", 1);
     }
 
     if(channel->channel_info->topic)
@@ -7332,12 +7333,12 @@ handle_topic(struct userNode *user, struct chanNode *channel, const char *old_to
         conform_topic(cData->topic_mask, channel->topic, new_topic);
         if(*new_topic)
         {
-           SetChannelTopic(channel, chanserv, chanserv, new_topic, 1);
+           SetChannelTopic(channel, chanserv, user, new_topic, 1);
            /* and fall through to topicsnarf code below.. */
         }
         else /* Topic couldnt fit into mask, was too long */
         {
-            SetChannelTopic(channel, chanserv, chanserv, old_topic, 1);
+            SetChannelTopic(channel, chanserv, user, old_topic, 1);
             send_message(user, chanserv, "CSMSG_TOPICMASK_CONFLICT1", channel->name, cData->topic_mask);
             send_message(user, chanserv, "CSMSG_TOPICMASK_CONFLICT2", TOPICLEN);
             return 1;
