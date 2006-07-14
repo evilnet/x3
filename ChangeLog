@@ -1,6 +1,22 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-13  Alex Schumann  <rubin@afternet.org>
+
+	* src/opserv.c: make the bot reply from the nick you /msg in all
+	cases, if commands are bound to a different bot.
+
+	* src/nickserv.c: make the bot reply from the nick you /msg in all
+	cases, if commands are bound to a different bot.
+
+	* src/chanserv.c: make the bot reply from the nick you /msg in all
+	cases, if commands are bound to a different bot.
+
+	* src/mod-memoserv.c: Make all memoserv commands reply from the bot you
+	msg, not the defined memoserv bot, if commands are aliased to other
+	bots. This may also fix the crash bug playa reported at
+	http://www.unrealgamers.net/forums/index.php?showtopic=138
+
 2006-07-11  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Fixed some weirdness with nef 1.0's 2nd topic setter

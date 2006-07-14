@@ -135,14 +135,14 @@ void init_nickserv(const char *nick);
 struct handle_info *get_handle_info(const char *handle);
 struct handle_info *smart_get_handle_info(struct userNode *service, struct userNode *user, const char *name);
 int oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level);
-int oper_outranks(struct userNode *user, struct handle_info *hi);
+int oper_outranks(struct svccmd *cmd, struct userNode *user, struct handle_info *hi);
 struct nick_info *get_nick_info(const char *nick);
 struct modeNode *find_handle_in_channel(struct chanNode *channel, struct handle_info *handle, struct userNode *except);
 int nickserv_modify_handle_flags(struct userNode *user, struct userNode *bot, const char *str, unsigned long *add, unsigned long *remove);
 int oper_has_access(struct userNode *user, struct userNode *bot, unsigned int min_level, unsigned int quiet);
 void nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd);
 
-struct handle_info *get_victim_oper(struct userNode *user, const char *target);
+struct handle_info *get_victim_oper(struct svccmd *cmd, struct userNode *user, const char *target);
 struct handle_info *loc_auth(char *handle, char *password);
 
 typedef void (*user_mode_func_t)(struct userNode *user, const char *mode_change);

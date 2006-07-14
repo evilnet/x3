@@ -3352,7 +3352,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         } else if (irccasecmp(argv[i], "ip") == 0) {
             j = irc_pton(&discrim->ip_mask, &discrim->ip_mask_bits, argv[++i]);
             if (!j) {
-                send_message(user, opserv, "OSMSG_BAD_IP", argv[i]);
+                send_message(user, bot, "OSMSG_BAD_IP", argv[i]);
                 goto fail;
             }
     } else if (irccasecmp(argv[i], "account") == 0) {
@@ -3395,7 +3395,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         } else if (false_string(argv[i])) {
             discrim->use_regex = 0;
         } else {
-            send_message(user, opserv, "MSG_INVALID_BINARY", argv[i]);
+            send_message(user, bot, "MSG_INVALID_BINARY", argv[i]);
             goto fail;
         }
     } else if (irccasecmp(argv[i], "silent") == 0) {
@@ -3407,7 +3407,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         } else if (false_string(argv[i])) {
             discrim->silent = 0;
         } else {
-            send_message(user, opserv, "MSG_INVALID_BINARY", argv[i]);
+            send_message(user, bot, "MSG_INVALID_BINARY", argv[i]);
             goto fail;
         }
     } else if (irccasecmp(argv[i], "duration") == 0) {
@@ -3535,7 +3535,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 char buff[256];
                 buff[regerror(err, &discrim->regex_nick, buff, sizeof(buff))] = 0;
 
-                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_nick, buff, err);
+                send_message(user, bot, "OSMSG_INVALID_REGEX", discrim->mask_nick, buff, err);
                 goto regfail;
             }
         }
@@ -3549,7 +3549,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 char buff[256];
                 buff[regerror(err, &discrim->regex_ident, buff, sizeof(buff))] = 0;
 
-                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_ident, buff, err);
+                send_message(user, bot, "OSMSG_INVALID_REGEX", discrim->mask_ident, buff, err);
                 goto regfail;
             }
         }
@@ -3563,7 +3563,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 char buff[256];
                 buff[regerror(err, &discrim->regex_host, buff, sizeof(buff))] = 0;
 
-                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_host, buff, err);
+                send_message(user, bot, "OSMSG_INVALID_REGEX", discrim->mask_host, buff, err);
                 goto regfail;
             }
         }
@@ -3577,7 +3577,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 char buff[256];
                 buff[regerror(err, &discrim->regex_info, buff, sizeof(buff))] = 0;
 
-                send_message(user, opserv, "OSMSG_INVALID_REGEX", discrim->mask_info, buff, err);
+                send_message(user, bot, "OSMSG_INVALID_REGEX", discrim->mask_info, buff, err);
                 goto regfail;
             }
         }
@@ -4615,7 +4615,7 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_GLINE;
     else if (!irccasecmp(argv[2], "track")) {
 #ifndef HAVE_TRACK
-        send_message(user, opserv, "OSMSG_TRACK_DISABLED");
+        reply("OSMSG_TRACK_DISABLED");
         return 0;
 #else
         reaction = REACT_TRACK;

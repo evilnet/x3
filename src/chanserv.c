@@ -1676,7 +1676,7 @@ protect_user(const struct userNode *victim, const struct userNode *aggressor, st
 }
 
 static int
-validate_op(struct userNode *user, struct chanNode *channel, struct userNode *victim)
+validate_op(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, struct userNode *victim)
 {
     struct chanData *cData = channel->channel_info;
     struct userData *cs_victim;
@@ -1685,7 +1685,10 @@ validate_op(struct userNode *user, struct chanNode *channel, struct userNode *vi
         || (cs_victim->access < UL_OP /* cData->lvlOpts[lvlGiveOps]*/))
        && !check_user_level(channel, user, lvlEnfOps, 0, 0))
     {
-	send_message(user, chanserv, "CSMSG_OPBY_LOCKED");
+        if(cmd)
+	    reply("CSMSG_OPBY_LOCKED");
+        else
+            send_message(user, chanserv, "CSMSG_OPBY_LOCKED");
 	return 0;
     }
 
@@ -1693,7 +1696,7 @@ validate_op(struct userNode *user, struct chanNode *channel, struct userNode *vi
 }
 
 static int
-validate_halfop(struct userNode *user, struct chanNode *channel, struct userNode *victim)
+validate_halfop(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, struct userNode *victim)
 {
     struct chanData *cData = channel->channel_info;
     struct userData *cs_victim;
@@ -1702,7 +1705,7 @@ validate_halfop(struct userNode *user, struct chanNode *channel, struct userNode
         || (cs_victim->access < UL_HALFOP /* cData->lvlOpts[lvlGiveHalfOps] */))
        && !check_user_level(channel, user, lvlEnfHalfOps, 0, 0))
     {
-        send_message(user, chanserv, "CSMSG_HOPBY_LOCKED");
+        reply("CSMSG_HOPBY_LOCKED");
         return 0;
     }
 
@@ -1711,17 +1714,17 @@ validate_halfop(struct userNode *user, struct chanNode *channel, struct userNode
 
 
 static int
-validate_deop(struct userNode *user, struct chanNode *channel, struct userNode *victim)
+validate_deop(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, struct userNode *victim)
 {
     if(IsService(victim))
     {
-	send_message(user, chanserv, "MSG_SERVICE_IMMUNE", victim->nick);
+	reply("MSG_SERVICE_IMMUNE", victim->nick);
 	return 0;
     }
 
     if(protect_user(victim, user, channel->channel_info))
     {
-	send_message(user, chanserv, "CSMSG_USER_PROTECTED", victim->nick);
+	reply("CSMSG_USER_PROTECTED", victim->nick);
 	return 0;
     }
 
@@ -1729,17 +1732,17 @@ validate_deop(struct userNode *user, struct chanNode *channel, struct userNode *
 }
 
 static int
-validate_dehop(struct userNode *user, struct chanNode *channel, struct userNode *victim)
+validate_dehop(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, struct userNode *victim)
 {
     if(IsService(victim))
     {
-        send_message(user, chanserv, "MSG_SERVICE_IMMUNE", victim->nick);
+        reply("MSG_SERVICE_IMMUNE", victim->nick);
         return 0;
     }
 
     if(protect_user(victim, user, channel->channel_info))
     {
-        send_message(user, chanserv, "CSMSG_USER_PROTECTED", victim->nick);
+        reply("CSMSG_USER_PROTECTED", victim->nick);
         return 0;
     }
 
@@ -2795,7 +2798,7 @@ static CHANSERV_FUNC(cmd_mdelhalfop)
 
 /* trim_lamers.. */
 static int
-cmd_trim_bans(struct userNode *user, struct chanNode *channel, unsigned long duration)
+cmd_trim_bans(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, unsigned long duration)
 {
     struct banData *bData, *next;
     char interval[INTERVALLEN];
@@ -2816,12 +2819,12 @@ cmd_trim_bans(struct userNode *user, struct chanNode *channel, unsigned long dur
     }
 
     intervalString(interval, duration, user->handle_info);
-    send_message(user, chanserv, "CSMSG_TRIMMED_LAMERS", count, channel->name, interval);
+    reply("CSMSG_TRIMMED_LAMERS", count, channel->name, interval);
     return 1;
 }
 
 static int
-cmd_trim_users(struct userNode *user, struct chanNode *channel, unsigned short min_access, unsigned short max_access, unsigned long duration, int vacation)
+cmd_trim_users(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, unsigned short min_access, unsigned short max_access, unsigned long duration, int vacation)
 {
     struct userData *actor, *uData, *next;
     char interval[INTERVALLEN];
@@ -2831,13 +2834,13 @@ cmd_trim_users(struct userNode *user, struct chanNode *channel, unsigned short m
     actor = GetChannelUser(channel->channel_info, user->handle_info);
     if(min_access > max_access)
     {
-        send_message(user, chanserv, "CSMSG_BAD_RANGE", min_access, max_access);
+        reply("CSMSG_BAD_RANGE", min_access, max_access);
         return 0;
     }
 
     if((actor->access <= max_access) && !IsHelping(user))
     {
-	send_message(user, chanserv, "CSMSG_NO_ACCESS");
+	reply("CSMSG_NO_ACCESS");
 	return 0;
     }
 
@@ -2865,7 +2868,7 @@ cmd_trim_users(struct userNode *user, struct chanNode *channel, unsigned short m
         min_access = 1;
         max_access = (actor->access > UL_OWNER) ? UL_OWNER : (actor->access - 1);
     }
-    send_message(user, chanserv, "CSMSG_TRIMMED_USERS", count, min_access, max_access, channel->name, intervalString(interval, duration, user->handle_info));
+    reply("CSMSG_TRIMMED_USERS", count, min_access, max_access, channel->name, intervalString(interval, duration, user->handle_info));
     return 1;
 }
 
@@ -2887,22 +2890,22 @@ static CHANSERV_FUNC(cmd_trim)
 
     if(!irccasecmp(argv[1], "lamers"))
     {
-	cmd_trim_bans(user, channel, duration); /* trim_lamers.. */
+	cmd_trim_bans(cmd, user, channel, duration); /* trim_lamers.. */
 	return 1;
     }
     else if(!irccasecmp(argv[1], "users"))
     {
-	cmd_trim_users(user, channel, 0, 0, duration, vacation);
+	cmd_trim_users(cmd, user, channel, 0, 0, duration, vacation);
 	return 1;
     }
     else if(parse_level_range(&min_level, &max_level, argv[1]))
     {
-	cmd_trim_users(user, channel, min_level, max_level, duration, vacation);
+	cmd_trim_users(cmd, user, channel, min_level, max_level, duration, vacation);
 	return 1;
     }
     else if((min_level = user_level_from_name(argv[1], UL_OWNER)))
     {
-	cmd_trim_users(user, channel, min_level, min_level, duration, vacation);
+	cmd_trim_users(cmd, user, channel, min_level, min_level, duration, vacation);
 	return 1;
     }
     else
@@ -3022,7 +3025,7 @@ static CHANSERV_FUNC(cmd_downall)
     return cmd_all(CSFUNC_ARGS, cmd_down);
 }
 
-typedef int validate_func_t(struct userNode *user, struct chanNode *channel, struct userNode *victim);
+typedef int validate_func_t(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, struct userNode *victim);
 typedef void process_func_t(unsigned int num, struct userNode **newops, struct chanNode *channel, struct userNode *who, int announce);
 
 static int
@@ -3042,7 +3045,7 @@ modify_users(struct userNode *user, struct chanNode *channel, unsigned int argc,
         change->args[valid].u.member = GetUserMode(channel, victim);
         if(!change->args[valid].u.member)
             continue;
-        if(validate && !validate(user, channel, victim))
+        if(validate && !validate(cmd, user, channel, victim))
 	    continue;
         valid++;
     }
@@ -5450,7 +5453,7 @@ typedef struct chanservSearch
 typedef void (*channel_search_func)(struct chanData *channel, void *data);
 
 static search_t
-chanserv_search_create(struct userNode *user, unsigned int argc, char *argv[])
+chanserv_search_create(struct svccmd *cmd, struct userNode *user, unsigned int argc, char *argv[])
 {
     search_t search;
     unsigned int i;
@@ -5464,7 +5467,7 @@ chanserv_search_create(struct userNode *user, unsigned int argc, char *argv[])
 	/* Assume all criteria require arguments. */
 	if(i == (argc - 1))
 	{
-	    send_message(user, chanserv, "MSG_MISSING_PARAMS", argv[i]);
+	    reply("MSG_MISSING_PARAMS", argv[i]);
             goto fail;
 	}
 
@@ -5485,7 +5488,7 @@ chanserv_search_create(struct userNode *user, unsigned int argc, char *argv[])
 		search->flags |= CHANNEL_SUSPENDED;
 	    else
 	    {
-		send_message(user, chanserv, "CSMSG_INVALID_CFLAG", argv[i]);
+		reply("CSMSG_INVALID_CFLAG", argv[i]);
 		goto fail;
 	    }
 	}
@@ -5493,7 +5496,7 @@ chanserv_search_create(struct userNode *user, unsigned int argc, char *argv[])
 	    search->limit = strtoul(argv[++i], NULL, 10);
 	else
 	{
-	    send_message(user, chanserv, "MSG_INVALID_CRITERIA", argv[i]);
+	    reply("MSG_INVALID_CRITERIA", argv[i]);
 	    goto fail;
 	}
     }
@@ -5570,7 +5573,7 @@ static CHANSERV_FUNC(cmd_search)
 	return 0;
     }
 
-    search = chanserv_search_create(user, argc - 2, argv + 2);
+    search = chanserv_search_create(cmd, user, argc - 2, argv + 2);
     if(!search)
         return 0;
 
@@ -7396,7 +7399,7 @@ handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_ch
         else if(change->args[ii].mode & MODE_CHANOP)
         {
             const struct userNode *victim = change->args[ii].u.member->user;
-            if(IsService(victim) || validate_op(user, channel, (struct userNode*)victim))
+            if(IsService(victim) || validate_op(NULL, user, channel, (struct userNode*)victim))
                 continue;
             if(!bounce)
                 bounce = mod_chanmode_alloc(change->argc + 1 - ii);

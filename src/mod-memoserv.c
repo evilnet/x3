@@ -157,7 +157,7 @@ static struct {
 } memoserv_conf;
 
 #define MEMOSERV_FUNC(NAME) MODCMD_FUNC(NAME)
-#define OPTION_FUNC(NAME) int NAME(struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
+#define OPTION_FUNC(NAME) int NAME(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
 typedef OPTION_FUNC(option_func_t);
 
 unsigned long memo_id;
@@ -686,21 +686,21 @@ static MODCMD_FUNC(cmd_expiry)
 
 
 static void
-set_list(struct userNode *user, struct handle_info *hi, int override)
+set_list(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, int override)
 {
     option_func_t *opt;
     unsigned int i;
     char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE", "LIMIT",
                            "IGNORERECIEPTS", "SENDRECIEPTS"};
 
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS");
-    send_message(user, memoserv_conf.bot, "MSMSG_BAR");
+    reply("MSMSG_SET_OPTIONS");
+    reply("MSMSG_BAR");
 
     /* Do this so options are presented in a consistent order. */
     for (i = 0; i < ArrayLength(set_display); ++i)
         if ((opt = dict_find(memoserv_opt_dict, set_display[i], NULL)))
-            opt(user, hi, override, 0, NULL);
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_OPTIONS_END");
+            opt(cmd, user, hi, override, 0, NULL);
+    reply("MSMSG_SET_OPTIONS_END");
 }
 
 static MODCMD_FUNC(cmd_set)
@@ -710,7 +710,7 @@ static MODCMD_FUNC(cmd_set)
 
     hi = user->handle_info;
     if (argc < 2) {
-        set_list(user, hi, 0);
+        set_list(cmd, user, hi, 0);
         return 1;
     }
 
@@ -719,7 +719,7 @@ static MODCMD_FUNC(cmd_set)
         return 0;
     }
 
-    return opt(user, hi, 0, argc-1, argv+1);
+    return opt(cmd, user, hi, 0, argc-1, argv+1);
 }
 
 static MODCMD_FUNC(cmd_oset)
@@ -727,11 +727,11 @@ static MODCMD_FUNC(cmd_oset)
     struct handle_info *hi;
     option_func_t *opt;
 
-    if (!(hi = get_victim_oper(user, argv[1])))
+    if (!(hi = get_victim_oper(cmd, user, argv[1])))
         return 0;
 
     if (argc < 3) {
-        set_list(user, hi, 0);
+        set_list(cmd, user, hi, 0);
         return 1;
     }
 
@@ -740,7 +740,7 @@ static MODCMD_FUNC(cmd_oset)
         return 0;
     }
 
-    return opt(user, hi, 1, argc-2, argv+2);
+    return opt(cmd, user, hi, 1, argc-2, argv+2);
 }
 
 static OPTION_FUNC(opt_notify)
@@ -757,13 +757,13 @@ static OPTION_FUNC(opt_notify)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_NOTIFY_NEW;
         } else {
-            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
+            reply("MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_NOTIFY_NEW) ? "on" : "off";
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_NOTIFY", choice);
+    reply("MSMSG_SET_NOTIFY", choice);
     return 1;
 }
 
@@ -781,13 +781,13 @@ static OPTION_FUNC(opt_authnotify)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_NOTIFY_LOGIN;
         } else {
-            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
+            reply("MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_NOTIFY_LOGIN) ? "on" : "off";
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_AUTHNOTIFY", choice);
+    reply("MSMSG_SET_AUTHNOTIFY", choice);
     return 1;
 }
 
@@ -805,13 +805,13 @@ static OPTION_FUNC(opt_ignorereciepts)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_IGNORE_RECIEPTS;
         } else {
-            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
+            reply("MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_IGNORE_RECIEPTS) ? "on" : "off";
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_IGNORERECIEPTS", choice);
+    reply("MSMSG_SET_IGNORERECIEPTS", choice);
     return 1;
 }
 
@@ -829,13 +829,13 @@ static OPTION_FUNC(opt_sendreciepts)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_ALWAYS_RECIEPTS;
         } else {
-            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
+            reply("MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_ALWAYS_RECIEPTS) ? "on" : "off";
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_SENDRECIEPTS", choice);
+    reply("MSMSG_SET_SENDRECIEPTS", choice);
     return 1;
 }
 
@@ -853,13 +853,13 @@ static OPTION_FUNC(opt_private)
         } else if (disabled_string(choice)) {
             ma->flags &= ~MEMO_DENY_NONCHANNEL;
         } else {
-            send_message(user, memoserv_conf.bot, "MSMSG_INVALID_BINARY", choice);
+            reply("MSMSG_INVALID_BINARY", choice);
             return 0;
         }
     }
 
     choice = (ma->flags & MEMO_DENY_NONCHANNEL) ? "on" : "off";
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_PRIVATE", choice);
+    reply("MSMSG_SET_PRIVATE", choice);
     return 1;
 }
 
@@ -878,7 +878,7 @@ static OPTION_FUNC(opt_limit)
         ma->limit = choice;
     }
 
-    send_message(user, memoserv_conf.bot, "MSMSG_SET_LIMIT", ma->limit);
+    reply("MSMSG_SET_LIMIT", ma->limit);
     return 1;
 }
 
@@ -1299,6 +1299,8 @@ memoserv_finalize(void) {
     str = database_get_data(conf_node, "bot", RECDB_QSTRING);
     if (str)
         memoserv_conf.bot = GetUserH(str);
+    else
+        log_module(MS_LOG, LOG_ERROR, "database_get_data for memoserv_conf.bot failed!");
 
     if (autojoin_channels && memoserv_conf.bot) {
         for (i = 0; i < autojoin_channels->used; i++) {
