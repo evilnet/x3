@@ -1,6 +1,15 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-16  Neil Spierling  <sirvulcan@gmail.com>
+
+	* x3.conf.example: Added host_in_topic option for sending full
+	nick!user@host if its enabled. Default to one as Nefarious is
+	default to TRUE for HOST_IN_TOPIC. There will be wierdness if
+	you have this enabled on X3 and not on your Nefarious server.
+
+	* src/proto-p10.c: Make use of host_in_topic.
+
 2006-07-13  Alex Schumann  <rubin@afternet.org>
 
 	* src/opserv.c: make the bot reply from the nick you /msg in all

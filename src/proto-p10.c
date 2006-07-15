@@ -923,15 +923,23 @@ irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what,
 {
 
    int type = 4;
-   const char *str;
-   str = conf_get_data("server/type", RECDB_QSTRING);
-   if(str)
-     type = atoi(str);
+   int host_in_topic = 0;
+   const char *hstr, *tstr;
+
+   tstr = conf_get_data("server/type", RECDB_QSTRING);
+   hstr = conf_get_data("server/host_in_topic", RECDB_QSTRING);
+   if(tstr)
+     type = atoi(tstr);
    else
      type = 4;/* default to 040 style topics */
 
+   if (hstr)
+     host_in_topic = atoi(hstr);
+
    if (type == 5) {
-     putsock("%s " P10_TOPIC " %s %s " FMT_TIME_T " " FMT_TIME_T " :%s", service->numeric, what->name, who->nick, what->timestamp, now, topic);
+     putsock("%s " P10_TOPIC " %s %s%s%s%s%s " FMT_TIME_T " " FMT_TIME_T " :%s", service->numeric, what->name,
+             who->nick, host_in_topic ? "!" : "", host_in_topic ? who->ident : "", host_in_topic ? "@" : "",
+             host_in_topic ? who->hostname : "", what->timestamp, now, topic);
    } else {
      who = service;
      putsock("%s " P10_TOPIC " %s :%s", who->numeric, what->name, topic);

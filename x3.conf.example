@@ -53,6 +53,7 @@
      * 5 - nefarious 1.0.x and higher
      */
     "type" "5";
+    "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.
     "max_users" "256"; // You can save a little memory by setting this to a lower value.
     "force_n2k" "1"; // Use extended (5-digit) numnick for self, even if 3 are possible.
     "ping_freq" "60";
