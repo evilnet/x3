@@ -19,6 +19,7 @@
  */
 
 #include "conf.h"
+#include "common.h"
 #include "gline.h"
 #include "global.h"
 #include "nickserv.h"
@@ -85,6 +86,32 @@
 #define KEY_ISSUED "issued"
 #define KEY_ADMIN_LEVEL "admin_level"
 #define KEY_SILENT_LEVEL "silent_level"
+#define KEY_UPLINK "uplink"
+#define KEY_SECOND "secondaryuplink"
+#define KEY_PORT "port"
+#define KEY_KARMA "karma"
+#define KEY_OFFLINE "offline"
+#define KEY_ROUTINGPLAN "routingplan"
+#define KEY_ROUTINGPLAN_OPTIONS "routingplan_options"
+
+/* Routing karma values: */
+/* What value we start out with when new servers are added: */
+#define KARMA_DEFAULT 10
+ /* max, min */
+#define KARMA_MAX 10
+#define KARMA_MIN -10
+/* ping out, reduce karma by this much: */
+#define KARMA_PINGOUT -8
+/* read err, reduce karma by this much: */
+#define KARMA_READERROR -5
+/* every 24 hours everyone gets this much added (so we eventually re-try bad servers) */
+#define KARMA_ENTROPE 1
+/* every 24 hours servers linked for 24 hours get an additional ammount: */
+#define KARMA_RELIABLE 1
+/* How often to run entrope and reliable checks */
+#define KARMA_TIMER 86400 /* 1 day */
+
+#define ROUTING_CONNECT_TIMEOUT 30 /* 30 seconds */
 
 #define IDENT_FORMAT            "%s [%s@%s/%s]"
 #define IDENT_DATA(user)        user->nick, user->ident, user->hostname, irc_ntoa(&user->ip)
@@ -249,6 +276,45 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ALERTS_DESC",   "   Criteria: %s" },
     { "OSMSG_ALERT_IS",      "$b%-20s$b %-6s (by %s)" },
     { "OSMSG_ALERT_END",     "----------------End of Alerts-----------------" },
+    /* routing messages */
+    { "OSMSG_ROUTINGPLAN_LIST",  "$bRouting Plans$b" },
+    { "OSMSG_ROUTINGPLAN_BAR",   "----------------------------------------------" },
+    { "OSMSG_ROUTINGPLAN_END",   "-------------End of Routing Plans-------------" },
+    { "OSMSG_ROUTINGPLAN_OPTION", "%s is set to %s" },
+    { "OSMSG_ROUTINGPLAN_ACTIVE", "Auto routing is active, using plan '%s'." },
+    { "OSMSG_ROUTING_ACTIVATION_ERROR", "There was an error activating the routing plan. Check for loops, and make sure the map includes my own uplink." },
+    { "OSMSG_ROUTINGPLAN_OPTION_NOT_FOUND", "There is no routing plan option '%s'." },
+    { "OSMSG_ROUTINGPLAN_OPTION_NOT_SET", "Option '%s' is not currently set." },
+    { "OSMSG_ROUTINGPLAN_NAME",  "$b%s:$b" },
+    { "OSMSG_ROUTINGPLAN_SERVER","      %s:%d <-- %s[%d/%s] (%s)" }, 
+    { "OSMSG_ADDPLAN_SUCCESS", "Added new routing plan '%s'." },
+    { "OSMSG_ADDPLAN_FAILURE", "Could not add new plan '%s' (does it already exist?)." },
+    { "OSMSG_INVALID_PLAN", "That routing plan name is not valid." },
+    { "OSMSG_PLAN_DELETED", "The routing plan was sucessfully deleted." },
+    { "OSMSG_PLAN_NOT_FOUND", "There is no routing plan called '%s'." },
+    { "OSMSG_PLAN_SERVER_ADDED", "Added %s to the routing plan." },
+    { "OSMSG_PLAN_SERVER_DELETED", "The server has been deleted." },
+    { "OSMSG_PLAN_SERVER_NOT_FOUND", "The server '%s' was not found in that routing plan." },
+    { "OSMSG_ROUTING_DISABLED", "Routing is now disabled." },
+    { "OSMSG_DOWNLINKS_FORMAT_A", "%s%s-$b%s$b [%s]" },
+    { "OSMSG_DOWNLINKS_FORMAT_B", "$b%s$b (me)" },
+    { "OSMSG_ROUTELIST_EMPTY", "No servers in route list" },
+    { "OSMSG_ROUTELIST_AS_PLANNED", "Routing plan: Servers as they SHOULD be linked" },
+    { "OSMSG_MAP_CENTERED",         "map %s centered, Maxdepth:%d" },
+    { "OSMSG_NO_SERVERS_MISSING",   "No servers are missing." },
+    { "OSMSG_CONNECTING_MISSING",   "Attempted to connect %d missing servers." },
+    { "OSMSG_CONNECT",              "->connect %s %d %s" },
+    { "OSMSG_SQUIT",                "->squit %s" },
+    { "OSMSG_COULDNT_FIND_SERVER",  "Couldnt find %s, so using %s to link %s" },
+    { "OSMSG_INSPECTING_SERVER",    "Inspecting server [%s]" },
+    { "OSMSG_REROUTING_ACC_MAP",    "Rerouting network according to loaded map.." },
+    { "OSMSG_CONNECTING_MISSING_ONLY", "Connecting missing servers only.." },
+    { "OSMSG_NO_ROUTING_NECESSARY", "No rerouting appears necessary." },
+    { "OSMSG_TESTING_REROUTE",      "Testing Reroute(): Commands not sent to socket.." },
+    { "OSMSG_INVALID_DIRECTIVE",    "Reroute(): Invalid directive %s", },
+    { "OSMSG_UPLINKS_MISSING",      "%d servers' uplinks were missing, and were not connected." },
+    { "OSMSG_REROUTE_COMPLETE",     "Reroute complete: Moved %d, connected %d, total %d changes." },
+    /* end of routing */
     { "OSMSG_REHASH_COMPLETE", "Completed rehash of configuration database." },
     { "OSMSG_REHASH_FAILED", "Rehash of configuration database failed, previous configuration is intact." },
     { "OSMSG_REOPEN_COMPLETE", "Closed and reopened all log files." },
@@ -311,6 +377,9 @@ static dict_t opserv_reserved_nick_dict; /* data is struct userNode* */
 static struct string_list *opserv_bad_words;
 static dict_t opserv_exempt_channels; /* data is not used */
 static dict_t opserv_trusted_hosts; /* data is struct trusted_host* */
+static dict_t opserv_routing_plans; /* data is struct routingPlan */
+static dict_t opserv_routing_plan_options; /* data is a dict_t key->val list*/
+static dict_t opserv_waiting_connections; /* data is struct waitingConnection */
 static dict_t opserv_hostinfo_dict; /* data is struct opserv_hostinfo* */
 static dict_t opserv_user_alerts; /* data is struct opserv_user_alert* */
 static dict_t opserv_nick_based_alerts; /* data is struct opserv_user_alert* */
@@ -320,6 +389,7 @@ static struct log_type *OS_LOG;
 static unsigned int new_user_flood;
 static char *level_strings[1001];
 struct string_list *autojoin_channels;
+struct route *opserv_route = NULL; /* Main active routing table from activate_routing()*/
 
 static struct {
     struct chanNode *debug_channel;
@@ -368,6 +438,15 @@ opserv_free_hostinfo(void *data)
     struct opserv_hostinfo *ohi = data;
     userList_clean(&ohi->clients);
     free(ohi);
+}
+
+static void
+opserv_free_waiting_connection(void *data)
+{
+    struct waitingConnection *wc = data;
+    free(wc->server);
+    free(wc->target);
+    free(wc);
 }
 
 typedef struct opservDiscrim {
@@ -2298,6 +2377,1086 @@ opserv_add_bad_word(struct svccmd *cmd, struct userNode *user, const char *new_b
     return 1;
 }
 
+static int
+opserv_routing_plan_add_server(struct routingPlan *rp, const char *name, const char *uplink, const unsigned int port, int karma, const char *second, const unsigned int offline)
+{
+    struct routingPlanServer *rps;
+    rps = calloc(1, sizeof(*rps));
+    if(!rps)
+        return 0;
+    /* duplicate servers replace */
+    rps->uplink = strdup(uplink);
+    if(second)
+        rps->secondaryuplink = strdup(second);
+    else
+        rps->secondaryuplink = NULL;
+    rps->port = port ? port : 4400; /* lame hardcodede default port. maybe get from config file somewhere? */
+    rps->karma = karma;
+    rps->offline = offline; /* 1 = yes, 0 = no */
+    dict_insert(rp->servers, strdup(name), rps);
+    log_module(OS_LOG, LOG_DEBUG, "Adding rp server %s with uplink %s", name, uplink);
+    return 1;
+}
+
+static void
+free_routing_plan_server(void *data)
+{
+    struct routingPlanServer *rps = data;
+    free(rps->uplink);
+    if(rps->secondaryuplink)
+        free(rps->secondaryuplink);
+    free(rps);
+}
+ 
+struct routingPlan*
+opserv_add_routing_plan(const char *name)
+{
+    struct routingPlan *rp;
+    rp = calloc(1, sizeof(*rp));
+    if (!rp)
+        return NULL;
+    if(dict_find(opserv_routing_plans, name, NULL))
+        return NULL; /* plan already exists */
+    rp->servers = dict_new();
+    dict_set_free_data(rp->servers, free_routing_plan_server);
+
+    dict_insert(opserv_routing_plans, strdup(name), rp);
+    /* TODO: check for duplicate */
+    return rp;
+}
+
+static void
+free_routing_plan(void *data)
+{
+    struct routingPlan *rp = data;
+    /* delete all the servers attached to this plan */
+    dict_delete(rp->servers);
+    /* free the plan struct */
+    free(rp);
+}
+
+/* ************************************************************************
+ * Auto Routing Plans
+ * ************************************************************************
+ *
+ * XXX: routing plan TODO work
+ *
+ * DONE 
+ *      - read from .db into opserv_routing_plans. format:
+ *      - write back to .db
+ *      - show (stats routingplans?)
+ *      - cmd_routing_addplan
+ *      - cmd_routing_delplan
+ *      - cmd_routing_addserver
+ *      - cmd_routing_delserver
+ *      - cmd_routing_set
+ *      - cmd_reroute ( c / n / t )
+ *      - routing map
+ * TODO 
+ *      - timer after attempting a connect, 
+ *        to see if it timed out.
+ * ************************************************************************
+ */
+
+
+/*************************************************
+* Functions to handle the active routing struct */
+
+struct routeList 
+*find_routeList_server(struct route *route, const char *server)
+{
+    struct routeList *rptr;
+    if(!server)
+        return(NULL);
+    for(rptr = route->servers;rptr;rptr=rptr->next) {
+        if(!strcasecmp(rptr->server, server))
+            return(rptr);
+    }
+    return(NULL);
+}
+
+/* Wipes out the routing structure, freeing properly.
+ * note: does NOT free itself, we just re-use it usually.*/
+void 
+wipe_route_list(struct route *route) {
+    struct routeList *nextptr, *rptr;
+    if(!route)
+        return;
+    for(rptr = opserv_route->servers; rptr; rptr=nextptr)
+    {
+        nextptr = rptr->next;
+        free(rptr->server);
+        if(rptr->uplink)
+            free(rptr->uplink);
+        if(rptr->secondaryuplink)
+            free(rptr->secondaryuplink);
+        free(rptr);
+    }
+    route->centered = true;
+    route->count = 0;
+    route->maxdepth = 0;
+    route->servers = NULL;
+}
+
+
+int
+rank_outside_rec(struct route *route, char *server, int count)
+{
+    struct routeList *rptr;
+    int n, max = 0;
+    int i = 0;
+    if(count > 256) { /* XXX: 256 becomes max # of servers this works with, whats the real #? */
+        return -1;
+    }
+    for(rptr = route->servers; rptr; rptr = rptr->next) {
+        i++;
+        if(!strcasecmp(server, rptr->uplink)) {
+            log_module(MAIN_LOG, LOG_DEBUG, "%d:%d: rank_outside_rec(%s) calling rank_outside_rec(%s)", count, i, rptr->server, rptr->uplink);
+            n = rank_outside_rec(route, rptr->server, count +1);
+            if(n < 0) /* handle error condition */
+                return n;
+            if(n > max)
+                max = n;
+        }
+    }
+    if((rptr = find_routeList_server(route, server))) {
+        rptr->outsideness = max;
+        return(max + 1);
+    }
+    else {
+        log_module(MAIN_LOG, LOG_ERROR, "routing struct rank_outsideness() couldnt find %s", server);
+        return 0;
+    }
+}
+
+int
+rank_outsideness(struct route *route) 
+{
+    log_module(MAIN_LOG, LOG_DEBUG, "rank_outsideness(): Running...");
+    route->maxdepth = rank_outside_rec(route, self->uplink->name, 0) - 1;
+    if(route->maxdepth < 0) { /* if the rank failed, remove route */
+        log_module(MAIN_LOG, LOG_WARNING, "The active routing plan has a loop! auto routing disabled.");
+        wipe_route_list(route);
+        return false;
+    }
+    return true;
+}
+
+
+/* Add servers to the routing structure */
+void 
+add_routestruct_server(struct route *route, const char *server, unsigned int port, char *uplink, char *secondary)
+{
+    struct routeList *rptr;
+    char *hname;
+    if(find_routeList_server(route, server))
+    { 
+        log_module(MAIN_LOG, LOG_WARNING, "Routing structure add server Skipping duplicate [%s]. This should never really be possible.", server);
+        return;
+    }
+    rptr = calloc(1, sizeof(*rptr));
+    rptr->server = strdup(server);
+    rptr->port = port;
+    if(!uplink) {
+        hname = conf_get_data("server/hostname", RECDB_QSTRING);
+        uplink = hname;
+    }
+    rptr->uplink = strdup(uplink);
+    if(secondary)
+        rptr->secondaryuplink = strdup(secondary);
+    /* tack this server on the front of the list */
+    rptr->next = route->servers;
+    route->servers = rptr;
+    route->count++;
+
+#ifdef notdef /* I dont quite get this. there could be uncentered things 
+               * added after our own uplink, and this function doesnt center
+               * as it adds. -Rubin */
+    /* If the map hasnt been centered yet... */
+    if(route->centered == false) {
+        /* AND we just added our own uplink to it... */
+        if(!strcasecmp(server, self->uplink->name)) {
+            change_route_uplinks(route); /* recenter it, n mark it centered. */
+        }
+    }
+#endif
+}
+
+/* Recenter the routing struct around our current uplink */
+int
+change_route_uplinks(struct route *route)
+{
+    struct routeList *rptr;
+    char lastserver[MAXLEN];
+    char nextserver[MAXLEN];
+
+    if(!route->servers)
+        return false; /* no map to recenter */
+    log_module(MAIN_LOG, LOG_DEBUG, "change_route_uplinks(): running...");
+    char *servicename = conf_get_data("server/hostname", RECDB_QSTRING);
+    strcpy(lastserver, servicename);
+    rptr = find_routeList_server(route, self->uplink->name);
+    if(!rptr) {
+        log_module(MAIN_LOG, LOG_ERROR, "Cannot convert routing map to center: My uplink is not on the map! Marking map as uncentered.");
+        route->centered = false;
+        return false;
+    }
+    if(!strcasecmp(rptr->uplink, servicename)) {
+        log_module(MAIN_LOG, LOG_DEBUG, "Already centered");
+    }
+    else { /* else, center it */
+        while(rptr) {
+            strcpy(nextserver, rptr->uplink);
+            log_module(MAIN_LOG, LOG_DEBUG, "change_route_uplinks() changing %s uplink to %s.", rptr->server, lastserver);
+            free(rptr->uplink);
+            rptr->uplink = strdup(lastserver);
+            strcpy(lastserver, rptr->server);
+            rptr = find_routeList_server(route, nextserver);
+        }
+    }
+    if(rank_outsideness(route) > 0) {
+        route->centered = true;
+        return true;
+    }
+    else
+        return false;
+}
+
+int 
+activate_routing(struct svccmd *cmd, struct userNode *user, char *plan_name)
+{
+    static struct routingPlan *rp;
+    dict_iterator_t it;
+    char *karma;
+
+    if(plan_name) { /* make this the new active plan */
+        if(!strcmp(plan_name, "*")) {
+            /* disable routing */
+            dict_remove(opserv_routing_plan_options, "ACTIVE");
+            plan_name = NULL;
+        }
+        else {
+            rp = dict_find(opserv_routing_plans, plan_name, NULL);
+            if(!rp) {
+                if(cmd && user)
+                    reply("OSMSG_PLAN_NOT_FOUND", plan_name);
+                else {
+                    /* since it doesnt exist, remove the active setting */
+                    dict_remove(opserv_routing_plan_options, plan_name);
+                }
+                log_module(MAIN_LOG, LOG_ERROR, "activate_routing() couldnt find active routing plan!");
+                return 0;
+            }
+        }
+    }
+    else { /* find the active plan in settings */
+        plan_name = dict_find(opserv_routing_plan_options, "ACTIVE", NULL);
+    }
+    if(!plan_name) { /* deactivated, or no plan was set active */
+        /* TODO: delete routing map if it exists */
+        wipe_route_list(opserv_route);
+        return 1;
+    }
+
+    karma = dict_find(opserv_routing_plan_options, "KARMA", NULL);
+
+    rp = dict_find(opserv_routing_plans, plan_name, NULL);
+
+    /* this should really be done during opserv init */
+    if(!opserv_route)
+        opserv_route = calloc(1, sizeof(*opserv_route));
+
+    /* Delete the existing active route */
+    wipe_route_list(opserv_route);
+
+    for(it = dict_first(rp->servers); it; it = iter_next(it)) {
+            const char* servername = iter_key(it);
+            struct routingPlanServer *rps = iter_data(it), 
+                                     *rp_uplink, *rp_second = NULL;
+            char *uplink = rps->uplink;
+            rp_uplink = dict_find(rp->servers, rps->uplink, NULL);
+            if(rps->secondaryuplink)
+                rp_second = dict_find(rp->servers, rps->secondaryuplink, NULL);
+
+            /* If the normal uplink has bad karma, don't use it as a hub,
+             * switch to the secondary uplink.
+             */
+            if(karma && enabled_string(karma) && rp_uplink && rp_uplink->karma < 0) {
+                if(rps->secondaryuplink) {
+                    uplink = rps->secondaryuplink;
+                    /* unless the secondary uplinks karma is worse than the uplink. */
+                    if((rp_second = dict_find(rp->servers, uplink, NULL)) && rp_second->karma < rp_uplink->karma)
+                        uplink = rps->uplink;
+                }
+            }
+            /*
+             * If _WE_ have bad karma, don't link us to our normal uplink, maybe
+             * its a bad route. switch to secondary. Important: dont neg karma when we arnt on
+             * our primary uplink, or we'll get stuck on secondary when THAT link is worse.
+             */
+            if(karma && enabled_string(karma) && (rps->karma < 0 || rps->offline) ) {
+                    if(rps->secondaryuplink) {
+                        uplink = rps->secondaryuplink;
+                    }
+            }
+            log_module(MAIN_LOG, LOG_DEBUG, "activate_routing() adding %s:%d %s", servername, rps->port, uplink);
+            add_routestruct_server(opserv_route, servername, rps->port, uplink, NULL);
+    }
+    if(change_route_uplinks(opserv_route))
+        return 1;
+    else if(user) {
+        reply("OSMSG_ROUTING_ACTIVATION_ERROR");
+        activate_routing(cmd, user, "*");
+        return 0;
+    }
+    return 1;
+}
+
+/*******************************************************
+ * Functions to handle online route configuration via opserv
+ */
+static void route_show_option(struct svccmd *cmd, struct userNode *user, char *name)
+{
+    char *value = dict_find(opserv_routing_plan_options, name, NULL);
+    if(value) {
+        if(!strcmp("RETRY_PERIOD", name)) { /* Show as an interval */
+            char buff[INTERVALLEN+1];
+            reply("OSMSG_ROUTINGPLAN_OPTION", name, intervalString(buff, atoi(value), user->handle_info));
+        }
+        else if(!strcmp("ACTIVE", name)) { 
+            if(opserv_route && opserv_route->servers)
+                reply("OSMSG_ROUTINGPLAN_ACTIVE", value);
+            else
+                reply("OSMSG_ROUTINGPLAN_OPTION_NOT_SET", name);
+        }
+        else {
+            reply("OSMSG_ROUTINGPLAN_OPTION", name, value);
+        }
+    }
+    else {
+        reply("OSMSG_ROUTINGPLAN_OPTION_NOT_SET", name);
+    }
+}
+
+static void route_show_options(struct svccmd *cmd, struct userNode *user)
+{
+    char *options[] = {"ACTIVE", "RETRY_PERIOD", "CONN_PINGOUT", "CONN_READERROR", "KARMA", "DEFAULT_PORT", NULL};
+    int i;
+    for(i = 0; options[i]; i++) {
+        route_show_option(cmd, user, options[i]);
+    }
+}
+
+/* called from timeq */
+void routing_connect_timeout(void *data)
+{
+    struct waitingConnection *wc = data;
+    struct server *target = GetServerH(wc->target);
+    if(!target) {
+        dict_remove(opserv_waiting_connections, wc->server);
+        return; /* server we wanted to connect new server to is gone, just give up */
+    }
+    routing_handle_connect_failure(target, wc->server, "Connection timed out");
+    /* the following invalidates server variable! */
+    dict_remove(opserv_waiting_connections, wc->server);
+}
+
+void routing_delete_connect_timer(char *server)
+{
+    struct waitingConnection *wc = dict_find(opserv_waiting_connections, server, 0);
+    if(wc) {
+        timeq_del(0, routing_connect_timeout, wc, TIMEQ_IGNORE_WHEN);
+        dict_remove(opserv_waiting_connections, server);
+    }
+}
+
+
+void
+routing_connect_server(char *server, int port, struct server *to)
+{
+    struct waitingConnection *wc = calloc(sizeof(*wc), 1);
+
+    wc->server = strdup(server);
+    wc->target = strdup(to->name);
+    dict_insert(opserv_waiting_connections, strdup(server), wc);
+    timeq_add(now + ROUTING_CONNECT_TIMEOUT, routing_connect_timeout, wc);
+
+    irc_connect(opserv, server, port, to);
+}
+
+int 
+routing_connect_one(struct route *route, char *server)
+{
+    struct routeList *rptr;
+    struct server *sptr, *suptr;
+    for(rptr = route->servers; rptr; rptr = rptr->next) {
+        if(!strcasecmp(rptr->server, server)) {
+            /* this is the one, connect it */
+            suptr = GetServerH(rptr->uplink);
+            sptr = GetServerH(rptr->server);
+            if(sptr)
+                return 1; /* already linked */
+            if(suptr) {
+                routing_connect_server(rptr->server, rptr->port, suptr);
+                return 1; /* attempted link */
+            }
+            return 0; /* its uplink isnt here to link to */
+        }
+    }
+    log_module(MAIN_LOG, LOG_ERROR, "Tried to link %s but its not in the active routing struct!", server);
+    return 0; /* server wasnt found in active route struct ?! */
+}
+
+int routing_connect_children(struct route *route, char *server)
+{
+    struct routeList *rptr;
+    struct server *sptr, *suptr;
+    for(rptr = route->servers; rptr; rptr = rptr->next) {
+        if(!strcasecmp(rptr->uplink, server)) {
+            /* this is the one, connect it */
+            suptr = GetServerH(rptr->uplink);
+            sptr = GetServerH(rptr->server);
+            if(sptr)
+                continue; /* already linked */
+            if(suptr) {
+                routing_connect_server(rptr->server, rptr->port, suptr);
+                continue; /* attempted link */
+            }
+            continue; /* its uplink isnt here to link to */
+        }
+    }
+    return 1; /* server wasnt found in active route struct ?! */
+}
+
+int reroute(struct route *route, struct userNode *user, struct svccmd *cmd, char *directive)
+{
+    struct routeList *rptr;
+    struct server *sptr, *suptr;
+    int connect = 0, move = 0, missing = 0, i;
+    char d = toupper(*directive);
+
+    if(user) {
+        if(d == 'N') { /* normal */
+            irc_wallops("%s", "Attempting a reroute of the network according to loaded map...");
+            reply("OSMSG_REROUTING_ACC_MAP");
+        }
+        else if(d == 'C') { /* only connect */
+            reply("OSMSG_CONNECTING_MISSING_ONLY");
+        }
+        else if(d == 'T') { /* test */
+            reply("OSMSG_TESTING_REROUTE");
+        }
+        else
+        {
+            reply("OSMSG_INVALID_DIRECTIVE", directive);
+            return 0;
+        }
+    }
+    for(i = 0; i <= route->maxdepth-1; i++) {
+        for(rptr = route->servers; rptr; rptr = rptr->next) {
+            if(rptr->outsideness == i) {
+                /*  debugging */
+                if(user && d=='T')
+                    reply("OSMSG_INSPECTING_SERVER", rptr->server);
+                suptr = GetServerH(rptr->uplink);
+                if(!suptr) {
+                    if(rptr->secondaryuplink && (suptr = GetServerH(rptr->secondaryuplink))) {
+                        if(user)
+                            reply("OSMSG_COULDNT_FIND_SERVER", rptr->uplink, rptr->secondaryuplink, rptr->server);
+                    }
+                }
+                if(suptr) { /* if the proper uplink is connected.. */
+                    sptr = GetServerH(rptr->server);
+                    if(d == 'C' && sptr) {
+                        continue; /* Already linked */
+                    }
+                    /* If server is missing or the uplinks are not the same then... */
+                    else if(!sptr ||  strcasecmp(sptr->uplink->name, rptr->uplink)) {
+                        if(!sptr) {
+                            connect++;
+                        }
+                        else { /* Server is already connected somewhere */
+                            if(strcasecmp(sptr->uplink->name, rptr->uplink)) {
+                                if(d != 'T') {  /* do it for real */
+                                    irc_squit_route(sptr, "%s issued reroute.", user ? user->nick : opserv->nick);
+                                }
+                                else {  /* just pretend */
+                                    reply("OSMSG_SQUIT", rptr->server);
+                                }
+                                move++;
+                            }
+                        }
+                        if(d != 'T')  /* do the real thing */
+                            routing_connect_server(rptr->server, rptr->port, suptr);
+                        else /* just pretend */
+                            reply("OSMSG_CONNECT", rptr->server, rptr->port, suptr->name);
+                    }
+                }
+                else {
+                    log_module(MAIN_LOG, LOG_DEBUG, "server uplink %s was not found, cant connect %s", rptr->uplink, rptr->server);
+                    missing++;
+                }
+            } /* outsideness = 1 */
+        } /* rptr */
+    } /* maxdepth */
+    if(user) { /* report on what we did */
+        if(!strcasecmp(directive, "C")) {
+            if(connect > 0)
+                reply("OSMSG_CONNECTING_MISSING", connect);
+            else
+                reply("OSMSG_NO_SERVERS_MISSING");
+        }
+        else {
+            if(move+connect > 0)
+                reply("OSMSG_REROUTE_COMPLETE", move, connect, move+connect);
+            else
+                reply("OSMSG_NO_ROUTING_NECESSARY");
+            if(missing > 0)
+                reply("OSMSG_UPLINKS_MISSING", missing);
+        }
+    }
+    return(move+connect);
+}
+
+static MODCMD_FUNC(cmd_reroute) {
+    char* upper;
+    upper = argv[1];
+    if(reroute(opserv_route, user, cmd, upper))
+        return 1;
+    else
+        return 0;
+}
+
+/* reroute_timer(run)
+ * run - if it is null, just setup the timer
+ * but dont run reroute now. otherwise reroute 
+ * and setup timer.
+ */
+void reroute_timer(void *data) {
+    if(!opserv_route || !opserv_route->servers) 
+        return; /* no active route */
+    char *retry_period = dict_find(opserv_routing_plan_options, "RETRY_PERIOD", NULL);
+    if(!retry_period)
+        return; /* retry_period invalid */
+    unsigned int freq = atoi(retry_period);
+    if(freq < 1) 
+        return; /* retry_period set to 0, disable */
+
+    /* Do the reroute C attempt */
+    if(data)
+        reroute(opserv_route, NULL, NULL, "C");
+
+    /* Re-add ourselves to the timer queue */
+    timeq_add(now + freq, reroute_timer, "run");
+}
+
+void routing_change_karma(struct routingPlanServer *rps, const char *server, int change) {
+
+    int oldkarma = rps->karma;
+    rps->karma += change;
+    if(rps->karma < KARMA_MIN)
+        rps->karma = KARMA_MIN;
+    if(rps->karma > KARMA_MAX)
+        rps->karma = KARMA_MAX;
+    log_module(MAIN_LOG, LOG_DEBUG, "Changing %s karma by %d. new karma %d.", server, change, rps->karma);
+    if(oldkarma > 0 && rps->karma < 0) {
+        /* we just crossed over to negitive */
+        log_module(MAIN_LOG, LOG_INFO, "Server %s just went negitive karma!", server);
+        activate_routing(NULL, NULL, NULL);
+    }
+    else if(oldkarma < 0 && rps->karma > 0) {
+        /* we just crossed over to positive */
+        log_module(MAIN_LOG, LOG_INFO, "Server %s just went back positive karma.", server);
+        activate_routing(NULL, NULL, NULL);
+    }
+}
+
+void routing_karma_timer(void *data) {
+    time_t next;
+    time_t timer_init = data ? atoi(data) : 0;
+    char buf[MAXLEN];
+
+    log_module(MAIN_LOG, LOG_DEBUG, "routing_karma_timer() is running. timer_init=%d.", (unsigned int) timer_init);
+
+    /* If theres a time passed in, dont run unless that time is overdue. */
+    if(!timer_init || (timer_init < now)) {
+        if(opserv_route && opserv_route->servers) {
+            char *active = dict_find(opserv_routing_plan_options, "ACTIVE", NULL);
+            struct routingPlan *rp;
+            if(active && (rp = dict_find(opserv_routing_plans, active, NULL))) {
+                dict_iterator_t it;
+                /* Walk through each server in the active routing plan.. */
+                for(it = dict_first(rp->servers); it; it = iter_next(it)) {
+                    struct routingPlanServer *rps = iter_data(it);
+                    struct server *server = GetServerH(iter_key(it));
+                    /* Give everyone +KARMA_ENTROPE just for nothing */
+                    routing_change_karma(rps, iter_key(it), KARMA_ENTROPE);
+                    /* give an additonal +KARMA_RELIABLE to servers that
+                     * have been linked at least KARMA_TIMER seconds. */
+                    if(server  && (server->link < (now - KARMA_TIMER) ) ) {
+                            routing_change_karma(rps, iter_key(it), KARMA_RELIABLE);
+                    }
+                }
+            }
+        }
+    }
+    if(timer_init > now)  /* loading a saved value */
+        next = timer_init;
+    else /* no scheduled timer, or we missed it. start from now */
+        next = now + KARMA_TIMER;
+    /* Save when karma_timer should run again in case we restart before then */
+    log_module(MAIN_LOG, LOG_DEBUG, "routing_karma_timer() scheduling self to run again at %d", (unsigned int) next);
+    sprintf(buf, "%u", (unsigned int) next);
+    dict_insert(opserv_routing_plan_options, "KARMA_TIMER", strdup(buf));
+    /* add a timer to run this again .. */
+    timeq_add(next, routing_karma_timer, NULL);
+}
+
+void routing_handle_neg_karma(char *server, char *uplink, int change)
+{
+    /* if server's primary uplink is uplink, OR, uplink's primary uplink is server,
+     * then whichever one, gets its karma changed. */
+    char *active = dict_find(opserv_routing_plan_options, "ACTIVE", NULL);
+    struct routingPlan *rp;
+    struct routingPlanServer *rps;
+    if(!active)
+        return;
+    if(!(rp = dict_find(opserv_routing_plans, active, NULL)))
+        return;
+    if((rps = dict_find(rp->servers, server, NULL))) {
+        if(!strcasecmp(rps->uplink, uplink)) {
+            /* server's uplink is uplink */
+            routing_change_karma(rps, server, change);
+            return;
+        }
+    }
+    if((rps = dict_find(rp->servers, uplink, NULL))) {
+        if(!strcasecmp(rps->uplink, server)) {
+            /* uplink's uplink is server */
+            routing_change_karma(rps, uplink, change);
+            return;
+        }
+    }
+}
+
+void
+routing_handle_squit(char *server, char *uplink, char *message)
+{
+    log_module(MAIN_LOG, LOG_DEBUG, "Routing_handle_squit(%s, %s)", server, message);
+
+    char *val;
+
+    if(match_ircglob(message, "Ping timeout")) {
+        routing_handle_neg_karma(server, uplink, KARMA_PINGOUT);
+        /* if conn_pingout is true, try to reconnect it obaying karma rules. */
+
+        val = dict_find(opserv_routing_plan_options, "CONN_PINGOUT", 0);
+        if(val && enabled_string(val))
+            routing_connect_one(opserv_route, server);
+    }
+    else if(match_ircglob(message, "Read error:*")) {
+        routing_handle_neg_karma(server, uplink, KARMA_READERROR);
+        /* if conn_readerror is true, try to reconnect it obaying karma rules. */
+        val = dict_find(opserv_routing_plan_options, "CONN_READERROR", 0);
+        if(val && enabled_string(val))
+            routing_connect_one(opserv_route, server);
+    }
+    /* Else whats the message (an oper squit it?) dont interfere */
+}
+
+void
+routing_handle_connect(char *server, char *uplink)
+{
+    char *active;
+    struct routingPlan *rp;
+    struct routingPlanServer *rps;
+    dict_iterator_t it;
+
+    log_module(MAIN_LOG, LOG_DEBUG, "routing_handle_connect(%s, %s)", server, uplink);
+    /* delete a pending connection timer, if any */
+    routing_delete_connect_timer(server);
+    /* check if routing is active... */
+    active = dict_find(opserv_routing_plan_options, "ACTIVE", NULL);
+    if(!active)
+        return;
+    rp = dict_find(opserv_routing_plans, active, NULL);
+    if(!rp)
+        return;
+
+    /* If its offline, mark it online again.. */
+    if((rps = dict_find(rp->servers, server, NULL))) {
+        if(rps->offline == true) {
+            rps->offline = false;
+            if(rps->secondaryuplink) {
+                /* re-activate to move it back to its primary */
+                activate_routing(NULL, NULL, NULL);
+            }
+        }
+        /* if there are any servers missing who have this server as uplink try to connect them.  */
+        routing_connect_children(opserv_route, server);
+    }
+    /* foreach server x3 knows about, if the uplink is this server, call this function on the child. */
+    for (it=dict_first(servers); it; it=iter_next(it)) {
+        struct server *sptr = iter_data(it);
+        if(sptr && sptr->uplink && !strcasecmp(server, sptr->uplink->name)) {
+            log_module(MAIN_LOG, LOG_DEBUG, "routing_handle_connect calling self on %s's leaf %s", server, sptr->name);
+            routing_handle_connect(sptr->name, sptr->uplink->name);
+        }
+    }
+}
+
+/* Handle a failed attempt at connecting servers
+ *  - we should only get here regarding servers X3 attempted to link, other
+ *  opers link messages go to them not to us
+ */
+void
+routing_handle_connect_failure(struct server *source, char *server, char *message)
+{
+    char *active;
+    struct routingPlan *rp;
+    struct routingPlanServer *rps;
+    log_module(MAIN_LOG, LOG_ERROR, "Failed to connect %s to %s: %s", server, source->name, message);
+    /* remove the waiting connection n timeq */
+    routing_delete_connect_timer(server);
+    /* check if routing is active.. */
+    active = dict_find(opserv_routing_plan_options, "ACTIVE", NULL);
+    if(!active)
+        return;
+    rp = dict_find(opserv_routing_plans, active, NULL);
+    if(!rp)
+        return;
+
+    if( ((rps = dict_find(rp->servers, server, NULL)) && !strcasecmp(rps->uplink, source->name))) {
+        /* failed to connect to its primary uplink */
+        if(rps->offline == false) {
+            rps->offline = true;
+            if(rps->secondaryuplink) {
+                /* re-activate routing so the secondary 
+                 * becomes its uplink, and try again */
+                activate_routing(NULL, NULL, NULL);
+                /* attempt to link it again. */
+                routing_connect_one(opserv_route, server); 
+            }
+        }
+    }
+}
+
+/* Delete any existing timers, and start the timer again 
+ * using the passed time for the first run.
+ * - this is called during a retry_period change
+ *   before it has saved the new value. */
+void reroute_timer_reset(unsigned int time)
+{
+    timeq_del(0, reroute_timer, NULL, TIMEQ_IGNORE_DATA & TIMEQ_IGNORE_WHEN);
+    timeq_add(now + time, reroute_timer, "run");
+}
+
+static MODCMD_FUNC(cmd_routing_set)
+{
+    char *option = argv[1];
+    char *options[] = {"ACTIVE", "RETRY_PERIOD", "CONN_PINGOUT", "CONN_READERROR", "KARMA", "DEFAULT_PORT", NULL};
+    int i;
+    if(argc < 2) {
+        route_show_options(cmd, user);
+    }
+    else {
+        char *found_option = NULL;
+        for(i = 0; options[i]; i++) {
+            if(!strcasecmp(options[i], option))
+                found_option = options[i];
+        }
+        if(!found_option) {
+            reply("OSMSG_ROUTINGPLAN_OPTION_NOT_FOUND", option);
+            return 0;
+        }
+        if(argc > 2) {
+            char *value   = argv[2];
+            char buff[MAXLEN]; /* whats the max length of unsigned int as printf'd? */
+            if(!strcmp(found_option, "ACTIVE")) { /* must be an existing route. */
+                if(disabled_string(value) || false_string(value)) {
+                    /* make none of the maps active */
+                    activate_routing(cmd, user, "*");
+                    reply("OSMSG_ROUTING_DISABLED");
+                    return 1;
+                }
+                else if(!activate_routing(cmd, user, value)) {
+                    /* neg reply handled in activate_routing */
+                    return 0;
+                }
+            }
+            if(!strcmp(found_option, "CONN_READERROR") || !strcmp(found_option, "CONN_PINGOUT") ||
+               !strcmp(found_option, "KARMA") ) {
+                if( enabled_string(value)) {
+                    value = "ENABLED";
+                }
+                else if( disabled_string(value) ) {
+                    value = "DISABLED";
+                }
+                else {
+                    reply("MSG_INVALID_BINARY", value);
+                    return 0;
+                }
+            }
+            if(!strcmp(found_option, "RETRY_PERIOD")) {
+                unsigned int duration = ParseInterval(value);
+                sprintf(buff, "%d", duration);
+                value = buff;
+                reroute_timer_reset(duration);
+            }
+            /* set the value here */
+            dict_remove(opserv_routing_plan_options, found_option);
+            dict_insert(opserv_routing_plan_options, strdup(found_option), strdup(value));
+            route_show_option(cmd, user, found_option);
+        }
+        else {
+            /* show the current value */
+            route_show_option(cmd, user, found_option);
+        }
+    }
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_stats_routing_plans) {
+    dict_iterator_t rpit;
+    dict_iterator_t it;
+    struct routingPlan *rp;
+    reply("OSMSG_ROUTINGPLAN_LIST");
+    reply("OSMSG_ROUTINGPLAN_BAR");
+    for(rpit = dict_first(opserv_routing_plans); rpit; rpit = iter_next(rpit)) {
+        const char* name = iter_key(rpit);
+        rp = iter_data(rpit);
+        reply("OSMSG_ROUTINGPLAN_NAME", name);
+        for(it = dict_first(rp->servers); it; it = iter_next(it)) {
+            const char* servername = iter_key(it);
+            struct routingPlanServer *rps = iter_data(it);
+            reply("OSMSG_ROUTINGPLAN_SERVER", servername, rps->port, rps->uplink, rps->karma, rps->offline? "offline" : "online", rps->secondaryuplink ? rps->secondaryuplink : "None");
+        }
+
+    }
+    reply("OSMSG_ROUTINGPLAN_END");
+    route_show_options(cmd, user);
+    return 1;
+}
+
+
+static MODCMD_FUNC(cmd_routing_addplan)
+{
+    char *name;
+    name = argv[1];
+    /* dont allow things like 'off', 'false', '0' because thats how we disable routing. */
+    if(*name && !disabled_string(name) && !false_string(name)) {
+        if(opserv_add_routing_plan(name)) {
+            reply("OSMSG_ADDPLAN_SUCCESS", name);
+            return 1;
+        }
+        else {
+            reply("OSMSG_ADDPLAN_FAILED", name);
+            return 0;
+        }
+    }
+    else
+    {
+        reply("OSMSG_INVALID_PLAN");
+        return 0;
+    }
+}
+
+static MODCMD_FUNC(cmd_routing_delplan)
+{
+    char *name = argv[1];
+    if( dict_remove(opserv_routing_plans, name) ) {
+        char *active = dict_find(opserv_routing_plan_options, "ACTIVE", NULL);
+        if(active && !strcasecmp(active, name)) {
+            /* if this was the active plan, disable routing */
+            activate_routing(cmd, user, "*");
+            reply("OSMSG_ROUTING_DISABLED");
+        }
+        reply("OSMSG_PLAN_DELETED");
+        return 1;
+    }
+    else {
+        reply("OSMSG_PLAN_NOT_FOUND", name);
+        return 0;
+    }
+}
+
+static MODCMD_FUNC(cmd_routing_addserver)
+{
+    char *plan;
+    char *server;
+    char *portstr;
+    char *uplink;
+    char *second;
+    unsigned int port;
+    struct routingPlan *rp;
+
+    plan   = argv[1];
+    server = strdup(argv[2]);
+    server = strtok(server, ":");
+    portstr = strtok(NULL, ":"); 
+    if(portstr)
+        port = atoi(portstr);
+    else {
+        char *str = dict_find(opserv_routing_plan_options, "DEFAULT_PORT", NULL);
+        uplink = argv[3];
+        port = str ? atoi(str) : 0;
+    }
+    uplink = argv[3];
+    if(argc > 4)
+        second = argv[4];
+    else
+        second = NULL;
+
+    if( (rp = dict_find(opserv_routing_plans, plan, 0))) {
+        char *active;
+        opserv_routing_plan_add_server(rp, server, uplink, port, KARMA_DEFAULT, second, 0);
+        reply("OSMSG_PLAN_SERVER_ADDED", server);
+        if((active = dict_find(opserv_routing_plan_options, "ACTIVE", 0)) && !strcasecmp(plan, active)) {
+            /* re-activate routing with new info */
+            activate_routing(cmd, user, NULL);
+        }
+        
+        free(server);
+        return 1;
+    }
+    else {
+        reply("OSMSG_PLAN_NOT_FOUND", plan);
+        free(server);
+        return 0;
+    }
+}
+
+static MODCMD_FUNC(cmd_routing_delserver)
+{
+    char *plan;
+    char *server;
+    struct routingPlan *rp;
+    plan = argv[1];
+    server = argv[2];
+    if( (rp = dict_find(opserv_routing_plans, plan, 0))) {
+        if(dict_remove(rp->servers, server)) {
+            char *active;
+            reply("OSMSG_PLAN_SERVER_DELETED");
+            if((active = dict_find(opserv_routing_plan_options, "ACTIVE", 0)) && !strcasecmp(plan, active)) {
+                /* re-activate routing with new info */
+                activate_routing(cmd, user, NULL);
+            }
+
+            return 1;
+        }
+        else {
+            reply("OSMSG_PLAN_SERVER_NOT_FOUND", server);
+            return 0;
+        }
+    }
+    else {
+        reply("OSMSG_PLAN_NOT_FOUND", plan);
+        return 0;
+    }
+}
+
+
+/*************************************************
+ * Functions to deal with 'route map' command   */
+
+/* Figures out how many downlinks there are for proper
+ * drawing of the route map */
+int 
+num_route_downlinks(struct route *route, char *name)
+{
+    struct routeList *rptr;
+    int num = 0;
+    rptr = route->servers;
+    while(rptr) {
+        if(!strcasecmp(rptr->uplink, name))
+            num++;
+        rptr = rptr->next;
+    }
+    return num;
+}
+
+void
+show_route_downlinks(struct svccmd *cmd, struct route *route, struct userNode *user, char *name, char *prevpre, char *arrowchar, int reset)
+{
+    struct routeList *servPtr;
+    struct server *sptr;
+    int j;
+    char pre[MAXLEN];
+    char *nextpre;
+    char *status;
+    int num = 0;
+    static int depth = 0;
+
+    if(reset)
+        depth = 0;
+
+    nextpre = malloc(MAXLEN);
+    strcpy(pre, prevpre);
+
+    sptr = GetServerH(name);
+    if((servPtr = find_routeList_server(route, name))) {
+        if(!sptr)
+            status = " ";
+        else if (!strcasecmp(sptr->uplink->name, servPtr->uplink))
+            status = "X";
+        else if(servPtr->secondaryuplink && !strcasecmp(sptr->name, servPtr->secondaryuplink))
+            status = "/";
+        else
+            status = "!";
+        reply("OSMSG_DOWNLINKS_FORMAT_A", pre, arrowchar, name, status);
+    }
+    else
+        reply("OSMSG_DOWNLINKS_FORMAT_B", self->name);
+    j = num_route_downlinks(route, name);
+    servPtr = route->servers;
+    while(servPtr) {
+        if(!strcasecmp(servPtr->uplink, name)) {
+            strcpy(nextpre, pre);
+            if(depth++ > 0) {
+                if(arrowchar[0] == '`')
+                    strcat(nextpre, "  ");
+                else
+                    strcat(nextpre, "| ");
+            }
+            if(j > ++num) {
+                show_route_downlinks(cmd, route, user, servPtr->server, nextpre, "|", 0);
+            }
+            else {
+                show_route_downlinks(cmd, route, user, servPtr->server, nextpre, "`", 0);
+            }
+        }
+        servPtr = servPtr->next;
+    }
+    free(nextpre);
+}
+
+int
+show_route_map(struct route *route, struct userNode *user, struct svccmd *cmd)
+{
+    if(!route || !route->servers) {
+        reply("OSMSG_ROUTELIST_EMPTY");
+        return 0;
+    }
+
+    char *serviceName = conf_get_data("server/hostname", RECDB_QSTRING);
+    reply("OSMSG_ROUTELIST_AS_PLANNED");
+    show_route_downlinks(cmd, route, user, serviceName, "", "`", 1);
+    reply("OSMSG_MAP_CENTERED", route->centered ? "is" : "is not", route->maxdepth);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_routing_map)
+{
+    show_route_map(opserv_route, user, cmd);
+    return 1;
+}
+
+
+
+
+/* End of auto routing functions *
+ *********************************/
+   
 static MODCMD_FUNC(cmd_addbad)
 {
     unsigned int arg, count;
@@ -2956,6 +4115,7 @@ add_chan_warn(const char *key, void *data, UNUSED_ARG(void *extra))
 }
 */
 
+
 static int
 add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
 {
@@ -3032,6 +4192,54 @@ trusted_host_read(const char *host, void *data, UNUSED_ARG(void *extra))
     return 0;
 }
 
+static int 
+add_routing_plan_server(const char *name, void *data, void *rp)
+{
+    struct record_data *rd = data;
+    const char *uplink, *portstr, *karma, *second, *offline;
+
+    dict_t obj = GET_RECORD_OBJECT(rd);
+    if(rd->type == RECDB_OBJECT) {
+        uplink = database_get_data(obj, KEY_UPLINK, RECDB_QSTRING);
+        second = database_get_data(obj, KEY_SECOND, RECDB_QSTRING);
+        portstr = database_get_data(obj, KEY_PORT, RECDB_QSTRING);
+        karma   = database_get_data(obj, KEY_KARMA, RECDB_QSTRING);
+        offline = database_get_data(obj, KEY_OFFLINE, RECDB_QSTRING);
+        /* create routing plan server named key, with uplink uplink. */
+        opserv_routing_plan_add_server(rp, name, uplink, portstr ? atoi(portstr) : 0, 
+                                       karma ? atoi(karma) : KARMA_DEFAULT, second, 
+                                       offline ? atoi(offline) : 0);
+    }
+    return 0;
+
+}
+
+static int
+routing_plan_set_option(const char *name, void *data, UNUSED_ARG(void *extra))
+{
+    struct record_data *rd = data;
+    if(rd->type == RECDB_QSTRING)
+    {
+        char *value = GET_RECORD_QSTRING(rd);
+        dict_insert(opserv_routing_plan_options, strdup(name), strdup(value));
+    }
+    return 0;
+}
+
+static int 
+add_routing_plan(const char *name, void *data, UNUSED_ARG(void *extra))
+{
+    struct record_data *rd = data;
+    struct routingPlan *rp;
+
+    if(rd->type == RECDB_OBJECT) {
+        dict_t obj = GET_RECORD_OBJECT(rd);
+        rp = opserv_add_routing_plan(name);
+        dict_foreach(obj, add_routing_plan_server, rp);
+    }
+    return 0;
+}
+
 static int
 opserv_saxdb_read(struct dict *conf_db)
 {
@@ -3084,6 +4292,13 @@ opserv_saxdb_read(struct dict *conf_db)
     if ((object = database_get_data(conf_db, KEY_WARN, RECDB_OBJECT)))
         dict_foreach(object, add_chan_warn, NULL);
 */
+
+    if ((object = database_get_data(conf_db, KEY_ROUTINGPLAN, RECDB_OBJECT)))
+        dict_foreach(object, add_routing_plan, NULL);
+
+    if ((object = database_get_data(conf_db, KEY_ROUTINGPLAN_OPTIONS, RECDB_OBJECT)))
+        dict_foreach(object, routing_plan_set_option, NULL);
+
     return 0;
 }
 
@@ -3110,6 +4325,42 @@ opserv_saxdb_write(struct saxdb_context *ctx)
     /* bad word set */
     if (opserv_bad_words->used) {
         saxdb_write_string_list(ctx, KEY_BAD_WORDS, opserv_bad_words);
+    }
+    /* routing plan options */
+    if (dict_size(opserv_routing_plan_options)) {
+        saxdb_start_record(ctx, KEY_ROUTINGPLAN_OPTIONS, 1);
+        for(it = dict_first(opserv_routing_plan_options); it; it = iter_next(it)) {
+            saxdb_write_string(ctx, iter_key(it), iter_data(it));
+        }
+        saxdb_end_record(ctx);
+    }
+    /* routing plans */
+    if (dict_size(opserv_routing_plans)) {
+        dict_iterator_t svrit;
+        struct routingPlan *rp;
+        struct routingPlanServer *rps;
+        saxdb_start_record(ctx, KEY_ROUTINGPLAN, 1);
+        for (it = dict_first(opserv_routing_plans); it; it = iter_next(it)) {
+            rp = iter_data(it);
+            saxdb_start_record(ctx, iter_key(it), 0);
+            for(svrit = dict_first(rp->servers); svrit; svrit = iter_next(svrit)) {
+                char buf[MAXLEN];
+                rps = iter_data(svrit);
+                saxdb_start_record(ctx, iter_key(svrit), 0);
+                saxdb_write_string(ctx, KEY_UPLINK, rps->uplink);
+                if(rps->secondaryuplink)
+                    saxdb_write_string(ctx, KEY_SECOND, rps->secondaryuplink);
+                sprintf(buf, "%d", rps->port);
+                saxdb_write_string(ctx, KEY_PORT, buf);
+                sprintf(buf, "%d", rps->karma);
+                saxdb_write_string(ctx, KEY_KARMA, buf);
+                sprintf(buf, "%d", rps->offline);
+                saxdb_write_string(ctx, KEY_OFFLINE, buf);
+                saxdb_end_record(ctx);
+            }
+            saxdb_end_record(ctx);
+        }
+        saxdb_end_record(ctx);
     }
     /* insert exempt channel names */
     if (dict_size(opserv_exempt_channels)) {
@@ -4769,6 +6020,11 @@ opserv_db_init(void) {
     dict_delete(opserv_trusted_hosts);
     opserv_trusted_hosts = dict_new();
     dict_set_free_data(opserv_trusted_hosts, free_trusted_host);
+
+    opserv_routing_plan_options = dict_new();
+
+    opserv_routing_plans = dict_new();
+    dict_set_free_data(opserv_routing_plans, free_routing_plan);
     /* set up opserv_chan_warn dict */
 
 /* alert trace notice channel #x replaces warnings
@@ -4890,6 +6146,7 @@ init_opserv(const char *nick)
     opserv_define_func("OPALL", cmd_opall, 400, 2, 0);
     opserv_define_func("HOP", cmd_hop, 100, 2, 2);
     opserv_define_func("HOPALL", cmd_hopall, 400, 2, 0);
+    opserv_define_func("MAP", cmd_stats_links, 0, 0, 0);
     opserv_define_func("PART", cmd_part, 601, 0, 2);
     opserv_define_func("QUERY", cmd_query, 0, 0, 0);
     opserv_define_func("RAW", cmd_raw, 999, 0, 2);
@@ -4901,6 +6158,13 @@ init_opserv(const char *nick)
     opserv_define_func("RESETMAX", cmd_resetmax, 900, 0, 0);
     opserv_define_func("RESERVE", cmd_reserve, 800, 0, 5);
     opserv_define_func("RESTART", cmd_restart, 900, 0, 2);
+    opserv_define_func("ROUTING ADDPLAN", cmd_routing_addplan, 800, 0, 2);
+    opserv_define_func("ROUTING DELPLAN", cmd_routing_delplan, 800, 0, 2);
+    opserv_define_func("ROUTING ADDSERVER", cmd_routing_addserver, 800, 0, 4);
+    opserv_define_func("ROUTING DELSERVER", cmd_routing_delserver, 800, 0, 3);
+    opserv_define_func("ROUTING MAP", cmd_routing_map, 800, 0, 0);
+    opserv_define_func("ROUTING SET", cmd_routing_set, 800, 0, 0);
+    opserv_define_func("REROUTE", cmd_reroute, 800, 0, 2);
     opserv_define_func("SET", cmd_set, 900, 0, 3);
     opserv_define_func("SETTIME", cmd_settime, 901, 0, 0);
     opserv_define_func("STATS ALERTS", cmd_stats_alerts, 0, 0, 0);
@@ -4913,6 +6177,7 @@ init_opserv(const char *nick)
     opserv_define_func("STATS NETWORK", cmd_stats_network, 0, 0, 0);
     opserv_define_func("STATS NETWORK2", cmd_stats_network2, 0, 0, 0);
     opserv_define_func("STATS RESERVED", cmd_stats_reserved, 0, 0, 0);
+    opserv_define_func("STATS ROUTING", cmd_stats_routing_plans, 0, 0, 0);
     opserv_define_func("STATS TIMEQ", cmd_stats_timeq, 0, 0, 0);
     opserv_define_func("STATS TRUSTED", cmd_stats_trusted, 0, 0, 0);
     opserv_define_func("STATS UPLINK", cmd_stats_uplink, 0, 0, 0);
@@ -4944,8 +6209,12 @@ init_opserv(const char *nick)
 
     opserv_reserved_nick_dict = dict_new();
     opserv_hostinfo_dict = dict_new();
+
     dict_set_free_keys(opserv_hostinfo_dict, free);
     dict_set_free_data(opserv_hostinfo_dict, opserv_free_hostinfo);
+
+    opserv_waiting_connections = dict_new();
+    dict_set_free_data(opserv_waiting_connections, opserv_free_waiting_connection);
 
     reg_new_user_func(opserv_new_user_check);
     reg_nick_change_func(opserv_alert_check_nick);
@@ -4962,6 +6231,11 @@ init_opserv(const char *nick)
         opserv_service = service_register(opserv);
         opserv_service->trigger = '?';
     }
+
+    /* start auto-routing system */
+    reroute_timer(NULL);
+    /* start the karma timer, using the saved one if available */
+    routing_karma_timer(dict_find(opserv_routing_plan_options, "KARMA_TIMER", NULL));
 
     reg_exit_func(opserv_db_cleanup);
     message_register_table(msgtab);

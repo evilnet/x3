@@ -122,12 +122,15 @@ void irc_ping(const char *something);
 void irc_pong(const char *who, const char *data);
 void irc_quit(struct userNode *user, const char *message);
 void irc_squit(struct server *srv, const char *message, const char *service_message);
+void irc_squit_route(struct server *srv, const char *message, ...);
+void irc_connect(struct userNode *user, char *server, unsigned int port, struct server *target);
 
 /* messages */
 void irc_privmsg(struct userNode *from, const char *to, const char *message);
 void irc_notice(struct userNode *from, const char *to, const char *message);
 void irc_notice_user(struct userNode *from, struct userNode *to, const char *message);
 void irc_wallchops(struct userNode *from, const char *to, const char *message);
+void irc_wallops(const char *format, ...);
 
 /* channel maintenance */
 void irc_join(struct userNode *who, struct chanNode *what);

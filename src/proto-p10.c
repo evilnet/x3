@@ -22,6 +22,7 @@
 #include "chanserv.h"
 #include "hosthiding.h"
 #include "proto-common.c"
+#include "opserv.h"
 
 /* Full commands. */
 #define CMD_ACCOUNT		"ACCOUNT"
@@ -380,6 +381,43 @@ privmsg_user_helper(struct userNode *un, void *data)
     }
 }
 
+/* equiv to user doing /connect server port target */
+void irc_connect(struct userNode *user, char *server, unsigned int port, struct server *target)
+{
+    putsock("%s " P10_CONNECT " %s %d %s", user->numeric, server, port, target->numeric);
+}
+
+void
+irc_squit_route(struct server *srv, const char *message, ...)
+{
+    va_list arg_list;
+    char buffer[MAXLEN];
+    va_start(arg_list, message);
+    vsnprintf(buffer, MAXLEN-2, message, arg_list);
+    buffer[MAXLEN-1] = 0;
+
+    /* When would we squit ourselves exactly?? -Rubin */
+    if(srv == self && cManager.uplink->state == CONNECTED ) {
+        unsigned int i;
+
+        /* Quit all clients linked to me. */
+        for(i = 0; i <= self->num_mask; i++) {
+            if(!self->users[i])
+                continue;
+            irc_quit(self->users[i], buffer);
+        }
+    }
+
+    putsock("%s " P10_SQUIT " %s %d :%s", self->numeric, srv->name, 0, buffer);
+
+    if(srv == self) {
+        /* Force a reconnect to the currently selected server. */
+        cManager.uplink->tries = 0;
+        log_module(MAIN_LOG, LOG_INFO, "Squitting from uplink: %s", buffer);
+        close_socket();
+    }
+}
+
 void
 irc_server(struct server *srv)
 {
@@ -596,6 +634,17 @@ void
 irc_wallchops(struct userNode *from, const char *to, const char *message)
 {
     putsock("%s " P10_WALLCHOPS " %s :%s", from->numeric, to, message);
+}
+
+void
+irc_wallops(const char *format, ...)
+{
+    va_list arg_list;
+    char buffer[MAXLEN];
+    va_start(arg_list, format);
+    vsnprintf(buffer, MAXLEN-2, format, arg_list);
+    buffer[MAXLEN-1] = 0;
+    putsock("%s " P10_WALLOPS " :%s", self->numeric, buffer);
 }
 
 void
@@ -1065,6 +1114,7 @@ static CMD_FUNC(cmd_server)
     return 1;
 }
 
+
 static CMD_FUNC(cmd_eob)
 {
     struct server *sender;
@@ -1081,11 +1131,21 @@ static CMD_FUNC(cmd_eob)
         unbursted_channels = NULL;
         irc_eob();
         irc_eob_ack();
+
+        /* now that we know who our uplink is,
+         * we can center the routing map and activate auto-routing.
+         */
+        activate_routing(NULL, NULL, NULL);
     }
     sender->self_burst = 0;
     recalc_bursts(sender);
     for (ii=0; ii<slf_used; ii++)
         slf_list[ii](sender);
+    /* let auto-routing figure out if we were
+     * wating on this server to link a child to it */
+    /* DONT call this if uplink is _US_ */
+    if(sender->uplink != self)
+        routing_handle_connect(sender->name, sender->uplink->name);
     return 1;
 }
 
@@ -1694,6 +1754,7 @@ static CMD_FUNC(cmd_kick)
 static CMD_FUNC(cmd_squit)
 {
     struct server *server;
+    char *uplink;
 
     if (argc < 4)
         return 0;
@@ -1708,7 +1769,13 @@ static CMD_FUNC(cmd_squit)
         return 1;
     }
 
+    uplink = strdup(server->uplink->name);
     DelServer(server, 0, argv[3]);
+    /* if its a pingout and pingout connecting is enabled
+               or its a read error and readerror connecting is enabled
+               or were doing a "N" and i need to connect that server somewhere */
+    routing_handle_squit(argv[1], uplink, argv[3]);
+    free(uplink);
     return 1;
 }
 
@@ -1729,14 +1796,46 @@ static CMD_FUNC(cmd_privmsg)
 static CMD_FUNC(cmd_notice)
 {
     struct privmsg_desc pd;
+    struct server *srv;
+    int nuser = 0;
+
     if (argc != 3)
         return 0;
+
     pd.user = GetUserH(origin);
-    if (!pd.user || (IsGagged(pd.user) && !IsOper(pd.user)))
-        return 1;
-    pd.is_notice = 1;
-    pd.text = argv[2];
-    parse_foreach(argv[1], privmsg_chan_helper, NULL, privmsg_user_helper, privmsg_invalid, &pd);
+    if(!pd.user)
+        nuser = 1;
+    if (!pd.user || (IsGagged(pd.user) && !IsOper(pd.user))) {
+    }
+    else {
+        pd.is_notice = 1;
+        pd.text = argv[2];
+        parse_foreach(argv[1], privmsg_chan_helper, NULL, privmsg_user_helper, privmsg_invalid, &pd);
+    }
+
+    srv = GetServerH(origin);
+    if(srv) {
+        char *sargv[MAXNUMPARAMS];
+        int sargc;
+
+        sargc = split_line(argv[2], true, MAXNUMPARAMS, sargv);
+
+        if(!strcasecmp(sargv[0], "Connect:")) {
+            /* :Connect: Host shoe.loxxin.net not listed in ircd.conf */
+            if(!strcasecmp(sargv[3], "not") && !strcasecmp(sargv[4], "listed")) {
+                routing_handle_connect_failure(srv, sargv[2], unsplit_string(sargv+3, sargc-3, NULL));
+            }
+        }
+        else if(!strcasecmp(sargv[0], "Link")) {
+            /* :Link with mephisto.etheria.cx cancelled: Server mephisto.etheria.cx[216.46.33.71]
+             *
+             * :Link with laptop.afternet.org cancelled: Connection refused
+             */
+            if(!strcasecmp(sargv[3], "cancelled:")) {
+                routing_handle_connect_failure(srv, sargv[2], unsplit_string(sargv+4, sargc-4, NULL));
+            }
+        }
+    }
     return 1;
 }
 

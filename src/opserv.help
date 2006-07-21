@@ -12,6 +12,7 @@
             "  $bTRACKING$b    Tracking commands. (if enabled)",
             "  $bCHANNEL$b     Channel commands.            ",
             "  $bCLONES$b      Manage trusts and limits.    ",
+            "  $bROUTING$b     Manage the Auto Routing System.",
             "  $bSETTINGS$b    View and temporarily change  ",
             "              config file settings.        ",
             "  $bADMIN$b       Misc Administrator Commands. ",
@@ -72,6 +73,20 @@
               "  $bDELTRACK$b  Deletes an active track.",
               "  $bLISTTRACK$b Lists all active tracks.",
              );
+"ROUTING"  (
+            " The Auto Routing System: ",
+            " $b$b",
+            " $bSTATS ROUTING$b     Shows everything about the auto routing configuration.",
+            " $bROUTING ADDPLAN$b   Creates a new routing plan. Routing plans are a collection of server linking information that $O uses to decide how to route.",
+            " $bROUTING DELPLAN$b   Deletes a routing plan (and all its servers).",
+            " $bROUTING ADDSERVER$b Adds server linking information to a plan.",
+            " $bROUTING DELSERVER$b Deletes a server from a routing plan.",
+            " $bROUTING SET$b       Show and change routing settings. ",
+            " $bROUTING MAP$b       Show what the active routing plan says the network should look like.",
+            " $bREROUTE$b           Connect servers to the network, optionally squiting them first to change the routing.",
+            " $b$b ",
+            " Start by creating a routing plan, and then adding servers to it, with their listning port, uplink, and a backup uplink. You can view it in $bSTATS ROUTING$b. Take care not to create loops, and that you make everything connected. Then set your new plan ACTIVE using $bROUTING SET$b. $O does the rest! See help topic $bROUTING EXAMPLE$b for a working example."
+            );
 
 "CHANNEL"  (
             "  $bOP$b      Op someone.",
@@ -671,6 +686,95 @@
 	"$uSee Also:$u jupe, unreserve, clone"
         );
 
+"ROUTING ADDPLAN" ("/msg $O ROUTING ADDPLAN <name>",
+        "Creates a new blank routing plan named name.",
+        "You can then use $bROUTING ADDSERVER$b to build it.",
+        "Use $bSTATS ROUTING$b to view it, and $bROUTING SET ACTIVE$b to activate it.",
+        "$uSee Also:$u routing, stats routing, routing delplan, routing set, routing addserver"
+        );
+"ROUTING DELPLAN" ("/msg $O ROUTING DELPLAN <name>",
+        "Removes the routing plan name, including all the servers that make it up. Use with caution, there is no undo.",
+        "$uSee Also:$u routing, stats routing, routing addplan"
+        );
+
+"ROUTING ADDSERVER" ("/msg $O ROUTING ADDSERVER <plan> <name>[:port] <uplink> [backup uplink]",
+        "Adds a server to the routing plan 'plan'.",
+        " plan   - The name of a routing plan already created.",
+        " server - The name of the server you are adding (full hostname).",
+        " port   - The port that the server listens to connectons on. If you leave this out, the default is taken from $bSET ROUTING DEFAULT_PORT$b.",
+        " uplink - This is the server (full hostname) that you want the server to connect to.",
+        " backup uplink - If uplink is offline, this one takes over.",
+        " $b$b ",
+        " It is $uvery$u important that the routing plan be from a consistant perspective, without any loops, or disconnected pieces. It helps to pick a server (usually the one $O is liked to) and consider which server each of the servers links to towards $O. For an example see /msg $O HELP ROUTING EXAMPLE.",
+        " If you add a server whose name already exists, the old one will be replaced.",
+        "$uSee Also:$u routing, stats routing, routing delserver, routing addplan",
+        );
+
+"ROUTING EXAMPLE" ("An Auto Routing System Example:",
+        "  Consider the following map: ",
+        "    test.net.org         - test's uplink is x3",
+        "    |-X3.NET.Services    - this is me",
+        "    |-laptop.net.org     - laptop's uplink is test",
+        "    | `-foobar.net.org   - foobar's uplink is laptop",
+        "    `-test2.net.org      - test2's uplink is test",
+        "      `-test3.net.org    - test3's uplink is test3",
+        " $b$b ",
+        " Its important that every entry in your routing plan be specified relitive to the same location. Usually this is the location of X3 itself, but doesn't have to be. In the above example you could do:",
+        "  ROUTING ADDSERVER myplan test.net.org:4400 x3.net.services ",
+        "  ROUTING ADDSERVER myplan test2.net.org:4400 test.net.org ",
+        "  ROUTING ADDSERVER myplan test3.net.org:4400 test2.net.org ",
+        "  ROUTING ADDSERVER myplan laptop.net.org:4400 test.net.org ",
+        "  ROUTING ADDSERVER myplan foobar.net.org:4400 laptop.net.org ",
+        " $b$b ",
+        " If there are loops, or two servers who point to eachother, $O will not be able to use the plan. If there are sections which do not link back to the rest, they will be lost and the plan will not work properly.",
+        );
+       
+"ROUTING DELSERVER" ("/msg $O ROUTING DELSERVER <plan> <server>",
+        "Deletes a server from a routing plan.",
+        "$uSee also:$u routing, stats routing, routing addserver, routing delplan",
+        );
+
+"ROUTING SET" ("/msg $O ROUTING SET [option] [value]",
+        "Changes The Auto Routing System options",
+        "  ACTIVE           - Sets which routing plan is active. ",
+        "                     Set to 'none' to disable auto routing.",
+        "  RETRY_PERIOD     - How often to check for missing servers",
+        "                     see /msg $C durations for help with units",
+        "  CONN_PINGOUT     - enable to auto-reconnect servers that ping out",
+        "  CONN_READERROR   - enable to auto-reconnect servers that squit with a read error",
+        "  KARMA            - enable to keep track of oft-splitting servers, and try to route around them",
+        "  DEFAULT_PORT     - If you don't specify a port in $brouting addserver$b, this port is used",
+        " $b$b ",
+        " Issue without any option/value to see the current value(s).",
+        "$uSee also:$u routing, stats routing, routing addserver",
+       );
+
+"ROUTING MAP" ("/msg $O ROUTING MAP",
+        "Shows the currently active routing plan, as parsed and re-centered for use.",
+        "Before $O can take a routing plan as entered by you, and use it, $O must re-orient the map so all the uplinks point toward it. Loops are detected, and missing pieces lost. This command shows you the desired route, as $O has compiled it.",
+        "If KARMA is enabled, or a server is un-connectable, $O may use a backup uplink to build this map to attempt to repair the network.",
+        "The check box [ ] is used to indicate if the current routing of the network conforms to the routing map.",
+        "[X] - Server is linked correctly",
+        "[!] - Server is linked, but not where the plan specifies",
+        "[ ] - Server is not linked to the network at all",
+        " $b$b",
+        "$uSee also:$u routing, stats routing, routing set, routing addserver",
+        );
+
+"REROUTE" ("/msg $O REROUTE <C|N|T>",
+        "Allows $O to make changes to the linkage of the servers on the network. It has 3 modes: Normal, Connect-only, and Test:",
+        " N - Normal mode: Will delink any servers which are not linked to their primary uplink, and try to reconnect them correctly according to the active routing plan. it will also try to connect servers that are completely missing.",
+        " C - Connect-only:  Will attempt to connect any missing servers to the network, using the active routing plan.",
+        " T - Test: Will do the same as normal mode, only all actions will be simulated. No actual rerouting will take place, it will only tell you what it WOULD do in normal mode.",
+        " $b$b ",
+        "$uSee also:$u routing, routing map, stats routing",
+        );
+
+"STATS ROUTING" ("/msg $O STATS ROUTING",
+        "Provides information about The Auto Routing System's configuration. You can see the routing plans, and the current routing options.",
+        "$uSee also:$u routing, routing set",
+        );
+
 "UNRESERVE" ("/msg $O UNRESERVE <nick>",
         "Removes a nick from $b$O's$b reserve list.",
         "Access level: $b${level/unreserve}$b",
@@ -798,6 +902,7 @@
         "$bOPERS$b:      A list of users that are currently +o.",
         "$bPROXYCHECK$b: Information about proxy checking in X3.",
         "$bRESERVED$b:   The list of currently reserved nicks.",
+        "$bROUTING$b:    The routing plans and settings of the Auto Routing System",
         "$bTIMEQ$b:      The number of events in the timeq, and how long until the next one.",
         "$bTRUSTED$b:    The list of currently trusted IPs.",
         "$bUPTIME$b:     X3 uptime, lines processed, and CPU time.",

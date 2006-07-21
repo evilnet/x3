@@ -24,6 +24,11 @@
 void init_opserv(const char *nick);
 unsigned int gag_create(const char *mask, const char *owner, const char *reason, time_t expires);
 int opserv_bad_channel(const char *name);
+struct routingPlan* opserv_add_routing_plan(const char *name);
 unsigned int opserv_conf_admin_level();
+void routing_handle_connect_failure(struct server *source, char *server, char *message);
+int activate_routing(struct svccmd *cmd, struct userNode *user, char *plan_name);
+void routing_handle_squit(char *server, char* uplink, char *message);
+void routing_handle_connect(char *server, char *uplink);
 
 #endif

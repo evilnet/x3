@@ -2472,6 +2472,8 @@ create_default_binds(int rebind) {
             svccmd->min_opserv_level = 101;
             svccmd = service_make_alias(service, "service", "*modcmd.joiner", NULL);
             svccmd->min_opserv_level = 900;
+            svccmd = service_make_alias(service, "routing", "*modcmd.joiner", NULL);
+            svccmd->min_opserv_level = 100;
         }
     }
 }

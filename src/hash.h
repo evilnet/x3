@@ -219,6 +219,42 @@ struct server {
     struct serverList children;
 };
 
+struct waitingConnection {
+    char *server;
+    char *target;
+};
+
+struct routingPlan {
+    dict_t servers;
+};
+
+struct routingPlanServer {
+    char *uplink;
+    char *secondaryuplink;
+    unsigned int port;
+    int karma;
+    int offline;
+};
+
+/* Ported from X2 */
+struct routeList {
+    char* server;              /* Name of the server */
+    unsigned int   port;       /* connection port */
+    char *uplink;              /* Server its linked to (towards us) */
+    char *secondaryuplink; 
+    int outsideness;           /* 0 means leaf, 1 second layer, etc. my uplink is highest */
+    struct routeList *next;
+};
+
+/* Ported from X2 */
+struct route {
+    int count;                 /* how many servers we have */
+    int maxdepth;              /* biggest outsideness value */
+    int centered;              /* set to TRUE when changerouteUplinks is run */
+    struct routeList *servers;
+};
+
+
 extern struct server *self;
 extern dict_t channels;
 extern dict_t clients;
