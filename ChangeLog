@@ -11,7 +11,8 @@
 	irc_connect, and added callbacks to handle connect failures and 
 	successes. (All prep for auto routing system)
 
-	* src/opserv.help: Help entries for auto routing system
+	* src/opserv.help: Help entries for auto routing system + fix typeo in
+	routing example
 
 	* src/hash.h: New structs for auto routing system
 

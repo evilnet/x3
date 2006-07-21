@@ -717,7 +717,7 @@
         "    |-laptop.net.org     - laptop's uplink is test",
         "    | `-foobar.net.org   - foobar's uplink is laptop",
         "    `-test2.net.org      - test2's uplink is test",
-        "      `-test3.net.org    - test3's uplink is test3",
+        "      `-test3.net.org    - test3's uplink is test2",
         " $b$b ",
         " Its important that every entry in your routing plan be specified relitive to the same location. Usually this is the location of X3 itself, but doesn't have to be. In the above example you could do:",
         "  ROUTING ADDSERVER myplan test.net.org:4400 x3.net.services ",
