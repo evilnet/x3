@@ -6,13 +6,19 @@
 	* src/proto-p10.c: Added support for irc_wallop, irc_squit,
 	irc_connect, and added callbacks to handle connect failures and
 	successes. (All prep for auto routing system) 
+
 	* src/proto.h: Added support for irc_wallop, irc_squit,
 	irc_connect, and added callbacks to handle connect failures and 
 	successes. (All prep for auto routing system)
+
 	* src/opserv.help: Help entries for auto routing system
+
 	* src/hash.h: New structs for auto routing system
+
 	* src/opserv.c: The long-awaited X3 Auto Routing Plan system!
+
 	* src/opserv.h: The long-awaited X3 Auto Routing Plan system!
+
 	* src/modcmd.c: added 'routing' main command alias.
 
 2006-07-16  Neil Spierling  <sirvulcan@gmail.com>

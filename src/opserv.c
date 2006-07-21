@@ -2435,30 +2435,6 @@ free_routing_plan(void *data)
     free(rp);
 }
 
-/* ************************************************************************
- * Auto Routing Plans
- * ************************************************************************
- *
- * XXX: routing plan TODO work
- *
- * DONE 
- *      - read from .db into opserv_routing_plans. format:
- *      - write back to .db
- *      - show (stats routingplans?)
- *      - cmd_routing_addplan
- *      - cmd_routing_delplan
- *      - cmd_routing_addserver
- *      - cmd_routing_delserver
- *      - cmd_routing_set
- *      - cmd_reroute ( c / n / t )
- *      - routing map
- * TODO 
- *      - timer after attempting a connect, 
- *        to see if it timed out.
- * ************************************************************************
- */
-
-
 /*************************************************
 * Functions to handle the active routing struct */
 
