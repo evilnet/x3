@@ -2779,8 +2779,8 @@ routing_connect_one(struct route *route, char *server)
             return 0; /* its uplink isnt here to link to */
         }
     }
-    log_module(MAIN_LOG, LOG_ERROR, "Tried to link %s but its not in the active routing struct!", server);
-    return 0; /* server wasnt found in active route struct ?! */
+    log_module(MAIN_LOG, LOG_DEBUG, "Tried to link %s but its not in the active routing struct!", server);
+    return 0; /* server wasnt found in active route struct. */
 }
 
 int routing_connect_children(struct route *route, char *server)

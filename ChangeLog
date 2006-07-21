@@ -16,7 +16,8 @@
 
 	* src/hash.h: New structs for auto routing system
 
-	* src/opserv.c: The long-awaited X3 Auto Routing Plan system!
+	* src/opserv.c: The long-awaited X3 Auto Routing Plan system! + reduce
+	error message to debug message.
 
 	* src/opserv.h: The long-awaited X3 Auto Routing Plan system!
 
