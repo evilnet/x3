@@ -974,6 +974,9 @@ irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what,
    int type = 4;
    int host_in_topic = 0;
    const char *hstr, *tstr;
+   char *host, *hostmask;
+   char shost[MAXLEN];
+   char sident[MAXLEN];
 
    tstr = conf_get_data("server/type", RECDB_QSTRING);
    hstr = conf_get_data("server/host_in_topic", RECDB_QSTRING);
@@ -982,13 +985,28 @@ irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what,
    else
      type = 4;/* default to 040 style topics */
 
-   if (hstr)
-     host_in_topic = atoi(hstr);
+   if (hstr) {
+      if (IsFakeHost(who))
+          safestrncpy(shost, who->fakehost, sizeof(shost));
+      else if (IsSetHost(who)) {
+          hostmask = strdup(who->sethost);
+          if ((host = (strrchr(hostmask, '@'))))
+              *host++ = '\0';
+          else
+              host = hostmask;
+
+          safestrncpy(sident, hostmask, sizeof(shost));
+          safestrncpy(shost, host, sizeof(shost));
+      } else
+          safestrncpy(shost, who->hostname, sizeof(shost));
+
+      host_in_topic = atoi(hstr);
+   }
 
    if (type == 5) {
      putsock("%s " P10_TOPIC " %s %s%s%s%s%s " FMT_TIME_T " " FMT_TIME_T " :%s", service->numeric, what->name,
-             who->nick, host_in_topic ? "!" : "", host_in_topic ? who->ident : "", host_in_topic ? "@" : "",
-             host_in_topic ? who->hostname : "", what->timestamp, now, topic);
+             who->nick, host_in_topic ? "!" : "", host_in_topic ? (IsSetHost(who) ? sident : who->ident) : "", 
+             host_in_topic ? "@" : "", host_in_topic ? shost : "", what->timestamp, now, topic);
    } else {
      who = service;
      putsock("%s " P10_TOPIC " %s :%s", who->numeric, what->name, topic);

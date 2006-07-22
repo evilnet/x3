@@ -727,6 +727,9 @@ static MODCMD_FUNC(cmd_oset)
     struct handle_info *hi;
     option_func_t *opt;
 
+    if (argc < 2)
+        return 0;
+
     if (!(hi = get_victim_oper(cmd, user, argv[1])))
         return 0;
 

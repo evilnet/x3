@@ -1,6 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-23  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/mod-memoserv.c: Fix to a crash/output corruption issue.
+
+	* src/proto-p10.c: Host in topic supports sethost and fakehost
+	now.
+
 2006-07-21  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: Added support for irc_wallop, irc_squit,
