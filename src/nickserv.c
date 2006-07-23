@@ -2963,26 +2963,28 @@ static OPTION_FUNC(opt_title)
         }
 
         title = argv[1];
-        if (strchr(title, '.')) {
-            reply("NSMSG_TITLE_INVALID");
-            return 0;
+        if(!strcmp(title, "*")) {
+            free(hi->fakehost);
+            hi->fakehost = NULL;
         }
-        /* Alphanumeric titles only. */
-        for(sptr = title; *sptr; sptr++) {
-            if(!isalnum(*sptr) && *sptr != '-') {
+        else {
+            if (strchr(title, '.')) {
                 reply("NSMSG_TITLE_INVALID");
                 return 0;
             }
-        }
-        if ((strlen(user->handle_info->handle) + strlen(title) +
-             strlen(nickserv_conf.titlehost_suffix) + 2) > HOSTLEN) {
-            reply("NSMSG_TITLE_TRUNCATED");
-            return 0;
-        }
-        free(hi->fakehost);
-        if (!strcmp(title, "*")) {
-            hi->fakehost = NULL;
-        } else {
+            /* Alphanumeric titles only. */
+            for(sptr = title; *sptr; sptr++) {
+                if(!isalnum(*sptr) && *sptr != '-') {
+                    reply("NSMSG_TITLE_INVALID");
+                    return 0;
+                }
+            }
+            if ((strlen(user->handle_info->handle) + strlen(title) +
+                 strlen(nickserv_conf.titlehost_suffix) + 2) > HOSTLEN) {
+                reply("NSMSG_TITLE_TRUNCATED");
+                return 0;
+            }
+            free(hi->fakehost);
             hi->fakehost = malloc(strlen(title)+2);
             hi->fakehost[0] = '.';
             strcpy(hi->fakehost+1, title);

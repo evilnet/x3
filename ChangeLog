@@ -4,7 +4,7 @@
 2006-07-23  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: Add config file regex fakehost test + sanity
-	checking in title as well.
+	checking in title as well (fixed).
 
 2006-07-23  Neil Spierling  <sirvulcan@gmail.com>
 
