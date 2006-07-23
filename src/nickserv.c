@@ -192,7 +192,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_STAMPED_AUTH", "You have already authenticated to an account once this session; you may not authenticate to another." },
     { "NSMSG_STAMPED_RESETPASS", "You have already authenticated to an account once this session; you may not reset your password to authenticate again." },
     { "NSMSG_STAMPED_AUTHCOOKIE",  "You have already authenticated to an account once this session; you may not use a cookie to authenticate to another account." },
-    { "NSMSG_TITLE_INVALID", "Titles cannot contain any dots; please choose another." },
+    { "NSMSG_TITLE_INVALID", "Titles may contain only a-z, A-Z, 0-9, and '-'.  Please choose another." },
     { "NSMSG_TITLE_TRUNCATED", "That title combined with the user's account name would result in a truncated host; please choose a shorter title." },
     { "NSMSG_FAKEHOST_INVALID", "Fake hosts must be shorter than %d characters and cannot start with a dot." },
     { "NSMSG_HANDLEINFO_ON", "$bAccount Information for %s$b" },
@@ -2952,7 +2952,9 @@ static OPTION_FUNC(opt_epithet)
 
 static OPTION_FUNC(opt_title)
 {
-    const char *title;
+    char *title;
+    const char *none;
+    char *sptr;
 
     if ((argc > 1) && oper_has_access(user, nickserv, nickserv_conf.set_title_level, 0)) {
         if (!override) {
@@ -2965,12 +2967,18 @@ static OPTION_FUNC(opt_title)
             reply("NSMSG_TITLE_INVALID");
             return 0;
         }
+        /* Alphanumeric titles only. */
+        for(sptr = title; *sptr; sptr++) {
+            if(!isalnum(*sptr) && *sptr != '-') {
+                reply("NSMSG_TITLE_INVALID");
+                return 0;
+            }
+        }
         if ((strlen(user->handle_info->handle) + strlen(title) +
              strlen(nickserv_conf.titlehost_suffix) + 2) > HOSTLEN) {
             reply("NSMSG_TITLE_TRUNCATED");
             return 0;
         }
-
         free(hi->fakehost);
         if (!strcmp(title, "*")) {
             hi->fakehost = NULL;
@@ -2985,16 +2993,15 @@ static OPTION_FUNC(opt_title)
     else
         title = NULL;
     if (!title)
-        title = user_find_message(user, "MSG_NONE");
-    send_message(user, nickserv, "NSMSG_SET_TITLE", title);
+        none = user_find_message(user, "MSG_NONE");
+    send_message(user, nickserv, "NSMSG_SET_TITLE", title ? title : none);
     return 1;
 }
 
 int 
 check_vhost(char *vhost, struct userNode *user, struct svccmd *cmd) 
 {
-    unsigned int y, depth;
-    char *hostname;
+    unsigned int y;
 
     // check for a dot in the vhost
     if(strchr(vhost, '.') == NULL) {
