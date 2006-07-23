@@ -42,6 +42,7 @@
 #define KEY_VALID_HANDLE_REGEX "valid_handle_regex"
 #define KEY_VALID_ACCOUNT_REGEX "valid_account_regex"
 #define KEY_VALID_NICK_REGEX "valid_nick_regex"
+#define KEY_VALID_FAKEHOST_REGEX "valid_fakehost_regex"
 #define KEY_DB_BACKUP_FREQ "db_backup_freq"
 #define KEY_MODOPER_LEVEL "modoper_level"
 #define KEY_SET_EPITHET_LEVEL "set_epithet_level"
@@ -363,6 +364,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_DENIED_FAKEHOST_WORD", "Access denied because there's a prohibited word in $b%s$b (%s)." },
     { "NSMSG_NOT_VALID_FAKEHOST_LEN", "$b%s$b is not a valid vhost. (can only be 63 characters)" },
     { "NSMSG_NOT_VALID_FAKEHOST_TLD_LEN", "$b%s$b is not a valid vhost. (TLD can only be 4 characters and less)" },
+    { "NSMSG_NOT_VALID_FAKEHOST_REGEX", "$b%s$b is not allowed by the admin, consult the valid vhost regex pattern in the config file under nickserv/valid_fakehost_regex." },
     { "CHECKPASS_YES", "Yes." },
     { "CHECKPASS_NO", "No." },
     { NULL, NULL }
@@ -381,6 +383,7 @@ static struct {
     unsigned int disable_nicks : 1;
     unsigned int valid_handle_regex_set : 1;
     unsigned int valid_nick_regex_set : 1;
+    unsigned int valid_fakehost_regex_set : 1;
     unsigned int autogag_enabled : 1;
     unsigned int email_enabled : 1;
     unsigned int email_required : 1;
@@ -410,6 +413,7 @@ static struct {
     const char *titlehost_suffix;
     regex_t valid_handle_regex;
     regex_t valid_nick_regex;
+    regex_t valid_fakehost_regex;
     dict_t weak_password_dict;
     struct policer_params *auth_policer_params;
     enum reclaim_action reclaim_action;
@@ -3018,6 +3022,7 @@ check_vhost(char *vhost, struct userNode *user, struct svccmd *cmd)
        return 0;
    }
 
+   /* This can be handled by the regex now if desired.
    if (vhost[strspn(vhost, "0123456789.")]) {
        hostname = vhost + strlen(vhost);
        for (depth = 1; depth && (hostname > vhost); depth--) {
@@ -3025,12 +3030,27 @@ check_vhost(char *vhost, struct userNode *user, struct svccmd *cmd)
            while ((hostname > vhost) && (*hostname != '.')) hostname--;
        }
 
-       if (*hostname == '.') hostname++; /* advance past last dot we saw */
+       if (*hostname == '.') hostname++; * advance past last dot we saw *
        if(strlen(hostname) > 4) {
            reply("NSMSG_NOT_VALID_FAKEHOST_TLD_LEN", vhost);
            return 0;
        }
    }
+   */
+   /* test either regex or as valid handle */
+   if (nickserv_conf.valid_fakehost_regex_set) {
+       int err = regexec(&nickserv_conf.valid_fakehost_regex, vhost, 0, 0, 0);
+       if (err) {
+           char buff[256];
+           buff[regerror(err, &nickserv_conf.valid_fakehost_regex, buff, sizeof(buff))] = 0;
+           log_module(NS_LOG, LOG_INFO, "regexec error: %s (%d)", buff, err);
+       }
+       if(err == REG_NOMATCH) {
+           reply("NSMSG_NOT_VALID_FAKEHOST_REGEX", vhost);
+           return 0;
+       }
+   }
+
 
    return 1;
 }
@@ -3050,20 +3070,29 @@ static OPTION_FUNC(opt_fakehost)
             reply("NSMSG_FAKEHOST_INVALID", HOSTLEN);
             return 0;
         }
-        free(hi->fakehost);
         if (!strcmp(fake, "*")) {
-            hi->fakehost = NULL;
-        } else {
-            if (!check_vhost(argv[1], user, cmd)) 
-                return 0;
-
+            if(hi->fakehost) {
+                free(hi->fakehost);
+                hi->fakehost = NULL;
+            }
+        } 
+        else if (!check_vhost(argv[1], user, cmd))  {
+            /* check_vhost takes care of error reply */
+            return 0;
+        }
+        else {
+            if(hi->fakehost)
+                free(hi->fakehost);
             hi->fakehost = strdup(fake);
         }
-        fake = hi->fakehost;
         apply_fakehost(hi);
+        fake = hi->fakehost;
     } else {
-        fake = generate_fakehost(hi);
+        /* no arg or no access, how did we even GET here? */
+        reply("MSG_SETTING_PRIVILEGED", argv[0]);
+        return 0;
     }
+    /* Tell them we set the host */
     if (!fake)
         fake = user_find_message(user, "MSG_NONE");
     reply("NSMSG_SET_FAKEHOST", fake);
@@ -4109,6 +4138,16 @@ nickserv_conf_read(void)
         if (err) log_module(NS_LOG, LOG_ERROR, "Bad valid_nick_regex (error %d)", err);
     } else {
         nickserv_conf.valid_nick_regex_set = 0;
+    }
+    str = database_get_data(conf_node, KEY_VALID_FAKEHOST_REGEX, RECDB_QSTRING);
+    if (nickserv_conf.valid_fakehost_regex_set)
+        regfree(&nickserv_conf.valid_fakehost_regex);
+    if (str) {
+        int err = regcomp(&nickserv_conf.valid_fakehost_regex, str, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+        nickserv_conf.valid_fakehost_regex_set = !err;
+        if (err) log_module(NS_LOG, LOG_ERROR, "Bad valid_fakehost_regex (error %d)", err);
+    } else {
+        nickserv_conf.valid_fakehost_regex_set = 0;
     }
     str = database_get_data(conf_node, KEY_NICKS_PER_HANDLE, RECDB_QSTRING);
     if (!str)

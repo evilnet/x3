@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-23  Alex Schumann  <rubin@afternet.org>
+
+	* src/nickserv.c: Add config file regex fakehost test
+
 2006-07-23  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/mod-memoserv.c: Fix to a crash/output corruption issue.

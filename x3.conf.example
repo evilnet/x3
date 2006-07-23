@@ -126,6 +126,9 @@
         "valid_account_regex" "^[-_a-z0-9A-Z]{2,15}$";
         "valid_nick_regex" "^[-_a-z][-_a-z0-9]*$";
 
+        // Whats a valid hostname look like for fakehosts?
+        "valid_fakehost_regex" "^[-_a-zA-Z0-9.]+$";
+
         // "Nickserv" networks, set this to 0. "Authserv" networks,
         // set it to 1.
         "disable_nicks" "1"; 

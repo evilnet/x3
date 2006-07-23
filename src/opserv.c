@@ -3112,6 +3112,9 @@ routing_handle_connect_failure(struct server *source, char *server, char *messag
                 activate_routing(NULL, NULL, NULL);
                 /* attempt to link it again. */
                 routing_connect_one(opserv_route, server); 
+                /* TODO: reconnect any missing servers who
+                 * normally connect to server, using their backups.
+                 * Probably should just issue a reroute C here. */
             }
         }
     }
