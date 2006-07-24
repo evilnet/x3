@@ -6,6 +6,9 @@
 	* src/nickserv.c: Add config file regex fakehost test + sanity
 	checking in title as well (fixed).
 
+	* src/mod-memoserv.c: Fixed crash bug in memosearv read. (check argc
+	instead of argv[2]==null since argv's dont get set null.
+
 2006-07-23  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/mod-memoserv.c: Fix to a crash/output corruption issue.

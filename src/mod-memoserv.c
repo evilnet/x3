@@ -528,7 +528,7 @@ static MODCMD_FUNC(cmd_read)
     if (!(memo = find_memo(user, cmd, ma, argv[1], &memoid)))
         return 0;
 
-    if (argv[2]) {
+    if (argc > 2) {
         char *argtwo = argv[2];
         while (*argtwo) {
             switch (*argtwo) {
