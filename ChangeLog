@@ -1,6 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-25  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/nickserv.c: The reason why theres no arg rubin is that
+	if you want to print the fakehost then u dont specify an arg.
+	This tells opt_fakehost to set fake to the current fakehost
+	and pass it on to be printed.
+
 2006-07-23  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: Add config file regex fakehost test + sanity

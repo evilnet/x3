@@ -3096,11 +3096,9 @@ static OPTION_FUNC(opt_fakehost)
         }
         apply_fakehost(hi);
         fake = hi->fakehost;
-    } else {
-        /* no arg or no access, how did we even GET here? */
-        reply("MSG_SETTING_PRIVILEGED", argv[0]);
-        return 0;
-    }
+    } else
+        fake = generate_fakehost(hi);
+
     /* Tell them we set the host */
     if (!fake)
         fake = user_find_message(user, "MSG_NONE");
