@@ -3,6 +3,12 @@
 
 2006-07-25  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/nickserv.c: If theres no title set then the default title
+	will therefore be the first part of hidden_host in x3.conf.example,
+	so for consistency with opt_fakehost we will print this.
+
+2006-07-25  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/nickserv.c: The reason why theres no arg rubin is that
 	if you want to print the fakehost then u dont specify an arg.
 	This tells opt_fakehost to set fake to the current fakehost

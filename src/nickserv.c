@@ -2992,8 +2992,24 @@ static OPTION_FUNC(opt_title)
         apply_fakehost(hi);
     } else if (hi->fakehost && (hi->fakehost[0] == '.'))
         title = hi->fakehost + 1;
-    else
-        title = NULL;
+    else {
+        /* If theres no title set then the default title will therefore
+           be the first part of hidden_host in x3.conf.example, so for
+           consistency with opt_fakehost we will print this here */
+        char *hs, *hidden_suffix, *rest;
+
+        hs = conf_get_data("server/hidden_host", RECDB_QSTRING);
+        hidden_suffix = strdup(hs);
+
+        /* Yes we do this twice */
+        rest = strrchr(hidden_suffix, '.');
+        *rest++ = '\0';
+        rest = strrchr(hidden_suffix, '.');
+        *rest++ = '\0';
+
+        title = hidden_suffix;
+    }
+
     if (!title)
         none = user_find_message(user, "MSG_NONE");
     send_message(user, nickserv, "NSMSG_SET_TITLE", title ? title : none);
