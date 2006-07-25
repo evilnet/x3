@@ -1,6 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-24  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: dont burst channels with 0 users in them (which
+	were created by alert discrims, most likely)
+
+2006-07-23  Alex Schumann  <rubin@afternet.org>
+
+	* x3.conf.example: Added chanserv "modes" to example - use to control
+	what usermodes chanserv gets. Mainly for setting +d or not, if you
+	have nef 1.0 'b:' lines setup.
+
 2006-07-25  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/nickserv.c: If theres no title set then the default title

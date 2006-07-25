@@ -775,6 +775,8 @@ irc_burst(struct chanNode *chan)
     if (len)
         burst_line[pos++] = ' ';
 
+    if(chan->members.used < 1)
+        return; /* dont burst empty channels (created by discrims) */
     /* dump the users */
     for (n=0; n<chan->members.used; n++) {
         mn = chan->members.list[n];

@@ -294,6 +294,10 @@
     "chanserv" {
         "nick" "X3";
 
+        // The umodes - add +d if you use nefarious 1.0 and you added 'b:lines'
+        // to pass cmdchar through to chanserv anyway.
+        "modes" "+iok";
+
         // The off_channel setting takes one of three numerical values:
         //   0 = off
         //   1 = use a registered channel mode, have services op themselves
