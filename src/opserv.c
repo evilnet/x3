@@ -308,6 +308,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_COULDNT_FIND_SERVER",  "Couldnt find %s, so using %s to link %s" },
     { "OSMSG_INSPECTING_SERVER",    "Inspecting server [%s]" },
     { "OSMSG_REROUTING_ACC_MAP",    "Rerouting network according to loaded map.." },
+    { "OSMSG_REROUTING_NOTCONFIGURED", "You have not configured routing. See $/msg $O help routing$b." },
     { "OSMSG_CONNECTING_MISSING_ONLY", "Connecting missing servers only.." },
     { "OSMSG_NO_ROUTING_NECESSARY", "No rerouting appears necessary." },
     { "OSMSG_TESTING_REROUTE",      "Testing Reroute(): Commands not sent to socket.." },
@@ -2811,6 +2812,10 @@ int reroute(struct route *route, struct userNode *user, struct svccmd *cmd, char
     int connect = 0, move = 0, missing = 0, i;
     char d = toupper(*directive);
 
+    if(!route || !route->servers) {
+        reply("OSMSG_REROUTING_NOTCONFIGURED");
+        return 0;
+    }
     if(user) {
         if(d == 'N') { /* normal */
             irc_wallops("%s", "Attempting a reroute of the network according to loaded map...");
