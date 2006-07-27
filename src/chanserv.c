@@ -4679,9 +4679,9 @@ static CHANSERV_FUNC(cmd_info)
     reply("CSMSG_CHANNEL_VISITED", intervalString(buffer, now - cData->visited, user->handle_info));
 
     privileged = IsStaff(user);
-    if(privileged)
+    /* if(privileged) */
         reply("CSMSG_CHANNEL_REGISTERED", intervalString(buffer, now - cData->registered, user->handle_info));
-    if(((uData && uData->access >= UL_COOWNER) || privileged) && cData->registrar)
+    if(/*((uData && uData->access >= UL_COOWNER) || privileged) && */cData->registrar)
         reply("CSMSG_CHANNEL_REGISTRAR", cData->registrar);
 
     if(privileged && (dnr = chanserv_is_dnr(channel->name, NULL)))
