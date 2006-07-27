@@ -4,7 +4,8 @@
 2006-07-26  Alex Schumann  <rubin@afternet.org>
 	
 	* src/opserv.c: Fix crash when doing reroute if routing isnt
-	configured.
+	configured. | Voice discovered that the error message for addplan fail
+	was typeo'd so not showing.
 
 	* src/opserv.help: slight changes to routing help.
 

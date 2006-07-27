@@ -288,7 +288,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ROUTINGPLAN_NAME",  "$b%s:$b" },
     { "OSMSG_ROUTINGPLAN_SERVER","      %s:%d <-- %s[%d/%s] (%s)" }, 
     { "OSMSG_ADDPLAN_SUCCESS", "Added new routing plan '%s'." },
-    { "OSMSG_ADDPLAN_FAILURE", "Could not add new plan '%s' (does it already exist?)." },
+    { "OSMSG_ADDPLAN_FAILED", "Could not add new plan '%s' (does it already exist?)." },
     { "OSMSG_INVALID_PLAN", "That routing plan name is not valid." },
     { "OSMSG_PLAN_DELETED", "The routing plan was sucessfully deleted." },
     { "OSMSG_PLAN_NOT_FOUND", "There is no routing plan called '%s'." },
