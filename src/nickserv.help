@@ -162,6 +162,7 @@
                 " $bMERGE$b       Merge one account into another.",
                 " $bOREGISTER$b   Create an account for someone else.",
                 " $bOUNREGISTER$b Remove an account by name.", 
+                " $bODELCOOKIE$b  Deletes a pending cookie.",
                 "*$bOREGNICK$b    Add a nick to someone's account.",
                 "*$bOUNREGNICK$b  Remove a nick from someone's account.",
                 " $bOADDMASK$b    Add a mask to someone's account.",

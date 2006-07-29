@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-28  Alex Schumann  <rubin@afternet.org>
+
+	* src/nickserv.help: add odelcookie to help oper
+
 2006-07-26  Alex Schumann  <rubin@afternet.org>
 	
 	* src/opserv.c: Fix crash when doing reroute if routing isnt
