@@ -5,6 +5,9 @@
 
 	* src/nickserv.help: add odelcookie to help oper
 
+	* x3.conf.example: update & improve x3.conf.example description of
+	extended_accounts setting.
+
 2006-07-26  Alex Schumann  <rubin@afternet.org>
 	
 	* src/opserv.c: Fix crash when doing reroute if routing isnt
