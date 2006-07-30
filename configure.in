@@ -377,9 +377,11 @@ AC_ARG_WITH(tre, [  --with-tre=PATH    Base path to where libtre is installed, s
 if test "x$withval" != "x"; then
     AC_MSG_RESULT(Using include dir $withval to find libtre)
     CPPFLAGS="-I$withval/include -L$withval/lib"
+    LIBS="$LIBS -L$withval/lib"
 else
     AC_MSG_RESULT([Looking for tre in system and home dirs (${HOME})...])
     CPPFLAGS="-I${HOME}/include -L${HOME}/lib"
+    LIBS="$LIBS -L${HOME}/lib"
 fi
 AC_CHECK_HEADER(tre/regex.h, , [AC_MSG_ERROR([tre/regex.h, the TRE regex headers, were not found. Install tre or use --with-tre=PATH to tell me how to find it, where PATH/include/tre/regex.h exists.  For conveniance, just type 'tools/tre_install.sh' now, to install tre in your home directory.])],)
 AC_CHECK_LIB(tre, regexec, , [AC_MSG_ERROR([TRE regex library not found. Install tre, or use --with-tre=PATH to tell me how to find it, where PATH/lib/libtre.so exists. For conveniance, just type 'tools/tre_install.sh' now, to install tre in your home directory.])])

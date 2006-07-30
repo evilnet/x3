@@ -8,7 +8,7 @@
 	not comfortable running 'make install' on libtre from ./configure.
 	This violates what the user expects in a way that can harm the system.
 	Changed how the libtre checks work and provided easy-to-use install
-	script.
+	script. -fix link stage
 
 	* rx/Makefile.in: fix autotools warning(s)
 	
