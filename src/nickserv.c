@@ -27,7 +27,7 @@
 #include "sendmail.h"
 #include "timeq.h"
 
-#include <regex.h>
+#include <tre/regex.h>
 
 #define NICKSERV_CONF_NAME "services/nickserv"
 

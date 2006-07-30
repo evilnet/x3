@@ -21,7 +21,11 @@ dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_INSTALL
-AC_PROG_LIBTOOL
+
+dnl -- squish errors in autogen.sh -rubin
+AC_PROG_RANLIB
+dnl AC_PROG_LIBTOOL
+
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_GCC_TRADITIONAL
@@ -328,37 +332,57 @@ if test "z$USE_MAINTAINER_MODE" = zyes ; then
   CFLAGS="$CFLAGS -Werror"
 fi
 
+dnl I am not comfortable running make install from ./configure. This has to be done correctly or not at all.  -Rubin
 dnl REMEMBER TO CHANGE WITH A NEW TRE RELEASE!
-tre_version="0.7.4"
-AC_MSG_RESULT(extracting TRE regex library)
-cur_dir=`pwd`
-cd tools
+dnl tre_version="0.7.4"
+dnl AC_MSG_RESULT(extracting TRE regex library)
+dnl cur_dir=`pwd`
+dnl cd tools
 dnl remove old tre directory to force a recompile...
-rm -rf tre-$tre_version
-if test "x$ac_cv_path_GUNZIP" = "x" ; then
-        tar xfz tre.tar.gz
+dnl rm -rf tre-$tre_version
+dnl if test "x$ac_cv_path_GUNZIP" = "x" ; then
+dnl         tar xfz tre.tar.gz
+dnl else
+dnl         cp tre.tar.gz tre.tar.gz.bak
+dnl         gunzip -f tre.tar.gz
+dnl         cp tre.tar.gz.bak tre.tar.gz
+dnl         tar xf tre.tar
+dnl fi
+dnl AC_MSG_RESULT(configuring TRE regex library)
+dnl cd tre-$tre_version
+dnl tre_prefix=$prefix
+dnl if test $tre_prefix = "NONE"; then
+dnl     tre_prefix="$HOME"
+dnl fi
+dnl ./configure --disable-agrep --disable-shared --disable-system-abi --disable-wchar --disable-multibyte --prefix=$tre_prefix || exit 1
+dnl
+dnl AC_MSG_RESULT(compiling TRE regex library)
+dnl $ac_cv_prog_MAKER || exit 1
+dnl AC_MSG_RESULT(installing TRE regex library)
+dnl $ac_cv_prog_MAKER install || exit 1
+dnl TREINCDIR="$tre_prefix/include"
+dnl AC_SUBST(TREINCDIR)
+dnl if test "x$ac_cv_path_PKGCONFIG" = "x" ; then
+dnl         TRELIBS="-L$tre_prefix/lib -ltre"
+dnl else
+dnl         TRELIBS=`$ac_cv_path_PKGCONFIG --libs tre.pc`
+dnl fi
+dnl AC_SUBST(TRELIBS)
+dnl 
+dnl cd $cur_dir
+
+dnl libTRE (regex library) checking
+withval=''
+AC_ARG_WITH(tre, [  --with-tre=PATH    Base path to where libtre is installed, such that PATH/lib/libtre.so and PATH/include/tre/regex.h exist.], )
+if test "x$withval" != "x"; then
+    AC_MSG_RESULT(Using include dir $withval to find libtre)
+    CPPFLAGS="-I$withval/include -L$withval/lib"
 else
-        cp tre.tar.gz tre.tar.gz.bak
-        gunzip -f tre.tar.gz
-        cp tre.tar.gz.bak tre.tar.gz
-        tar xf tre.tar
+    AC_MSG_RESULT([Looking for tre in system and home dirs (${HOME})...])
+    CPPFLAGS="-I${HOME}/include -L${HOME}/lib"
 fi
-AC_MSG_RESULT(configuring TRE regex library)
-cd tre-$tre_version
-./configure --disable-agrep --disable-shared --disable-system-abi --disable-wchar --disable-multibyte --prefix=$prefix || exit 1
-AC_MSG_RESULT(compiling TRE regex library)
-$ac_cv_prog_MAKER || exit 1
-AC_MSG_RESULT(installing TRE regex library)
-$ac_cv_prog_MAKER install || exit 1
-TREINCDIR="$prefix/include"
-AC_SUBST(TREINCDIR)
-if test "x$ac_cv_path_PKGCONFIG" = "x" ; then
-        TRELIBS="-L$prefix/lib -ltre"
-else
-        TRELIBS=`$ac_cv_path_PKGCONFIG --libs tre.pc`
-fi
-AC_SUBST(TRELIBS)
-cd $cur_dir
+AC_CHECK_HEADER(tre/regex.h, , [AC_MSG_ERROR([tre/regex.h, the TRE regex headers, were not found. Install tre or use --with-tre=PATH to tell me how to find it, where PATH/include/tre/regex.h exists.  For conveniance, just type 'tools/tre_install.sh' now, to install tre in your home directory.])],)
+AC_CHECK_LIB(tre, regexec, , [AC_MSG_ERROR([TRE regex library not found. Install tre, or use --with-tre=PATH to tell me how to find it, where PATH/lib/libtre.so exists. For conveniance, just type 'tools/tre_install.sh' now, to install tre in your home directory.])])
 
 AC_DEFINE_UNQUOTED(CODENAME, "${CODENAME}", [Code name for this release])
 AC_SUBST(MODULE_OBJS)
@@ -396,6 +420,8 @@ X3 is now configured as follows:
   Malloc:            $x3_malloc
   Protocol:          $x3_ircd
   Regexp Library     TRE $tre_version
+
+  Install to:        $prefix
 
 Now you can proceed with compiling X3
 

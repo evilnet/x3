@@ -1,6 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-29  Alex Schumann  <rubin@afternet.org>
+
+	* configure.in, Makefile.in, src/Makefile.in, tools/tre_install.sh,
+	src/opserv.c, src/config.h.in, src/nickserv.c, src/Makefile.am: I am
+	not comfortable running 'make install' on libtre from ./configure.
+	This violates what the user expects in a way that can harm the system.
+	Changed how the libtre checks work and provided easy-to-use install
+	script.
+
+	* rx/Makefile.in: fix autotools warning(s)
+	
 2006-07-28  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.help: add odelcookie to help oper

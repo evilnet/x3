@@ -30,7 +30,7 @@
 #include "saxdb.h"
 #include "shun.h"
 
-#include <regex.h>
+#include <tre/regex.h>
 
 #ifdef HAVE_SYS_TIMES_H
 #include <sys/times.h>
