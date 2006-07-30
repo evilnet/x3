@@ -128,6 +128,15 @@ struct history {
     unsigned long id;
 };
 
+struct userNode *memoserv;
+
+#define MEMOSERV_FUNC(NAME)         MODCMD_FUNC(NAME)
+#define MEMOSERV_SYNTAX()           svccmd_send_help_brief(user, memoserv, cmd)
+#define MEMOSERV_MIN_PARAMS(N)      if(argc < (N)) {            \
+                                     reply("MSG_MISSING_PARAMS", argv[0]); \
+                                     MEMOSERV_SYNTAX(); \
+                                     return 0; }
+
 DECLARE_LIST(memoList, struct memo*);
 DEFINE_LIST(memoList, struct memo*);
 DECLARE_LIST(historyList, struct history*);
@@ -390,6 +399,8 @@ static MODCMD_FUNC(cmd_send)
     struct memo_account *ma, *sender;
     struct memo *memo;
 
+    MEMOSERV_MIN_PARAMS(3);
+
     if (!(hi = modcmd_get_handle_info(user, argv[1])))
         return 0;
 
@@ -600,6 +611,8 @@ static MODCMD_FUNC(cmd_delete)
     struct memo *memo;
     unsigned int memoid;
 
+    MEMOSERV_MIN_PARAMS(2);
+
     if (!(ma = memoserv_get_account(user->handle_info)))
         return 0;
     if (!irccasecmp(argv[1], "*") || !irccasecmp(argv[1], "all")) {
@@ -627,6 +640,8 @@ static MODCMD_FUNC(cmd_cancel)
     dict_iterator_t it;
     struct memo *memo;
     struct memo_account *ma;
+
+    MEMOSERV_MIN_PARAMS(2);
 
     if (isdigit(argv[1][0])) {
         id = strtoul(argv[1], NULL, 0);
@@ -727,8 +742,7 @@ static MODCMD_FUNC(cmd_oset)
     struct handle_info *hi;
     option_func_t *opt;
 
-    if (argc < 2)
-        return 0;
+    MEMOSERV_MIN_PARAMS(2);
 
     if (!(hi = get_victim_oper(cmd, user, argv[1])))
         return 0;
@@ -1218,8 +1232,8 @@ memoserv_check_messages(struct userNode *user, UNUSED_ARG(struct handle_info *ol
             if (!memo->is_read)
                 unseen++;
         }
-        if (ma->recvd.used && memoserv_conf.bot)
-            if(unseen) send_message(user, memoserv_conf.bot, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
+        if (ma->recvd.used && memoserv)
+            if(unseen) send_message(user, memoserv, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
     }
 }
 
@@ -1300,15 +1314,15 @@ memoserv_finalize(void) {
     }
 
     str = database_get_data(conf_node, "bot", RECDB_QSTRING);
-    if (str)
-        memoserv_conf.bot = GetUserH(str);
-    else
+    if (str) {
+        memoserv = memoserv_conf.bot;
+    } else
         log_module(MS_LOG, LOG_ERROR, "database_get_data for memoserv_conf.bot failed!");
 
-    if (autojoin_channels && memoserv_conf.bot) {
+    if (autojoin_channels && memoserv) {
         for (i = 0; i < autojoin_channels->used; i++) {
             chan = AddChannel(autojoin_channels->list[i], now, "+nt", NULL, NULL);
-            AddChannelUser(memoserv_conf.bot, chan)->modes |= MODE_CHANOP;
+            AddChannelUser(memoserv, chan)->modes |= MODE_CHANOP;
         }
     }
 
