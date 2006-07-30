@@ -1316,8 +1316,10 @@ memoserv_finalize(void) {
     str = database_get_data(conf_node, "bot", RECDB_QSTRING);
     if (str) {
         memoserv = memoserv_conf.bot;
-    } else
+    } else {
         log_module(MS_LOG, LOG_ERROR, "database_get_data for memoserv_conf.bot failed!");
+        exit(1);
+    }
 
     if (autojoin_channels && memoserv) {
         for (i = 0; i < autojoin_channels->used; i++) {
