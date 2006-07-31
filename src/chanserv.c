@@ -513,6 +513,8 @@ static const struct message_entry msgtab[] = {
 /* Other things */
     { "CSMSG_EVENT_SEARCH_RESULTS", "$bChannel Events for %s$b" },
     { "CSMSG_LAST_INVALID", "Invalid argument.  must be 1-200" },
+    { "CSMSG_DEFCON_NO_NEW_CHANNELS", "You cannot register new channels at this time, please try again soon." },
+    { "CSMSG_DEFCON_NO_MODE_CHANGE", "You cannot change the MODE at this time, please try again soon." },
     { NULL, NULL }
 };
 
@@ -1963,6 +1965,10 @@ static CHANSERV_FUNC(cmd_register)
     struct do_not_register *dnr;
     unsigned int n;
 
+    if (checkDefCon(DEFCON_NO_NEW_CHANNELS) && !IsOper(user)) {
+        reply("CSMSG_DEFCON_NO_NEW_CHANNELS");
+        return 0;
+    }
 
     if(channel)
     {
@@ -4447,6 +4453,11 @@ static CHANSERV_FUNC(cmd_mode)
     
     if(argc < 2)
     {
+        if (checkDefCon(DEFCON_NO_MODE_CHANGE) && !IsOper(user)) {
+            reply("CSMSG_DEFCON_NO_MODE_CHANGE");
+            return 0;
+        }
+
         change = &channel->channel_info->modes;
 	if(change->modes_set || change->modes_clear) {
             modcmd_chanmode_announce(change);
@@ -5750,6 +5761,11 @@ static MODCMD_FUNC(chan_opt_modes)
 
     if(argc > 1)
     {
+        if (checkDefCon(DEFCON_NO_MODE_CHANGE) && !IsOper(user)) {
+            reply("CSMSG_DEFCON_NO_MODE_CHANGE");
+            return 0;
+        }
+
         if(!check_user_level(channel, user, lvlEnfModes, 1, 0))
         {
             reply("CSMSG_NO_ACCESS");

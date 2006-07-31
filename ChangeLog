@@ -1,6 +1,29 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-07-31  Neil Spierling  <sirvulcan@gmail.com>
+
+	* x3.conf.example: Added new Defcon system settings
+
+	* doc/DEFCON: Anope's Defcon doc adapted for X3.
+
+	* src/chanserv.c: Block mode changes and channel registrations if
+	required.
+
+	* src/mod-memoserv.c: Block new memos if required.
+
+	* src/nickserv.c: Block nick registrations if required.
+
+	* src/opserv.c: Added in defcon system, uses some of the anope code.
+	Most tho is from scratch.
+
+	* src/opserv.h: Defcon declerations.
+
+	* src/opserv.help: Added DEFCON entry.
+
+	* src/proto-p10.c: If required gline new clients, also if required
+	kill new clients.
+
 2006-07-29  Alex Schumann  <rubin@afternet.org>
 
 	* configure.in, Makefile.in, src/Makefile.in, tools/tre_install.sh,

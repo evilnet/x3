@@ -21,6 +21,21 @@
 #ifndef _opserv_h
 #define _opserv_h
 
+#define DEFCON_NO_NEW_CHANNELS          1       /* No New Channel Registrations */
+#define DEFCON_NO_NEW_NICKS             2       /* No New Nick Registrations */
+#define DEFCON_NO_MODE_CHANGE           4       /* No SET MODE changes */
+#define DEFCON_FORCE_CHAN_MODES         8       /* Force Chan Mode */
+#define DEFCON_REDUCE_SESSION           16      /* Reduce Session Limit */
+#define DEFCON_NO_NEW_CLIENTS           32      /* Kill any NEW clients */
+#define DEFCON_OPER_ONLY                64      /* Restrict services to oper's only */
+#define DEFCON_SILENT_OPER_ONLY         128     /* Silently ignore non-opers */
+#define DEFCON_GLINE_NEW_CLIENTS        256     /* Gline any new clients */
+#define DEFCON_NO_NEW_MEMOS             512     /* No New Memos Sent */
+
+extern int DefCon[6];
+extern int checkDefCon(int level);
+extern void DefConProcess(struct userNode *user);
+extern void defcon_timeout(UNUSED_ARG(void *data));
 void init_opserv(const char *nick);
 unsigned int gag_create(const char *mask, const char *owner, const char *reason, time_t expires);
 int opserv_bad_channel(const char *name);

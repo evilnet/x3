@@ -367,6 +367,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_NOT_VALID_FAKEHOST_REGEX", "$b%s$b is not allowed by the admin, consult the valid vhost regex pattern in the config file under nickserv/valid_fakehost_regex." },
     { "CHECKPASS_YES", "Yes." },
     { "CHECKPASS_NO", "No." },
+    { "NSMSG_DEFCON_NO_NEW_NICKS", "You cannot register new %s at this time, please try again soon" },
     { NULL, NULL }
 };
 
@@ -1278,6 +1279,11 @@ static NICKSERV_FUNC(cmd_register)
     const char *email_addr, *password;
     char syncpass[MD5_CRYPT_LENGTH];
     int no_auth, weblink;
+
+    if (checkDefCon(DEFCON_NO_NEW_NICKS) && !IsOper(user)) {
+        reply("NSMSG_DEFCON_NO_NEW_NICKS", nickserv_conf.disable_nicks ? "accounts" : "nicknames");
+        return 0;
+    }
 
     if (!IsOper(user) && !dict_size(nickserv_handle_dict)) {
 	/* Require the first handle registered to belong to someone +o. */

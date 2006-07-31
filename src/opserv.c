@@ -93,6 +93,21 @@
 #define KEY_OFFLINE "offline"
 #define KEY_ROUTINGPLAN "routingplan"
 #define KEY_ROUTINGPLAN_OPTIONS "routingplan_options"
+#define KEY_DEFCON1 "DefCon1"
+#define KEY_DEFCON2 "DefCon2"
+#define KEY_DEFCON3 "DefCon3"
+#define KEY_DEFCON4 "DefCon4"
+#define KEY_DEFCON_LEVEL "DefConLevel"
+#define KEY_DEFCON_CHANMODES "DefConChanModes"
+#define KEY_DEFCON_SESSION_LIMIT "DefConSessionLimit"
+#define KEY_DEFCON_TIMEOUT "DefConTimeOut"
+#define KEY_DEFCON_GLOBAL_TARGET "DefConGlobalTarget"
+#define KEY_DEFCON_GLOBAL "GlobalOnDefcon"
+#define KEY_DEFCON_GLOBAL_MORE "GlobalOnDefconMore"
+#define KEY_DEFCON_MESSAGE "DefconMessage"
+#define KEY_DEFCON_OFF_MESSAGE "DefConOffMessage"
+#define KEY_DEFCON_GLINE_DURATION "DefConGlineExpire"
+#define KEY_DEFCON_GLINE_REASON "DefConGlineReason"
 
 /* Routing karma values: */
 /* What value we start out with when new servers are added: */
@@ -362,10 +377,39 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_INVALID_REGEX", "Invalid regex: %s: %s (%d)" },
     { "OSMSG_TRACK_DISABLED", "Tracking is not currently compiled into X3" },
     { "OSMSG_MAXUSERS_RESET", "Max clients has been reset to $b%d$b" },
+
+    { "OSMSG_DEFCON_INVALID", "DefCon level %d is invalid, please choose a value between 1 and 5" },
+    { "OSMSG_DEFCON_ALLOWING_ALL", "DefCon is at level 5 and allowing everything" },
+    { "OSMSG_DEFCON_DISALLOWING", "DefCon is at level %d and enforcing:" },
+    { "OSMSG_DEFCON_NO_NEW_CHANNELS", "No Channel Registrations" },
+    { "OSMSG_DEFCON_NO_NEW_NICKS", "No Nickname/Account Registrations" },
+    { "OSMSG_DEFCON_NO_MODE_CHANGE", "No Channel Mode Changes" },
+    { "OSMSG_DEFCON_NO_NEW_CLIENTS", "No New Clients" },
+    { "OSMSG_DEFCON_FORCE_CHANMODES", "Forcing Channel Mode(s): %s" },
+    { "OSMSG_DEFCON_REDUCE_SESSION", "Forcing Reduced Session: %d" },
+    { "OSMSG_DEFCON_OPER_ONLY", "Allowing Services Communication With Opers Only" },
+    { "OSMSG_DEFCON_SILENT_OPER_ONLY", "Allowing Services Communication With Opers Only AND Silently Ignoring Regular Users" },
+    { "OSMSG_DEFCON_GLINE_NEW_CLIENTS", "Glining New Clients" },
+    { "OSMSG_DEFCON_NO_NEW_MEMOS", "Disallowing New Memos" },
+
     { NULL, NULL }
 };
 
 #define OPSERV_SYNTAX() svccmd_send_help_brief(user, opserv, cmd)
+
+int DefConLevel = 5;
+int DefCon[6];
+int DefConTimeOut;
+int GlobalOnDefcon = 0;
+int GlobalOnDefconMore = 0;
+int DefConGlineExpire;
+int DefConModesSet = 0;
+int DefConGlobalTarget = 3;
+unsigned int DefConSessionLimit;
+char *DefConChanModes;
+char *DefConGlineReason;
+char *DefConMessage;
+char *DefConOffMessage;
 
 extern void add_track_user(struct userNode *user);
 typedef int (*discrim_search_func)(struct userNode *match, void *extra);
@@ -523,6 +567,177 @@ opserv_free_user_alert(void *data)
 #define opserv_debug(format...) do { if (opserv_conf.debug_channel) send_channel_notice(opserv_conf.debug_channel , opserv , ## format); } while (0)
 #define opserv_alert(format...) do { if (opserv_conf.alert_channel) send_channel_notice(opserv_conf.alert_channel , opserv , ## format); } while (0)
 
+
+char *defconReverseModes(const char *modes)
+{
+    char *newmodes = NULL;
+    unsigned int i = 0;
+    if (!modes) {
+        return NULL;
+    }
+    if (!(newmodes = malloc(sizeof(char) * strlen(modes) + 1))) {
+        return NULL;
+    }
+    for (i = 0; i < strlen(modes); i++) {
+        if (modes[i] == '+')
+            newmodes[i] = '-';
+        else if (modes[i] == '-')
+            newmodes[i] = '+';
+        else
+            newmodes[i] = modes[i];
+    }
+    newmodes[i] = '\0';
+    return newmodes;
+}
+
+int checkDefCon(int level)
+{
+    return DefCon[DefConLevel] & level;
+}
+
+void showDefConSettings(struct userNode *user, struct svccmd *cmd)
+{
+    if (DefConLevel == 5) {
+        reply("OSMSG_DEFCON_ALLOWING_ALL");
+        return;
+    } else
+        reply("OSMSG_DEFCON_DISALLOWING", DefConLevel);
+
+    if (checkDefCon(DEFCON_NO_NEW_CHANNELS))
+        reply("OSMSG_DEFCON_NO_NEW_CHANNELS");
+
+    if (checkDefCon(DEFCON_NO_NEW_NICKS))
+        reply("OSMSG_DEFCON_NO_NEW_NICKS");
+
+    if (checkDefCon(DEFCON_NO_MODE_CHANGE))
+        reply("OSMSG_DEFCON_NO_MODE_CHANGE");
+
+    if (checkDefCon(DEFCON_FORCE_CHAN_MODES) && (DefConChanModes))
+        reply("OSMSG_DEFCON_FORCE_CHANMODES", DefConChanModes);
+
+    if (checkDefCon(DEFCON_REDUCE_SESSION))
+        reply("OSMSG_DEFCON_REDUCE_SESSION", DefConSessionLimit);
+
+    if (checkDefCon(DEFCON_NO_NEW_CLIENTS))
+        reply("OSMSG_DEFCON_NO_NEW_CLIENTS");
+
+    if (checkDefCon(DEFCON_OPER_ONLY))
+        reply("OSMSG_DEFCON_OPER_ONLY");
+
+    if (checkDefCon(DEFCON_SILENT_OPER_ONLY))
+        reply("OSMSG_DEFCON_SILENT_OPER_ONLY");
+
+    if (checkDefCon(DEFCON_GLINE_NEW_CLIENTS))
+        reply("OSMSG_DEFCON_GLINE_NEW_CLIENTS");
+
+    if (checkDefCon(DEFCON_NO_NEW_MEMOS))
+        reply("OSMSG_DEFCON_NO_NEW_MEMOS");
+
+    return;
+}
+
+void do_mass_mode(char *modes)
+{
+    dict_iterator_t it;
+
+    if (!modes)
+        return;
+
+    for (it = dict_first(channels); it; it = iter_next(it)) {
+        struct chanNode *chan = iter_data(it);
+
+        irc_mode(opserv, chan, modes);
+    }
+
+}
+
+void DefConProcess(struct userNode *user)
+{
+    char *newmodes;
+    long targets;
+
+    if (DefConGlobalTarget == 1)
+        targets = MESSAGE_RECIPIENT_LUSERS;
+    else if (DefConGlobalTarget == 2)
+        targets = MESSAGE_RECIPIENT_CHANNELS;
+    else
+        targets = MESSAGE_RECIPIENT_ALL;
+
+    if (GlobalOnDefcon) {
+        char *globalmsg;
+        globalmsg = alloca(44);
+        sprintf(globalmsg, "Network DefCon level has changed to level %d", DefConLevel);
+        global_message(targets, globalmsg);
+    }
+
+    if (GlobalOnDefconMore)
+        global_message(targets, DefConMessage);
+
+    if ((DefConLevel == 5) && !GlobalOnDefconMore && !GlobalOnDefcon)
+        global_message(targets, DefConOffMessage);
+
+    char *opermsg;
+    if (user) {
+        opermsg = alloca(strlen(user->nick) + 35);
+        sprintf(opermsg, "%s is changing the DefCon level to %d", user->nick, DefConLevel);
+    } else {
+        opermsg = alloca(49);
+        sprintf(opermsg, "The DefCon has changed back to level %d (timeout)", DefConLevel);
+    }
+    global_message(MESSAGE_RECIPIENT_OPERS, opermsg);
+
+    if (checkDefCon(DEFCON_FORCE_CHAN_MODES)) {
+        if (DefConChanModes && !DefConModesSet) {
+            if (DefConChanModes[0] == '+' || DefConChanModes[0] == '-') {
+                do_mass_mode(DefConChanModes);
+                DefConModesSet = 1;
+            }
+        }
+    } else {
+        if (DefConChanModes && (DefConModesSet != 0)) {
+            if (DefConChanModes[0] == '+' || DefConChanModes[0] == '-') {
+                if ((newmodes = defconReverseModes(DefConChanModes))) {
+                    do_mass_mode(newmodes);
+                    free(newmodes);
+                }
+                DefConModesSet = 0;
+            }
+        }
+    }
+
+    return;
+}
+
+void
+defcon_timeout(UNUSED_ARG(void *data))
+{
+    DefConLevel = 5;
+    DefConProcess(NULL);
+}
+
+static MODCMD_FUNC(cmd_defcon)
+{
+    if ((argc < 2) || (atoi(argv[1]) == DefConLevel)) {
+        showDefConSettings(user, cmd);
+        return 1;
+    }
+
+    if ((atoi(argv[1]) < 1) || (atoi(argv[1]) > 5)) {
+        reply("OSMSG_DEFCON_INVALID", atoi(argv[1]));
+        return 0;
+    }
+
+    DefConLevel = atoi(argv[1]);
+    showDefConSettings(user, cmd);
+
+    if (DefConTimeOut > 0) {
+        timeq_del(0, defcon_timeout, NULL, TIMEQ_IGNORE_DATA & TIMEQ_IGNORE_WHEN);
+        timeq_add(now + DefConTimeOut, defcon_timeout, NULL);
+    }
+
+    DefConProcess(user);
+    return 1;
+}
 
 /* A lot of these commands are very similar to what ChanServ can do,
  * but OpServ can do them even on channels that aren't registered.
@@ -2172,12 +2387,21 @@ opserv_new_user_check(struct userNode *user)
         }
     }
 
+    if (checkDefCon(DEFCON_NO_NEW_CLIENTS)) {
+        irc_kill(opserv, user, DefConGlineReason);
+        return 0;
+    }
+
     /* Only warn or G-line if there's an untrusted max and their IP is sane. */
     if (opserv_conf.untrusted_max
         && irc_in_addr_is_valid(user->ip)
         && !irc_in_addr_is_loopback(user->ip)) {
         struct trusted_host *th = dict_find(opserv_trusted_hosts, addr, NULL);
         unsigned int limit = th ? th->limit : opserv_conf.untrusted_max;
+
+        if (checkDefCon(DEFCON_REDUCE_SESSION) && !th)
+            limit = DefConSessionLimit;
+
         if (!limit) {
             /* 0 means unlimited hosts */
         } else if (ohi->clients.used == limit) {
@@ -5989,6 +6213,51 @@ opserv_conf_read(void)
     policer_params_set(pp, "drain-rate", "3");
     if ((child = database_get_data(conf_node, KEY_NEW_USER_POLICER, RECDB_OBJECT)))
         dict_foreach(child, set_policer_param, pp);
+
+    /* Defcon configuration */
+    DefCon[0] = 0;
+    str = database_get_data(conf_node, KEY_DEFCON1, RECDB_QSTRING);
+    DefCon[1] = str ? atoi(str) : 415;
+    str = database_get_data(conf_node, KEY_DEFCON2, RECDB_QSTRING);
+    DefCon[2] = str ? atoi(str) : 159;
+    str = database_get_data(conf_node, KEY_DEFCON3, RECDB_QSTRING);
+    DefCon[3] = str ? atoi(str) : 31;
+    str = database_get_data(conf_node, KEY_DEFCON4, RECDB_QSTRING);
+    DefCon[4] = str? atoi(str) : 23;
+    DefCon[5] = 0;
+
+    str = database_get_data(conf_node, KEY_DEFCON_LEVEL, RECDB_QSTRING);
+    DefConLevel = str ? atoi(str) : 5;
+
+    str = database_get_data(conf_node, KEY_DEFCON_CHANMODES, RECDB_QSTRING);
+    DefConChanModes = str ? strdup(str) : "+r";
+
+    str = database_get_data(conf_node, KEY_DEFCON_SESSION_LIMIT, RECDB_QSTRING);
+    DefConSessionLimit = str ? atoi(str) : 2;
+
+    str = database_get_data(conf_node, KEY_DEFCON_TIMEOUT, RECDB_QSTRING);
+    DefConTimeOut = str ? ParseInterval(str) : 900;
+
+    str = database_get_data(conf_node, KEY_DEFCON_GLINE_DURATION, RECDB_QSTRING);
+    DefConGlineExpire = str ? ParseInterval(str) : 300;
+
+    str = database_get_data(conf_node, KEY_DEFCON_GLOBAL_TARGET, RECDB_QSTRING);
+    DefConGlobalTarget = str ? atoi(str) : 3;
+
+    str = database_get_data(conf_node, KEY_DEFCON_GLOBAL, RECDB_QSTRING);
+    GlobalOnDefcon = str ? atoi(str) : 0;
+
+    str = database_get_data(conf_node, KEY_DEFCON_GLOBAL_MORE, RECDB_QSTRING);
+    GlobalOnDefconMore = str ? atoi(str) : 0;
+
+    str = database_get_data(conf_node, KEY_DEFCON_MESSAGE, RECDB_QSTRING);
+    DefConMessage = str ? strdup(str) : "Put your message to send your users here. Dont forget to uncomment GlobalOnDefconMore";
+
+    str = database_get_data(conf_node, KEY_DEFCON_OFF_MESSAGE, RECDB_QSTRING);
+    DefConOffMessage = str? strdup(str) : "Services are now back to normal, sorry for any inconvenience";
+
+    str = database_get_data(conf_node, KEY_DEFCON_GLINE_REASON, RECDB_QSTRING);
+    DefConGlineReason = str ? strdup(str) : "This network is currently not accepting connections, please try again later";
 }
 
 /* lame way to export opserv_conf value to nickserv.c ... */
@@ -6097,6 +6366,7 @@ init_opserv(const char *nick)
     opserv_define_func("DELTRUST", cmd_deltrust, 800, 0, 2);
     opserv_define_func("DEOP", cmd_deop, 100, 2, 2);
     opserv_define_func("DEOPALL", cmd_deopall, 400, 2, 0);
+    opserv_define_func("DEFCON", cmd_defcon, 900, 0, 0);
     opserv_define_func("DEHOP", cmd_dehop, 100, 2, 2);
     opserv_define_func("DEHOPALL", cmd_dehopall, 400, 2, 0);
     opserv_define_func("DEVOICEALL", cmd_devoiceall, 300, 2, 0);

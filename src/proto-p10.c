@@ -20,6 +20,7 @@
 
 #include "nickserv.h"
 #include "chanserv.h"
+#include "helpfile.h"
 #include "hosthiding.h"
 #include "proto-common.c"
 #include "opserv.h"
@@ -303,6 +304,8 @@
  */
 #define PREHISTORY 780000000
 
+#define MODELEN                 40 + KEYLEN
+
 static struct server *servers_num[64*64];
 static privmsg_func_t *privmsg_funcs;
 static unsigned int num_privmsg_funcs;
@@ -316,6 +319,11 @@ static int extended_accounts;
 static struct userNode *AddUser(struct server* uplink, const char *nick, const char *ident, const char *hostname, const char *modes, const char *numeric, const char *userinfo, time_t timestamp, const char *realip);
 
 extern int off_channel;
+extern int DefConLevel;
+extern int DefConGlineExpire;
+extern int DefConTimeOut;
+extern char *DefConChanModes;
+extern char *DefConGlineReason;
 
 static int parse_oplevel(char *str);
 
@@ -675,6 +683,18 @@ void
 irc_eob_ack(void)
 {
     putsock("%s " P10_EOB_ACK, self->numeric);
+
+    char *nick;
+    const char *str;
+    str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
+    nick = strdup(str);
+
+    if (nick && (DefConLevel < 5)) {
+        DefConProcess(GetUserH(nick));
+
+        if (DefConTimeOut > 0)
+            timeq_add(now + DefConTimeOut, defcon_timeout, NULL);
+    }
 }
 
 void
@@ -1288,6 +1308,7 @@ static CMD_FUNC(cmd_nick)
         NickChange(user, argv[1], 1);
     } else {
         struct server *serv;
+        struct userNode *nuser;
         char modes[MAXLEN];
         /* new nick */
         if (argc < 9)
@@ -1297,7 +1318,18 @@ static CMD_FUNC(cmd_nick)
             unsplit_string(argv+6, argc-9, modes);
         else
             strcpy(modes, "+");
-        AddUser(serv, argv[1], argv[4], argv[5], modes, argv[argc-2], argv[argc-1], atoi(argv[3]), argv[argc-3]);
+        nuser = AddUser(serv, argv[1], argv[4], argv[5], modes, argv[argc-2], argv[argc-1], atoi(argv[3]), argv[argc-3]);
+        if (checkDefCon(DEFCON_GLINE_NEW_CLIENTS) && !IsOper(nuser)) {
+            char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
+            const char *str;
+            
+            str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
+            if (str) {
+                strcpy(target + 2, nuser->hostname);
+                gline_add(str, target, DefConGlineExpire, DefConGlineReason, now, 1, 0);
+            }
+            return 0;
+        }
     }
     return 1;
 }
@@ -1530,6 +1562,22 @@ static CMD_FUNC(cmd_mode)
         /* If it came from a server, reset timestamp to re-sync. */
         cn->timestamp = atoi(argv[argc-1]);
     }
+
+    if (checkDefCon(DEFCON_NO_MODE_CHANGE) && !IsOper(un)) {
+        const char *str;
+        str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
+        if (str) {
+            char modes[MODELEN];
+            struct userNode *opserv = GetUserH(str);
+ 
+            send_message_type(4, un, opserv, "Channel modes cannot be changed due to DefCon level %d in effect, please try again soon", DefConLevel);
+            irc_make_chanmode(cn, modes);
+            irc_mode(opserv, cn, modes);
+            irc_mode(opserv, cn, DefConChanModes);
+        }
+        return 1;
+    }
+
 
     return mod_chanmode(un, cn, argv+2, argc-2, MCP_ALLOW_OVB|MCP_FROM_SERVER|(un ? MC_NOTIFY : 0));
 }
@@ -1807,6 +1855,18 @@ static CMD_FUNC(cmd_privmsg)
     pd.user = GetUserH(origin);
     if (!pd.user || (IsGagged(pd.user) && !IsOper(pd.user)))
         return 1;
+
+    if (checkDefCon(DEFCON_OPER_ONLY) && !IsOper(pd.user)) {
+        const char *str;
+        str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
+        if (str)
+            send_message_type(4, pd.user, GetUserH(str), "Services are currently not available, please try again soon");
+        return 1;
+    }
+
+    if (checkDefCon(DEFCON_SILENT_OPER_ONLY) && !IsOper(pd.user))
+        return 1; /* Silently Ignore */
+
     pd.is_notice = 0;
     pd.text = argv[2];
     parse_foreach(argv[1], privmsg_chan_helper, NULL, privmsg_user_helper, privmsg_invalid, &pd);

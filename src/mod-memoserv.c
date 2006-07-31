@@ -42,6 +42,7 @@
 #include "conf.h"
 #include "modcmd.h"
 #include "nickserv.h"
+#include "opserv.h"
 #include "saxdb.h"
 #include "timeq.h"
 
@@ -107,6 +108,8 @@ static const struct message_entry msgtab[] = {
 
     { "MSMSG_LIST_END",        "--------------End of Memos--------------" },
     { "MSMSG_BAR",             "----------------------------------------"},
+
+    { "MSMSG_DEFCON_NO_NEW_MEMOS", "You cannot send new memos at this time, please try again soon." },
 
     { NULL, NULL }
 };
@@ -400,6 +403,11 @@ static MODCMD_FUNC(cmd_send)
     struct memo *memo;
 
     MEMOSERV_MIN_PARAMS(3);
+
+    if (checkDefCon(DEFCON_NO_NEW_MEMOS) && !IsOper(user)) {
+        reply("MSMSG_DEFCON_NO_NEW_MEMOS");
+        return 0;
+    }
 
     if (!(hi = modcmd_get_handle_info(user, argv[1])))
         return 0;

@@ -270,6 +270,66 @@
         // how long to keep an illegal channel locked down (seconds)?
         "purge_lock_delay" "60";
 
+        // ------------------------------------------------------------------
+        // Defcon Settings
+        //
+        // No new channel registrations                       1 
+        // No New Nick Registrations                          2 
+        // No Channel Mode changes                            4 
+        // Force Chan Mode                                    8 
+        // Use Reduced Session Limit                         16 
+        // KILL any new clients trying to connect            32 
+        // Services will ignore everyone but opers           64 
+        // Services will silently ignore everyone but opers 128 
+        // GLINE all new clients trying to connect          256 
+        // No new memos sent to block MemoServ attacks      512
+        // 
+        // These are the values are added together to determine each defcon setting: 
+        "DefCon1" "415"; 
+        "DefCon2" "159";
+        "DefCon3" "31";
+        "DefCon4" "23";
+
+        // Default defcon level, 5 is running all normally
+        "DefConLevel" "5";
+
+        // If defcon is limiting sessions then how many sessions should O3 allow?
+        "DefConSessionLimit" "2";
+
+        // Length of the gline set on newly connecting clients, if defcon is glining
+        // newly connecting clients
+        "DefConGlineExpire" "5m";
+
+        // Mode to set on all channels if defcon is forcing channel modes on all channels
+        "DefConChanModes" "+r";
+
+        // If not set to 0, defcon will set back to level 5 after this time
+        "DefConTimeOut" "15m";
+
+        // Where will the user global notices go to?
+        // 1 - Users Only
+        // 2 - Channels Only
+        // 3 - Both Users and Channels
+        "DefConGlobalTarget" "3";
+
+        // Set to 1 to send a notice to all users when defcon levels are changed
+        "GlobalOnDefcon" "0";
+
+        // If set to 1 along with the notice that the levels are changing an extra
+        // notice will be sent
+        "GlobalOnDefconMore" "0";
+
+        // GlobalOnDefconMore notice.
+        "DefconMessage" "Put your message to send your users here. Dont forget to uncomment GlobalOnDefconMore";
+
+        // This notice will be used if GlobalOnDefcon and GlobalOnDefconMore are off
+        "DefConOffMessage" "Services are now back to normal, sorry for any inconvenience";
+
+        // Reason placed in defcon Glines.
+        "DefConGlineReason" "This network is currently not accepting connections, please try again later";
+
+        // ------------------------------------------------------------------
+
         // The join-flood policer code goes off all the time when a server
         // goes down (and everyone reconnects) so i don't reccomend using it.
         // Automatically moderate join flooded channels?
