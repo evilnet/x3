@@ -660,6 +660,12 @@ void DefConProcess(struct userNode *user)
     char *newmodes;
     long targets;
 
+    /* TODO
+     * global_message needs to be able to pull language entries for
+     * users. The way it is now an english message is sent out built
+     * from sprintf. We need to make global_message be able to get
+     * user languages and change the message accordingly */
+
     if (DefConGlobalTarget == 1)
         targets = MESSAGE_RECIPIENT_LUSERS;
     else if (DefConGlobalTarget == 2)

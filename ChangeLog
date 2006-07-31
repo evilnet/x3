@@ -3,6 +3,10 @@
 
 2006-07-31  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/opserv.c: TODO stuff.
+
+2006-07-31  Neil Spierling  <sirvulcan@gmail.com>
+
 	* x3.conf.example: Added SHUN setting for DEFCON.
 
 	* doc/DEFCON: Added SHUN setting for DEFCON.
