@@ -3,6 +3,19 @@
 
 2006-07-31  Neil Spierling  <sirvulcan@gmail.com>
 
+	* x3.conf.example: Added SHUN setting for DEFCON.
+
+	* doc/DEFCON: Added SHUN setting for DEFCON.
+
+	* src/opserv.c: Moved the gline check to here. Also added a SHUN
+	check.
+
+	* src/opserv.h: Added SHUN setting for DEFCON.
+
+	* src/proto-p10.c: Moved the DEFCON gline check to opserv.c
+
+2006-07-31  Neil Spierling  <sirvulcan@gmail.com>
+
 	* x3.conf.example: Added new Defcon system settings
 
 	* doc/DEFCON: Anope's Defcon doc adapted for X3.

@@ -50,6 +50,7 @@ X3 DefCon
     Services will silently ignore everyone but opers 128 
     GLINE all new clients trying to connect          256 
     No new memos sent to block MemoServ attacks      512
+    SHUN all new clients trying to connect          1024
 
     These are the values used to determine each defcon setting, are set via: 
 

@@ -283,6 +283,7 @@
         // Services will silently ignore everyone but opers 128 
         // GLINE all new clients trying to connect          256 
         // No new memos sent to block MemoServ attacks      512
+        // SHUN all new clients trying to connect          1024
         // 
         // These are the values are added together to determine each defcon setting: 
         "DefCon1" "415"; 
@@ -296,8 +297,8 @@
         // If defcon is limiting sessions then how many sessions should O3 allow?
         "DefConSessionLimit" "2";
 
-        // Length of the gline set on newly connecting clients, if defcon is glining
-        // newly connecting clients
+        // Length of glines and shuns set on newly connecting clients, if defcon is glining 
+        // or shunning newly connecting clients
         "DefConGlineExpire" "5m";
 
         // Mode to set on all channels if defcon is forcing channel modes on all channels
@@ -325,7 +326,7 @@
         // This notice will be used if GlobalOnDefcon and GlobalOnDefconMore are off
         "DefConOffMessage" "Services are now back to normal, sorry for any inconvenience";
 
-        // Reason placed in defcon Glines.
+        // Reason placed in defcon Glines and Shuns.
         "DefConGlineReason" "This network is currently not accepting connections, please try again later";
 
         // ------------------------------------------------------------------

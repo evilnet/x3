@@ -390,6 +390,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_DEFCON_OPER_ONLY", "Allowing Services Communication With Opers Only" },
     { "OSMSG_DEFCON_SILENT_OPER_ONLY", "Allowing Services Communication With Opers Only AND Silently Ignoring Regular Users" },
     { "OSMSG_DEFCON_GLINE_NEW_CLIENTS", "Glining New Clients" },
+    { "OSMSG_DEFCON_SHUN_NEW_CLIENTS", "Shunning New Clients" },
     { "OSMSG_DEFCON_NO_NEW_MEMOS", "Disallowing New Memos" },
 
     { NULL, NULL }
@@ -629,6 +630,9 @@ void showDefConSettings(struct userNode *user, struct svccmd *cmd)
 
     if (checkDefCon(DEFCON_GLINE_NEW_CLIENTS))
         reply("OSMSG_DEFCON_GLINE_NEW_CLIENTS");
+
+    if (checkDefCon(DEFCON_SHUN_NEW_CLIENTS))
+        reply("OSMSG_DEFCON_SHUN_NEW_CLIENTS");
 
     if (checkDefCon(DEFCON_NO_NEW_MEMOS))
         reply("OSMSG_DEFCON_NO_NEW_MEMOS");
@@ -2389,6 +2393,18 @@ opserv_new_user_check(struct userNode *user)
 
     if (checkDefCon(DEFCON_NO_NEW_CLIENTS)) {
         irc_kill(opserv, user, DefConGlineReason);
+        return 0;
+    }
+
+    if ( (checkDefCon(DEFCON_GLINE_NEW_CLIENTS) || checkDefCon(DEFCON_SHUN_NEW_CLIENTS)) && !IsOper(user)) {
+        char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
+
+        strcpy(target + 2, user->hostname);
+        if (checkDefCon(DEFCON_GLINE_NEW_CLIENTS))
+            gline_add(opserv->nick, target, DefConGlineExpire, DefConGlineReason, now, 1, 0);
+        else if (checkDefCon(DEFCON_SHUN_NEW_CLIENTS))
+            shun_add(opserv->nick, target, DefConGlineExpire, DefConGlineReason, now, 1);
+          
         return 0;
     }
 

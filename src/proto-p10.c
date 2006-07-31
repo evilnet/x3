@@ -320,10 +320,8 @@ static struct userNode *AddUser(struct server* uplink, const char *nick, const c
 
 extern int off_channel;
 extern int DefConLevel;
-extern int DefConGlineExpire;
 extern int DefConTimeOut;
 extern char *DefConChanModes;
-extern char *DefConGlineReason;
 
 static int parse_oplevel(char *str);
 
@@ -1319,17 +1317,6 @@ static CMD_FUNC(cmd_nick)
         else
             strcpy(modes, "+");
         nuser = AddUser(serv, argv[1], argv[4], argv[5], modes, argv[argc-2], argv[argc-1], atoi(argv[3]), argv[argc-3]);
-        if (checkDefCon(DEFCON_GLINE_NEW_CLIENTS) && !IsOper(nuser)) {
-            char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
-            const char *str;
-            
-            str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
-            if (str) {
-                strcpy(target + 2, nuser->hostname);
-                gline_add(str, target, DefConGlineExpire, DefConGlineReason, now, 1, 0);
-            }
-            return 0;
-        }
     }
     return 1;
 }
