@@ -101,9 +101,6 @@ struct handle_info {
     char *infoline;
     char *handle;
     char *fakehost;
-#ifdef WITH_PROTOCOL_BAHAMUT
-    unsigned long id;
-#endif
     time_t registered;
     time_t lastseen;
     unsigned short flags;

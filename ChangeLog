@@ -3,6 +3,46 @@
 
 2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
 
+	* This message is apart of the below one, its just seperate so
+	it doesnt get lost amongst the below messages.
+
+	* src/global.c: Fixed a warning.
+
+2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
+
+	* configure: Removed bahamut support, didnt even work.
+
+	* configure.in: Removed bahamut support, didnt even work.
+
+	* INSTALL: Removed bahamut support, didnt even work.
+
+	* x3.conf.example: Removed bahamut support, didnt even work.
+
+	* patches/log-pgsql.diff: Removed bahamut support, didnt even work.
+
+	* patches/helpserv-pgsql.diff: Removed bahamut support, didnt even
+	work.
+
+	* src/config.h.in: Removed bahamut support, didnt even work.
+
+	* src/gline.c: Removed bahamut support, didnt even work.
+
+	* src/hash.h: Removed bahamut support, didnt even work.
+
+	* src/nickserv.c: Removed bahamut support, didnt even work.
+
+	* src/nickserv.h: Removed bahamut support, didnt even work.
+
+	* src/Makefile.am: Removed bahamut support, didnt even work.
+
+	* src/Makefile.in: Removed bahamut support, didnt even work.
+
+	* src/proto-bahamut.c: Removed bahamut support, didnt even work.
+
+	* src/shun.c: Removed bahamut support, didnt even work.
+
+2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/global.c: Added language strings for mod-helpserv.c, opserv.c,
 	spamserv.c, nickserv.c.
 

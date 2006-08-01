@@ -459,32 +459,6 @@ register_handle(const char *handle, const char *passwd, UNUSED_ARG(unsigned long
 {
     struct handle_info *hi;
 
-#ifdef WITH_PROTOCOL_BAHAMUT
-    char id_base64[IDLEN + 1];
-    do
-    {
-        /* Assign a unique account ID to the account; note that 0 is
-           an invalid account ID. 1 is therefore the first account ID. */
-        if (!id) {
-            id = 1 + highest_id++;
-        } else {
-            /* Note: highest_id is and must always be the highest ID. */
-            if(id > highest_id) {
-                highest_id = id;
-            }
-        }
-        inttobase64(id_base64, id, IDLEN);
-
-        /* Make sure an account with the same ID doesn't exist. If a
-           duplicate is found, log some details and assign a new one.
-           This should be impossible, but it never hurts to expect it. */
-        if ((hi = dict_find(nickserv_id_dict, id_base64, NULL))) {
-            log_module(NS_LOG, LOG_WARNING, "Duplicated account ID %lu (%s) found belonging to %s while inserting %s.", id, id_base64, hi->handle, handle);
-            id = 0;
-        }
-    } while(!id);
-#endif
-
     hi = calloc(1, sizeof(*hi));
     hi->userlist_style = HI_DEFAULT_STYLE;
     hi->announcements = '?';
@@ -492,11 +466,6 @@ register_handle(const char *handle, const char *passwd, UNUSED_ARG(unsigned long
     safestrncpy(hi->passwd, passwd, sizeof(hi->passwd));
     hi->infoline = NULL;
     dict_insert(nickserv_handle_dict, hi->handle, hi);
-
-#ifdef WITH_PROTOCOL_BAHAMUT
-    hi->id = id;
-    dict_insert(nickserv_id_dict, strdup(id_base64), hi);
-#endif
 
     return hi;
 }
@@ -569,13 +538,6 @@ static void
 free_handle_info(void *vhi)
 {
     struct handle_info *hi = vhi;
-
-#ifdef WITH_PROTOCOL_BAHAMUT
-    char id[IDLEN + 1];
-
-    inttobase64(id, hi->id, IDLEN);
-    dict_remove(nickserv_id_dict, id);
-#endif
 
     free_string_list(hi->masks);
     free_string_list(hi->ignores);
@@ -1031,11 +993,7 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
             apply_fakehost(hi);
 
         if (stamp) {
-#ifdef WITH_PROTOCOL_BAHAMUT
-            /* Stamp users with their account ID. */
-            char id[IDLEN + 1];
-            inttobase64(id, hi->id, IDLEN);
-#elif WITH_PROTOCOL_P10
+#ifdef WITH_PROTOCOL_P10
             /* Stamp users with their account name. */
             char *id = hi->handle;
 #else
@@ -1585,9 +1543,6 @@ static NICKSERV_FUNC(cmd_handleinfo)
     nsmsg_none = handle_find_message(hi, "MSG_NONE");
     reply("NSMSG_HANDLEINFO_ON", hi->handle);
     reply("MSG_BAR");
-#ifdef WITH_PROTOCOL_BAHAMUT
-    reply("NSMSG_HANDLEINFO_ID", hi->id);
-#endif
     reply("NSMSG_HANDLEINFO_REGGED", ctime(&hi->registered));
 
     if (!hi->users) {
@@ -3319,9 +3274,6 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
 
     for (it = dict_first(nickserv_handle_dict); it; it = iter_next(it)) {
         hi = iter_data(it);
-#ifdef WITH_PROTOCOL_BAHAMUT
-        assert(hi->id);
-#endif
         saxdb_start_record(ctx, iter_key(it), 0);
         if (hi->announcements != '?') {
             flags[0] = hi->announcements;
@@ -3372,9 +3324,6 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
             flags[flen] = 0;
             saxdb_write_string(ctx, KEY_FLAGS, flags);
         }
-#ifdef WITH_PROTOCOL_BAHAMUT
-        saxdb_write_int(ctx, KEY_ID, hi->id);
-#endif
         if (hi->infoline)
             saxdb_write_string(ctx, KEY_INFO, hi->infoline);
         if (hi->last_quit_host[0])

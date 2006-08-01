@@ -232,7 +232,7 @@ fi
 AC_MSG_CHECKING(which protocol to use)
 AC_ARG_WITH(protocol,
 [  --with-protocol=name    Choose IRC dialect to support; one of:
-                          p10 (the default), bahamut],
+                          p10 (the default)],
 [],
 [withval="p10"])
 if test "x$withval" = "xp10" ; then
@@ -241,11 +241,6 @@ if test "x$withval" = "xp10" ; then
   MODULE_OBJS="$MODULE_OBJS proto-p10.\$(OBJEXT)"
   PROTO_FILES=proto-p10.c
   x3_ircd="P10"
-elif test "x$withval" = "xbahamut" ; then
-  AC_MSG_RESULT(Bahamut)
-  AC_DEFINE(WITH_PROTOCOL_BAHAMUT, 1, [Define if using the Bahamut dialect of IRC])
-  MODULE_OBJS="$MODULE_OBJS proto-bahamut.\$(OBJEXT)"
-  x3_ircd="Bahamut"
 else
   AC_MSG_ERROR([Unknown IRC dialect $withval])
 fi

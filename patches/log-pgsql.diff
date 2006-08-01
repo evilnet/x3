@@ -8,7 +8,7 @@ diff -u -r1.59 Makefile.am
 @@ -9,7 +9,7 @@
  	./expnhelp < $(srcdir)/nickserv.help.m4 > $@
  
- EXTRA_srvx_SOURCES = proto-bahamut.c proto-common.c proto-p10.c mod-snoop.c mod-memoserv.c
+ EXTRA_srvx_SOURCES = proto-common.c proto-p10.c mod-snoop.c mod-memoserv.c
 -srvx_LDADD = @MODULE_OBJS@
 +srvx_LDADD = @MODULE_OBJS@ -lpq
  srvx_DEPENDENCIES = @MODULE_OBJS@

@@ -870,7 +870,7 @@ Optional Packages:
   --with-malloc=type      Enables use of a special malloc library; one of:
                           system (the default), boehm-gc, dmalloc, mpatrol, x3, slab
   --with-protocol=name    Choose IRC dialect to support; one of:
-                          p10 (the default), bahamut
+                          p10 (the default)
   --without-getopt        Disables building of the GNU getopt library
   --with-tre=PATH    Base path to where libtre is installed, such that PATH/lib/libtre.so and PATH/include/tre/regex.h exist.
 
@@ -8201,16 +8201,6 @@ _ACEOF
   MODULE_OBJS="$MODULE_OBJS proto-p10.\$(OBJEXT)"
   PROTO_FILES=proto-p10.c
   x3_ircd="P10"
-elif test "x$withval" = "xbahamut" ; then
-  echo "$as_me:$LINENO: result: Bahamut" >&5
-echo "${ECHO_T}Bahamut" >&6
-
-cat >>confdefs.h <<\_ACEOF
-#define WITH_PROTOCOL_BAHAMUT 1
-_ACEOF
-
-  MODULE_OBJS="$MODULE_OBJS proto-bahamut.\$(OBJEXT)"
-  x3_ircd="Bahamut"
 else
   { { echo "$as_me:$LINENO: error: Unknown IRC dialect $withval" >&5
 echo "$as_me: error: Unknown IRC dialect $withval" >&2;}

@@ -122,12 +122,6 @@ shun_remove(const char *target, int announce)
             timeq_add(new_first->expires, shun_expire, 0);
         }
     }
-#ifdef WITH_PROTOCOL_BAHAMUT
-    /* Bahamut is sort of lame: It permanently remembers any AKILLs
-     * with durations longer than a day, and will never auto-expire
-     * them.  So when the time comes, we'd better remind it.  */
-    announce = 1;
-#endif
     if (announce)
         irc_unshun(target);
     return res;

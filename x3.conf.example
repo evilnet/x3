@@ -142,8 +142,7 @@
 
             // What to do when someone uses the NickServ "reclaim" command?
             // This can be one of "none", "warn", "svsnick", or "kill", but
-            // stock ircu does not support svsnick -- you need Bahamut or 
-            // nefarious.
+            // stock ircu does not support svsnick -- you need nefarious.
             "reclaim_action" "none";
 
             // What (else) to do when someone uses a registered nick?

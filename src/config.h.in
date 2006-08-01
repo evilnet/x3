@@ -281,9 +281,6 @@
 /* Define if using the X3 internal debug allocator */
 #undef WITH_MALLOC_X3
 
-/* Define if using the Bahamut dialect of IRC */
-#undef WITH_PROTOCOL_BAHAMUT
-
 /* Define if using the P10 dialect of IRC */
 #undef WITH_PROTOCOL_P10
 

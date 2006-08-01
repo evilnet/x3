@@ -403,7 +403,7 @@ message_send(struct globalMessage *message)
 void
 global_message_args(long targets, const char *language_entry, ...)
 {
-    struct globalMessage *message;
+    struct globalMessage *message = NULL;
     va_list arg_list;
     dict_iterator_t it;
     char response[MAXLEN];

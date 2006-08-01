@@ -37,7 +37,7 @@
 #define MODE_BAN		0x00000200 /* +b BAN */
 #define MODE_LIMIT		0x00000400 /* +l LIMIT */
 #define MODE_DELAYJOINS         0x00000800 /* +D */
-#define MODE_REGONLY            0x00001000 /* ircu +r, Bahamut +R */
+#define MODE_REGONLY            0x00001000 /* ircu +r */
 #define MODE_NOCOLORS           0x00002000 /* +c */
 #define MODE_NOCTCPS            0x00004000 /* +C */
 #define MODE_REGISTERED         0x00008000 /* Bahamut +r */

@@ -184,7 +184,7 @@ target_vendor = @target_vendor@
 AM_CPPFLAGS = @RX_INCLUDES@
 noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help spamserv.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help
 EXTRA_DIST = $(noinst_DATA)
-EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-bahamut.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
+EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
 x3_SOURCES = \
@@ -322,7 +322,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nickserv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/opserv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/policer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proto-bahamut.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proto-common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proto-p10.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/recdb.Po@am__quote@
