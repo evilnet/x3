@@ -3,6 +3,19 @@
 
 2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/global.c: Added language strings for mod-helpserv.c, opserv.c,
+	spamserv.c, nickserv.c.
+
+	* src/mod-helpserv.c: Changed global_message uses to global_message_arg's.
+
+	* src/nickserv.c: Changed global_message uses to global_message_arg's.
+
+	* src/opserv.c: Changed global_message uses to global_message_arg's.
+
+	* src/spamserv.c: Changed global_message uses to global_message_arg's.
+
+2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/chanserv.c: Changed global_message uses to global_message_arg's.
 
 	* src/global.c: Added language strings for chanserv.c

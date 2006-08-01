@@ -2216,7 +2216,7 @@ static HELPSERV_FUNC(cmd_move) {
     REQUIRE_PARMS(2);
 
     if (is_valid_nick(argv[1])) {
-        char *newnick = argv[1], oldnick[NICKLEN], reason[MAXLEN];
+        char *newnick = argv[1], oldnick[NICKLEN];
 
         strcpy(oldnick, hs->helpserv->nick);
 
@@ -2231,8 +2231,8 @@ static HELPSERV_FUNC(cmd_move) {
 
         helpserv_notice(user, "HSMSG_RENAMED", oldnick, newnick);
 
-        snprintf(reason, MAXLEN, "HelpServ bot %s (in %s) renamed to %s by %s.", oldnick, hs->helpchan->name, newnick, user->nick);
-        global_message(MESSAGE_RECIPIENT_OPERS, reason);
+        global_message_args(MESSAGE_RECIPIENT_OPERS, "HSMSG_BOT_RENAMED", oldnick,
+                            hs->helpchan->name, newnick, user->nick);
 
         return 1;
     } else if (IsChannelName(argv[1])) {
@@ -2282,8 +2282,8 @@ static HELPSERV_FUNC(cmd_move) {
         }
         helpserv_botlist_append(botlist, hs);
 
-        snprintf(reason, MAXLEN, "HelpServ %s (%s) moved to %s by %s.", hs->helpserv->nick, oldchan, newchan, user->nick);
-        global_message(MESSAGE_RECIPIENT_OPERS, reason);
+        global_message_args(MESSAGE_RECIPIENT_OPERS, "HSMSG_BOT_MOVED", hs->helpserv->nick,
+                            oldchan, newchan, user->nick);
 
         return 1;
     } else {
@@ -2659,7 +2659,7 @@ static struct helpserv_bot *register_helpserv(const char *nick, const char *help
 }
 
 static HELPSERV_FUNC(cmd_register) {
-    char *nick, *helpchan, reason[MAXLEN];
+    char *nick, *helpchan;
     struct handle_info *handle;
 
     REQUIRE_PARMS(4);
@@ -2695,9 +2695,9 @@ static HELPSERV_FUNC(cmd_register) {
 
     helpserv_notice(user, "HSMSG_REG_SUCCESS", handle->handle, nick);
 
-    snprintf(reason, MAXLEN, "HelpServ %s (%s) registered to %s by %s.", nick, hs->helpchan->name, handle->handle, user->nick);
     /* Not sent to helpers, since they can't register HelpServ */
-    global_message(MESSAGE_RECIPIENT_OPERS, reason);
+    global_message_args(MESSAGE_RECIPIENT_OPERS, "HSMSG_BOT_REGISTERED", nick,
+                        hs->helpchan->name, handle->handle, user->nick);
     return 1;
 }
 
@@ -2738,8 +2738,7 @@ static void helpserv_unregister(struct helpserv_bot *bot, const char *quit_fmt, 
     snprintf(reason, sizeof(reason), quit_fmt, actor);
     DelUser(bot->helpserv, NULL, 1, reason);
     dict_remove(helpserv_bots_dict, botname);
-    snprintf(reason, sizeof(reason), global_fmt, botname, channame, actor);
-    global_message(MESSAGE_RECIPIENT_OPERS, reason);
+    global_message_args(MESSAGE_RECIPIENT_OPERS, global_fmt, botname, channame, actor);
 }
 
 static HELPSERV_FUNC(cmd_unregister) {
@@ -2751,7 +2750,7 @@ static HELPSERV_FUNC(cmd_unregister) {
         log_audit(HS_LOG, LOG_COMMAND, user, hs->helpserv, hs->helpchan->name, 0, "unregister CONFIRM");
     }
 
-    helpserv_unregister(hs, "Unregistered by %s", "HelpServ %s (%s) unregistered by %s.", user->nick);
+    helpserv_unregister(hs, "Unregistered by %s", "HSMSG_BOT_UNREGISTERED", user->nick);
     return from_opserv;
 }
 
@@ -2767,7 +2766,7 @@ static HELPSERV_FUNC(cmd_expire) {
         next = iter_next(it);
         if ((unsigned int)(now - bot->last_active) < helpserv_conf.expire_age)
             continue;
-        helpserv_unregister(bot, "Registration expired due to inactivity", "HelpServ %s (%s) expired at request of %s.", user->nick);
+        helpserv_unregister(bot, "Registration expired due to inactivity", "HSMSG_BOT_EXPIRED", user->nick);
         count++;
     }
     helpserv_notice(user, "HSMSG_EXPIRATION_DONE", count);

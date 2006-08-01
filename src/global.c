@@ -75,10 +75,31 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_UNSUSPENDED_BY", "%s unsuspended by %s." },
     { "CSMSG_OWNERSHIP_TRANSFERRED", "%s ownership transferred to %s by %s." },
 
+    /* mod-helpserv.c */
+    { "HSMSG_BOT_RENAMED", "HelpServ bot %s (in %s) renamed to %s by %s." },
+    { "HSMSG_BOT_MOVED", "HelpServ %s (%s) moved to %s by %s." },
+    { "HSMSG_BOT_REGISTERED", "HelpServ %s (%s) registered to %s by %s." },
+    { "HSMSG_BOT_EXPIRED", "HelpServ %s (%s) expired at request of %s." },
+    { "HSMSG_BOT_UNREGISTERED", "HelpServ %s (%s) unregistered by %s." },
+
+    /* nickserv.c */
+    { "NSMSG_ACCOUNT_RENAMED", "%s renamed account %s to %s." },
+    { "NSMSG_ACCOUNT_MERGED", "%s (%s) merged account %s into %s." },
+
     /* opserv.c */
     { "DEFCON_NETWORK_CHANGED", "Network DefCon level has changed to level %d" },
     { "DEFCON_OPER_LEVEL_CHANGE", "%s is changing the DefCon level to %d" },
     { "DEFCON_TIMEOUT_LEVEL_CHANGE", "The DefCon has changed back to level %d (timeout)" },
+    { "OSMSG_CHANNEL_ACTIVITY_WARN", "Channel activity warning for channel %s: %s" },
+
+    /* spamserv.c */
+    { "SSMSG_CHANNEL_MERGED", "$X (channel %s) merged into %s by %s." },
+    { "SSMSG_CHANNEL_MOVED", "$X (channel %s) moved into %s by %s." },
+    { "SSMSG_UNREG_MANUAL", "$X (channel %s) %s by %s." },
+    { "SSMSG_REG_EXPIRED", "$X (channel %s) registration expired." },
+    { "SSMSG_LOST_ALL_USERS", "$X (channel %s) lost all users." },
+    { "SSMSG_REGISTERED_BY", "$X (channel %s) registered by %s." },
+    { "SSMSG_UNREGISTERED_BY", "$X (channel %s) unregistered by %s." },
 
     { NULL, NULL }
 };

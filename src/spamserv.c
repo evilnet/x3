@@ -316,11 +316,14 @@ spamserv_cs_move_merge(struct userNode *user, struct chanNode *channel, struct c
 			spamserv_part_channel(channel, reason);
 
 		if(move)
-			snprintf(reason, sizeof(reason), "$X (channel %s) moved to %s by %s.", channel->name, target->name, user->handle_info->handle);
+			global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, 
+                                            "SSMSG_CHANNEL_MOVED", channel->name, target->name, 
+                                            user->handle_info->handle);
 		else
-			snprintf(reason, sizeof(reason), "$X (channel %s) merged into %s by %s.", channel->name, target->name, user->handle_info->handle);
+			global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, 
+                                            "SSMSG_CHANNEL_MERGED", channel->name, target->name, 
+                                            user->handle_info->handle);
 
-		global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
 		return 1;
 	}
 
@@ -334,20 +337,23 @@ spamserv_cs_unregister(struct userNode *user, struct chanNode *channel, enum cs_
 
 	if(cInfo)
 	{
-		char global[MAXLEN], partmsg[MAXLEN];
+		char partmsg[MAXLEN];
 
 		switch (type)
 		{
 		case manually:
-			snprintf(global, sizeof(global), "$X (channel %s) %s by %s.", channel->name, reason, user->handle_info->handle);
+ 			global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "SSMSG_UNREG_MANUAL",
+					    channel->name, reason, user->handle_info->handle);
 			snprintf(partmsg, sizeof(partmsg), "%s %s by %s.", channel->name, reason, user->handle_info->handle);			
 			break;
 		case expire:
-			snprintf(global, sizeof(global), "$X (channel %s) registration expired.", channel->name);
+			global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "SSMSG_REG_EXPIRED",
+				            channel->name);
 			snprintf(partmsg, sizeof(partmsg), "%s registration expired.", channel->name);			
 			break;
 		case lost_all_users:
-			snprintf(global, sizeof(global), "$X (channel %s) lost all users.", channel->name);
+			global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "SSMSG_LOST_ALL_USERS",
+				            channel->name);
 			snprintf(partmsg, sizeof(partmsg), "%s lost all users.", channel->name);			
 			break;
 		}
@@ -356,7 +362,6 @@ spamserv_cs_unregister(struct userNode *user, struct chanNode *channel, enum cs_
 			spamserv_part_channel(channel, partmsg);
 		
 		spamserv_unregister_channel(cInfo);
-		global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, global);
 	}
 }
 
@@ -1128,7 +1133,6 @@ static
 SPAMSERV_FUNC(cmd_register)
 {
 	struct chanInfo *cInfo;
-	char reason[MAXLEN];
 
 	if(!channel || !channel->channel_info)
 	{
@@ -1162,8 +1166,8 @@ SPAMSERV_FUNC(cmd_register)
 
 	spamserv_join_channel(cInfo->channel);
 	
-	snprintf(reason, sizeof(reason), "%s (channel %s) registered by %s.", spamserv->nick, channel->name, user->handle_info->handle);
-	global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+	global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "SSMSG_REGISTERED_BY",
+			    channel->name, user->handle_info->handle);
 	ss_reply("SSMSG_REG_SUCCESS", channel->name);
 
 	return 1;
@@ -1212,8 +1216,8 @@ SPAMSERV_FUNC(cmd_unregister)
 	
 	spamserv_unregister_channel(cInfo);	
 
-	snprintf(reason, sizeof(reason), "%s (channel %s) unregistered by %s.", spamserv->nick, channel->name, user->handle_info->handle);
-	global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+	global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "SSMSG_UNREGISTERED_BY",
+			    channel->name, user->handle_info->handle);
 	ss_reply("SSMSG_UNREG_SUCCESS", channel->name);
 
 	return 1;

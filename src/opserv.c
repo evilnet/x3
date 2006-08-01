@@ -867,9 +867,7 @@ static MODCMD_FUNC(cmd_warn)
     dict_insert(opserv_chan_warn, strdup(argv[1]), reason);
     reply("OSMSG_WARN_ADDED", argv[1], reason);
     if (dict_find(channels, argv[1], NULL)) {
-        message = alloca(strlen(reason) + strlen(argv[1]) + 55);
-        sprintf(message, "Channel activity warning for channel %s: %s", argv[1], reason);
-        global_message(MESSAGE_RECIPIENT_OPERS, message);
+        global_message_args(MESSAGE_RECIPIENT_OPERS, "OSMSG_CHANNEL_ACTIVITY_WARN" argv[1], reason);
     }
     return 1;
 }
@@ -2490,9 +2488,7 @@ opserv_channel_check(struct chanNode *newchan)
     }
     /*
     if ((warning = dict_find(opserv_chan_warn, newchan->name, NULL))) {
-        char message[MAXLEN];
-        snprintf(message, sizeof(message), "Channel activity warning for channel %s: %s", newchan->name, warning);
-        global_message(MESSAGE_RECIPIENT_OPERS, message);
+        global_message_args(MESSAGE_RECIPIENT_OPERS, "OSMSG_CHANNEL_ACTIVITY_WARN", newchan->name, warning);
     }
     */
 

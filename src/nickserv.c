@@ -1810,7 +1810,7 @@ static NICKSERV_FUNC(cmd_rename_handle)
 {
     struct handle_info *hi;
     struct userNode *uNode;
-    char msgbuf[MAXLEN], *old_handle;
+    char *old_handle;
     unsigned int nn;
 
     NICKSERV_MIN_PARMS(3);
@@ -1835,8 +1835,6 @@ static NICKSERV_FUNC(cmd_rename_handle)
     dict_insert(nickserv_handle_dict, hi->handle, hi);
     for (nn=0; nn<rf_list_used; nn++)
         rf_list[nn](hi, old_handle);
-    snprintf(msgbuf, sizeof(msgbuf), "%s renamed account %s to %s.", user->handle_info->handle, old_handle, hi->handle);
-
 
     if (nickserv_conf.sync_log) {
         for (uNode = hi->users; uNode; uNode = uNode->next_authed)
@@ -1846,7 +1844,9 @@ static NICKSERV_FUNC(cmd_rename_handle)
     }
 
     reply("NSMSG_HANDLE_CHANGED", old_handle, hi->handle);
-    global_message(MESSAGE_RECIPIENT_STAFF, msgbuf);
+    global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_ACCOUNT_RENAMED",
+                        user->handle_info->handle, old_handle, hi->handle);
+
     free(old_handle);
     return 1;
 }
@@ -3439,7 +3439,6 @@ static NICKSERV_FUNC(cmd_merge)
     struct userNode *last_user;
     struct userData *cList, *cListNext;
     unsigned int ii, jj, n;
-    char buffer[MAXLEN];
 
     NICKSERV_MIN_PARMS(3);
 
@@ -3550,9 +3549,9 @@ static NICKSERV_FUNC(cmd_merge)
         hi_to->fakehost = strdup(hi_from->fakehost);
 
     /* Notify of success. */
-    sprintf(buffer, "%s (%s) merged account %s into %s.", user->nick, user->handle_info->handle, hi_from->handle, hi_to->handle);
     reply("NSMSG_HANDLES_MERGED", hi_from->handle, hi_to->handle);
-    global_message(MESSAGE_RECIPIENT_STAFF, buffer);
+    global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_ACCOUNT_MERGED", user->nick,
+                        user->handle_info->handle, hi_from->handle, hi_to->handle);
 
     /* Unregister the "from" handle. */
     nickserv_unregister_handle(hi_from, NULL, cmd->parent->bot);
