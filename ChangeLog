@@ -3,6 +3,11 @@
 
 2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/global.c: Make sure we arnt sending duplicate messages in
+	some cases.
+
+2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/x3.conf.example: Removed the targets option.
 
 	* src/global.c: Wrote new function that will global message users

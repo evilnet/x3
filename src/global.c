@@ -402,13 +402,17 @@ global_message_args(long targets, const char *language_entry, ...)
         if(message->flags & MESSAGE_RECIPIENT_OPERS && IsOper(luser)) {
             if(luser->uplink != self)
                 notice_target(luser->nick, message);
+
+            if ((message->flags & MESSAGE_RECIPIENT_LUSERS) || (message->flags & MESSAGE_RECIPIENT_HELPERS))
+                continue;
         }
 
         /* helpers */
         if (message->flags & MESSAGE_RECIPIENT_HELPERS && IsHelper(luser)) {
-            if (IsOper(luser))
-                continue;
 	    notice_target(luser->nick, message);
+
+            if (message->flags & MESSAGE_RECIPIENT_LUSERS)
+                continue;
 	}
 
         /* users */
