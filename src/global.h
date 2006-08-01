@@ -36,5 +36,6 @@
 void init_global(const char *nick);
 
 void global_message(long targets, char *text);
+void global_message_args(long targets, const char *language_entry, ...);
 
 #endif

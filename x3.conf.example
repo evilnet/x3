@@ -307,12 +307,6 @@
         // If not set to 0, defcon will set back to level 5 after this time
         "DefConTimeOut" "15m";
 
-        // Where will the user global notices go to?
-        // 1 - Users Only
-        // 2 - Channels Only
-        // 3 - Both Users and Channels
-        "DefConGlobalTarget" "3";
-
         // Set to 1 to send a notice to all users when defcon levels are changed
         "GlobalOnDefcon" "0";
 

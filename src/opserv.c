@@ -101,7 +101,6 @@
 #define KEY_DEFCON_CHANMODES "DefConChanModes"
 #define KEY_DEFCON_SESSION_LIMIT "DefConSessionLimit"
 #define KEY_DEFCON_TIMEOUT "DefConTimeOut"
-#define KEY_DEFCON_GLOBAL_TARGET "DefConGlobalTarget"
 #define KEY_DEFCON_GLOBAL "GlobalOnDefcon"
 #define KEY_DEFCON_GLOBAL_MORE "GlobalOnDefconMore"
 #define KEY_DEFCON_MESSAGE "DefconMessage"
@@ -405,7 +404,6 @@ int GlobalOnDefcon = 0;
 int GlobalOnDefconMore = 0;
 int DefConGlineExpire;
 int DefConModesSet = 0;
-int DefConGlobalTarget = 3;
 unsigned int DefConSessionLimit;
 char *DefConChanModes;
 char *DefConGlineReason;
@@ -658,43 +656,20 @@ void do_mass_mode(char *modes)
 void DefConProcess(struct userNode *user)
 {
     char *newmodes;
-    long targets;
 
-    /* TODO
-     * global_message needs to be able to pull language entries for
-     * users. The way it is now an english message is sent out built
-     * from sprintf. We need to make global_message be able to get
-     * user languages and change the message accordingly */
+    if (GlobalOnDefcon)
+        global_message_args(MESSAGE_RECIPIENT_LUSERS, "DEFCON_NETWORK_CHANGED", DefConLevel);
 
-    if (DefConGlobalTarget == 1)
-        targets = MESSAGE_RECIPIENT_LUSERS;
-    else if (DefConGlobalTarget == 2)
-        targets = MESSAGE_RECIPIENT_CHANNELS;
-    else
-        targets = MESSAGE_RECIPIENT_ALL;
-
-    if (GlobalOnDefcon) {
-        char *globalmsg;
-        globalmsg = alloca(44);
-        sprintf(globalmsg, "Network DefCon level has changed to level %d", DefConLevel);
-        global_message(targets, globalmsg);
-    }
-
-    if (GlobalOnDefconMore)
-        global_message(targets, DefConMessage);
+    if (GlobalOnDefconMore && GlobalOnDefcon)
+        global_message(MESSAGE_RECIPIENT_LUSERS, DefConMessage);
 
     if ((DefConLevel == 5) && !GlobalOnDefconMore && !GlobalOnDefcon)
-        global_message(targets, DefConOffMessage);
+        global_message(MESSAGE_RECIPIENT_LUSERS, DefConOffMessage);
 
-    char *opermsg;
-    if (user) {
-        opermsg = alloca(strlen(user->nick) + 35);
-        sprintf(opermsg, "%s is changing the DefCon level to %d", user->nick, DefConLevel);
-    } else {
-        opermsg = alloca(49);
-        sprintf(opermsg, "The DefCon has changed back to level %d (timeout)", DefConLevel);
-    }
-    global_message(MESSAGE_RECIPIENT_OPERS, opermsg);
+    if (user)
+       global_message_args(MESSAGE_RECIPIENT_OPERS, "DEFCON_OPER_LEVEL_CHANGE", user->nick, DefConLevel);
+    else
+       global_message_args(MESSAGE_RECIPIENT_OPERS, "DEFCON_TIMEOUT_LEVEL_CHANGE", DefConLevel);
 
     if (checkDefCon(DEFCON_FORCE_CHAN_MODES)) {
         if (DefConChanModes && !DefConModesSet) {
@@ -6262,9 +6237,6 @@ opserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_DEFCON_GLINE_DURATION, RECDB_QSTRING);
     DefConGlineExpire = str ? ParseInterval(str) : 300;
-
-    str = database_get_data(conf_node, KEY_DEFCON_GLOBAL_TARGET, RECDB_QSTRING);
-    DefConGlobalTarget = str ? atoi(str) : 3;
 
     str = database_get_data(conf_node, KEY_DEFCON_GLOBAL, RECDB_QSTRING);
     GlobalOnDefcon = str ? atoi(str) : 0;

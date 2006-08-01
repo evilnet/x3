@@ -1,6 +1,22 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/x3.conf.example: Removed the targets option.
+
+	* src/global.c: Wrote new function that will global message users
+	and/or opers and/or helpers messages in their own langauge. The
+	strings are set either in language files or in the global.c message
+	struct. This allows us to send defcon notices to people and they
+	will get them in their own language if they have it set.
+
+	* src/global.h: global_message_args decleration.
+
+	* src/opserv.c: Removed targets option for defcon as its too hard
+	to send messages to people in channels if the people have different
+	language settings.
+
 2006-07-31  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/opserv.c: TODO stuff.

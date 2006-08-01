@@ -20,6 +20,7 @@
 
 #include "conf.h"
 #include "global.h"
+#include "hash.h"
 #include "modcmd.h"
 #include "nickserv.h"
 #include "saxdb.h"
@@ -61,6 +62,15 @@ static const struct message_entry msgtab[] = {
     { "GMSG_MOTD_HEADER", "$bNetwork Announcements$b" },
     { "GMSG_MOTD_BAR",    "---------------------------------------" },
     { "GMSG_MOTD_FOOTER", "--------------- Thank You--------------" },
+
+ /* These definitions are for other files that make use of global
+  * notices. Make sure you grep for them if you ever add args
+  * to the notice.
+  */
+    { "DEFCON_NETWORK_CHANGED", "Network DefCon level has changed to level %d" }, /* opserv.c */
+    { "DEFCON_OPER_LEVEL_CHANGE", "%s is changing the DefCon level to %d" }, /* opserv.c */
+    { "DEFCON_TIMEOUT_LEVEL_CHANGE", "The DefCon has changed back to level %d (timeout)" }, /* opserv.c */
+
     { NULL, NULL }
 };
 
@@ -358,6 +368,55 @@ message_send(struct globalMessage *message)
 	    notice_target(user->nick, message);
 	}
     }
+}
+
+void
+global_message_args(long targets, const char *language_entry, ...)
+{
+    struct globalMessage *message;
+    va_list arg_list;
+    dict_iterator_t it;
+    char response[MAXLEN];
+    const char *fmt;
+
+    if(!targets || !global)
+	return;
+
+    fmt = strdup(language_entry);
+
+    /* Notice users/opers/helpers */
+    for (it = dict_first(clients); it; it = iter_next(it)) {
+        struct userNode *luser = iter_data(it);
+
+        language_entry = user_find_message(luser, fmt);
+
+        va_start(arg_list, language_entry);
+        vsnprintf(response, MAXLEN-2, language_entry, arg_list);
+        response[MAXLEN-1] = 0;
+
+        message = message_add(targets | MESSAGE_OPTION_SOURCELESS, now, 0, "", response);
+        if (!message)
+ 	    continue;
+
+        /* opers */
+        if(message->flags & MESSAGE_RECIPIENT_OPERS && IsOper(luser)) {
+            if(luser->uplink != self)
+                notice_target(luser->nick, message);
+        }
+
+        /* helpers */
+        if (message->flags & MESSAGE_RECIPIENT_HELPERS && IsHelper(luser)) {
+            if (IsOper(luser))
+                continue;
+	    notice_target(luser->nick, message);
+	}
+
+        /* users */
+        if (message->flags & MESSAGE_RECIPIENT_LUSERS)
+	    notice_target(luser->nick, message);
+    }
+
+    message_del(message);
 }
 
 void
