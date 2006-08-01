@@ -3,6 +3,12 @@
 
 2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/chanserv.c: Changed global_message uses to global_message_arg's.
+
+	* src/global.c: Added language strings for chanserv.c
+
+2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/global.c: Make sure we arnt sending duplicate messages in
 	some cases.
 

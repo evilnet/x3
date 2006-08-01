@@ -2105,10 +2105,10 @@ static CHANSERV_FUNC(cmd_register)
     if(handle != user->handle_info)
         reply("CSMSG_PROXY_SUCCESS", handle->handle, channel->name);
     else
-        reply("CSMSG_REG_SUCCESS", channel->name);
 
     sprintf(reason, "%s registered to %s by %s.", channel->name, handle->handle, user->handle_info->handle);
-    global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+    global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_REGISTERED_TO", channel->name, 
+                        handle->handle, user->handle_info->handle);
     return 1;
 }
 
@@ -2214,7 +2214,6 @@ static CHANSERV_FUNC(cmd_move)
     struct chanNode *target;
     struct modeNode *mn;
     struct userData *uData;
-    char reason[MAXLEN];
     struct do_not_register *dnr;
     int chanserv_join = 0, spamserv_join;
 
@@ -2297,16 +2296,18 @@ static CHANSERV_FUNC(cmd_move)
     if (chanserv_join)
         ss_cs_join_channel(target, spamserv_join);
 
-    sprintf(reason, "%s moved to %s by %s.", channel->name, target->name, user->handle_info->handle);
     if(!IsSuspended(target->channel_info))
     {
         char reason2[MAXLEN];
-	sprintf(reason2, "Channel moved to %s by %s.", target->name, user->handle_info->handle);
-	DelChannelUser(chanserv, channel, reason2, 0);
+        sprintf(reason2, "Channel moved to %s by %s.", target->name, user->handle_info->handle);
+        DelChannelUser(chanserv, channel, reason2, 0);
     }
+
     UnlockChannel(channel);
     LockChannel(target);
-    global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+    global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_CHANNEL_MOVED",
+                        channel->name, target->name, user->handle_info->handle);
+
     reply("CSMSG_MOVE_SUCCESS", target->name);
     return 1;
 }
@@ -5401,8 +5402,9 @@ static CHANSERV_FUNC(cmd_csuspend)
         suspended->previous->revoked = now;
         if(suspended->previous->expires)
             timeq_del(suspended->previous->expires, chanserv_expire_suspension, suspended->previous, 0);
-        sprintf(reason, "%s suspension modified by %s.", channel->name, suspended->suspender);
-        global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+
+        global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_SUSPENSION_MODIFIED",
+                            channel->name, suspended->suspender);
     }
     else
     {
@@ -5421,8 +5423,8 @@ static CHANSERV_FUNC(cmd_csuspend)
         spamserv_cs_suspend(channel, expiry, 1, suspended->reason);
         DelChannelUser(chanserv, channel, suspended->reason, 0);
         reply("CSMSG_SUSPENDED", channel->name);
-        sprintf(reason, "%s suspended by %s.", channel->name, suspended->suspender);
-        global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+        global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_SUSPENDED_BY",
+                            channel->name, suspended->suspender);
     }
     return 1;
 }
@@ -5430,7 +5432,6 @@ static CHANSERV_FUNC(cmd_csuspend)
 static CHANSERV_FUNC(cmd_cunsuspend)
 {
     struct suspended *suspended;
-    char message[MAXLEN];
 
     if(!IsSuspended(channel->channel_info))
     {
@@ -5444,8 +5445,8 @@ static CHANSERV_FUNC(cmd_cunsuspend)
     timeq_del(suspended->expires, chanserv_expire_suspension, suspended, 0);
     chanserv_expire_suspension(suspended);
     reply("CSMSG_UNSUSPENDED", channel->name);
-    sprintf(message, "%s unsuspended by %s.", channel->name, user->handle_info->handle);
-    global_message(MESSAGE_RECIPIENT_OPERS|MESSAGE_RECIPIENT_HELPERS, message);
+    global_message_args(MESSAGE_RECIPIENT_OPERS|MESSAGE_RECIPIENT_HELPERS, "CSMSG_UNSUSPENDED_BY",
+                        channel->name, user->handle_info->handle);
     return 1;
 }
 
@@ -6349,7 +6350,7 @@ static CHANSERV_FUNC(cmd_giveownership)
     struct giveownership *giveownership;
     unsigned int force, override;
     unsigned short co_access, new_owner_old_access;
-    char reason[MAXLEN], transfer_reason[MAXLEN];
+    char transfer_reason[MAXLEN];
 
     REQUIRE_PARAMS(2);
     curr_user = GetChannelAccess(cData, user->handle_info);
@@ -6449,8 +6450,8 @@ static CHANSERV_FUNC(cmd_giveownership)
     channel->channel_info->giveownership = giveownership;
 
     reply("CSMSG_OWNERSHIP_GIVEN", channel->name, new_owner_hi->handle);
-    sprintf(reason, "%s ownership transferred to %s by %s.", channel->name, new_owner_hi->handle, user->handle_info->handle);
-    global_message(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, reason);
+    global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_OWNERSHIP_TRANSFERRED",
+                       channel->name, new_owner_hi->handle, user->handle_info->handle);
     return 1;
 }
 

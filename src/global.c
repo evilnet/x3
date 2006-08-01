@@ -67,9 +67,18 @@ static const struct message_entry msgtab[] = {
   * notices. Make sure you grep for them if you ever add args
   * to the notice.
   */
-    { "DEFCON_NETWORK_CHANGED", "Network DefCon level has changed to level %d" }, /* opserv.c */
-    { "DEFCON_OPER_LEVEL_CHANGE", "%s is changing the DefCon level to %d" }, /* opserv.c */
-    { "DEFCON_TIMEOUT_LEVEL_CHANGE", "The DefCon has changed back to level %d (timeout)" }, /* opserv.c */
+    /* chanserv.c */
+    { "CSMSG_REGISTERED_TO", "%s registered to %s by %s." },
+    { "CSMSG_CHANNEL_MOVED", "%s moved to %s by %s." },
+    { "CSMSG_SUSPENSION_MODIFIED", "%s suspension modified by %s." },
+    { "CSMSG_SUSPENDED_BY", "%s suspended by %s." },
+    { "CSMSG_UNSUSPENDED_BY", "%s unsuspended by %s." },
+    { "CSMSG_OWNERSHIP_TRANSFERRED", "%s ownership transferred to %s by %s." },
+
+    /* opserv.c */
+    { "DEFCON_NETWORK_CHANGED", "Network DefCon level has changed to level %d" },
+    { "DEFCON_OPER_LEVEL_CHANGE", "%s is changing the DefCon level to %d" },
+    { "DEFCON_TIMEOUT_LEVEL_CHANGE", "The DefCon has changed back to level %d (timeout)" },
 
     { NULL, NULL }
 };
