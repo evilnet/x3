@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-01  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: Add automode 6, to just voice everyone with access.
+	Idea by daniel (thx)
+
 2006-08-01  Neil Spierling  <sirvulcan@gmail.com>
 
 	* This message is apart of the below one, its just seperate so

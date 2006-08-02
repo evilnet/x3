@@ -316,6 +316,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_AUTOMODE_HOP", "#1 plus give halfops to everyone." },
     { "CSMSG_AUTOMODE_OP", "#1 plus give ops to everyone (not advised)" },
     { "CSMSG_AUTOMODE_MUTE", "Give half-op to halfops, and op to ops only." },
+    { "CSMSG_AUTOMODE_ONLYVOICE", "Just voice everyone with access." },
 
     { "CSMSG_PROTECT_ALL", "Non-users and users will be protected from those of equal or lower access." },
     { "CSMSG_PROTECT_EQUAL", "Users will be protected from those of equal or lower access." },
@@ -686,7 +687,8 @@ struct charOptionValues {
     { 'v', "CSMSG_AUTOMODE_VOICE" },
     { 'h', "CSMSG_AUTOMODE_HOP" },
     { 'o', "CSMSG_AUTOMODE_OP" },
-    { 'm', "CSMSG_AUTOMODE_MUTE" }
+    { 'm', "CSMSG_AUTOMODE_MUTE" },
+    { 'l', "CSMSG_AUTOMODE_ONLYVOICE" }
 }, protectValues[] = {
     { 'a', "CSMSG_PROTECT_ALL" },
     { 'e', "CSMSG_PROTECT_EQUAL" },
@@ -7115,7 +7117,11 @@ handle_join(struct modeNode *mNode)
             /* non users getting automodes are handled above. */
             if(IsUserAutoOp(uData) && cData->chOpts[chAutomode] != 'n')
             {
-                if(uData->access >= UL_OP )
+                /* just op everyone with access */
+                if(uData->access >= UL_PEON && cData->chOpts[chAutomode] == 'l')
+                    modes |= MODE_VOICE;
+                /* or do their access level */
+                else if(uData->access >= UL_OP )
                     modes |= MODE_CHANOP;
                 else if(uData->access >= UL_HALFOP )
                     modes |= MODE_HALFOP;
