@@ -424,6 +424,9 @@ global_message_args(long targets, const char *language_entry, ...)
         vsnprintf(response, MAXLEN-2, language_entry, arg_list);
         response[MAXLEN-1] = 0;
 
+        if (message)
+            message_del(message);
+
         message = message_add(targets | MESSAGE_OPTION_SOURCELESS, now, 0, "", response);
         if (!message)
  	    continue;

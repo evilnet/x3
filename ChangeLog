@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-06  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/global.c: Fixed a bug, wasnt message_del'ing some messages.
+
 2006-08-01  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Add automode 6, to just voice everyone with access.
