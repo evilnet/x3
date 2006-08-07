@@ -23,11 +23,12 @@
 #include "hash.h"
 #include "log.h"
 
-#ifdef HAVE_GEOIP_H
+#if defined(HAVE_LIBGEOIP)&&defined(HAVE_GEOIP_H)&&defined(HAVE_GEOIPCITY_H)
 #include <GeoIP.h>
-#endif
-#ifdef HAVE_GEOIPCITY_H
 #include <GeoIPCity.h>
+
+GeoIP * gi = NULL;
+GeoIP * cgi = NULL;
 #endif
 
 struct server *self;
@@ -258,8 +259,6 @@ set_geoip_info(struct userNode *user)
 {
 /* Need the libs and the headers if this is going to compile properly */
 #if defined(HAVE_LIBGEOIP)&&defined(HAVE_GEOIP_H)&&defined(HAVE_GEOIPCITY_H)
-    GeoIP * gi = NULL;
-    GeoIP * cgi = NULL;
     GeoIPRecord * gir;
     const char *geoip_data_file = NULL;
     const char *geoip_city_file = NULL;
@@ -270,11 +269,11 @@ set_geoip_info(struct userNode *user)
     if ((!geoip_data_file && !geoip_city_file) || IsLocal(user))
         return; /* Admin doesnt want to use geoip functions */
 
-    if (geoip_data_file)
-        gi  = GeoIP_open(geoip_data_file, GEOIP_STANDARD | GEOIP_CHECK_CACHE);
+    if (geoip_data_file && !gi)
+        gi  = GeoIP_open(geoip_data_file, GEOIP_MEMORY_CACHE | GEOIP_CHECK_CACHE);
 
-    if (geoip_city_file)
-        cgi = GeoIP_open(geoip_city_file, GEOIP_INDEX_CACHE);
+    if (geoip_city_file && !cgi)
+        cgi = GeoIP_open(geoip_city_file, GEOIP_MEMORY_CACHE | GEOIP_CHECK_CACHE);
 
     if (cgi) {
         gir = GeoIP_record_by_name(cgi, user->hostname);
@@ -293,12 +292,10 @@ set_geoip_info(struct userNode *user)
             GeoIPRecord_delete(gir);
         }
 
-        GeoIP_delete(cgi);
         return;
     } else if (gi) {
         const char *country = GeoIP_country_name_by_name(gi, user->hostname);
         user->country_name = strdup(country ? country : "");
-        GeoIP_delete(gi);
         return;
     }
 

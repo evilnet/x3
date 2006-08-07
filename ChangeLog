@@ -3,6 +3,11 @@
 
 2006-08-08  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/hash.c: Speed up city and country lookups significantly.
+	Just slow for the first read but once thats done the rest is fast.
+
+2006-08-08  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/spamserv.c: Fix a crash in spamserv (Tracker# 1535968).
 	I dont know if this will work for sure as i cant reproduce it. But
 	my theory is that once the user is kicked the mode node is dropped.
