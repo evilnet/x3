@@ -218,6 +218,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_NO_SELF_CLVL", "You cannot change your own access." },
     { "CSMSG_NO_BUMP_ACCESS", "You cannot give users access greater than or equal to your own." },
     { "CSMSG_MULTIPLE_OWNERS", "There is more than one owner in %s; please use $bCLVL$b, $bDELOWNER$b and/or $bADDOWNER$b instead." },
+    { "CSMSG_NO_OWNER", "There is no owner for %s; please use $bCLVL$b and/or $bADDOWNER$b instead." },
     { "CSMSG_TRANSFER_WAIT", "You must wait %s before you can give ownership of $b%s$b to someone else." },
     { "CSMSG_NO_TRANSFER_SELF", "You cannot give ownership to your own account." },
     { "CSMSG_OWNERSHIP_GIVEN", "Ownership of $b%s$b has been transferred to account $b%s$b." },
@@ -6388,6 +6389,10 @@ static CHANSERV_FUNC(cmd_giveownership)
         char delay[INTERVALLEN];
         intervalString(delay, cData->ownerTransfer + chanserv_conf.giveownership_period - now, user->handle_info);
         reply("CSMSG_TRANSFER_WAIT", delay, channel->name);
+        return 0;
+    }
+    if (!curr_user) {
+        reply("CSMSG_NO_OWNER", channel->name);
         return 0;
     }
     if(!(new_owner_hi = modcmd_get_handle_info(user, argv[1])))
