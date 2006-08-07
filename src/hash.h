@@ -142,6 +142,20 @@ struct userNode {
     // sethost - reed/apples
     char sethost[USERLEN + HOSTLEN + 2]; /* 1 for '\0' and 1 for @ = 2 */
 
+    /* GeoIP Data */
+    char *country_name;
+
+    /* GeoIP City Data */
+    char *country_code;
+    char *city;
+    char *region;
+    char *postal_code;
+    float latitude;
+    float longitude;
+    int dma_code;
+    int area_code;
+    
+
     time_t timestamp;             /* Time of last nick change */
     struct server *uplink;        /* Server that user is connected to */
     struct modeList channels;     /* Vector of channels user is in */
@@ -286,6 +300,7 @@ void reg_account_func(account_func_t handler);
 void call_account_func(struct userNode *user, const char *stamp);
 void StampUser(struct userNode *user, const char *stamp, time_t timestamp);
 void assign_fakehost(struct userNode *user, const char *host, int announce);
+void set_geoip_info(struct userNode *user);
 
 typedef void (*new_channel_func_t) (struct chanNode *chan);
 void reg_new_channel_func(new_channel_func_t handler);

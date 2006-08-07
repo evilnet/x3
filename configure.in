@@ -22,7 +22,6 @@ AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_INSTALL
 
-dnl -- squish errors in autogen.sh -rubin
 AC_PROG_RANLIB
 dnl AC_PROG_LIBTOOL
 
@@ -61,6 +60,7 @@ dnl Checks for libraries.
 AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, gethostbyname)
 AC_CHECK_LIB(m, main)
+AC_CHECK_LIB(GeoIP, GeoIP_open)
 
 dnl Checks for header files.
 AC_HEADER_STDC
@@ -70,7 +70,7 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 
 dnl Would rather not bail on headers, BSD has alot of the functions elsewhere. -Jedi
-AC_CHECK_HEADERS(fcntl.h tgmath.h malloc.h netdb.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h arpa/inet.h sys/mman.h sys/stat.h dirent.h,,)
+AC_CHECK_HEADERS(GeoIP.h GeoIPCity.h fcntl.h tgmath.h malloc.h netdb.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h arpa/inet.h sys/mman.h sys/stat.h dirent.h,,)
 
 dnl portability stuff, hurray! -Jedi
 AC_CHECK_MEMBER([struct sockaddr.sa_len],
@@ -82,6 +82,7 @@ AC_CHECK_MEMBER([struct addrinfo.ai_flags],
                 [],[#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>])
+
 AC_CHECK_FUNCS(gettimeofday)
 if test $ac_cv_func_gettimeofday = no; then
   AC_CHECK_FUNCS(ftime,,AC_MSG_ERROR([ftime or gettimeofday required. X3 build will fail.]))

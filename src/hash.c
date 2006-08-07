@@ -23,6 +23,13 @@
 #include "hash.h"
 #include "log.h"
 
+#ifdef HAVE_GEOIP_H
+#include <GeoIP.h>
+#endif
+#ifdef HAVE_GEOIPCITY_H
+#include <GeoIPCity.h>
+#endif
+
 struct server *self;
 dict_t channels;
 dict_t clients;
@@ -244,6 +251,59 @@ assign_fakehost(struct userNode *user, const char *host, int announce)
     safestrncpy(user->fakehost, host, sizeof(user->fakehost));
     if (announce)
         irc_fakehost(user, host);
+}
+
+void
+set_geoip_info(struct userNode *user)
+{
+/* Need the libs and the headers if this is going to compile properly */
+#if defined(HAVE_LIBGEOIP)&&defined(HAVE_GEOIP_H)&&defined(HAVE_GEOIPCITY_H)
+    GeoIP * gi = NULL;
+    GeoIP * cgi = NULL;
+    GeoIPRecord * gir;
+    const char *geoip_data_file = NULL;
+    const char *geoip_city_file = NULL;
+
+    geoip_data_file = conf_get_data("services/opserv/geoip_data_file", RECDB_QSTRING);
+    geoip_city_file = conf_get_data("services/opserv/geoip_city_data_file", RECDB_QSTRING);
+
+    if ((!geoip_data_file && !geoip_city_file) || IsLocal(user))
+        return; /* Admin doesnt want to use geoip functions */
+
+    if (geoip_data_file)
+        gi  = GeoIP_open(geoip_data_file, GEOIP_STANDARD | GEOIP_CHECK_CACHE);
+
+    if (geoip_city_file)
+        cgi = GeoIP_open(geoip_city_file, GEOIP_INDEX_CACHE);
+
+    if (cgi) {
+        gir = GeoIP_record_by_name(cgi, user->hostname);
+        if (gir) {
+            user->country_name = strdup(gir->country_name ? gir->country_name : "");
+            user->country_code = strdup(gir->country_code ? gir->country_code : "");
+            user->city         = strdup(gir->city ? gir->city : "");
+            user->region       = strdup(gir->region ? gir->region : "");
+            user->postal_code  = strdup(gir->postal_code ? gir->postal_code : "");
+
+            user->latitude  = gir->latitude ? gir->latitude : 0;
+            user->longitude = gir->longitude ? gir->longitude : 0;
+            user->dma_code  = gir->dma_code ? gir->dma_code : 0;
+            user->area_code = gir->area_code ? gir->area_code : 0;
+
+            GeoIPRecord_delete(gir);
+        }
+
+        GeoIP_delete(cgi);
+        return;
+    } else if (gi) {
+        const char *country = GeoIP_country_name_by_name(gi, user->hostname);
+        user->country_name = strdup(country ? country : "");
+        GeoIP_delete(gi);
+        return;
+    }
+
+    return;
+#endif
 }
 
 static new_channel_func_t *ncf_list;

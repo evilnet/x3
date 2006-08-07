@@ -45,6 +45,12 @@
 /* Define to 1 if you have the <gc/gc.h> header file. */
 #undef HAVE_GC_GC_H
 
+/* Define to 1 if you have the <GeoIPCity.h> header file. */
+#undef HAVE_GEOIPCITY_H
+
+/* Define to 1 if you have the <GeoIP.h> header file. */
+#undef HAVE_GEOIP_H
+
 /* Define to 1 if you have the `getaddrinfo' function. */
 #undef HAVE_GETADDRINFO
 
@@ -80,6 +86,9 @@
 
 /* Define to 1 if you have the `gc' library (-lgc). */
 #undef HAVE_LIBGC
+
+/* Define to 1 if you have the `GeoIP' library (-lGeoIP). */
+#undef HAVE_LIBGEOIP
 
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM

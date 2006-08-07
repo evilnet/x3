@@ -173,19 +173,28 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_HOP_DONE", "Halfopped the requested lusers." },
     { "OSMSG_HOPALL_DONE", "Halfopped everyone on $b%s$b." },
     { "OSMSG_WHOIS_IDENT",      "%s (%s@%s) from %d.%d.%d.%d" },
-    { "OSMSG_WHOIS_NICK",       "Nick       : %s" },
-    { "OSMSG_WHOIS_HOST",       "Host       : %s@%s" },
-    { "OSMSG_WHOIS_FAKEHOST",   "Fakehost   : %s" },
-    { "OSMSG_WHOIS_CRYPT_HOST", "Crypt Host : %s" },
-    { "OSMSG_WHOIS_CRYPT_IP",   "Crypt IP   : %s" },
-    { "OSMSG_WHOIS_IP",         "Real IP    : %s" },
-    { "OSMSG_WHOIS_MODES",      "Modes      : +%s " },
-    { "OSMSG_WHOIS_INFO",       "Info       : %s" },
-    { "OSMSG_WHOIS_NUMERIC",    "Numnick    : %s" },
-    { "OSMSG_WHOIS_SERVER",     "Server     : %s" },
-    { "OSMSG_WHOIS_NICK_AGE",   "Nick Age   : %s" },
-    { "OSMSG_WHOIS_ACCOUNT",    "Account    : %s" },
-    { "OSMSG_WHOIS_CHANNELS",   "Channels   : %s" },
+    { "OSMSG_WHOIS_NICK",       "Nick         : %s" },
+    { "OSMSG_WHOIS_HOST",       "Host         : %s@%s" },
+    { "OSMSG_WHOIS_FAKEHOST",   "Fakehost     : %s" },
+    { "OSMSG_WHOIS_CRYPT_HOST", "Crypt Host   : %s" },
+    { "OSMSG_WHOIS_CRYPT_IP",   "Crypt IP     : %s" },
+    { "OSMSG_WHOIS_IP",         "Real IP      : %s" },
+    { "OSMSG_WHOIS_COUNTRY",    "Country      : %s" },
+   { "OSMSG_WHOIS_COUNTRY_CODE","Country Code : %s" },
+    { "OSMSG_WHOIS_CITY",       "City         : %s" },
+    { "OSMSG_WHOIS_REGION",     "Region/State : %s" },
+    { "OSMSG_WHOIS_POSTAL_CODE","Postal Code  : %s" },
+    { "OSMSG_WHOIS_LATITUDE",   "Latitude     : %f" },
+    { "OSMSG_WHOIS_LONGITUDE",  "Longitude    : %f" },
+    { "OSMSG_WHOIS_DMA_CODE",   "DMA Code     : %d" },
+    { "OSMSG_WHOIS_AREA_CODE",  "Area Code    : %d" },
+    { "OSMSG_WHOIS_MODES",      "Modes        : +%s " },
+    { "OSMSG_WHOIS_INFO",       "Info         : %s" },
+    { "OSMSG_WHOIS_NUMERIC",    "Numnick      : %s" },
+    { "OSMSG_WHOIS_SERVER",     "Server       : %s" },
+    { "OSMSG_WHOIS_NICK_AGE",   "Nick Age     : %s" },
+    { "OSMSG_WHOIS_ACCOUNT",    "Account      : %s" },
+    { "OSMSG_WHOIS_CHANNELS",   "Channels     : %s" },
     { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
     { "OSMSG_CHANNEL_VOICED", "All users on %s voiced." },
@@ -1756,6 +1765,22 @@ static MODCMD_FUNC(cmd_whois)
     reply("OSMSG_WHOIS_CRYPT_HOST", target->crypthost);
     reply("OSMSG_WHOIS_CRYPT_IP", target->cryptip);
     reply("OSMSG_WHOIS_IP", irc_ntoa(&target->ip));
+
+    if (target->city) {
+        reply("OSMSG_WHOIS_COUNTRY", target->country_name);
+        reply("OSMSG_WHOIS_COUNTRY_CODE", target->country_code);
+        reply("OSMSG_WHOIS_CITY", target->city);
+        reply("OSMSG_WHOIS_REGION", target->region);
+
+        reply("OSMSG_WHOIS_POSTAL_CODE", target->postal_code);
+        reply("OSMSG_WHOIS_LATITUDE", target->latitude);
+        reply("OSMSG_WHOIS_LONGITUDE", target->longitude);
+        reply("OSMSG_WHOIS_DMA_CODE", target->dma_code);
+        reply("OSMSG_WHOIS_AREA_CODE", target->area_code);
+    } else if (target->country_name) {
+        reply("OSMSG_WHOIS_COUNTRY", target->country_name);
+    }
+  
     if (target->modes) {
         bpos = 0;
 #define buffer_cat(str) (herelen = strlen(str), memcpy(buffer+bpos, str, herelen), bpos += herelen)

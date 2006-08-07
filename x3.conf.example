@@ -324,6 +324,18 @@
 
         // ------------------------------------------------------------------
 
+        // To use geoip support in Opserv WHOIS then you will need to install
+        // the c GeoIP api. Its available on http://www.maxmind.com, also on
+        // apt on debian and ubuntu. The dat files can also be obtained
+        // from the earlier URL. Place them in your X3 dir and away you go.
+        // X3 will need a recompile once you install the c api. If there is a
+        // GeoIP City Data file then the GeoIP data file will be ignored. However
+        // bear in mind that the city data file is a lot larger than the plain
+        // country data file so it does eat more cpu. The city dat file is ~25mb
+        // compared to the country file being ~900KB. Choose carefully.
+        "geoip_data_file" "./GeoIP.dat";
+        "geoip_city_data_file" "";
+
         // The join-flood policer code goes off all the time when a server
         // goes down (and everyone reconnects) so i don't reccomend using it.
         // Automatically moderate join flooded channels?

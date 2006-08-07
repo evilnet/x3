@@ -2524,6 +2524,9 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     uNode->num_local = base64toint(numeric+strlen(uNode->uplink->numeric), 3) & uNode->uplink->num_mask;
     uNode->uplink->users[uNode->num_local] = uNode;
     mod_usermode(uNode, modes);
+
+    set_geoip_info(uNode);
+
     if (ignore_user)
         return uNode;
 

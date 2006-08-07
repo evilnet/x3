@@ -1,6 +1,29 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-07  Neil Spierling  <sirvulcan@gmail.com>
+
+	* configure: Regenerated.
+
+	* configure.in: Added checks for GeoIP headers and libs.
+
+	* x3.conf.example: Add in 2 options for the dat filenames of the
+	city and country files. If not specified then no geoip data
+	will be checked.
+
+	* src/config.h.in: Regenerated.
+
+	* src/hash.c: Created a function to check the geoip info from the
+	dat files.
+
+	* src/hash.h: Decelerations plus added entries to the userNode
+	struct.
+
+	* src/opserv.c: Display the GeoIP information in WHOIS.
+
+	* src/proto-p10.c: Call the new geoip data collection function
+	towards the end of AddUser.
+
 2006-08-06  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/global.c: Fixed a bug, wasnt message_del'ing some messages.
