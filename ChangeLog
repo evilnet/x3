@@ -3,6 +3,13 @@
 
 2006-08-08  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/spamserv.c: Fix a crash in spamserv (Tracker# 1535968).
+	I dont know if this will work for sure as i cant reproduce it. But
+	my theory is that once the user is kicked the mode node is dropped.
+	Users without modes should still return a valid mode node.
+
+2006-08-08  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/chanserv.c: Fixed a crash with giveownership. X3 would crash
 	if a giveownership command was issued in a channel with no owners.
 

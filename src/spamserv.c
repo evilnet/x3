@@ -1814,24 +1814,25 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 	if(!spamserv || quit_services || !GetUserMode(channel, spamserv) || !(cInfo = get_chanInfo(channel->name)) || !(uInfo = get_userInfo(user->nick)))
 		return;
 
+	
 	if(!CHECK_CHANOPS(cInfo))
 	{
 		struct modeNode *mn = GetUserMode(channel, user);
-		if(mn->modes & MODE_CHANOP)
+		if (mn && (mn->modes & MODE_CHANOP))
 			return;
 	}
 
 	if(!CHECK_HALFOPS(cInfo))
 	{
 		struct modeNode *mn = GetUserMode(channel, user);
-		if(mn->modes & MODE_HALFOP)
+		if (mn && (mn->modes & MODE_HALFOP))
 			return;
 	}
 	
 	if(!CHECK_VOICED(cInfo))
 	{
 		struct modeNode *mn = GetUserMode(channel, user);
-		if((mn->modes & MODE_VOICE) && !(mn->modes & MODE_CHANOP) && !(mn->modes & MODE_HALFOP))
+		if (mn && ((mn->modes & MODE_VOICE) && !(mn->modes & MODE_CHANOP) && !(mn->modes & MODE_HALFOP)))
 			return;
 	}
 
