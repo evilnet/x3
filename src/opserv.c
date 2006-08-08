@@ -186,6 +186,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WHOIS_POSTAL_CODE","Postal Code  : %s" },
     { "OSMSG_WHOIS_LATITUDE",   "Latitude     : %f" },
     { "OSMSG_WHOIS_LONGITUDE",  "Longitude    : %f" },
+    { "OSMSG_WHOIS_MAP",        "Map          : %s" },
     { "OSMSG_WHOIS_DMA_CODE",   "DMA Code     : %d" },
     { "OSMSG_WHOIS_AREA_CODE",  "Area Code    : %d" },
     { "OSMSG_WHOIS_MODES",      "Modes        : +%s " },
@@ -1775,6 +1776,16 @@ static MODCMD_FUNC(cmd_whois)
         reply("OSMSG_WHOIS_POSTAL_CODE", target->postal_code);
         reply("OSMSG_WHOIS_LATITUDE", target->latitude);
         reply("OSMSG_WHOIS_LONGITUDE", target->longitude);
+        /* Only show a map url if we have a city, latitude and longitude.
+         * Theres not much point of latitude and longitude coordinates are
+         * returned but no city, the coordinates are useless.
+         */
+        if (target->latitude && target->longitude && target->city) {
+            char map_url[MAXLEN];
+            snprintf(map_url, sizeof(map_url), "http://www.mapquest.com/maps/map.adp?searchtype=address&formtype=address&latlongtype=decimal&latitude=%f&longitude=%f",
+                     target->latitude, target->longitude);
+            reply("OSMSG_WHOIS_MAP", map_url);
+        }
         reply("OSMSG_WHOIS_DMA_CODE", target->dma_code);
         reply("OSMSG_WHOIS_AREA_CODE", target->area_code);
     } else if (target->country_name) {

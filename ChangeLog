@@ -1,6 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-09  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/opserv.c: If we have a city, latitude and longitude returned
+	then show a map url. Some results have no city but a latitude and
+	a longitude. The coordinates are useless in this case and most
+	people would know where the country is around abouts.
+
 2006-08-08  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/hash.c: Speed up city and country lookups significantly.
