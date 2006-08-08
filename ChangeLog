@@ -3,6 +3,10 @@
 
 2006-08-09  Neil Spierling  <sirvulcan@gmail.com>
 
+	* x3.conf.example: Redid part of the geoip summary.
+
+2006-08-09  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/opserv.c: If we have a city, latitude and longitude returned
 	then show a map url. Some results have no city but a latitude and
 	a longitude. The coordinates are useless in this case and most

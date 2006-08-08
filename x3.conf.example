@@ -331,8 +331,8 @@
         // X3 will need a recompile once you install the c api. If there is a
         // GeoIP City Data file then the GeoIP data file will be ignored. However
         // bear in mind that the city data file is a lot larger than the plain
-        // country data file so it does eat more cpu. The city dat file is ~25mb
-        // compared to the country file being ~900KB. Choose carefully.
+        // country data file so does take a bit longer to query. If you are
+        // expieriencing ping timeouts you may need to tweak X3's I:line.
         "geoip_data_file" "./GeoIP.dat";
         "geoip_city_data_file" "";
 
