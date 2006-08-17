@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-01  Alex Schumann  <rubin@afternet.org>
+
+	* src/modcmd.c: Added OSI certification message to VERSION command
+
 2006-08-09  Neil Spierling  <sirvulcan@gmail.com>
 
 	* x3.conf.example: Redid part of the geoip summary.
