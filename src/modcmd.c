@@ -587,7 +587,7 @@ svccmd_can_invoke(struct userNode *user, struct userNode *bot, struct svccmd *cm
 }
 
 static int
-svccmd_expand_alias(struct svccmd *cmd, unsigned int old_argc, char *old_argv[], char *new_argv[]) {
+svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_argc, char *old_argv[], char *new_argv[]) {
     unsigned int ii, new_argc;
     char *arg;
 
@@ -625,8 +625,24 @@ svccmd_expand_alias(struct svccmd *cmd, unsigned int old_argc, char *old_argv[],
                 for (jj = lbound; jj <= ubound; )
                     new_argv[new_argc++] = old_argv[jj++];
         } else {
-            log_module(MAIN_LOG, LOG_ERROR, "Alias expansion: I do not know how to handle %s (%s.%s arg %d).", arg, cmd->parent->bot->nick, cmd->name, ii);
-            return 0;
+            switch(arg[1]) {
+                case 'a':
+                    new_argv[new_argc++] = (user && user->handle_info) ? user->handle_info->handle : "(account)";
+                    break;
+                case 'n':
+                    new_argv[new_argc++] = user ? user->nick : "(nick)";
+                    break;
+                case 'm':
+#ifdef WITH_PROTOCOL_P10
+                    new_argv[new_argc++] = user ? user->numeric : "(numnick)";
+#else
+                    new_argv[new_argc++] = "(This ircd protocol has no numnicks!)";
+#endif
+                    break;
+                default:
+                    log_module(MAIN_LOG, LOG_ERROR, "Alias expansion: I do not know how to handle %s (%s.%s arg %d).", arg, cmd->parent->bot->nick, cmd->name, ii);
+                    return 0;
+            }
         }
     }
     return new_argc;
@@ -702,9 +718,9 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
     /* Expand the alias arguments, if there are any. */
     if (cmd->alias.used) {
         char *new_argv[MAXNUMPARAMS];
-        argc = svccmd_expand_alias(cmd, argc, argv, new_argv);
+        argc = svccmd_expand_alias(cmd, user, argc, argv, new_argv);
         if (!argc) {
-            send_message(service->bot, user, "MCMSG_ALIAS_ERROR", cmd->name);
+            send_message(user, service->bot, "MCMSG_ALIAS_ERROR", cmd->name);
             return 0;
         }
         argv = new_argv;
@@ -1083,8 +1099,16 @@ check_alias_args(char *argv[], unsigned int argc) {
             default:
                 return arg;
             }
-        } else
-            return arg;
+        } else {
+            switch(argv[arg][1]) {
+                case 'a':
+                case 'n':
+                case 'm':
+                    continue;
+                default: 
+                    return arg;
+            }
+        }
     }
     return arg;
 }

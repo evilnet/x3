@@ -1,6 +1,18 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-19  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: added reply command, which responds similar to calc,
+	but with any message. (for use with bindings)
+
+	* src/modcmd.c: enabled the ability to use $a $n and $m in BIND, which
+	are replaced with the target command's calling user's account, nick,
+	and numnick respectively. This and the above allows things like:
+	BIND x3 account x3.reply your account is $a   or
+	BIND x3 kickme  x3.kick $n $1-
+	more to come, maybe, later.
+
 2006-08-01  Alex Schumann  <rubin@afternet.org>
 
 	* src/modcmd.c: Added OSI certification message to VERSION command

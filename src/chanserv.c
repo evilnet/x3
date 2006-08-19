@@ -6941,6 +6941,19 @@ static CHANSERV_FUNC(cmd_calc)
     return 1;
 }
 
+static CHANSERV_FUNC(cmd_reply)
+{
+
+    REQUIRE_PARAMS(2);
+    unsplit_string(argv + 1, argc - 1, NULL);
+
+    if(channel)
+        send_channel_message(channel, cmd->parent->bot, "$b%s$b: %s", user->nick, unsplit_string(argv + 1, argc - 1, NULL));
+    else
+        send_message_type(4, user, cmd->parent->bot, "%s", unsplit_string(argv + 1, argc - 1, NULL));
+    return 1;
+}
+
 static void
 chanserv_adjust_limit(void *data)
 {
@@ -8586,6 +8599,7 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(d, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(huggle, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(calc, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
+    DEFINE_COMMAND(reply, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
 
     /* Channel options */
     DEFINE_CHANNEL_OPTION(defaulttopic);
