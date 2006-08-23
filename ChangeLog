@@ -3,6 +3,10 @@
 
 2006-08-24  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/spamserv.c: Fixed the +k issue with spamserv.
+
+2006-08-24  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/opserv.c: Added PRIVSET Command.
 
 	* src/opserv.help: Added PRIVSET Command. Plus contents for the
