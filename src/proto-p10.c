@@ -20,6 +20,7 @@
 
 #include "nickserv.h"
 #include "chanserv.h"
+#include "hash.h"
 #include "helpfile.h"
 #include "hosthiding.h"
 #include "proto-common.c"
@@ -322,8 +323,12 @@ extern int off_channel;
 extern int DefConLevel;
 extern int DefConTimeOut;
 extern char *DefConChanModes;
+extern FILE *gfp;
+extern FILE *sgfp;
 
 static int parse_oplevel(char *str);
+
+char privbuf[512] = "";
 
 /* Numerics can be XYY, XYYY, or XXYYY; with X's identifying the
  * server and Y's indentifying the client on that server. */
@@ -692,6 +697,17 @@ irc_eob_ack(void)
 
         if (DefConTimeOut > 0)
             timeq_add(now + DefConTimeOut, defcon_timeout, NULL);
+    }
+
+    if (gfp) {
+      fprintf (gfp, "</markers>\n");
+      fclose(gfp);
+    }
+
+
+    if (sgfp) {
+      fprintf (sgfp, "</markers>\n");
+      fclose(sgfp);
     }
 }
 
@@ -1370,6 +1386,99 @@ static CMD_FUNC(cmd_fakehost)
         return 1;
     assign_fakehost(user, argv[2], 0);
     return 1;
+}
+
+static struct {
+  char        *name;
+  unsigned int priv;
+} privtab[] = {
+#define P(priv)         { #priv, PRIV_ ## priv }
+  P(CHAN_LIMIT),     P(MODE_LCHAN),     P(WALK_LCHAN),    P(DEOP_LCHAN),
+  P(SHOW_INVIS),     P(SHOW_ALL_INVIS), P(UNLIMIT_QUERY), P(KILL),
+  P(LOCAL_KILL),     P(REHASH),         P(RESTART),       P(DIE),
+  P(GLINE),          P(LOCAL_GLINE),    P(JUPE),          P(LOCAL_JUPE),
+  P(OPMODE),         P(LOCAL_OPMODE),   P(SET),           P(WHOX),
+  P(BADCHAN),        P(LOCAL_BADCHAN),  P(SEE_CHAN),      P(PROPAGATE),
+  P(DISPLAY),        P(SEE_OPERS),      P(WIDE_GLINE),    P(FORCE_OPMODE),
+  P(FORCE_LOCAL_OPMODE), P(REMOTEREHASH), P(CHECK), P(SEE_SECRET_CHAN),
+  P(SHUN),           P(LOCAL_SHUN),     P(WIDE_SHUN),
+#undef P
+  { 0, 0 }
+};
+
+char *client_report_privs(struct userNode *client)
+{
+  int i;
+
+  privbuf[0] = '\0';
+  for (i = 0; privtab[i].name; i++) {
+    if (HasPriv(client, privtab[i].priv)) {
+      strcat(privbuf, privtab[i].name);
+      strcat(privbuf, " ");
+    }
+  }
+
+  privbuf[strlen(privbuf)] = 0;
+
+  return privbuf;
+}
+
+int client_modify_priv_by_name(struct userNode *who, char *priv, int what) {
+ int i = 0;
+ assert(0 != priv);
+ assert(0 != who);
+
+  for (i = 0; privtab[i].name; i++) {
+    if (0 == strcmp(privtab[i].name, priv)) {
+      if (what == PRIV_ADD)
+        GrantPriv(who, privtab[i].priv);
+      else if (what == PRIV_DEL) {
+        RevokePriv(who, privtab[i].priv);
+      }
+    }
+  }
+  return 0;
+}
+
+static CMD_FUNC(cmd_privs)
+{
+  char *tstr = NULL;
+  int type = 0;
+
+  tstr = conf_get_data("server/type", RECDB_QSTRING);
+  if(tstr)
+    type = atoi(tstr);
+
+  if (type < 6)
+    return 1; /* silently ignore */
+
+  struct userNode *user = argc > 1 ? GetUserN(argv[1]) : NULL;
+  char buf[512] = "";
+  int what = PRIV_ADD;
+  char *p = 0;
+  char *tmp;
+  unsigned int i;
+
+  if (argc < 3)
+    return 0;
+
+  if (!user)
+    return 0;
+
+  for (i=1; i<argc; i++) {
+    strcat(buf, argv[i]);
+    strcat(buf, " ");
+  }
+
+  for (i = 2; i < argc; i++) {
+    if (*argv[i] == '+') { what = PRIV_ADD; argv[i]++; }
+    if (*argv[i] == '-') { what = PRIV_DEL; argv[i]++; }
+    for (tmp = x3_strtok(&p, argv[i], ","); tmp;
+         tmp = x3_strtok(&p, NULL, ",")) {
+      client_modify_priv_by_name(user, tmp, what);
+    }
+  }
+  return 1;
 }
 
 static CMD_FUNC(cmd_burst)
@@ -2142,8 +2251,8 @@ init_parse(void)
     /* Ignore dnsbl exemptions */
     dict_insert(irc_func_dict, TOK_EXEMPT, cmd_dummy);
     dict_insert(irc_func_dict, TOK_MARK, cmd_dummy);
-    /* Ignore privs */
-    dict_insert(irc_func_dict, TOK_PRIVS, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_PRIVS, cmd_privs);
+    dict_insert(irc_func_dict, TOK_PRIVS, cmd_privs);
     /* Ignore remote luser */
     dict_insert(irc_func_dict, TOK_LUSERS, cmd_dummy);
     /* We have reliable clock!  Always!  Wraaa! */

@@ -115,6 +115,59 @@
 /* IDLEN is 6 because it takes 5.33 Base64 digits to store 32 bytes. */
 #define IDLEN           6
 
+/** Operator privileges. */
+enum Priv {
+  PRIV_CHAN_LIMIT,      /**< no channel limit on oper */
+  PRIV_MODE_LCHAN,      /**< oper can mode local chans */
+  PRIV_WALK_LCHAN,      /**< oper can walk through local modes */
+  PRIV_DEOP_LCHAN,      /**< no deop oper on local chans */
+  PRIV_SHOW_INVIS,      /**< show local invisible users */
+  PRIV_SHOW_ALL_INVIS,  /**< show all invisible users */
+  PRIV_UNLIMIT_QUERY,   /**< unlimit who queries */
+  PRIV_KILL,            /**< oper can KILL */
+  PRIV_LOCAL_KILL,      /**< oper can local KILL */
+  PRIV_REHASH,          /**< oper can REHASH */
+  PRIV_REMOTEREHASH,    /**< oper can remote REHASH */
+  PRIV_RESTART,         /**< oper can RESTART */
+  PRIV_DIE,             /**< oper can DIE */
+  PRIV_GLINE,           /**< oper can GLINE */
+  PRIV_LOCAL_GLINE,     /**< oper can local GLINE */
+  PRIV_SHUN,            /**< oper can SHUN */
+  PRIV_LOCAL_SHUN,      /**< oper can local SHUN */
+  PRIV_JUPE,            /**< oper can JUPE */
+  PRIV_LOCAL_JUPE,      /**< oper can local JUPE */
+  PRIV_OPMODE,          /**< oper can OP/CLEARMODE */
+  PRIV_LOCAL_OPMODE,    /**< oper can local OP/CLEARMODE */
+  PRIV_SET,             /**< oper can SET */
+  PRIV_WHOX,            /**< oper can use /who x */
+  PRIV_BADCHAN,         /**< oper can BADCHAN */
+  PRIV_LOCAL_BADCHAN,   /**< oper can local BADCHAN */
+  PRIV_SEE_CHAN,        /**< oper can see in secret chans */
+  PRIV_PROPAGATE,       /**< propagate oper status */
+  PRIV_DISPLAY,         /**< "Is an oper" displayed */
+  PRIV_SEE_OPERS,       /**< display hidden opers */
+  PRIV_WIDE_GLINE,      /**< oper can set wider G-lines */
+  PRIV_WIDE_SHUN,       /**< oper can set wider G-lines */
+  PRIV_LIST_CHAN,       /**< oper can list secret channels */
+  PRIV_FORCE_OPMODE,    /**< can hack modes on quarantined channels */
+  PRIV_FORCE_LOCAL_OPMODE, /**< can hack modes on quarantined local channels */
+  PRIV_CHECK,           /**< oper can use CHECK */
+  PRIV_SEE_SECRET_CHAN, /**< oper can see +s channels in whois */
+  PRIV_LAST_PRIV        /**< number of privileges */
+};
+
+/** Number of bits */
+#define _PRIV_NBITS             (8 * sizeof(unsigned long))
+/** Element number for priv \a priv. */
+#define _PRIV_IDX(priv)         ((priv) / _PRIV_NBITS)
+/** Element bit for priv \a priv. */
+#define _PRIV_BIT(priv)         (1UL << ((priv) % _PRIV_NBITS))
+
+/** Operator privileges. */
+struct Privs {
+  unsigned long priv_mask[(PRIV_LAST_PRIV + _PRIV_NBITS - 1) / _PRIV_NBITS];
+};
+
 DECLARE_LIST(userList, struct userNode*);
 DECLARE_LIST(modeList, struct modeNode*);
 DECLARE_LIST(banList, struct banNode*);
@@ -159,12 +212,28 @@ struct userNode {
     time_t timestamp;             /* Time of last nick change */
     struct server *uplink;        /* Server that user is connected to */
     struct modeList channels;     /* Vector of channels user is in */
+    struct Privs   privs;
 
     /* from nickserv */
     struct handle_info *handle_info;
     struct userNode *next_authed;
     struct policer auth_policer;
 };
+
+#define privs(cli)             ((cli)->privs)
+#define PrivSet(pset, priv)     ((pset)->priv_mask[_PRIV_IDX(priv)] |= \
+                                 _PRIV_BIT(priv))
+#define PrivClr(pset, priv)     ((pset)->priv_mask[_PRIV_IDX(priv)] &= \
+                                 ~(_PRIV_BIT(priv)))
+#define PrivHas(pset, priv)     ((pset)->priv_mask[_PRIV_IDX(priv)] & \
+                                 _PRIV_BIT(priv))
+
+#define PRIV_ADD 1
+#define PRIV_DEL 0
+
+#define GrantPriv(cli, priv)    (PrivSet(&(privs(cli)), priv))
+#define RevokePriv(cli, priv)   (PrivClr(&(privs(cli)), priv))
+#define HasPriv(cli, priv)      (PrivHas(&(privs(cli)), priv))
 
 struct chanNode {
     chan_mode_t modes;

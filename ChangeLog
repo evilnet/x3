@@ -1,6 +1,18 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-23  Neil Spierling  <sirvulcan@gmail.com>
+
+	* x3.conf.example: Add a new ircd type 6 for trunk nefarious.
+
+	* src/hash.h: Priv declerations.
+
+	* src/opserv.c: Show privs in WHOIS output.
+
+	* src/proto.h: client_report_privs decleration.
+
+	* src/proto-p10.c: Handle PRIV only for type 6 servers.
+
 2006-08-19  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: added reply command, which responds similar to calc,

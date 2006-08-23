@@ -25,6 +25,7 @@
 #include "nickserv.h"
 #include "modcmd.h"
 #include "modules.h"
+#include "proto.h"
 #include "opserv.h"
 #include "timeq.h"
 #include "saxdb.h"
@@ -195,6 +196,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WHOIS_SERVER",     "Server       : %s" },
     { "OSMSG_WHOIS_NICK_AGE",   "Nick Age     : %s" },
     { "OSMSG_WHOIS_ACCOUNT",    "Account      : %s" },
+    { "OSMSG_WHOIS_PRIVS",      "IRCd Privs   : %s" },
     { "OSMSG_WHOIS_CHANNELS",   "Channels     : %s" },
     { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
@@ -1821,6 +1823,9 @@ static MODCMD_FUNC(cmd_whois)
 #endif
     reply("OSMSG_WHOIS_SERVER", target->uplink->name);
     reply("OSMSG_WHOIS_ACCOUNT", (target->handle_info ? target->handle_info->handle : "Not authenticated"));
+
+    reply("OSMSG_WHOIS_PRIVS", client_report_privs(target));
+
     intervalString(buffer, now - target->timestamp, user->handle_info);
     reply("OSMSG_WHOIS_NICK_AGE", buffer);
     if (target->channels.used <= MAX_CHANNELS_WHOIS)

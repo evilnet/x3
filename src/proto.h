@@ -94,6 +94,8 @@ struct userNode* GetUserN(const char *numeric);
 void init_parse(void);
 int parse_line(char *line, int recursive);
 
+char *client_report_privs(struct userNode *client);
+
 /* Callback notifications for protocol support. */
 typedef void (*chanmsg_func_t) (struct userNode *user, struct chanNode *chan, char *text, struct userNode *bot);
 void reg_chanmsg_func(unsigned char prefix, struct userNode *service, chanmsg_func_t handler);

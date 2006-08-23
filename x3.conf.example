@@ -50,7 +50,8 @@
     "numeric" "51"; // hint: If you get collisions on link, CHANGE THIS.
     /* Type handles some changes in nefarious 1.0 (was 0.5.0)
      * 4 - nefarious 0.4.x and other ircds
-     * 5 - nefarious 1.0.x and higher
+     * 5 - nefarious 1.0.x and higher (Branch Revision)
+     * 6 - nefarious 1.0.x and higher (Trunk Revision)
      */
     "type" "5";
     "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.
