@@ -404,6 +404,9 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_DEFCON_SHUN_NEW_CLIENTS", "Shunning New Clients" },
     { "OSMSG_DEFCON_NO_NEW_MEMOS", "Disallowing New Memos" },
 
+    { "OSMSG_PRIV_UNKNOWN", "Unknown privilege flag %s, see /msg $O HELP PRIVFLAGS for a flag list" },
+    { "OSMSG_PRIV_SET",     "Privilege flag %s has been %sset" },
+
     { NULL, NULL }
 };
 
@@ -733,6 +736,55 @@ static MODCMD_FUNC(cmd_defcon)
     }
 
     DefConProcess(user);
+    return 1;
+}
+
+/* TODO
+static MODCMD_FUNC(cmd_privallow)
+{
+//privallow servername/username +/-flag (global is set in conf)
+}
+
+static MODCMD_FUNC(cmd_privdissallow)
+{
+//privdisallow servername/username +/-flag (global is set in conf)
+}
+
+static MODCMD_FUNC(cmd_privlist)
+{
+//privlist servername/user (global with none)
+}
+*/
+
+static MODCMD_FUNC(cmd_privset)
+{
+    struct userNode *target;
+    char *flag;
+    int add = PRIV_ADD;
+
+    flag = argv[2];
+    if (*flag == '-') {
+        add = PRIV_DEL;
+        flag++;    
+    } else if (*flag == '+') {
+        add = PRIV_ADD;
+        flag++;
+    }
+
+    target = GetUserH(argv[1]);
+    if (!target) {
+        reply("MSG_NICK_UNKNOWN", argv[1]);
+        return 0;
+    }
+
+    if (check_priv(flag)) {
+        irc_privs(target, flag, add);
+        reply("OSMSG_PRIV_SET", argv[2], (add == 1) ? "" : "un");
+    } else {
+        reply("OSMSG_PRIV_UNKNOWN", argv[2]);
+        return 0;
+    }
+
     return 1;
 }
 
@@ -6432,6 +6484,7 @@ init_opserv(const char *nick)
     opserv_define_func("HOP", cmd_hop, 100, 2, 2);
     opserv_define_func("HOPALL", cmd_hopall, 400, 2, 0);
     opserv_define_func("MAP", cmd_stats_links, 0, 0, 0);
+    opserv_define_func("PRIVSET", cmd_privset, 900, 0, 3);
     opserv_define_func("PART", cmd_part, 601, 0, 2);
     opserv_define_func("QUERY", cmd_query, 0, 0, 0);
     opserv_define_func("RAW", cmd_raw, 999, 0, 2);

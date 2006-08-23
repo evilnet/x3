@@ -95,6 +95,7 @@ void init_parse(void);
 int parse_line(char *line, int recursive);
 
 char *client_report_privs(struct userNode *client);
+int check_priv(char *priv);
 
 /* Callback notifications for protocol support. */
 typedef void (*chanmsg_func_t) (struct userNode *user, struct chanNode *chan, char *text, struct userNode *bot);
@@ -157,6 +158,7 @@ void irc_raw(const char *what);
 void irc_stats(struct userNode *from, struct server *target, char type);
 void irc_svsnick(struct userNode *from, struct userNode *target, const char *newnick);
 void irc_swhois(struct userNode *from, struct userNode *target, const char *message);
+void irc_privs(struct userNode *target, char *flag, int add);
 
 /* account maintenance */
 void irc_rename(struct userNode *user, const char *new_handle);

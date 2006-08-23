@@ -323,8 +323,6 @@ extern int off_channel;
 extern int DefConLevel;
 extern int DefConTimeOut;
 extern char *DefConChanModes;
-extern FILE *gfp;
-extern FILE *sgfp;
 
 static int parse_oplevel(char *str);
 
@@ -697,17 +695,6 @@ irc_eob_ack(void)
 
         if (DefConTimeOut > 0)
             timeq_add(now + DefConTimeOut, defcon_timeout, NULL);
-    }
-
-    if (gfp) {
-      fprintf (gfp, "</markers>\n");
-      fclose(gfp);
-    }
-
-
-    if (sgfp) {
-      fprintf (sgfp, "</markers>\n");
-      fclose(sgfp);
     }
 }
 
@@ -1438,6 +1425,25 @@ int client_modify_priv_by_name(struct userNode *who, char *priv, int what) {
     }
   }
   return 0;
+}
+
+int check_priv(char *priv)
+{
+  int i;
+
+  for (i = 0; privtab[i].name; i++) {
+    if (0 == strcmp(privtab[i].name, priv)) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+void
+irc_privs(struct userNode *target, char *flag, int add)
+{
+    client_modify_priv_by_name(target, flag, add);
+    putsock("%s " P10_PRIVS " %s %s%s", self->numeric, target->numeric, (add == PRIV_ADD) ? "+" : "-", flag);
 }
 
 static CMD_FUNC(cmd_privs)

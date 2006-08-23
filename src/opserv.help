@@ -13,6 +13,7 @@
             "  $bCHANNEL$b     Channel commands.            ",
             "  $bCLONES$b      Manage trusts and limits.    ",
             "  $bROUTING$b     Manage the Auto Routing System.",
+            "  $bPRIVILEGE$b   Manage the privilege lists.",
             "  $bSETTINGS$b    View and temporarily change  ",
             "              config file settings.        ",
             "  $bADMIN$b       Misc Administrator Commands. ",
@@ -73,6 +74,13 @@
               "  $bDELTRACK$b  Deletes an active track.",
               "  $bLISTTRACK$b Lists all active tracks.",
              );
+
+"PRIVILEGE" (
+             " The Privilege list system: ",
+             " $b$b",
+             " $bPRIVSET$b Set and unset privileges on the fly."
+            );
+
 "ROUTING"  (
             " The Auto Routing System: ",
             " $b$b",
@@ -782,6 +790,12 @@
         "Provides information about The Auto Routing System's configuration. You can see the routing plans, and the current routing options.",
         "$uSee also:$u routing, routing set",
         );
+
+"PRIVSET" ("/msg $O PRIVSET <nick> <+/-flag>",
+           "Allows $O to set flags on users.",
+           "Access level: $b${level/privset}$b",
+           "$uSee also: privflags"
+          );
 
 "UNRESERVE" ("/msg $O UNRESERVE <nick>",
         "Removes a nick from $b$O's$b reserve list.",

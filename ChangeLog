@@ -1,6 +1,18 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-24  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/opserv.c: Added PRIVSET Command.
+
+	* src/opserv.help: Added PRIVSET Command. Plus contents for the
+	privs section.
+
+	* src/proto.h: irc_privs deceleration.
+
+	* src/proto-p10.c: Fixed a compile issue plus added functions for
+	setting and checking privs.
+
 2006-08-23  Neil Spierling  <sirvulcan@gmail.com>
 
 	* x3.conf.example: Add a new ircd type 6 for trunk nefarious.
