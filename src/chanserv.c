@@ -297,6 +297,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_USET_AUTOOP",       "$bAutoOp      $b %s" },
     { "CSMSG_USET_AUTOVOICE",    "$bAutoVoice   $b %s" },
     { "CSMSG_USET_AUTOINVITE",   "$bAutoInvite  $b %s" },
+    { "CSMSG_USET_AUTOJOIN",     "$bAutoJoin    $b %s" },
     { "CSMSG_USET_INFO",         "$bInfo        $b %s" },
 
     { "CSMSG_USER_PROTECTED", "Sorry, $b%s$b is protected." },
@@ -3757,6 +3758,8 @@ static CHANSERV_FUNC(cmd_myaccess)
         }
         if(IsUserAutoInvite(uData) && (uData->access >= cData->lvlOpts[lvlInviteMe]))
             string_buffer_append(&sbuf, 'i');
+        if(IsUserAutoJoin(uData) && (uData->access >= cData->lvlOpts[lvlInviteMe]))
+            string_buffer_append(&sbuf, 'j');
         if(uData->info)
             string_buffer_append_printf(&sbuf, ")] %s", uData->info);
         else
@@ -6244,6 +6247,11 @@ static MODCMD_FUNC(user_opt_autoinvite)
     return user_binary_option("CSMSG_USET_AUTOINVITE", USER_AUTO_INVITE, CSFUNC_ARGS);
 }
 
+static MODCMD_FUNC(user_opt_autojoin)
+{
+    return user_binary_option("CSMSG_USET_AUTOJOIN", USER_AUTO_JOIN, CSFUNC_ARGS);
+}
+
 static MODCMD_FUNC(user_opt_info)
 {
     struct userData *uData;
@@ -6302,7 +6310,7 @@ static CHANSERV_FUNC(cmd_uset)
     {
         char *options[] =
         {
-            "AutoOp", "AutoInvite", "Info"
+            "AutoOp", "AutoInvite", "AutoJoin", "Info"
         };
 
         if(!uset_shows_list.size)
@@ -7215,6 +7223,14 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
                && !self->burst
                && !user->uplink->burst)
                 irc_invite(chanserv, user, cn);
+
+            if(!IsUserSuspended(channel)
+               && IsUserAutoJoin(channel)
+               && (channel->access >= channel->channel->lvlOpts[lvlInviteMe])
+               && !self->burst
+               && !user->uplink->burst)
+                irc_svsjoin(chanserv, user, cn);
+
             continue;
         }
 
@@ -8634,6 +8650,7 @@ init_chanserv(const char *nick)
 
     /* User options */
     DEFINE_USER_OPTION(autoinvite);
+    DEFINE_USER_OPTION(autojoin);
     DEFINE_USER_OPTION(info);
     DEFINE_USER_OPTION(autoop);
 

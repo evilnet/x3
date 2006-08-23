@@ -182,6 +182,7 @@
         "  o     AutoOp is active.",
         "  v     AutoVoice is active.",
         "  i     AutoInvite is active.",
+        "  j     AutoJoin is active.",
         "$uSee Also:$u access, users");
 "ACCESS" ("/msg $S ACCESS <#channel> [<nick|*account>]",
         "Reports various pieces of information about a channel user, including channel and network access level, and the user's info line. If no nick or account is provided, $S returns your own information.",
@@ -468,7 +469,7 @@
         "USERGREETING: A greeting message for users on the channel's userlist.",
         "MODES:        The channel's default modes.",
 	"PUBCMD:       Restrictions to use commands in public.",
-        "INVITEME:     Minimum level for users to use INVITEME or AUTOINVITE.",
+        "INVITEME:     Minimum level for users to use INVITEME, AUTOINVITE or AUTOJOIN.",
         "USERINFO:     Minimum level for users to show an infoline on join.",
         "ENFOPS:       Who can op users.",
         "ENFHALFOPS:   Who can half-op users.",
@@ -658,6 +659,7 @@
          "INFO:       Sets the infoline that $C sends when you join the channel.",
          "AUTOOP:     Enable or disable $C automatically opping you upon joining or authenticating.",
 	 "AUTOINVITE: $C will invite you to this channel if you have access to and are not in when you authenticate if this setting is on.",
+	 "AUTOJOIN: $C will forcibly you to this channel if you have access to and are not in when you authenticate if this setting is on.",
          "$uSee Also:$u set");
 "USET INFO" ("/msg $C USET <#channel> INFO <info>",
         "This command will set a user defined information message to be displayed when you join the channel. Set to '*' to clear the message.",

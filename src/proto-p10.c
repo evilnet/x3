@@ -93,7 +93,9 @@
 #define CMD_SQUERY              "SQUERY"
 #define CMD_SQUIT               "SQUIT"
 #define CMD_STATS               "STATS"
+#define CMD_SVSJOIN             "SVSJOIN"
 #define CMD_SVSNICK             "SVSNICK"
+#define CMD_SVSPART             "SVSPART"
 #define CMD_SWHOIS              "SWHOIS"
 #define CMD_TIME                "TIME"
 #define CMD_TOPIC               "TOPIC"
@@ -181,7 +183,9 @@
 #define TOK_SQUERY              "SQUERY"
 #define TOK_SQUIT               "SQ"
 #define TOK_STATS               "R"
+#define TOK_SVSJOIN             "SJ"
 #define TOK_SVSNICK             "SN"
+#define TOK_SVSPART             "SP"
 #define TOK_SWHOIS              "SW"
 #define TOK_TIME                "TI"
 #define TOK_TOPIC               "T"
@@ -279,7 +283,9 @@
 #define P10_SQUERY              TYPE(SQUERY)
 #define P10_SQUIT               TYPE(SQUIT)
 #define P10_STATS               TYPE(STATS)
+#define P10_SVSJOIN             TYPE(SVSJOIN)
 #define P10_SVSNICK             TYPE(SVSNICK)
+#define P10_SVSPART             TYPE(SVSPART)
 #define P10_SWHOIS              TYPE(SWHOIS)
 #define P10_TIME                TYPE(TIME)
 #define P10_TOPIC               TYPE(TOPIC)
@@ -951,6 +957,12 @@ irc_join(struct userNode *who, struct chanNode *what)
 }
 
 void
+irc_svsjoin(struct userNode *from, struct userNode *who, struct chanNode *to)
+{
+    putsock("%s " P10_SVSJOIN " %s %s "FMT_TIME_T, from->uplink->numeric, who->numeric, to->name, now);
+}
+
+void
 irc_kick(struct userNode *who, struct userNode *target, struct chanNode *channel, const char *msg)
 {
     const char *numeric;
@@ -1283,6 +1295,22 @@ static CMD_FUNC(cmd_join)
     else
         cd.when = atoi(argv[2]);
     parse_foreach(argv[1], join_helper, create_helper, NULL, NULL, &cd);
+    return 1;
+}
+
+static CMD_FUNC(cmd_svsjoin)
+{
+    struct create_desc cd;
+
+    if (!(cd.user = GetUserH(argv[1])))
+        return 0;
+    if (argc < 3)
+        return 0;
+    else if (argc < 4)
+        cd.when = now;
+    else
+        cd.when = atoi(argv[3]);
+    parse_foreach(argv[2], join_helper, create_helper, NULL, NULL, &cd);
     return 1;
 }
 
@@ -1870,6 +1898,19 @@ static CMD_FUNC(cmd_part)
     return 1;
 }
 
+static CMD_FUNC(cmd_svspart)
+{
+    struct userNode *user;
+
+    if (argc < 3)
+        return 0;
+    user = GetUserH(argv[1]);
+    if (!user)
+        return 0;
+    parse_foreach(argv[2], part_helper, NULL, NULL, NULL, user);
+    return 1;
+}
+
 static CMD_FUNC(cmd_silence)
 {
     struct userNode *user;
@@ -2210,8 +2251,12 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_NOTICE, cmd_notice);
     dict_insert(irc_func_dict, CMD_STATS, cmd_stats);
     dict_insert(irc_func_dict, TOK_STATS, cmd_stats);
+    dict_insert(irc_func_dict, CMD_SVSJOIN, cmd_svsjoin);
+    dict_insert(irc_func_dict, TOK_SVSJOIN, cmd_svsjoin);
     dict_insert(irc_func_dict, CMD_SVSNICK, cmd_svsnick);
     dict_insert(irc_func_dict, TOK_SVSNICK, cmd_svsnick);
+    dict_insert(irc_func_dict, CMD_SVSPART, cmd_svspart);
+    dict_insert(irc_func_dict, TOK_SVSPART, cmd_svspart);
     dict_insert(irc_func_dict, CMD_SWHOIS, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SWHOIS, cmd_dummy);
     dict_insert(irc_func_dict, CMD_WHOIS, cmd_whois);
