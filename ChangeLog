@@ -1,6 +1,27 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-26  Neil Spierling  <sirvulcan@gmail.com>
+
+	* x3.conf.example: Added hidden host style option and key options
+	for style 2.
+
+	* src/hosthiding.h: Remove KEY #defines.
+
+	* src/hosthiding.c: Set the keys only once using the conf values.
+
+	* src/nickserv.c: Generate hidden hosts off crypt hosts instead
+	of standard hidden hosts if style is 2.
+
+	* src/proto-common.c: Generate hidden hosts off crypt hosts instead
+	of standard hidden hosts if style is 2.
+
+	* src/proto-p10.c: Set crypt host to the crypt IP if there is no
+	hostname (unresolved). This is how Nefarious works.
+
+	* src/tools.c: Generate hidden hosts off crypt hosts instead
+	of standard hidden hosts if style is 2.
+
 2006-08-24  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/chanserv.c: Added autojoin USET option, which uses SVSJOIN.

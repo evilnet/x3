@@ -67,6 +67,11 @@
   /*                                                                        */
   /*  --------------------------------------------------------------------  */
 
+/* Set only once */
+static int KEY;
+static int KEY2;
+static int KEY3;
+
 static unsigned long crc32_tab[] = {
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
   0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
@@ -152,6 +157,29 @@ str2arr (char **pparv, char *string, char *delim)
   return pparc;
 }
 
+int
+check_keys()
+{
+  char *data;
+
+  if (!KEY) {
+    data = conf_get_data("server/key1", RECDB_QSTRING);
+    KEY = data ? atoi(data) : 45432;
+  }
+
+  if (!KEY2) {
+    data = conf_get_data("server/key2", RECDB_QSTRING);
+    KEY2 = data ? atoi(data) : 76934;
+  }
+
+  if (!KEY3) {
+    data = conf_get_data("server/key3", RECDB_QSTRING);
+    KEY3 = data ? atoi(data) : 98336;
+  }
+
+  return 0;
+}
+
 void
 make_virthost (char *curr, char *host, char *virt)
 {
@@ -168,6 +196,8 @@ make_virthost (char *curr, char *host, char *virt)
 
   parc = str2arr (parv, s, ".");
   parc2 = str2arr (parv2, s2, ".");
+
+  check_keys();
 
   hash[0] = ((crc32 ((unsigned char *)parv[3], strlen (parv[3])) + KEY2) ^ KEY) ^ KEY3;
   hash[1] = ((crc32 ((unsigned char *)parv[2], strlen (parv[2])) + KEY2) ^ KEY) ^ KEY3;
@@ -224,6 +254,8 @@ make_virtip (char *curr, char *host, char *virt)
   parc = str2arr (parv, s, ".");
   parc2 = str2arr (parv2, s2, ".");
 
+  check_keys();
+
   hash[0] = ((crc32 ((unsigned char *)parv[3], strlen (parv[3])) + KEY2) ^ KEY) ^ KEY3;
   hash[1] = ((crc32 ((unsigned char *)parv[2], strlen (parv[2])) + KEY2) ^ KEY) ^ KEY3;
 
@@ -270,6 +302,8 @@ make_ipv6virthost (char *curr, char *host, char *new)
 
   parc = str2arr (parv, s3, ":");
   parc2 = str2arr (parv2, s2, ".");
+
+  check_keys();
 
   hash[0] = ((crc32 ((unsigned char *)parv[0], strlen (parv[0])) + KEY2) ^ KEY) ^ KEY3;
   hash[1] = ((crc32 ((unsigned char *)parv[1], strlen (parv[1])) + KEY2) ^ KEY) ^ KEY3;

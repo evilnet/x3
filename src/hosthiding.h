@@ -25,10 +25,6 @@
  * Proto types
  */
 
-#define KEY  45432
-#define KEY2 76934
-#define KEY3 98336
-
 extern int str2arr (char **, char *, char *);
 extern unsigned long crc32 (const unsigned char *, unsigned int);
 extern void make_virthost (char *curr, char *host, char *virt);

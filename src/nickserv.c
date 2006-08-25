@@ -889,11 +889,28 @@ reg_handle_rename_func(handle_rename_func_t func)
 static char *
 generate_fakehost(struct handle_info *handle)
 {
+    struct userNode *target;
     extern const char *hidden_host_suffix;
     static char buffer[HOSTLEN+1];
+    char *data;
+    int style = 1;
 
     if (!handle->fakehost) {
-        snprintf(buffer, sizeof(buffer), "%s.%s", handle->handle, hidden_host_suffix);
+        data = conf_get_data("server/hidden_host_type", RECDB_QSTRING);
+        if (data)
+            style = atoi(data);
+
+        if (style == 1)
+            snprintf(buffer, sizeof(buffer), "%s.%s", handle->handle, hidden_host_suffix);
+        else if (style == 2) {
+            /* Due to the way fakehost is coded theres no way i can
+               get the exact user, so for now ill just take the first
+               authed user. */
+            for (target = handle->users; target; target = target->next_authed)
+               break;
+
+            snprintf(buffer, sizeof(buffer), "%s", target->crypthost);
+        }
         return buffer;
     } else if (handle->fakehost[0] == '.') {
         /* A leading dot indicates the stored value is actually a title. */

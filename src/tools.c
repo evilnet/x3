@@ -625,6 +625,15 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
         if (match_ircglob(hidden_host, glob))
             return 1;
     }
+
+    /* Match crypt hostname */
+    if (match_ircglob(user->crypthost, glob))
+        return 1;
+
+    /* Match crypt IP */
+    if (match_ircglob(user->cryptip, glob))
+        return 1;
+
     /* If only matching the visible hostnames, bail early. */
     if ((flags & MATCH_VISIBLE) && IsHiddenHost(user)
         && (IsFakeHost(user) || (hidden_host_suffix && user->handle_info)))

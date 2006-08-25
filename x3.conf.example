@@ -47,6 +47,10 @@
     /* hidden_host should match the F:HIDDEN_HOST: line in your ircu's ircd.conf;
      * x3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
+    "hidden_host_type" "1"; // change this to 2 if you use Nefarious's style 2 host hiding.
+    "key1" "45432"; // Set these key values to the network KEY values you use
+    "key2" "76934"; // for host hiding style 2.
+    "key3" "98336";
     "numeric" "51"; // hint: If you get collisions on link, CHANGE THIS.
     /* Type handles some changes in nefarious 1.0 (was 0.5.0)
      * 4 - nefarious 0.4.x and other ircds

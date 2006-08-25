@@ -2675,6 +2675,9 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
       make_ipv6virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
     }
 
+    if (!uNode->crypthost && uNode->cryptip)
+        snprintf(uNode->crypthost, sizeof(uNode->crypthost), "%s", strdup(uNode->cryptip));
+
     uNode->timestamp = timestamp;
     modeList_init(&uNode->channels);
     uNode->uplink = uplink;

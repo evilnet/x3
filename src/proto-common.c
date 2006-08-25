@@ -834,9 +834,20 @@ generate_hostmask(struct userNode *user, int options)
     hostname = user->hostname;
     if (IsFakeHost(user) && IsHiddenHost(user) && !(options & GENMASK_NO_HIDING)) {
         hostname = user->fakehost;
-    } else if (IsHiddenHost(user) && user->handle_info && hidden_host_suffix && !(options & GENMASK_NO_HIDING)) {
-        hostname = alloca(strlen(user->handle_info->handle) + strlen(hidden_host_suffix) + 2);
-        sprintf(hostname, "%s.%s", user->handle_info->handle, hidden_host_suffix);
+    } else if (IsHiddenHost(user)) {
+        int style = 1;
+        char *data;
+        data = conf_get_data("server/hidden_host_type", RECDB_QSTRING);
+        if (data)
+            style = atoi(data);
+
+        if ((style == 1) && user->handle_info && hidden_host_suffix && !(options & GENMASK_NO_HIDING)) {
+            hostname = alloca(strlen(user->handle_info->handle) + strlen(hidden_host_suffix) + 2);
+            sprintf(hostname, "%s.%s", user->handle_info->handle, hidden_host_suffix);
+        } else if ((style == 2) && !(options & GENMASK_NO_HIDING)) {
+            hostname = alloca(strlen(user->crypthost));
+            sprintf(hostname, "%s", user->crypthost);
+        }
     } else if (options & GENMASK_STRICT_HOST) {
         if (options & GENMASK_BYIP)
             hostname = (char*)irc_ntoa(&user->ip);
