@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-25  Alex Schumann   <rubin@afternet.org>
+
+	* src/chanserv.c: fix uset reply for halfops
+
+	* src/nickserv.help: document the 'b' account flag
+
 2006-08-26  Neil Spierling  <sirvulcan@gmail.com>
 
 	* x3.conf.example: Added hidden host style option and key options
@@ -62,6 +68,11 @@
 	* src/proto.h: client_report_privs decleration.
 
 	* src/proto-p10.c: Handle PRIV only for type 6 servers.
+
+2006-08-19  Alex Schumann  <rubin@afternet.org>
+
+	* src/authserv.c: document the oset flag +b in help (hide from staff
+	command.)
 
 2006-08-19  Alex Schumann  <rubin@afternet.org>
 

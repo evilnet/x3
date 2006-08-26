@@ -6235,11 +6235,10 @@ static MODCMD_FUNC(user_opt_autoop)
         reply("CSMSG_NOT_USER", channel->name);
         return 0;
     }
-    if(uData->access < UL_OP /*channel->channel_info->lvlOpts[lvlGiveOps]*/)
+    if(uData->access < UL_HALFOP /*channel->channel_info->lvlOpts[lvlGiveOps]*/)
         return user_binary_option("CSMSG_USET_AUTOVOICE", USER_AUTO_OP, CSFUNC_ARGS);
     else
         return user_binary_option("CSMSG_USET_AUTOOP", USER_AUTO_OP, CSFUNC_ARGS);
-    /* TODO: add halfops error message? or is the op one generic enough? */
 }
 
 static MODCMD_FUNC(user_opt_autoinvite)

@@ -369,7 +369,8 @@
         "$bc$b  Use mIRC color codes in responses",
         "$bf$b  Account frozen/on vacation (will not be unregistered for inactivity; cleared when account is authenticated against)",
         "$bn$b  No-delete (will never be unregistered for inactivity)",
-        "$uSee Also:$u accountinfo, set");
+        "$bb$b  Hides you from the staff list",
+        "$uSee Also:$u accountinfo, set, $C staff");
 "OADDMASK" ("/msg $N OADDMASK <nick|*account> <user@host>",
         "Adds a hostmask to the specified account.",
         "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
