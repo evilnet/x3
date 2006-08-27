@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-08-26  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/opserv.help: Removed privs menu so we can release a tarball.
+
 2006-08-25  Alex Schumann   <rubin@afternet.org>
 
 	* src/chanserv.c: fix uset reply for halfops

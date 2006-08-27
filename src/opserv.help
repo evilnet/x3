@@ -13,7 +13,6 @@
             "  $bCHANNEL$b     Channel commands.            ",
             "  $bCLONES$b      Manage trusts and limits.    ",
             "  $bROUTING$b     Manage the Auto Routing System.",
-            "  $bPRIVILEGE$b   Manage the privilege lists.",
             "  $bSETTINGS$b    View and temporarily change  ",
             "              config file settings.        ",
             "  $bADMIN$b       Misc Administrator Commands. ",
