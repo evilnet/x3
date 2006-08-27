@@ -145,7 +145,7 @@
             " in a channel which $C is in. These two ",
             " ways are demonstrated below:",
             "  $b/MSG $C OP #chatzone Locke$b",
-            "  $b,OP #chatzone locke$b",
+            "  $b.OP #chatzone locke$b",
             "$b$b",
             " If a command is given in a channel, and ",
             " the channel parameter is not given, the ",
