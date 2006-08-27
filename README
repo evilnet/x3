@@ -2,17 +2,17 @@
 
 Description:
 ----------
-X3 is a complete set of services for ircu/Universal or ircu/Undernet
-P10 protocol networks. It aims to be highly efficient, flexible, and
-extensible. Features include advanced proxy detection and all the
-standard services users expect e.g. ChanServ, NickServ, OpServ,
-HelpServ, and Global.
+X3 is a complete set of services for Nefarious IRCu P10 protocol
+networks based on srvx irc services.. It aims to be highly efficient,
+flexible, and extensible. Features include advanced proxy detection
+and all the standard services users expect e.g. ChanServ, NickServ,
+OpServ, HelpServ, and Global.
 
 X3 is open source software; the source is available for download
 under the terms and conditions of the GNU General Public License,
 commonly known as the GNU GPL.
 
-The official X3 web site is available at http://sourceforge.net/projects/x2serv
+The official X3 web site is available at http://evilnet.sourceforge.net
 
 Installation:
 ----------
@@ -50,4 +50,3 @@ Team.
 
 End of file, README.
 
--Jedi (jedi@turboflux.net)

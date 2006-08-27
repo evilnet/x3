@@ -1,11 +1,15 @@
 /***********************************************************************
  X3 ChangeLog
 
-2006-08-26  Neil Spierling  <sirvulcan@gmail.com>
+2006-08-28  Neil Spierling  <sirvulcan@gmail.com>
+
+	* README: tweaks.
+
+2006-08-27  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/chanserv.help: Tweaked a , to .
 
-2006-08-26  Neil Spierling  <sirvulcan@gmail.com>
+2006-08-27  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/opserv.help: Removed privs menu so we can release a tarball.
 
