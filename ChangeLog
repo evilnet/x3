@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-09-10  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/mod-memoserv.c: Fixed crash bug.
+
+	* src/spamserv.c: Ignore opers.
+
 2006-08-28  Neil Spierling  <sirvulcan@gmail.com>
 
 	* README: tweaks.

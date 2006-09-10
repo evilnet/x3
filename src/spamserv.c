@@ -1811,7 +1811,7 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 	char reason[MAXLEN];
 
 	/* make sure: spamserv is not disabled; x3 is running; spamserv is in the chan; chan is regged, user does exist */
-	if(!spamserv || quit_services || !GetUserMode(channel, spamserv) || IsService(user) || !(cInfo = get_chanInfo(channel->name)) || !(uInfo = get_userInfo(user->nick)))
+	if(!spamserv || quit_services || !GetUserMode(channel, spamserv) || IsOper(user) || !(cInfo = get_chanInfo(channel->name)) || !(uInfo = get_userInfo(user->nick)))
 		return;
 
 	

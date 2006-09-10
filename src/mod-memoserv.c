@@ -1324,6 +1324,9 @@ memoserv_finalize(void) {
     str = database_get_data(conf_node, "bot", RECDB_QSTRING);
     if (str) {
         memoserv = memoserv_conf.bot;
+        const char *modes = conf_get_data("modules/memoserv/modes", RECDB_QSTRING);
+        memoserv = AddService(str, modes ? modes : NULL, "User-User Memorandum Services", NULL);
+
     } else {
         log_module(MS_LOG, LOG_ERROR, "database_get_data for memoserv_conf.bot failed!");
         exit(1);

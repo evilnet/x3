@@ -592,6 +592,7 @@
      */
     "memoserv" {
         "bot" "MemoServ";
+	"modes" "+k";
         "message_expiry" "30d"; // age when messages are deleted; set
                                 // to 0 to disable message expiration
         "limit" "30"; // Max amount of messages a person can get.
