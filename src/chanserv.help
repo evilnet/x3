@@ -91,7 +91,7 @@
             " $bUNBANALL$b    Remove all bans from a channel.",
             " $bINVITE$b      Admit a user to pass through +ib modes in your channel.",
             "$b$b",
-            " $bINFO$b        Show numerical information about the users in a channel.",
+            " $bINFO$b        Show information about a channel.",
             " $bEVENTS$b      View a list of events relevant to a channel."
 );
 "INFORMATION"     ("$bInformative Commands:$b",
@@ -102,7 +102,19 @@
             " $bIRCOPS$b      Get a list of all the current IRC operators.",
             " $bHELPERS$b     Get a list of all the current support helpers.",
             " $bPEEK$b        Reveal information on a channel's modes, topic and ops.",
-            " $bCOMMAND$b     Display some information about a command."
+            " $bCOMMAND$b     Display some information about a command.",
+            " $bINFO$b        Gets channel information about a channel.",
+            " $bEVENTS$b      View a list of events relevant to a channel.",
+            " $b$b ",
+            " $bUSERS$b       Show the channels userlist.",
+            " $bCLIST$b       Show all COOWNERs of a channel.",
+            " $bMLIST$b       Show all MANAGERs of a channel.",
+            " $bOLIST$b       Show all OPs of a channel.",
+            " $bHLIST$b       Show all HALFOPs of a channel.",
+            " $bPLIST$b       Show all PEONs of a channel.",    
+            " $bLAMERS$b      Show all  LAMERs of a channel.",
+            " $bACCESS$b      Check someone's access level in a channel.",
+            " $bMYACCESS$b    Show all channels where you have access.",
 );
 "OPER"     ("$bHelper/IRC Operator commands:$b",
             " $bGOD$b         Turn security override on/off.",
