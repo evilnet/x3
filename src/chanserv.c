@@ -7193,6 +7193,35 @@ handle_join(struct modeNode *mNode)
 }
 
 static void
+chanserv_autojoin_channel(void *data)
+{
+    struct userData *channel;
+    struct userNode *user = data;
+
+    for(channel = user->handle_info->channels; channel; channel = channel->u_next)
+    {
+        struct chanNode *cn;
+        struct modeNode *mn;
+
+        if(IsUserSuspended(channel)
+           || IsSuspended(channel->channel)
+           || !(cn = channel->channel->channel))
+            continue;
+
+        mn = GetUserMode(cn, user);
+        if(!mn)
+        {
+            if(!IsUserSuspended(channel)
+               && IsUserAutoJoin(channel)
+               && (channel->access >= channel->channel->lvlOpts[lvlInviteMe])
+               && !self->burst
+               && !user->uplink->burst)
+                irc_svsjoin(chanserv, user, cn);
+        }
+    }
+}
+
+static void
 handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 {
     struct mod_chanmode change;
@@ -7222,14 +7251,6 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
                && !self->burst
                && !user->uplink->burst)
                 irc_invite(chanserv, user, cn);
-
-            if(!IsUserSuspended(channel)
-               && IsUserAutoJoin(channel)
-               && (channel->access >= channel->channel->lvlOpts[lvlInviteMe])
-               && !self->burst
-               && !user->uplink->burst)
-                irc_svsjoin(chanserv, user, cn);
-
             continue;
         }
 
@@ -7304,6 +7325,10 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 
     if (user->handle_info->epithet)
       irc_swhois(chanserv, user, user->handle_info->epithet);
+
+   /* process autojoin channels 5 seconds later as this sometimes 
+      happens before autohide */
+   timeq_add(now + 5, chanserv_autojoin_channel, user);
 }
 
 static void

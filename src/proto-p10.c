@@ -1038,7 +1038,7 @@ irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what,
       host_in_topic = atoi(hstr);
    }
 
-   if (type == 5) {
+   if (type >= 5) {
      putsock("%s " P10_TOPIC " %s %s%s%s%s%s " FMT_TIME_T " " FMT_TIME_T " :%s", service->numeric, what->name,
              who->nick, host_in_topic ? "!" : "", host_in_topic ? (IsSetHost(who) ? sident : who->ident) : "", 
              host_in_topic ? "@" : "", host_in_topic ? shost : "", what->timestamp, now, topic);

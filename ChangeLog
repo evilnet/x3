@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-09-16  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/chanserv.c: Do autojoin 5 seconds after handle_auth. Seems its
+	happening before autohide. Let me know if its still happening before
+	autohide.
+
+	* src/chanserv.help: Updated the AUTOJOIN bit.
+
 2006-09-10  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/mod-memoserv.c: Fixed crash bug.
