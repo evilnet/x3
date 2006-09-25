@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-09-25  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/modcmd.c: Shortened ThiefMaster to just his nick as per request
+	by him.
+
 2006-09-16  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/chanserv.c: Do autojoin 5 seconds after handle_auth. Seems its
