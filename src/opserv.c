@@ -3065,6 +3065,10 @@ routing_connect_server(char *server, int port, struct server *to)
 
     wc->server = strdup(server);
     wc->target = strdup(to->name);
+    /* Just to make sure there isn't one left hanging
+     * if 2 connections are attempted at once.. 
+     * */
+    routing_delete_connect_timer(server);
     dict_insert(opserv_waiting_connections, strdup(server), wc);
     timeq_add(now + ROUTING_CONNECT_TIMEOUT, routing_connect_timeout, wc);
 

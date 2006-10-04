@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-10-03  Alex Schumann   <rubin@afternet.org>
+
+	* src/opserv.c: Check for connect timer entries before adding new
+	ones, hopefully will fix bug 1570408 (pLaYa, let us know)
+
 2006-09-25  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/modcmd.c: Shortened ThiefMaster to just his nick as per request
