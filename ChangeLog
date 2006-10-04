@@ -14,6 +14,11 @@
 
 	* src/chanserv.help: Updated the AUTOJOIN bit.
 
+2006-09-13  Alex Schumann   <rubin@afternet.org>
+
+	* src/chanserv.help: improved the help listing for the info command,
+	and information help category.
+
 2006-09-10  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/mod-memoserv.c: Fixed crash bug.
