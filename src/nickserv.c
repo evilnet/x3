@@ -2168,6 +2168,32 @@ static NICKSERV_FUNC(cmd_odelcookie)
         return 0;
     }
 
+    switch (hi->cookie->type) {
+    case ACTIVATION:
+        safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
+        if (nickserv_conf.sync_log)
+          SyncLog("ACCOUNTACC %s", hi->handle);
+        break;
+    case PASSWORD_CHANGE:
+        safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
+        if (nickserv_conf.sync_log)
+          SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
+        break;
+    case EMAIL_CHANGE:
+        if (!hi->email_addr && nickserv_conf.sync_log) {
+          if (nickserv_conf.sync_log)
+            SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, hi->cookie->data, user->info);
+        }
+        nickserv_set_email_addr(hi, hi->cookie->data);
+        if (nickserv_conf.sync_log)
+          SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
+        break;
+    default:
+        reply("NSMSG_BAD_COOKIE_TYPE", hi->cookie->type);
+        log_module(NS_LOG, LOG_ERROR, "Bad cookie type %d for account %s.", hi->cookie->type, hi->handle);
+        break;
+    }
+
     nickserv_eat_cookie(hi->cookie);
     reply("NSMSG_ATE_FOREIGN_COOKIE", hi->handle);
 
