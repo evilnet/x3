@@ -7236,12 +7236,14 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
     for(channel = user->handle_info->channels; channel; channel = channel->u_next)
     {
         struct chanNode *cn;
+        struct chanData *cData;
         struct modeNode *mn;
         if(IsUserSuspended(channel)
            || IsSuspended(channel->channel)
            || !(cn = channel->channel->channel))
             continue;
 
+        cData = cn->channel_info;
         mn = GetUserMode(cn, user);
         if(!mn)
         {
@@ -7257,7 +7259,7 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 	if(channel->access >= UL_PRESENT)
 	    channel->channel->visited = now;
 
-        if(IsUserAutoOp(channel))
+        if(IsUserAutoOp(channel) && cData->chOpts[chAutomode] != 'n')
         {
             if(channel->access >= UL_OP )
                 change.args[0].mode = MODE_CHANOP;

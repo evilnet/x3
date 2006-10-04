@@ -1,7 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
-2006-10-03  Alex Schumann   <rubin@afternet.org>
+2006-10-03  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/chanserv.c: Fix for bug 1551717. If automode is set to 0
+	in a channel and a user auths in the channel, the user will not
+	receive autoop etc if they have it enabled in uset.
+
+2006-10-03  Alex Schumann  <rubin@afternet.org>
 
 	* src/opserv.c: Check for connect timer entries before adding new
 	ones, hopefully will fix bug 1570408 (pLaYa, let us know)
