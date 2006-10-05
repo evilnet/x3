@@ -4270,7 +4270,7 @@ static CHANSERV_FUNC(cmd_lamers)
     if(!matches)
     {
         table_send(cmd->parent->bot, user->nick, 0, NULL, tbl);
-	reply("MSG_NONE");
+/*	reply("MSG_NONE"); */
         free(tbl.contents[0]);
         free(tbl.contents);
 	return 0;

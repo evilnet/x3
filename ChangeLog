@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-10-04  Alex Schumann   <rubin@afternet.org>
+
+	* src/chanserv.c: remove redundant 'none' from empty llists
+
 2006-10-04  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/nickserv.c: Fix for bug 1555621. Cookie data will be copied
