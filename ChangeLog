@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-10-08  Alex Schumann   <rubin@afternet.org>
+	* src/chanserv.c: undid 9/16/06 change of 5 second delay before
+	autojoin. Not really a great solution. Instead, move auth_handler
+	funcs to be called after stamping etc.
+
+	* src/nickserv.c: move auth_func calls to after stamping, and
+	commented up the cmd_auth source to make it more managable.
+
 2006-10-04  Alex Schumann   <rubin@afternet.org>
 
 	* src/chanserv.c: remove redundant 'none' from empty llists

@@ -984,10 +984,8 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
     if (hi && !hi->users && !hi->opserv_level)
         HANDLE_CLEAR_FLAG(hi, HELPING);
 
-    if (GetUserH(user->nick)) {
-        for (n=0; n<auth_func_used; n++)
-            auth_func_list[n](user, old_info);
-    } else
+    /* Call auth handlers */
+    if (!GetUserH(user->nick))
       user->loc = 1;
 
     if (hi) {
@@ -1000,12 +998,15 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
                 send_message(other, nickserv, "NSMSG_CLONE_AUTH", user->nick, user->ident, user->hostname);
         }
 
+        /* Add this auth to users list of current auths */
 	user->next_authed = hi->users;
 	hi->users = user;
 	hi->lastseen = now;
+        /* Add to helpers list */
 	if (IsHelper(user))
             userList_append(&curr_helpers, user);
 
+        /* Set the fakehost */
         if (hi->fakehost || old_info)
             apply_fakehost(hi);
 
@@ -1016,6 +1017,9 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
 #else
             const char *id = "???";
 #endif
+            /* Mark all the nicks registered to this
+             * account as registered nicks 
+             *  -  Why not just this one? -rubin */
             if (!nickserv_conf.disable_nicks) {
                 struct nick_info *ni;
                 for (ni = hi->nicks; ni; ni = ni->next) {
@@ -1025,14 +1029,22 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
                     }
                 }
             }
+            /* send the account to the ircd */
             StampUser(user, id, hi->registered);
         }
 
+        /* Stop trying to kick this user off their nick */
         if ((ni = get_nick_info(user->nick)) && (ni->owner == hi))
             timeq_del(0, nickserv_reclaim_p, user, TIMEQ_IGNORE_WHEN);
     } else {
         /* We cannot clear the user's account ID, unfortunately. */
 	user->next_authed = NULL;
+    }
+
+    /* Call auth handlers */
+    if (GetUserH(user->nick)) {
+        for (n=0; n<auth_func_used; n++)
+            auth_func_list[n](user, old_info);
     }
 }
 

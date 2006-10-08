@@ -121,6 +121,9 @@ snoop_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
     if (user->uplink->burst && !snoop_cfg.show_bursts) return;
     if (user->handle_info) {
         UPDATE_TIMESTAMP();
+        /* TODO: show old_handle info -> new handle info if they
+         * re-authed or something.
+         */
         SNOOP("$bAUTH$b %s as %s", user->nick, user->handle_info->handle);
     }
 }

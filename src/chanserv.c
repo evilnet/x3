@@ -7193,10 +7193,9 @@ handle_join(struct modeNode *mNode)
 }
 
 static void
-chanserv_autojoin_channel(void *data)
+chanserv_autojoin_channels(struct userNode *user)
 {
     struct userData *channel;
-    struct userNode *user = data;
 
     for(channel = user->handle_info->channels; channel; channel = channel->u_next)
     {
@@ -7330,7 +7329,8 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 
    /* process autojoin channels 5 seconds later as this sometimes 
       happens before autohide */
-   timeq_add(now + 5, chanserv_autojoin_channel, user);
+//   timeq_add(now + 5, chanserv_autojoin_channels, user);
+    chanserv_autojoin_channels(user);
 }
 
 static void
