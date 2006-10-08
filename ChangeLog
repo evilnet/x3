@@ -4,7 +4,8 @@
 2006-10-08  Alex Schumann   <rubin@afternet.org>
 	* src/chanserv.c: undid 9/16/06 change of 5 second delay before
 	autojoin. Not really a great solution. Instead, move auth_handler
-	funcs to be called after stamping etc.
+	funcs to be called after stamping etc. thx to Buttaknife for this
+	solution.
 
 	* src/nickserv.c: move auth_func calls to after stamping, and
 	commented up the cmd_auth source to make it more managable.
