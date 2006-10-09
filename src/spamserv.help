@@ -69,9 +69,9 @@
         "SPAMSCAN:       Enables/Disables scanning for spam.",
         "CHANFLOODSCAN:  Enables/Disables scanning for channel flood.",
         "JOINFLOODSCAN:  Enables/Disables scanning for joinflood.",
-        "SCANCHANOPS:    Indicates whether $X has to scan messages from channel ops.",
-        "SCANHALFOPS:    Indicates whether $X has to scan messages from channel halfops.",
-        "SCANVOICED:     Indicates whether $X has to scan messages from voiced users.",
+        "SCANCHANOPS:    Indicates whether $X has to scan messages from channel op. (and those with op, manager, cowner and owner access).",
+        "SCANHALFOPS:    Indicates whether $X has to scan messages from channel halfops (and those with halfops access).",
+        "SCANVOICED:     Indicates whether $X has to scan messages from voiced users (and those with peon access).",
         "$uSee Also:$u set spamlimit, set badreaction, set advreaction, set warnreaction, set advscan, set badwordscan, set spamscan, set chanfloodscan, set joinfloodscan, set scanchanops, set scanhalfops, set scanvoiced");
 
 "SET SPAMLIMIT" ("/msg $X SET <#channel> SPAMLIMIT <value>",

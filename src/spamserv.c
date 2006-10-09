@@ -1803,8 +1803,10 @@ spamserv_punish(struct chanNode *channel, struct userNode *user, time_t expires,
 void
 spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *text)
 {
+	struct chanData *cData;
 	struct chanInfo *cInfo;
 	struct userInfo	*uInfo;
+	struct userData *uData;
 	struct spamNode *sNode;
 	struct floodNode *fNode;
 	unsigned int violation = 0;
@@ -1814,11 +1816,18 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 	if(!spamserv || quit_services || !GetUserMode(channel, spamserv) || IsOper(user) || !(cInfo = get_chanInfo(channel->name)) || !(uInfo = get_userInfo(user->nick)))
 		return;
 
-	
+	cData = channel->channel_info;
+	uData = GetChannelUser(cData, user->handle_info);
+
 	if(!CHECK_CHANOPS(cInfo))
 	{
 		struct modeNode *mn = GetUserMode(channel, user);
 		if (mn && (mn->modes & MODE_CHANOP))
+			return;
+
+		/* Chan Ops covers all levels except peon and half op */
+		if(uData && ((uData->access < UL_OP) || (uData->access < UL_MANAGER) || 
+		  (uData->access < UL_COOWNER) || (uData->access < UL_OWNER)))
 			return;
 	}
 
@@ -1827,12 +1836,18 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 		struct modeNode *mn = GetUserMode(channel, user);
 		if (mn && (mn->modes & MODE_HALFOP))
 			return;
+
+		if(uData && (uData->access < UL_HALFOP))
+			return;
 	}
 	
 	if(!CHECK_VOICED(cInfo))
 	{
 		struct modeNode *mn = GetUserMode(channel, user);
 		if (mn && ((mn->modes & MODE_VOICE) && !(mn->modes & MODE_CHANOP) && !(mn->modes & MODE_HALFOP)))
+			return;
+
+		if(uData && (uData->access < UL_PEON))
 			return;
 	}
 

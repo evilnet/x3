@@ -1,7 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-10-10  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/spamserv.c: Ignore those with access (if the options are
+	disabled- scanchanops, scanhalfops, scanvoiced.
+
 2006-10-08  Alex Schumann   <rubin@afternet.org>
+
 	* src/chanserv.c: undid 9/16/06 change of 5 second delay before
 	autojoin. Not really a great solution. Instead, move auth_handler
 	funcs to be called after stamping etc. thx to Buttaknife for this
