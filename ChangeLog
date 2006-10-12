@@ -2,6 +2,25 @@
  X3 ChangeLog
 
 2006-10-12  Alex Schumann   <rubin@afternet.org>
+	
+	* src/opserv.c: Added VERSION alert/trace reaction, so you can now
+	setup x3 to version only users matching a criteria, and then another
+	alert to do someting based on the version reply. This should be
+	usefull for finding bots etc. Or, for example, you can make all xchat
+	people join #xchat, or all mirc join #mirc etc.
+	Also, there is a fix in here for SVSJOIN which i hadn't gotten
+	everything working with.
+
+	* src/proto-p10.c: added privmsg_user and version_user functions
+
+	* src/proto.h: added privmsg_user and version_user function
+	declerations
+
+	* src/hash.h: added version_reply variable to users
+
+
+
+2006-10-12  Alex Schumann   <rubin@afternet.org>
 
 	* src/opserv.c: Added SVSJOIN command, to push a user into a channel,
 	and a TRACE REACTION of SVSJOIN for trace and alerts. Now you can do

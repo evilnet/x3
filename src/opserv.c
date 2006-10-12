@@ -200,6 +200,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WHOIS_PRIVS",      "IRCd Privs   : %s" },
     { "OSMSG_WHOIS_CHANNELS",   "Channels     : %s" },
     { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
+    { "OSMSG_WHOIS_VERSION",    "Version      : %s" },  
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
     { "OSMSG_CHANNEL_VOICED", "All users on %s voiced." },
     { "OSMSG_CHANNEL_DEVOICED", "All voiced users on %s de-voiced." },
@@ -511,12 +512,12 @@ opserv_free_waiting_connection(void *data)
 
 typedef struct opservDiscrim {
     struct chanNode *channel;
-    char *mask_nick, *mask_ident, *mask_host, *mask_info, *server, *reason, *accountmask, *chantarget;
+    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget;
     irc_in_addr_t ip_mask;
     unsigned long limit;
     time_t min_ts, max_ts;
-    regex_t regex_nick, regex_ident, regex_host, regex_info;
-    unsigned int has_regex_nick : 1, has_regex_ident : 1, has_regex_host : 1, has_regex_info : 1;
+    regex_t regex_nick, regex_ident, regex_host, regex_info, regex_version;
+    unsigned int has_regex_nick : 1, has_regex_ident : 1, has_regex_host : 1, has_regex_info : 1, has_regex_version : 1;
     unsigned int min_level, max_level, domain_depth, duration, min_clones, min_channels, max_channels;
     unsigned char ip_mask_bits;
     unsigned int match_opers : 1, option_log : 1;
@@ -546,7 +547,8 @@ typedef enum {
     REACT_GLINE,
     REACT_TRACK,
     REACT_SHUN,
-    REACT_SVSJOIN
+    REACT_SVSJOIN,
+    REACT_VERSION
 } opserv_alert_reaction;
 
 struct opserv_user_alert {
@@ -574,6 +576,8 @@ opserv_free_user_alert(void *data)
       regfree(&alert->discrim->regex_host);
     if(alert->discrim->has_regex_info)
       regfree(&alert->discrim->regex_info);
+    if(alert->discrim->has_regex_version)
+      regfree(&alert->discrim->regex_version);
     free(alert->discrim->reason);
     free(alert->discrim);
     free(alert);
@@ -1339,7 +1343,13 @@ static MODCMD_FUNC(cmd_refreshg)
 }
 
 static void
-opserv_svsjoin(struct userNode *target, char *src_handle, char *reason, char *channame)
+opserv_version(struct userNode *target)
+{
+    irc_version_user(opserv, target);
+}
+
+static void
+opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG(char *reason), char *channame)
 {
     struct chanNode *channel;
 
@@ -1895,6 +1905,9 @@ static MODCMD_FUNC(cmd_whois)
     } else if (target->country_name) {
         reply("OSMSG_WHOIS_COUNTRY", target->country_name);
     }
+    if(target->version_reply) {
+        reply("OSMSG_WHOIS_VERSION", target->version_reply);
+    }
   
     if (target->modes) {
         bpos = 0;
@@ -2266,6 +2279,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_TRACK: reaction = "track"; break;
         case REACT_SHUN: reaction = "shun"; break;
         case REACT_SVSJOIN: reaction = "svsjoin"; break;
+        case REACT_VERSION: reaction = "version"; break;
         default: reaction = "<unknown>"; break;
         }
         reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
@@ -2644,6 +2658,27 @@ static void
 opserv_channel_delete(struct chanNode *chan)
 {
     timeq_del(0, opserv_part_channel, chan, TIMEQ_IGNORE_WHEN);
+}
+
+static void
+opserv_notice_handler(struct userNode *user, struct userNode *bot, char *text, UNUSED_ARG(int server_qualified))
+{
+    char *cmd; 
+    /* if its a version reply, do an alert check (only alerts with version=something) */
+    if(bot == opserv) {
+        if(text[0] == '\001') {
+            text++;
+            cmd = mysep(&text, " ");
+            if(!irccasecmp(cmd, "VERSION")) {
+                char *version = mysep(&text, "\n");
+                if(!version)
+                    version = "";
+                /* opserv_debug("Opserv got CTCP VERSION Notice from %s: %s", user->nick, version); */
+                user->version_reply = strdup(version);
+                dict_foreach(opserv_user_alerts, alert_check_user, user);
+            }
+        }
+    }
 }
 
 static int
@@ -4495,6 +4530,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_SHUN;
     else if (!irccasecmp(react, "svsjoin"))
         reaction = REACT_SVSJOIN;
+    else if (!irccasecmp(react, "version"))
+        reaction = REACT_VERSION;
     else {
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
@@ -4777,6 +4814,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_TRACK: reaction = "track"; break;
             case REACT_SHUN: reaction = "shun"; break;
             case REACT_SVSJOIN: reaction = "svsjoin"; break;
+            case REACT_VERSION: reaction = "version"; break;
             default:
                 reaction = NULL;
                 log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s (while writing database).", alert->reaction, iter_key(it));
@@ -4950,6 +4988,8 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 discrim->intra_scmp = 3;
 	    else
                 discrim->mask_info = argv[i];
+        } else if (irccasecmp(argv[i], "version") == 0) {
+            discrim->mask_version = argv[++i];
         } else if (irccasecmp(argv[i], "server") == 0) {
             discrim->server = argv[++i];
         } else if (irccasecmp(argv[i], "ip") == 0) {
@@ -5129,6 +5169,9 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
     if (discrim->mask_info && !strcmp(discrim->mask_info, "*")) {
         discrim->mask_info = 0;
     }
+    if (discrim->mask_version && !strcmp(discrim->mask_version, "*")) {
+        discrim->mask_version = 0;
+    }
     if (discrim->mask_host && !discrim->mask_host[strspn(discrim->mask_host, "*.")]) {
         discrim->mask_host = 0;
     }
@@ -5190,6 +5233,20 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 goto regfail;
             }
         }
+
+        if(discrim->mask_version)
+        {
+            int err = regcomp(&discrim->regex_version, discrim->mask_version, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            discrim->has_regex_version = !err;
+            if(err)
+            {
+                char buff[256];
+                buff[regerror(err, &discrim->regex_version, buff, sizeof(buff))] = 0;
+
+                send_message(user, bot, "OSMSG_INVALID_REGEX", discrim->mask_version, buff, err);
+                goto regfail;
+            }
+        }
     }
 
     return discrim;
@@ -5240,7 +5297,8 @@ discrim_match(discrim_t discrim, struct userNode *user)
         if((discrim->has_regex_nick && regexec(&discrim->regex_nick, user->nick, 0, 0, 0))
            || (discrim->has_regex_ident && regexec(&discrim->regex_ident, user->ident, 0, 0, 0))
            || (discrim->has_regex_host && regexec(&discrim->regex_host, user->hostname, 0, 0, 0))
-           || (discrim->has_regex_info && regexec(&discrim->regex_info, user->info, 0, 0, 0))) {
+           || (discrim->has_regex_info && regexec(&discrim->regex_info, user->info, 0, 0, 0))
+           || (discrim->has_regex_version && (!user->version_reply || regexec(&discrim->regex_version, user->version_reply, 0, 0, 0)))) {
            return 0;
            }
     }
@@ -5249,7 +5307,8 @@ discrim_match(discrim_t discrim, struct userNode *user)
         if ((discrim->mask_nick && !match_ircglob(user->nick, discrim->mask_nick))
             || (discrim->mask_ident && !match_ircglob(user->ident, discrim->mask_ident))
             || (discrim->mask_host && !match_ircglob(user->hostname, discrim->mask_host))
-            || (discrim->mask_info && !match_ircglob(user->info, discrim->mask_info))) {
+            || (discrim->mask_info && !match_ircglob(user->info, discrim->mask_info))
+            || (discrim->mask_version && (!user->version_reply || !match_ircglob(user->version_reply, discrim->mask_version))) ) {
             return 0;
         }
     }
@@ -5432,6 +5491,38 @@ trace_kill_func(struct userNode *match, void *extra)
 }
 
 static int
+trace_svsjoin_func(struct userNode *match, void *extra)
+{
+    struct discrim_and_source *das = extra;
+
+    char *channame = das->discrim->chantarget;
+    struct chanNode *channel;
+
+    if(!IsChannelName(channame)) {
+        //reply("MSG_NOT_CHANNEL_NAME");
+        return 1;
+    }
+
+    if (!(channel = GetChannel(channame))) {
+       channel = AddChannel(channame, now, NULL, NULL, NULL);
+    }
+    if (GetUserMode(channel, match)) {
+//        reply("OSMSG_ALREADY_THERE", channel->name);
+        return 1;
+    }
+    irc_svsjoin(opserv, match, channel);
+ //   reply("OSMSG_SVSJOIN_SENT");
+    return 0;
+}
+
+static int
+trace_version_func(struct userNode *match, UNUSED_ARG(void *extra))
+{
+    irc_version_user(opserv, match);
+    return 0;
+}
+
+static int
 is_gagged(char *mask)
 {
     struct gag_entry *gag;
@@ -5562,6 +5653,10 @@ static MODCMD_FUNC(cmd_trace)
         action = trace_kill_func;
     else if (!irccasecmp(argv[1], "gag"))
         action = trace_gag_func;
+    else if (!irccasecmp(argv[1], "svsjoin"))
+        action = trace_svsjoin_func;
+    else if (!irccasecmp(argv[1], "version"))
+        action = trace_version_func;
     else {
         reply("OSMSG_BAD_ACTION", argv[1]);
         return 0;
@@ -5626,6 +5721,8 @@ static MODCMD_FUNC(cmd_trace)
       regfree(&das.discrim->regex_host);
     if(das.discrim->has_regex_info)
       regfree(&das.discrim->regex_info);
+    if(das.discrim->has_regex_version)
+        regfree(&das.discrim->regex_version);
 
     free(das.discrim);
     dict_delete(das.dict);
@@ -6036,11 +6133,6 @@ alert_check_user(const char *key, void *data, void *extra)
     case REACT_KILL:
         DelUser(user, opserv, 1, alert->discrim->reason);
         return 1;
-/*
-    case REACT_SILENT:
-        opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration, 1);
-        return 1;
-*/
     case REACT_GLINE:
         opserv_block(user, alert->owner, alert->discrim->reason, alert->discrim->duration, alert->discrim->silent);
         return 1;
@@ -6049,6 +6141,16 @@ alert_check_user(const char *key, void *data, void *extra)
         return 1;
     case REACT_SVSJOIN:
         opserv_svsjoin(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget);
+        break;
+    case REACT_VERSION:
+        /* Don't auto-version a user who we already have a version on, because the version reply itself
+         * re-triggers this check... 
+         * TODO: maybe safer if we didn't even check react_version type alerts for the 2nd check?
+         *       sort of like we only look at channel alerts on join. -Rubin
+         */
+        if(!user->version_reply)
+            opserv_version(user);
+        break;
     default:
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s.", alert->reaction, key);
         /* fall through to REACT_NOTICE case */
@@ -6235,6 +6337,8 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_SHUN;
     else if(!irccasecmp(argv[2], "svsjoin")) 
         reaction = REACT_SVSJOIN;
+    else if(!irccasecmp(argv[2], "version"))
+        reaction = REACT_VERSION;
     else {
         reply("OSMSG_UNKNOWN_REACTION", argv[2]);
         return 0;
@@ -6499,6 +6603,7 @@ init_opserv(const char *nick)
     opserv_define_func("ADDALERT TRACK", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT KILL", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT SVSJOIN", NULL, 999, 0, 0);
+    opserv_define_func("ADDALERT VERSION", NULL, 999, 0, 0);
     opserv_define_func("ADDBAD", cmd_addbad, 800, 0, 2);
     opserv_define_func("ADDEXEMPT", cmd_addexempt, 800, 0, 2);
     opserv_define_func("ADDTRUST", cmd_addtrust, 800, 0, 5);
@@ -6602,6 +6707,8 @@ init_opserv(const char *nick)
     opserv_define_func("TRACE SHUN", NULL, 600, 0, 0);
     opserv_define_func("TRACE GAG", NULL, 600, 0, 0);
     opserv_define_func("TRACE KILL", NULL, 600, 0, 0);
+    opserv_define_func("TRACE VERSION", NULL, 999, 0, 0);
+    opserv_define_func("TRACE SVSJOIN", NULL, 999, 0, 0);
     opserv_define_func("UNBAN", cmd_unban, 100, 2, 2);
     opserv_define_func("UNGAG", cmd_ungag, 600, 0, 2);
     opserv_define_func("UNGLINE", cmd_ungline, 600, 0, 2);
@@ -6631,6 +6738,7 @@ init_opserv(const char *nick)
     reg_del_channel_func(opserv_channel_delete);
     reg_join_func(opserv_join_check);
     reg_auth_func(opserv_staff_alert);
+    reg_notice_func(opserv, opserv_notice_handler);
 
     opserv_db_init();
     saxdb_register("OpServ", opserv_saxdb_read, opserv_saxdb_write);

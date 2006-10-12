@@ -132,6 +132,7 @@ void irc_connect(struct userNode *user, char *server, unsigned int port, struct 
 void irc_privmsg(struct userNode *from, const char *to, const char *message);
 void irc_notice(struct userNode *from, const char *to, const char *message);
 void irc_notice_user(struct userNode *from, struct userNode *to, const char *message);
+void irc_version_user(struct userNode *from, struct userNode *to);
 void irc_wallchops(struct userNode *from, const char *to, const char *message);
 void irc_wallops(const char *format, ...);
 

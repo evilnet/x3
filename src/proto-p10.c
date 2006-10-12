@@ -662,6 +662,7 @@ irc_wallops(const char *format, ...)
     putsock("%s " P10_WALLOPS " :%s", self->numeric, buffer);
 }
 
+
 void
 irc_notice(struct userNode *from, const char *to, const char *message)
 {
@@ -678,6 +679,17 @@ void
 irc_privmsg(struct userNode *from, const char *to, const char *message)
 {
     putsock("%s " P10_PRIVMSG " %s :%s", from->numeric, to, message);
+}
+
+irc_privmsg_user(struct userNode *from, struct userNode *to, const char *message)
+{
+    putsock("%s " P10_PRIVMSG " %s :%s", from->numeric, to->numeric, message);
+}
+
+void 
+irc_version_user(struct userNode *from, struct userNode *to)
+{
+    irc_privmsg_user(from, to, "\001VERSION\001");
 }
 
 void
@@ -2752,6 +2764,19 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
     }
 
     modeList_clean(&user->channels);
+
+    /* Clean up version data */
+    if(user->version_reply) {
+        free(user->version_reply);
+        user->version_reply = NULL;
+    }
+
+    /* clean up geoip data if any */
+    if(user->country_code) free(user->country_code);
+    if(user->city) free(user->city);
+    if(user->region) free(user->region);
+    if(user->postal_code) free(user->postal_code);
+
     /* We don't free them, in case we try to privmsg them or something
      * (like when a stupid oper kills themself).  We just put them onto
      * a list of clients that get freed after processing each line.
