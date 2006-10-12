@@ -1638,25 +1638,43 @@ expire_channels(UNUSED_ARG(void *data))
 }
 
 static int
-protect_user(const struct userNode *victim, const struct userNode *aggressor, struct chanData *channel)
+protect_user(const struct userNode *victim, const struct userNode *aggressor, struct chanData *channel, int protect_invitables)
 {
     char protect = channel->chOpts[chProtect];
     struct userData *cs_victim, *cs_aggressor;
 
-    /* Don't protect if no one is to be protected, someone is attacking
-       himself, or if the aggressor is an IRC Operator. */
-    if(protect == 'n' || victim == aggressor /* Opers dont get special treatment :/  || IsOper(aggressor) */)
-	return 0;
+    /* If victim access level is greater than set invitelevel, don't let
+     * us kick them, but don't consider it punishment if someone else does
+     */
 
+
+    if(victim == aggressor)
+        return 0;
     /* Don't protect if the victim isn't authenticated (because they
        can't be a channel user), unless we are to protect non-users
        also. */
+
     cs_victim = GetChannelAccess(channel, victim->handle_info);
+
+    /* If they have enough access to invite themselvs through a ban,
+     * and its us kicking them, don't. -Rubin */
+    if(protect_invitables==true && cs_victim && (cs_victim->access >= channel->lvlOpts[lvlInviteMe]))
+        return 1;
+
+    if(protect == 'n')
+	return 0;
+
     if(protect != 'a' && !cs_victim)
         return 0;
 
     /* Protect if the aggressor isn't a user because at this point,
        the aggressor can only be less than or equal to the victim. */
+
+    /* Not protected from chanserv except above */
+    /* XXX: need to generic-ize chanserv to "one of x3's services" somehow.. */
+    if(aggressor == chanserv)
+        return 0;
+
     cs_aggressor = GetChannelAccess(channel, aggressor->handle_info);
     if(!cs_aggressor)
         return 1;
@@ -1728,7 +1746,7 @@ validate_deop(struct svccmd *cmd, struct userNode *user, struct chanNode *channe
 	return 0;
     }
 
-    if(protect_user(victim, user, channel->channel_info))
+    if(protect_user(victim, user, channel->channel_info, false))
     {
 	reply("CSMSG_USER_PROTECTED", victim->nick);
 	return 0;
@@ -1746,7 +1764,7 @@ validate_dehop(struct svccmd *cmd, struct userNode *user, struct chanNode *chann
         return 0;
     }
 
-    if(protect_user(victim, user, channel->channel_info))
+    if(protect_user(victim, user, channel->channel_info, false))
     {
         reply("CSMSG_USER_PROTECTED", victim->nick);
         return 0;
@@ -3120,7 +3138,7 @@ bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban
         if(!user_matches_glob(mn->user, ban, MATCH_USENICK | MATCH_VISIBLE))
             continue;
 
-        if(protect_user(mn->user, user, channel->channel_info))
+        if(protect_user(mn->user, user, channel->channel_info, false))
             return 1;
 
         if(victims)
@@ -3177,7 +3195,7 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
             return 0;
         }
 
-	if(protect_user(victim, user, channel->channel_info))
+	if(protect_user(victim, user, channel->channel_info, false))
 	{
 	    // This translates to  send_message(user, cmd->parent->bot, ...)
 	    // if user is x3 (ctcp action) cmd is null and segfault.
@@ -3409,13 +3427,25 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
         }
     }
 
-    if(action & ACTION_KICK)
+    if(action & ACTION_ADD_LAMER)
     {
         char kick_reason[MAXLEN];
 	sprintf(kick_reason, "(%s) %s", user->nick, reason);
 
-	for(n = 0; n < victimCount; n++)
+	for(n = 0; n < victimCount; n++) {
+            if(!protect_user(victims[n]->user, user, channel->channel_info, true)) {
+	        KickChannelUser(victims[n]->user, channel, chanserv, kick_reason);
+            }
+        }
+    }
+    else if(action & ACTION_KICK)
+    {
+        char kick_reason[MAXLEN];
+	sprintf(kick_reason, "(%s) %s", user->nick, reason);
+
+	for(n = 0; n < victimCount; n++) {
 	    KickChannelUser(victims[n]->user, channel, chanserv, kick_reason);
+        }
     }
 
     if(!cmd)
@@ -7051,42 +7081,59 @@ handle_join(struct modeNode *mNode)
     }
 #endif
 
+    if(user->handle_info)
+    {
+        handle = user->handle_info;
+        if(handle)
+        {
+            uData = GetTrueChannelAccess(cData, handle);
+        }
+    }
+
+
+
     mod_chanmode_init(&change);
     change.argc = 1;
-    if(channel->banlist.used < MAXBANS)
+
+    /* TODO: maybe only people above inviteme level? -Rubin */
+    /* We don't kick people with access */
+    if(!uData)
     {
-        /* Not joining through a ban. */
-        for(bData = cData->bans;
-            bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
-            bData = bData->next);
-
-        if(bData)
+        if(channel->banlist.used < MAXBANS)
         {
-            char kick_reason[MAXLEN];
-            sprintf(kick_reason, "(%s) %s", bData->owner, bData->reason);
+            /* Not joining through a ban. */
+            for(bData = cData->bans;
+                bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
+                bData = bData->next);
 
-            bData->triggered = now;
-            if(bData != cData->bans)
+            if(bData)
             {
-                /* Shuffle the ban to the head of the list. */
-                if(bData->next)
-                    bData->next->prev = bData->prev;
-                if(bData->prev)
-                    bData->prev->next = bData->next;
+                char kick_reason[MAXLEN];
+                sprintf(kick_reason, "(%s) %s", bData->owner, bData->reason);
 
-                bData->prev = NULL;
-                bData->next = cData->bans;
+                bData->triggered = now;
+                if(bData != cData->bans)
+                {
+                    /* Shuffle the ban to the head of the list. */
+                    if(bData->next)
+                        bData->next->prev = bData->prev;
+                    if(bData->prev)
+                        bData->prev->next = bData->next;
 
-                if(cData->bans)
-                    cData->bans->prev = bData;
-                cData->bans = bData;
+                    bData->prev = NULL;
+                    bData->next = cData->bans;
+
+                    if(cData->bans)
+                        cData->bans->prev = bData;
+                    cData->bans = bData;
+                }
+
+                change.args[0].mode = MODE_BAN;
+                change.args[0].u.hostmask = bData->mask;
+                mod_chanmode_announce(chanserv, channel, &change);
+                KickChannelUser(user, channel, chanserv, kick_reason);
+                return 1;
             }
-
-            change.args[0].mode = MODE_BAN;
-            change.args[0].u.hostmask = bData->mask;
-            mod_chanmode_announce(chanserv, channel, &change);
-            KickChannelUser(user, channel, chanserv, kick_reason);
-            return 1;
         }
     }
 
@@ -7121,7 +7168,7 @@ handle_join(struct modeNode *mNode)
     greeting = cData->greeting;
     if(user->handle_info)
     {
-        handle = user->handle_info;
+/*        handle = user->handle_info; */
 
         if(IsHelper(user) && !IsHelping(user))
         {
@@ -7136,7 +7183,7 @@ handle_join(struct modeNode *mNode)
             }
         }
 
-        uData = GetTrueChannelAccess(cData, handle);
+/*        uData = GetTrueChannelAccess(cData, handle); */
         if(uData && !IsUserSuspended(uData))
         {
             /* non users getting automodes are handled above. */
@@ -7286,6 +7333,8 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
            || !channel->channel_info
            || IsSuspended(channel->channel_info))
             continue;
+        if(protect_user(user, chanserv, channel->channel_info, true))
+            continue;
         for(jj = 0; jj < channel->banlist.used; ++jj)
             if(user_matches_glob(user, channel->banlist.list[jj]->ban, MATCH_USENICK))
                 break;
@@ -7386,7 +7435,7 @@ handle_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *c
        || (kicker->handle_info && kicker->handle_info == victim->handle_info))
         return;
 
-    if(protect_user(victim, kicker, channel->channel_info))
+    if(protect_user(victim, kicker, channel->channel_info, false))
     {
         const char *reason = user_find_message(kicker, "CSMSG_USER_PROTECTED_KICK");
 	KickChannelUser(kicker, channel, chanserv, reason);
@@ -7462,7 +7511,7 @@ handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_ch
         if((change->args[ii].mode & (MODE_REMOVE|MODE_CHANOP)) == (MODE_REMOVE|MODE_CHANOP))
         {
             const struct userNode *victim = change->args[ii].u.member->user;
-            if(!protect_user(victim, user, channel->channel_info))
+            if(!protect_user(victim, user, channel->channel_info, false))
                 continue;
             if(!bounce)
                 bounce = mod_chanmode_alloc(change->argc + 1 - ii);
@@ -7532,7 +7581,7 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
         /* Need not check for bans if they're opped or voiced. */
         /* TODO: does this make sense in automode v, h, and o? *
          * lets still enforce on voice people anyway, and see how that goes -Rubin */
-        if(user->channels.list[ii]->modes & (MODE_CHANOP|MODE_HALFOP /*|MODE_VOICE */))
+        if(user->channels.list[ii]->modes & (MODE_CHANOP|MODE_HALFOP|MODE_VOICE ))
             continue;
         /* Need not check for bans unless channel registration is active. */
         if(!channel->channel_info || IsSuspended(channel->channel_info))
@@ -7543,6 +7592,9 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
                 break;
         /* Need not act if we found one. */
         if(jj < channel->banlist.used)
+            continue;
+        /* don't kick someone on the userlist */
+        if(protect_user(user, chanserv, channel->channel_info, true))
             continue;
         /* Look for a matching ban in this channel. */
         for(bData = channel->channel_info->bans; bData; bData = bData->next)

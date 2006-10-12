@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-10-12  Alex Schumann   <rubin@afternet.org>
+
+	* src/chanserv.c: Make lamers not affect users on the userlist above
+	inviteme level in the channel. (why kb users who can .uba and
+	.inviteme back in?)
+
 2006-10-10  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/spamserv.c: Ignore those with access (if the options are
