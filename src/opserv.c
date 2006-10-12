@@ -164,6 +164,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_INVITE_DONE", "Invited $b%s$b to $b%s$b." },
     { "OSMSG_ALREADY_THERE", "You are already in $b%s$b." },
     { "OSMSG_JOIN_DONE", "I have joined $b%s$b." },
+    { "OSMSG_SVSJOIN_SENT", "Sent the SVSJOIN." },
     { "OSMSG_ALREADY_JOINED", "I am already in $b%s$b." },
     { "OSMSG_NOT_ON_CHANNEL", "$b%s$b does not seem to be on $b%s$b." },
     { "OSMSG_KICKALL_DONE", "I have cleared out %s." },
@@ -510,7 +511,7 @@ opserv_free_waiting_connection(void *data)
 
 typedef struct opservDiscrim {
     struct chanNode *channel;
-    char *mask_nick, *mask_ident, *mask_host, *mask_info, *server, *reason, *accountmask;
+    char *mask_nick, *mask_ident, *mask_host, *mask_info, *server, *reason, *accountmask, *chantarget;
     irc_in_addr_t ip_mask;
     unsigned long limit;
     time_t min_ts, max_ts;
@@ -542,10 +543,10 @@ static int ungag_helper_func(struct userNode *match, void *extra);
 typedef enum {
     REACT_NOTICE,
     REACT_KILL,
-//    REACT_SILENT,
     REACT_GLINE,
     REACT_TRACK,
-    REACT_SHUN
+    REACT_SHUN,
+    REACT_SVSJOIN
 } opserv_alert_reaction;
 
 struct opserv_user_alert {
@@ -1337,6 +1338,28 @@ static MODCMD_FUNC(cmd_refreshg)
     return 1;
 }
 
+static void
+opserv_svsjoin(struct userNode *target, char *src_handle, char *reason, char *channame)
+{
+    struct chanNode *channel;
+
+    if(!channame || !IsChannelName(channame)) {
+        /* Not a valid channel name. We shouldnt ever get this if we check properly in addalert */
+       return;
+    }
+
+    if (!(channel = GetChannel(channame))) {
+       channel = AddChannel(channame, now, NULL, NULL, NULL);
+    }
+    if (GetUserMode(channel, target)) {
+        /* already in it */
+        return;
+    }
+
+    irc_svsjoin(opserv, target, channel);
+    /* Should we tell the user they got joined? -Rubin*/
+}
+
 static struct shun *
 opserv_shun(struct userNode *target, char *src_handle, char *reason, unsigned long duration)
 {
@@ -1500,6 +1523,33 @@ static MODCMD_FUNC(cmd_invite)
         return 0;
     }
     irc_invite(cmd->parent->bot, user, channel);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_svsjoin)
+{
+    struct userNode *target;
+
+
+    if(!IsChannelName(argv[2])) {
+        reply("MSG_NOT_CHANNEL_NAME");
+        return 0;
+    }
+    target = GetUserH(argv[1]);
+    if (!target) {
+       reply("MSG_NICK_UNKNOWN", argv[1]);
+       return 0;
+    }
+
+    if (!(channel = GetChannel(argv[2]))) {
+       channel = AddChannel(argv[2], now, NULL, NULL, NULL);
+    }
+    if (GetUserMode(channel, target)) {
+        reply("OSMSG_ALREADY_THERE", channel->name);
+        return 0;
+    }
+    irc_svsjoin(opserv, target, channel);
+    reply("OSMSG_SVSJOIN_SENT");
     return 1;
 }
 
@@ -2215,6 +2265,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_GLINE: reaction = "gline"; break;
         case REACT_TRACK: reaction = "track"; break;
         case REACT_SHUN: reaction = "shun"; break;
+        case REACT_SVSJOIN: reaction = "svsjoin"; break;
         default: reaction = "<unknown>"; break;
         }
         reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
@@ -4442,6 +4493,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_TRACK;
     else if (!irccasecmp(react, "shun"))
         reaction = REACT_SHUN;
+    else if (!irccasecmp(react, "svsjoin"))
+        reaction = REACT_SVSJOIN;
     else {
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
@@ -4723,6 +4776,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_GLINE: reaction = "gline"; break;
             case REACT_TRACK: reaction = "track"; break;
             case REACT_SHUN: reaction = "shun"; break;
+            case REACT_SVSJOIN: reaction = "svsjoin"; break;
             default:
                 reaction = NULL;
                 log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s (while writing database).", alert->reaction, iter_key(it));
@@ -4911,6 +4965,12 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         }
         discrim->accountmask = argv[++i];
         discrim->authed = 1;
+    } else if (irccasecmp(argv[i], "chantarget") == 0) {
+            if(!IsChannelName(argv[i+1])) {
+                send_message(user, bot, "MSG_NOT_CHANNEL_NAME");
+                goto fail;
+            }
+            discrim->chantarget = argv[++i];
     } else if (irccasecmp(argv[i], "authed") == 0) {
         i++; /* true_string and false_string are macros! */
         if (true_string(argv[i])) {
@@ -5987,6 +6047,8 @@ alert_check_user(const char *key, void *data, void *extra)
     case REACT_SHUN:
         opserv_shun(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
         return 1;
+    case REACT_SVSJOIN:
+        opserv_svsjoin(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget);
     default:
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s.", alert->reaction, key);
         /* fall through to REACT_NOTICE case */
@@ -6171,6 +6233,8 @@ static MODCMD_FUNC(cmd_addalert)
 #endif
     } else if (!irccasecmp(argv[2], "shun"))
         reaction = REACT_SHUN;
+    else if(!irccasecmp(argv[2], "svsjoin")) 
+        reaction = REACT_SVSJOIN;
     else {
         reply("OSMSG_UNKNOWN_REACTION", argv[2]);
         return 0;
@@ -6434,6 +6498,7 @@ init_opserv(const char *nick)
     opserv_define_func("ADDALERT SHUN", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT TRACK", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT KILL", NULL, 900, 0, 0);
+    opserv_define_func("ADDALERT SVSJOIN", NULL, 999, 0, 0);
     opserv_define_func("ADDBAD", cmd_addbad, 800, 0, 2);
     opserv_define_func("ADDEXEMPT", cmd_addexempt, 800, 0, 2);
     opserv_define_func("ADDTRUST", cmd_addtrust, 800, 0, 5);
@@ -6475,6 +6540,7 @@ init_opserv(const char *nick)
     opserv_define_func("INVITE", cmd_invite, 100, 2, 0);
     opserv_define_func("INVITEME", cmd_inviteme, 100, 0, 0);
     opserv_define_func("JOIN", cmd_join, 601, 0, 2);
+    opserv_define_func("SVSJOIN", cmd_svsjoin, 999, 0, 3);
     opserv_define_func("JUMP", cmd_jump, 900, 0, 2);
     opserv_define_func("JUPE", cmd_jupe, 900, 0, 4);
     opserv_define_func("KICK", cmd_kick, 100, 2, 2);
