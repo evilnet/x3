@@ -277,6 +277,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_USER_SEARCH_BAR",    "-------------------------------------------" },
     { "OSMSG_USER_SEARCH_COUNT",  "There were %4u matches" },
     { "OSMSG_USER_SEARCH_COUNT_BAR",  "------------ Found %4u matches -----------" },
+    { "OSMSG_SVSJOIN_NO_TARGET", "SVSJOIN action requires chantarget criteria (where should they join?)" },
     { "OSMSG_CHANNEL_SEARCH_RESULTS", "The following channels were found:" },
     { "OSMSG_GLINE_SEARCH_RESULTS", "The following glines were found:" },
     { "OSMSG_SHUN_SEARCH_RESULTS", "The following shun were found:" },
@@ -296,6 +297,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ALERT_EXISTS", "An alert named $b%s$b already exists." },
     { "OSMSG_UNKNOWN_REACTION", "Unknown alert reaction $b%s$b." },
     { "OSMSG_ADDED_ALERT", "Added alert named $b%s$b." },
+    { "OSMSG_ALERT_ADD_FAILED", "Unable to add alert. Check syntax, required parts,  and access" },
     { "OSMSG_REMOVED_ALERT", "Removed alert named $b%s$b." },
     { "OSMSG_NO_SUCH_ALERT", "No alert named $b%s$b could be found." },
     { "OSMSG_ALERTS_LIST", "$bCurrent $O alerts$b" },
@@ -4459,7 +4461,7 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
     discrim_copy = strdup(text_discrim); /* save a copy of the discrim */
     wordc = split_line(discrim_copy, false, ArrayLength(wordv), wordv);
     alert->discrim = opserv_discrim_create(req, opserv, wordc, wordv, 0);
-    if (!alert->discrim) {
+    if (!alert->discrim || (reaction==REACT_SVSJOIN && !alert->discrim->chantarget)) {
         free(alert->text_discrim);
         free(discrim_copy);
         free(alert);
@@ -5498,7 +5500,7 @@ trace_svsjoin_func(struct userNode *match, void *extra)
     char *channame = das->discrim->chantarget;
     struct chanNode *channel;
 
-    if(!IsChannelName(channame)) {
+    if(!channame || !IsChannelName(channame)) {
         //reply("MSG_NOT_CHANNEL_NAME");
         return 1;
     }
@@ -5631,6 +5633,7 @@ static MODCMD_FUNC(cmd_trace)
     unsigned int matches;
     struct svccmd *subcmd;
     char buf[MAXLEN];
+    int ret = 1;
 
     sprintf(buf, "trace %s", argv[1]);
     if (!(subcmd = dict_find(opserv_service->commands, buf, NULL))) {
@@ -5694,20 +5697,27 @@ static MODCMD_FUNC(cmd_trace)
         das.disp_limit = das.discrim->limit;
         das.discrim->limit = INT_MAX;
     }
-    matches = opserv_discrim_search(das.discrim, action, &das);
 
-    if (action == trace_domains_func)
-        dict_foreach(das.dict, opserv_show_hostinfo, &das);
-
-    if (matches)
-    {
-        if(action == trace_print_func)
-            reply("OSMSG_USER_SEARCH_COUNT_BAR", matches);
-        else
-            reply("OSMSG_USER_SEARCH_COUNT", matches);
+    if (action == trace_svsjoin_func && !das.discrim->chantarget) {
+        reply("OSMSG_SVSJOIN_NO_TARGET");
+        ret = 0;
     }
-    else
-            reply("MSG_NO_MATCHES");
+    else {
+        matches = opserv_discrim_search(das.discrim, action, &das);
+
+        if (action == trace_domains_func)
+            dict_foreach(das.dict, opserv_show_hostinfo, &das);
+
+        if (matches)
+        {
+            if(action == trace_print_func)
+                reply("OSMSG_USER_SEARCH_COUNT_BAR", matches);
+            else
+                reply("OSMSG_USER_SEARCH_COUNT", matches);
+        }
+        else
+                reply("MSG_NO_MATCHES");
+    }
 
     if (das.discrim->channel)
         UnlockChannel(das.discrim->channel);
@@ -5726,7 +5736,7 @@ static MODCMD_FUNC(cmd_trace)
 
     free(das.discrim);
     dict_delete(das.dict);
-    return 1;
+    return ret;
 }
 
 typedef void (*cdiscrim_search_func)(struct chanNode *match, void *data, struct userNode *bot);
@@ -6320,10 +6330,6 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_NOTICE;
     else if (!irccasecmp(argv[2], "kill"))
         reaction = REACT_KILL;
-/*
-    else if (!irccasecmp(argv[2], "silent"))
-        reaction = REACT_SILENT;
-*/
     else if (!irccasecmp(argv[2], "gline"))
         reaction = REACT_GLINE;
     else if (!irccasecmp(argv[2], "track")) {
@@ -6344,8 +6350,10 @@ static MODCMD_FUNC(cmd_addalert)
         return 0;
     }
     if (!svccmd_can_invoke(user, opserv_service->bot, subcmd, channel, SVCCMD_NOISY)
-        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + 3, argc - 3, NULL)))
+        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + 3, argc - 3, NULL))) {
+        reply("OSMSG_ALERT_ADD_FAILED");
         return 0;
+    }
     reply("OSMSG_ADDED_ALERT", name);
     return 1;
 }

@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-10-14  Alex Schumann   <rubin@afternet.org>
+
+	* src/opserv.c: fix crash Buttaknife noticed if you forget chantarget 
+	in svsjoin alerts. Cleanup old silent code fragments left over. Check
+	for missing chantarget in alerts also.
+
 2006-10-12  Alex Schumann   <rubin@afternet.org>
 	
 	* src/opserv.c: Added VERSION alert/trace reaction, so you can now
