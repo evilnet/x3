@@ -1,6 +1,17 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-10-18  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/opserv.c: Added in SVSPART alert/traces.
+
+	* src/opserv.help: Added in bits for SVSJOIN, SVSPART, and VERSION.
+
+	* src/proto.h: Added in decleration for svspart.
+
+	* src/proto-p10.c: Extend current SVSPART functionality so that we
+	can send them with traces etc.
+
 2006-10-14  Alex Schumann   <rubin@afternet.org>
 
 	* src/opserv.c: fix crash Buttaknife noticed if you forget chantarget 

@@ -163,8 +163,10 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_NO_DEBUG_CHANNEL", "No debug channel has been configured." },
     { "OSMSG_INVITE_DONE", "Invited $b%s$b to $b%s$b." },
     { "OSMSG_ALREADY_THERE", "You are already in $b%s$b." },
+    { "OSMSG_NOT_THERE", "You not in $b%s$b." },
     { "OSMSG_JOIN_DONE", "I have joined $b%s$b." },
     { "OSMSG_SVSJOIN_SENT", "Sent the SVSJOIN." },
+    { "OSMSG_SVSPART_SENT", "Sent the SVSPART." },
     { "OSMSG_ALREADY_JOINED", "I am already in $b%s$b." },
     { "OSMSG_NOT_ON_CHANNEL", "$b%s$b does not seem to be on $b%s$b." },
     { "OSMSG_KICKALL_DONE", "I have cleared out %s." },
@@ -278,6 +280,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_USER_SEARCH_COUNT",  "There were %4u matches" },
     { "OSMSG_USER_SEARCH_COUNT_BAR",  "------------ Found %4u matches -----------" },
     { "OSMSG_SVSJOIN_NO_TARGET", "SVSJOIN action requires chantarget criteria (where should they join?)" },
+    { "OSMSG_SVSPART_NO_TARGET", "SVSPART action requires chantarget criteria (where should they join?)" },
     { "OSMSG_CHANNEL_SEARCH_RESULTS", "The following channels were found:" },
     { "OSMSG_GLINE_SEARCH_RESULTS", "The following glines were found:" },
     { "OSMSG_SHUN_SEARCH_RESULTS", "The following shun were found:" },
@@ -550,6 +553,7 @@ typedef enum {
     REACT_TRACK,
     REACT_SHUN,
     REACT_SVSJOIN,
+    REACT_SVSPART,
     REACT_VERSION
 } opserv_alert_reaction;
 
@@ -1372,6 +1376,29 @@ opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG
     /* Should we tell the user they got joined? -Rubin*/
 }
 
+static void
+opserv_svspart(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG(char *reason), char *channame)
+{
+    struct chanNode *channel;
+
+    if(!channame || !IsChannelName(channame)) {
+        /* Not a valid channel name. We shouldnt ever get this if we check properly in addalert */
+       return;
+    }
+
+    if (!(channel = GetChannel(channame))) {
+       /* channel doesnt exist */
+       return;
+    }
+
+    if (!GetUserMode(channel, target)) {
+        /* not in it */
+        return;
+    }
+
+    irc_svspart(opserv, target, channel);
+}
+
 static struct shun *
 opserv_shun(struct userNode *target, char *src_handle, char *reason, unsigned long duration)
 {
@@ -1729,6 +1756,35 @@ static MODCMD_FUNC(cmd_kickbanall)
         DelChannelUser(bot, channel, "My work here is done", 0);
     reply("OSMSG_KICKALL_DONE", channel->name);
     return 1;    
+}
+
+static MODCMD_FUNC(cmd_svspart)
+{
+    struct userNode *target;
+
+    if(!IsChannelName(argv[2])) {
+        reply("MSG_NOT_CHANNEL_NAME");
+        return 0;
+    }
+    target = GetUserH(argv[1]);
+    if (!target) {
+       reply("MSG_NICK_UNKNOWN", argv[1]);
+       return 0;
+    }
+
+    if (!(channel = GetChannel(argv[2]))) {
+       reply("OSMSG_NOT_ON_CHANNEL", cmd->parent->bot->nick, channel->name);
+       return 0;
+    }
+
+    if (!GetUserMode(channel, target)) {
+        reply("OSMSG_NOT_ON_CHANNEL", cmd->parent->bot->nick, channel->name);
+        return 0;
+    }
+
+    irc_svspart(opserv, target, channel);
+    reply("OSMSG_SVSPART_SENT");
+    return 1;
 }
 
 static MODCMD_FUNC(cmd_part)
@@ -2281,6 +2337,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_TRACK: reaction = "track"; break;
         case REACT_SHUN: reaction = "shun"; break;
         case REACT_SVSJOIN: reaction = "svsjoin"; break;
+        case REACT_SVSPART: reaction = "svspart"; break;
         case REACT_VERSION: reaction = "version"; break;
         default: reaction = "<unknown>"; break;
         }
@@ -4461,7 +4518,8 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
     discrim_copy = strdup(text_discrim); /* save a copy of the discrim */
     wordc = split_line(discrim_copy, false, ArrayLength(wordv), wordv);
     alert->discrim = opserv_discrim_create(req, opserv, wordc, wordv, 0);
-    if (!alert->discrim || (reaction==REACT_SVSJOIN && !alert->discrim->chantarget)) {
+    if (!alert->discrim || (reaction==REACT_SVSJOIN && !alert->discrim->chantarget) ||
+       (reaction==REACT_SVSPART && !alert->discrim->chantarget)) {
         free(alert->text_discrim);
         free(discrim_copy);
         free(alert);
@@ -4532,6 +4590,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_SHUN;
     else if (!irccasecmp(react, "svsjoin"))
         reaction = REACT_SVSJOIN;
+    else if (!irccasecmp(react, "svspart"))
+        reaction = REACT_SVSPART;
     else if (!irccasecmp(react, "version"))
         reaction = REACT_VERSION;
     else {
@@ -4816,6 +4876,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_TRACK: reaction = "track"; break;
             case REACT_SHUN: reaction = "shun"; break;
             case REACT_SVSJOIN: reaction = "svsjoin"; break;
+            case REACT_SVSPART: reaction = "svspart"; break;
             case REACT_VERSION: reaction = "version"; break;
             default:
                 reaction = NULL;
@@ -5518,6 +5579,27 @@ trace_svsjoin_func(struct userNode *match, void *extra)
 }
 
 static int
+trace_svspart_func(struct userNode *match, void *extra)
+{
+    struct discrim_and_source *das = extra;
+    char *reason;
+    char *channame = das->discrim->chantarget;
+    struct chanNode *channel;
+
+    if(!channame || !IsChannelName(channame))
+       return 1;
+
+    if (!(channel = GetChannel(channame)))
+       return 1;
+
+    if (!GetUserMode(channel, match))
+        return 1;
+
+    irc_svspart(opserv, match, channel);
+    return 0;
+}
+
+static int
 trace_version_func(struct userNode *match, UNUSED_ARG(void *extra))
 {
     irc_version_user(opserv, match);
@@ -5658,6 +5740,8 @@ static MODCMD_FUNC(cmd_trace)
         action = trace_gag_func;
     else if (!irccasecmp(argv[1], "svsjoin"))
         action = trace_svsjoin_func;
+    else if (!irccasecmp(argv[1], "svspart"))
+        action = trace_svspart_func;
     else if (!irccasecmp(argv[1], "version"))
         action = trace_version_func;
     else {
@@ -5700,6 +5784,10 @@ static MODCMD_FUNC(cmd_trace)
 
     if (action == trace_svsjoin_func && !das.discrim->chantarget) {
         reply("OSMSG_SVSJOIN_NO_TARGET");
+        ret = 0;
+    }
+    else if (action == trace_svspart_func && !das.discrim->chantarget) {
+        reply("OSMSG_SVSPART_NO_TARGET");
         ret = 0;
     }
     else {
@@ -6152,6 +6240,9 @@ alert_check_user(const char *key, void *data, void *extra)
     case REACT_SVSJOIN:
         opserv_svsjoin(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget);
         break;
+    case REACT_SVSPART:
+        opserv_svspart(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget);
+        break;
     case REACT_VERSION:
         /* Don't auto-version a user who we already have a version on, because the version reply itself
          * re-triggers this check... 
@@ -6343,6 +6434,8 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_SHUN;
     else if(!irccasecmp(argv[2], "svsjoin")) 
         reaction = REACT_SVSJOIN;
+    else if(!irccasecmp(argv[2], "svspart")) 
+        reaction = REACT_SVSPART;
     else if(!irccasecmp(argv[2], "version"))
         reaction = REACT_VERSION;
     else {
@@ -6611,6 +6704,7 @@ init_opserv(const char *nick)
     opserv_define_func("ADDALERT TRACK", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT KILL", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT SVSJOIN", NULL, 999, 0, 0);
+    opserv_define_func("ADDALERT SVSPART", NULL, 999, 0, 0);
     opserv_define_func("ADDALERT VERSION", NULL, 999, 0, 0);
     opserv_define_func("ADDBAD", cmd_addbad, 800, 0, 2);
     opserv_define_func("ADDEXEMPT", cmd_addexempt, 800, 0, 2);
@@ -6654,6 +6748,7 @@ init_opserv(const char *nick)
     opserv_define_func("INVITEME", cmd_inviteme, 100, 0, 0);
     opserv_define_func("JOIN", cmd_join, 601, 0, 2);
     opserv_define_func("SVSJOIN", cmd_svsjoin, 999, 0, 3);
+    opserv_define_func("SVSPART", cmd_svspart, 999, 0, 3);
     opserv_define_func("JUMP", cmd_jump, 900, 0, 2);
     opserv_define_func("JUPE", cmd_jupe, 900, 0, 4);
     opserv_define_func("KICK", cmd_kick, 100, 2, 2);
@@ -6717,6 +6812,7 @@ init_opserv(const char *nick)
     opserv_define_func("TRACE KILL", NULL, 600, 0, 0);
     opserv_define_func("TRACE VERSION", NULL, 999, 0, 0);
     opserv_define_func("TRACE SVSJOIN", NULL, 999, 0, 0);
+    opserv_define_func("TRACE SVSPART", NULL, 999, 0, 0);
     opserv_define_func("UNBAN", cmd_unban, 100, 2, 2);
     opserv_define_func("UNGAG", cmd_ungag, 600, 0, 2);
     opserv_define_func("UNGLINE", cmd_ungline, 600, 0, 2);

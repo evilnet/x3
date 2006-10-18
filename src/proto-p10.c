@@ -681,6 +681,7 @@ irc_privmsg(struct userNode *from, const char *to, const char *message)
     putsock("%s " P10_PRIVMSG " %s :%s", from->numeric, to, message);
 }
 
+void
 irc_privmsg_user(struct userNode *from, struct userNode *to, const char *message)
 {
     putsock("%s " P10_PRIVMSG " %s :%s", from->numeric, to->numeric, message);
@@ -972,6 +973,12 @@ void
 irc_svsjoin(struct userNode *from, struct userNode *who, struct chanNode *to)
 {
     putsock("%s " P10_SVSJOIN " %s %s "FMT_TIME_T, from->uplink->numeric, who->numeric, to->name, now);
+}
+
+void
+irc_svspart(struct userNode *from, struct userNode *who, struct chanNode *to)
+{
+    putsock("%s " P10_SVSPART " %s %s", from->uplink->numeric, who->numeric, to->name);
 }
 
 void
