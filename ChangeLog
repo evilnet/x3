@@ -3,6 +3,12 @@
 
 2006-10-18  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/opserv.c: Minor cosmetic error noticed by Raisk. If doing an
+	opserv WHOIS from another service (when bound), the channels reply
+	would come from o3 instead of that service.
+
+2006-10-18  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/opserv.c: Added in SVSPART alert/traces.
 
 	* src/opserv.help: Added in bits for SVSJOIN, SVSPART, and VERSION.

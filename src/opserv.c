@@ -1495,7 +1495,7 @@ static MODCMD_FUNC(cmd_refreshs)
 }
 
 static void
-opserv_ison(struct userNode *tell, struct userNode *target, const char *message)
+opserv_ison(struct userNode *bot, struct userNode *tell, struct userNode *target, const char *message)
 {
     struct modeNode *mn;
     unsigned int count, here_len, n, maxlen;
@@ -1509,7 +1509,7 @@ opserv_ison(struct userNode *tell, struct userNode *target, const char *message)
         here_len = strlen(mn->channel->name);
         if ((count + here_len + 4) > maxlen) {
             buff[count] = 0;
-            send_message(tell, opserv, message, buff);
+            send_message(tell, bot, message, buff);
             count = 0;
         }
         if (mn->modes & MODE_CHANOP)
@@ -1524,7 +1524,7 @@ opserv_ison(struct userNode *tell, struct userNode *target, const char *message)
     }
     if (count) {
         buff[count] = 0;
-        send_message(tell, opserv, message, buff);
+        send_message(tell, bot, message, buff);
     }
 }
 
@@ -2002,7 +2002,7 @@ static MODCMD_FUNC(cmd_whois)
     intervalString(buffer, now - target->timestamp, user->handle_info);
     reply("OSMSG_WHOIS_NICK_AGE", buffer);
     if (target->channels.used <= MAX_CHANNELS_WHOIS)
-        opserv_ison(user, target, "OSMSG_WHOIS_CHANNELS");
+        opserv_ison(cmd->parent->bot, user, target, "OSMSG_WHOIS_CHANNELS");
     else
         reply("OSMSG_WHOIS_HIDECHANS");
     return 1;
@@ -5582,7 +5582,6 @@ static int
 trace_svspart_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
-    char *reason;
     char *channame = das->discrim->chantarget;
     struct chanNode *channel;
 
