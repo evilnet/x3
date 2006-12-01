@@ -3746,14 +3746,13 @@ static CHANSERV_FUNC(cmd_myaccess)
 
     if(argc < 2)
         target_handle = user->handle_info;
-    else if(!IsHelping(user))
+    else if(!(target_handle = modcmd_get_handle_info(user, argv[1])))
+        return 0;
+    else if(!IsHelping(user) && target_handle != user->handle_info)
     {
         reply("CSMSG_MYACCESS_SELF_ONLY", argv[0]);
         return 0;
     }
-    else if(!(target_handle = modcmd_get_handle_info(user, argv[1])))
-        return 0;
-
     if(!target_handle->channels)
     {
         reply("CSMSG_SQUAT_ACCESS", target_handle->handle);

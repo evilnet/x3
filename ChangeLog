@@ -1,6 +1,15 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-11-30  Alex Schumann   <rubin@afternet.org>
+
+	* src/chanserv.c: Modified .myaccess such that if you give it your own
+	account when you are not a helper, it still works. (Requested by
+	Jigsy)
+
+	* src/nickserv.help: Corrected the help file to feed oregister based
+	on email_required instead of email_enabled
+
 2006-10-18  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/opserv.c: Minor cosmetic error noticed by Raisk. If doing an
