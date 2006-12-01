@@ -10,6 +10,9 @@
 	* src/nickserv.help: Corrected the help file to feed oregister based
 	on email_required instead of email_enabled
 
+	* src/nickserv.c: Fix & close sf bug 1584057 (hidden_host with no dots
+	causes crash in set if no title) thanks xanjunior
+
 2006-10-18  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/opserv.c: Minor cosmetic error noticed by Raisk. If doing an

@@ -3010,20 +3010,27 @@ static OPTION_FUNC(opt_title)
         title = hi->fakehost + 1;
     else {
         /* If theres no title set then the default title will therefore
-           be the first part of hidden_host in x3.conf.example, so for
-           consistency with opt_fakehost we will print this here */
+           be the first part of hidden_host in x3.conf, so for
+           consistency with opt_fakehost we will print this here.
+           This isnt actually used in P10, its just handled to keep from crashing... */
         char *hs, *hidden_suffix, *rest;
 
         hs = conf_get_data("server/hidden_host", RECDB_QSTRING);
         hidden_suffix = strdup(hs);
 
         /* Yes we do this twice */
-        rest = strrchr(hidden_suffix, '.');
-        *rest++ = '\0';
-        rest = strrchr(hidden_suffix, '.');
-        *rest++ = '\0';
+        if((rest = strchr(hidden_suffix, '.')))
+        {
+            *rest = '\0';
+            title = hidden_suffix;
+        }
+        else
+        {
+            /* A lame default if someone configured hidden_host to something lame */
+            title = strdup("users");
+            free(hidden_suffix);
+        }
 
-        title = hidden_suffix;
     }
 
     if (!title)
