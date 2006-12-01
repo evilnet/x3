@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-01  Alex Schumann   <rubin@afternet.org>
+
+	* src/chanserv.c: Raisk pointed out that mdelop and friends dont work
+	on users of non-standard access level such as 201. Fixed this by
+	changing mdelop and friends to work on the range of access levels.
+
 2006-11-30  Alex Schumann   <rubin@afternet.org>
 
 	* src/chanserv.c: Modified .myaccess such that if you give it your own

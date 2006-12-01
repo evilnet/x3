@@ -2801,27 +2801,27 @@ static CHANSERV_FUNC(cmd_mdelowner)
 
 static CHANSERV_FUNC(cmd_mdelcoowner)
 {
-    return cmd_mdel_user(user, channel, UL_COOWNER, UL_COOWNER, argv[1], cmd);
+    return cmd_mdel_user(user, channel, UL_COOWNER, UL_OWNER-1, argv[1], cmd);
 }
 
 static CHANSERV_FUNC(cmd_mdelmanager)
 {
-    return cmd_mdel_user(user, channel, UL_MANAGER, UL_MANAGER, argv[1], cmd);
+    return cmd_mdel_user(user, channel, UL_MANAGER, UL_COOWNER-1, argv[1], cmd);
 }
 
 static CHANSERV_FUNC(cmd_mdelop)
 {
-    return cmd_mdel_user(user, channel, UL_OP, UL_OP, argv[1], cmd);
-}
-
-static CHANSERV_FUNC(cmd_mdelpeon)
-{
-    return cmd_mdel_user(user, channel, UL_PEON, UL_PEON, argv[1], cmd);
+    return cmd_mdel_user(user, channel, UL_OP, UL_MANAGER-1, argv[1], cmd);
 }
 
 static CHANSERV_FUNC(cmd_mdelhalfop)
 {
-    return cmd_mdel_user(user, channel, UL_HALFOP, UL_HALFOP, argv[1], cmd);
+    return cmd_mdel_user(user, channel, UL_HALFOP, UL_OP-1, argv[1], cmd);
+}
+
+static CHANSERV_FUNC(cmd_mdelpeon)
+{
+    return cmd_mdel_user(user, channel, UL_PEON, UL_HALFOP-1, argv[1], cmd);
 }
 
 
