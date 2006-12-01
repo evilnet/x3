@@ -6,6 +6,21 @@
 	* src/chanserv.c: Raisk pointed out that mdelop and friends dont work
 	on users of non-standard access level such as 201. Fixed this by
 	changing mdelop and friends to work on the range of access levels.
+	Added a LEVELS command.
+
+	* src/chanserv.h: corrected PEON access defines such that 1-150 is
+	peon instead of 100-150 with 1-99 being undefined.
+
+	* src/chanserv.help: help for new LEVELS command
+
+	* src/helpfile.c: Improved table functions so that it automatically
+	right-justifies numerical columns.
+
+	* src/tools.c: Added helper functions str_is_number and msnprintf (an
+	auto-mallocing printf function)
+
+	* src/common.h: defines and defines for msnprintf and str_is_number
+
 
 2006-11-30  Alex Schumann   <rubin@afternet.org>
 

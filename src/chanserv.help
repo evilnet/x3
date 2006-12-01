@@ -185,6 +185,12 @@
          " or the shortcut:",
          "   /AUTH <account> <password>"
          );
+"LEVELS" ("/msg $S LEVELS",
+        "Lists the numerical level equivelents for channel access levels.",
+        "$b$b",
+        "$S can use either the names (OWNER, COOWNER, MANAGER, OP, HALFOP, and PEON) or numerical values from 1 to 500 to indicate channel access levels. The LEVELS command prints out all the levels and their numerical ranges.",
+        "Advanced users can change their style with $N's set style command to view the numerical version in commands like USERS, and may use numbers instead of names for fine-tuning access.",
+        "$uSee Also:$u ($N) set style, access, myaccess, adduser");
 
 "MYACCESS" ("/msg $S MYACCESS [<nick|*account>]",
         "Lists channels where you have access and infolines in each.",
@@ -195,10 +201,12 @@
         "  v     AutoVoice is active.",
         "  i     AutoInvite is active.",
         "  j     AutoJoin is active.",
-        "$uSee Also:$u access, users");
+        "$uSee Also:$u access, users, levels");
+
 "ACCESS" ("/msg $S ACCESS <#channel> [<nick|*account>]",
         "Reports various pieces of information about a channel user, including channel and network access level, and the user's info line. If no nick or account is provided, $S returns your own information.",
-        "$uSee Also:$u myaccess, users");
+        "$uSee Also:$u myaccess, users, levels");
+
 "ADDLAMER" ("/msg $C ADDLAMER <#channel> <mask|nick> [Reason]",
         "Adds a lamer to the channels lamer list, remaining in effect until removed with the DELLAMER command. ",
         "Lamers are nick!user@host masks which $C watches for, and keeps out of your channel.",
@@ -207,7 +215,7 @@
 "ADDUSER" ("/msg $C ADDUSER <#channel> <nick|*account> <level>",
         "This command adds someone to the channel user list with the specified access level.  (You may only add users to levels less than your own.)",
         "The level may be one of $bpeon$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
-        "$uSee Also:$u deluser, users");
+        "$uSee Also:$u deluser, users, levels");
 
 "ADDPEON" ("/msg $C ADDPEON <#channel> <nick|*account>",
         "This command adds someone to the channel user list with PEON access level. (You may only add users to levels less than your own.)",
@@ -375,7 +383,8 @@
         "Deletes all managers with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u mdelban, mdelcoowner, mdelop, mdelowner, mdelpeon");
 "MDELOP" ("/msg $C MDELOP <#channel> <pattern>",
-        "Deletes all ops with accounts matching the given pattern from the channel user list.");
+        "Deletes all ops with accounts matching the given pattern from the channel user list.",
+        "$uSee Also:$u addop, mdelowner, mdelcoowner, mdelmanager");
 "MDELOWNER" ("/msg $C MDELOWNER <#channel> <pattern>",
         "Deletes all owners with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u addowner, mdelcoowner, mdelmanager, mdelop, mdelpeon");

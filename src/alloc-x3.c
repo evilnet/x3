@@ -150,3 +150,5 @@ verify(const void *ptr)
     assert(header->magic == ALLOC_MAGIC);
     assert(!memcmp((char*)(header + 1) + header->size, redzone, sizeof(redzone)));
 }
+
+

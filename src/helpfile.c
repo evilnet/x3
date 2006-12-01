@@ -381,9 +381,13 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
     /* Send the table. */
     for (jj=0, pos=0, reps=0; ii<table.length; ) {
         while (1) {
+            int PAD_COL_LEFT = false;
+            if(table.flags & TABLE_PAD_LEFT || str_is_number(table.contents[ii][jj]))
+                PAD_COL_LEFT = true;
             len = strlen(table.contents[ii][jj]);
             spaces = max_width[jj] - len;
-            if (table.flags & TABLE_PAD_LEFT)
+            //if (table.flags & TABLE_PAD_LEFT)
+            if(PAD_COL_LEFT)
                 while (spaces--) line[pos++] = ' ';
             memcpy(line+pos, table.contents[ii][jj], len);
             pos += len;
@@ -396,7 +400,8 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
                     break;
                 }
             }
-            if (!(table.flags & TABLE_PAD_LEFT))
+            //if (!(table.flags & TABLE_PAD_LEFT))
+            if(!PAD_COL_LEFT)
                 while (spaces--)
                     line[pos++] = ' ';
             line[pos++] = ' ';

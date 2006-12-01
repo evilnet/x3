@@ -24,11 +24,11 @@
 #include "nickserv.h"
 
 enum UL_ALIASES {
-    UL_PEON = 100,
+    UL_PEON = 1,
     UL_HALFOP = 150,
     UL_OP = 200,
     UL_MANAGER = 300,
-    UL_PRESENT = UL_MANAGER,
+    UL_PRESENT = UL_MANAGER, /* Level needed to keep the channel active */
     UL_COOWNER = 400,
     UL_OWNER = 500,
     UL_HELPER = 600,

@@ -95,6 +95,7 @@ extern void x3_free(const char *, unsigned int, void *);
 extern void verify(const void *ptr);
 #  define verify(x) verify(x)
 # endif
+
 #elif defined(WITH_MALLOC_SLAB)
 # define malloc(n) slab_malloc(__FILE__, __LINE__, (n))
 # undef calloc
@@ -118,6 +119,9 @@ extern void verify(const void *ptr);
 #ifndef verify
 # define verify(ptr) (void)(ptr)
 #endif
+
+extern char *x3_msnprintf(const int size, const char *format, ...);
+#define msnprintf x3_msnprintf
 
 extern time_t now;
 extern int quit_services;
@@ -266,6 +270,7 @@ void string_buffer_append_vprintf(struct string_buffer *buf, const char *fmt, va
 void string_buffer_append_printf(struct string_buffer *buf, const char *fmt, ...);
 void string_buffer_replace(struct string_buffer *buf, unsigned int from, unsigned int len, const char *repl);
 
+int str_is_number(char *str);
 #define enabled_string(string)  (!irccasecmp((string), "on") || !strcmp((string), "1") || !irccasecmp((string), "enabled"))
 #define disabled_string(string) (!irccasecmp((string), "off") || !strcmp((string), "0") || !irccasecmp((string), "disabled"))
 #define true_string(string)     (!irccasecmp((string), "true") || !strcmp((string), "1") || !irccasecmp((string), "yes"))

@@ -2825,6 +2825,72 @@ static CHANSERV_FUNC(cmd_mdelpeon)
 }
 
 
+static CHANSERV_FUNC(cmd_levels)
+{
+    struct helpfile_table tbl;
+    int ii = 0;
+
+    tbl.length = 6 + 1; // 6 levels
+    tbl.width = 4;
+    tbl.flags = 0;
+    tbl.contents = calloc(tbl.length,sizeof(tbl.contents[0]));
+    tbl.contents[0] = calloc(tbl.width,sizeof(tbl.contents[0][0]));
+    tbl.contents[0][0] = "Level";
+    tbl.contents[0][1] = "From";
+    tbl.contents[0][2] = "-";
+    tbl.contents[0][3] = "To";
+
+    tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
+    tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_OWNER));
+    tbl.contents[ii][1] = msnprintf(4, "%d", UL_OWNER);
+    tbl.contents[ii][2] = msnprintf(1, "");
+    tbl.contents[ii][3] = msnprintf(1, "");
+
+    tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
+    tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_COOWNER));
+    tbl.contents[ii][1] = msnprintf(4, "%d", UL_COOWNER);
+    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][3] = msnprintf(4, "%d", UL_OWNER-1);
+
+    tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
+    tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_MANAGER));
+    tbl.contents[ii][1] = msnprintf(4, "%d", UL_MANAGER);
+    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][3] = msnprintf(4, "%d", UL_COOWNER-1);
+
+    tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
+    tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_OP));
+    tbl.contents[ii][1] = msnprintf(4, "%d", UL_OP);
+    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][3] = msnprintf(4, "%d", UL_MANAGER-1);
+
+    tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
+    tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_HALFOP));
+    tbl.contents[ii][1] = msnprintf(4, "%d", UL_HALFOP);
+    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][3] = msnprintf(4, "%d", UL_OP-1);
+
+    tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
+    tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_PEON));
+    tbl.contents[ii][1] = msnprintf(4, "%d", UL_PEON);
+    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][3] = msnprintf(4, "%d", UL_HALFOP-1);
+
+    table_send(cmd->parent->bot, user->nick, 0, NULL, tbl);
+    return 0;
+
+/*
+    reply("CSMSG_LEVELS_HEADER");
+    reply("CSMSG_LEVELS",  user_level_name_from_level(UL_OWNER), UL_OWNER, UL_OWNER);
+    reply("CSMSG_LEVELS",  user_level_name_from_level(UL_COOWNER), UL_COOWNER, UL_OWNER-1);
+    reply("CSMSG_LEVELS",  user_level_name_from_level(UL_MANAGER), UL_MANAGER, UL_COOWNER-1);
+    reply("CSMSG_LEVELS",  user_level_name_from_level(UL_OP), UL_OP, UL_MANAGER-1);
+    reply("CSMSG_LEVELS",  user_level_name_from_level(UL_HALFOP), UL_HALFOP, UL_OP-1);
+    reply("CSMSG_LEVELS",  user_level_name_from_level(UL_PEON), UL_PEON, UL_HALFOP-1);
+    reply("CSMSG_BAR");
+ */
+}
+
 /* trim_lamers.. */
 static int
 cmd_trim_bans(struct svccmd *cmd, struct userNode *user, struct chanNode *channel, unsigned long duration)
@@ -8612,6 +8678,8 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(mdelop, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(mdelpeon, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(mdelhalfop, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
+
+    DEFINE_COMMAND(levels, 1, 0, NULL);
 
     DEFINE_COMMAND(trim, 3, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(opchan, 1, MODCMD_REQUIRE_REGCHAN|MODCMD_NEVER_CSUSPEND, "access", "1", NULL);

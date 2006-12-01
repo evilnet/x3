@@ -1111,6 +1111,23 @@ char *mysep(char **sepstr, char *delim)
   return(retstr);
 }
 
+/* Mallocing snprintf *
+ *
+ * If it overruns size, it will simply be safely truncated.
+ */
+char *
+x3_msnprintf(const int size, const char *format, ...)
+{
+    va_list ap;
+    char* buff = calloc(sizeof(char *), size+1);
+
+    va_start(ap, format);
+    vsnprintf(buff, size, format, ap);
+    va_end(ap);
+    buff = realloc(buff, strlen(buff) + 1);
+    return buff;
+}
+
 char *time2str(time_t thetime)
 {
     char *buf, *tmp;
@@ -1275,4 +1292,17 @@ char *pretty_mask(char *mask)
     *host = '*';
   }
   return make_nick_user_host(retmask, nick, user, host);
+}
+
+int str_is_number(char *str)
+{
+    char *ptr;
+    int ret = false;
+    for(ptr = str;*ptr;ptr++) {
+        if((*ptr >= '0' && *ptr <= '9') || *ptr == '-')
+            ret = true;
+        else
+            return false;
+    }
+    return ret;
 }
