@@ -257,6 +257,8 @@ assign_fakehost(struct userNode *user, const char *host, int announce)
 void
 set_geoip_info(struct userNode *user)
 {
+    if(IsLocal(user))
+        return;
 /* Need the libs and the headers if this is going to compile properly */
 #if defined(HAVE_LIBGEOIP)&&defined(HAVE_GEOIP_H)&&defined(HAVE_GEOIPCITY_H)
     GeoIPRecord * gir;
@@ -266,7 +268,7 @@ set_geoip_info(struct userNode *user)
     geoip_data_file = conf_get_data("services/opserv/geoip_data_file", RECDB_QSTRING);
     geoip_city_file = conf_get_data("services/opserv/geoip_city_data_file", RECDB_QSTRING);
 
-    if ((!geoip_data_file && !geoip_city_file) || IsLocal(user))
+    if ((!geoip_data_file && !geoip_city_file))
         return; /* Admin doesnt want to use geoip functions */
 
     if (geoip_data_file && !gi)

@@ -444,6 +444,8 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
     unsigned int size, ipos, pos, length, chars_sent, use_color;
     unsigned int expand_pos, expand_ipos, newline_ipos;
     char line[MAX_LINE_SIZE];
+    struct service *service;
+    static char* trigger = NULL;
 
     if (IsChannelName(dest) || *dest == '$') {
         message_dest = NULL;
@@ -587,6 +589,15 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
 	case 'H':
 	    value = handle ? handle->handle : "Account";
 	    break;
+        case '!':  /* Command Char for chanserv */
+            if(!trigger)
+               trigger = calloc(sizeof(*trigger), 2);
+            if(chanserv && (service = service_find(chanserv->nick)))
+                trigger[0] = service->trigger;
+            else
+                trigger[0] = '!';
+            value = trigger;
+            break;
 #define SEND_LINE(TRUNCED) do { \
     line[pos] = 0; \
     if (pos > 0) { \

@@ -2843,37 +2843,37 @@ static CHANSERV_FUNC(cmd_levels)
     tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
     tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_OWNER));
     tbl.contents[ii][1] = msnprintf(4, "%d", UL_OWNER);
-    tbl.contents[ii][2] = msnprintf(1, "");
+    tbl.contents[ii][2] = msnprintf(2, " ");
     tbl.contents[ii][3] = msnprintf(1, "");
 
     tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
     tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_COOWNER));
     tbl.contents[ii][1] = msnprintf(4, "%d", UL_COOWNER);
-    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][2] = msnprintf(2, "-");
     tbl.contents[ii][3] = msnprintf(4, "%d", UL_OWNER-1);
 
     tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
     tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_MANAGER));
     tbl.contents[ii][1] = msnprintf(4, "%d", UL_MANAGER);
-    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][2] = msnprintf(2, "-");
     tbl.contents[ii][3] = msnprintf(4, "%d", UL_COOWNER-1);
 
     tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
     tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_OP));
     tbl.contents[ii][1] = msnprintf(4, "%d", UL_OP);
-    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][2] = msnprintf(2, "-");
     tbl.contents[ii][3] = msnprintf(4, "%d", UL_MANAGER-1);
 
     tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
     tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_HALFOP));
     tbl.contents[ii][1] = msnprintf(4, "%d", UL_HALFOP);
-    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][2] = msnprintf(2, "-");
     tbl.contents[ii][3] = msnprintf(4, "%d", UL_OP-1);
 
     tbl.contents[++ii] = calloc(tbl.width, sizeof(tbl.contents[0][0]));
     tbl.contents[ii][0] = strdup(user_level_name_from_level(UL_PEON));
     tbl.contents[ii][1] = msnprintf(4, "%d", UL_PEON);
-    tbl.contents[ii][2] = msnprintf(1, "-");
+    tbl.contents[ii][2] = msnprintf(2, "-");
     tbl.contents[ii][3] = msnprintf(4, "%d", UL_HALFOP-1);
 
     table_send(cmd->parent->bot, user->nick, 0, NULL, tbl);

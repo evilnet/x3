@@ -1,6 +1,22 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-02  Alex Schumann   <rubin@afternet.org>
+
+	* src/chanserv.c: fix to levels command (- were missing)
+
+	* src/tools.c: fix warning
+
+	* src/common.h: fix warning
+
+	* src/chanserv.help: update online help url, changed help general to
+	use new $! command char replacement code.
+
+	* src/hash.c: fix warning when geoip is off
+
+	* src/helpfile.c: add new '$!' code for chanserv's current trigger
+	char in help files
+
 2006-12-01  Alex Schumann   <rubin@afternet.org>
 
 	* src/chanserv.c: Raisk pointed out that mdelop and friends dont work

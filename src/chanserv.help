@@ -157,13 +157,13 @@
             " in a channel which $C is in. These two ",
             " ways are demonstrated below:",
             "  $b/MSG $C OP #chatzone Locke$b",
-            "  $b.OP #chatzone locke$b",
+            "  $b$!OP #chatzone locke$b",
             "$b$b",
             " If a command is given in a channel, and ",
             " the channel parameter is not given, the ",
             " channel that the command was issued in  ",
             " will be used:",
-            " $b,OP locke$b",
+            " $b$!OP locke$b",
             "$b$b",
             " Some commands, such as $bNETINFO$b     ",
             " don't require a channel. If one is      ",
@@ -176,7 +176,7 @@
             " exact syntax of each command.           ",
             "=---------- For more info see: ---------=",
             "     http://www.afternet.org/support     ",
-            "     http://x2serv.sf.net/x3help.php     "
+            "     http://evilnet.sf.net/x3/x3help.php "
 );
 
 "LOGIN" (

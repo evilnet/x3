@@ -1294,11 +1294,11 @@ char *pretty_mask(char *mask)
   return make_nick_user_host(retmask, nick, user, host);
 }
 
-int str_is_number(char *str)
+int str_is_number(const char *str)
 {
     char *ptr;
     int ret = false;
-    for(ptr = str;*ptr;ptr++) {
+    for(ptr = (char *)str;*ptr;ptr++) {
         if((*ptr >= '0' && *ptr <= '9') || *ptr == '-')
             ret = true;
         else

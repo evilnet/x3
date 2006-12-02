@@ -270,7 +270,7 @@ void string_buffer_append_vprintf(struct string_buffer *buf, const char *fmt, va
 void string_buffer_append_printf(struct string_buffer *buf, const char *fmt, ...);
 void string_buffer_replace(struct string_buffer *buf, unsigned int from, unsigned int len, const char *repl);
 
-int str_is_number(char *str);
+int str_is_number(const char *str);
 #define enabled_string(string)  (!irccasecmp((string), "on") || !strcmp((string), "1") || !irccasecmp((string), "enabled"))
 #define disabled_string(string) (!irccasecmp((string), "off") || !strcmp((string), "0") || !irccasecmp((string), "disabled"))
 #define true_string(string)     (!irccasecmp((string), "true") || !strcmp((string), "1") || !irccasecmp((string), "yes"))
