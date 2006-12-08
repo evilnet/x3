@@ -303,7 +303,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ALERT_ADD_FAILED", "Unable to add alert. Check syntax, required parts,  and access" },
     { "OSMSG_REMOVED_ALERT", "Removed alert named $b%s$b." },
     { "OSMSG_NO_SUCH_ALERT", "No alert named $b%s$b could be found." },
-    { "OSMSG_ALERTS_LIST", "$bCurrent $O alerts$b" },
+    { "OSMSG_ALERTS_LIST", "$bCurrent $O alerts matching '$b%s$b'$b" },
     { "OSMSG_ALERTS_BAR",    "----------------------------------------------" },
     { "OSMSG_ALERTS_HEADER", "Name                 Action (by Oper)" },
     { "OSMSG_ALERTS_DESC",   "   Criteria: %s" },
@@ -2322,19 +2322,18 @@ static MODCMD_FUNC(cmd_stats_alerts) {
     dict_iterator_t it;
     struct opserv_user_alert *alert;
     const char *reaction;
-    char *m;
+    char *m = NULL;
 
-    reply("OSMSG_ALERTS_LIST");
+    if(argc > 1) 
+        m = unsplit_string(argv + 1, argc - 1, NULL);
+    reply("OSMSG_ALERTS_LIST", m ? m : "*");
     reply("OSMSG_ALERTS_BAR");
     reply("OSMSG_ALERTS_HEADER");
     reply("OSMSG_ALERTS_BAR");
     for (it = dict_first(opserv_user_alerts); it; it = iter_next(it)) {
         alert = iter_data(it);
-        if(argc > 1) {
-            m = unsplit_string(argv + 1, argc - 1, NULL);
-            if(!match_ircglob(alert->text_discrim, m))
-                break; /* not a match to requested filter */
-        }
+        if(m && (!match_ircglob(alert->text_discrim, m) && strcasecmp(alert->owner, m)) )
+             break; /* not a match to requested filter */
         switch (alert->reaction) {
         case REACT_NOTICE: reaction = "notice"; break;
         case REACT_KILL: reaction = "kill"; break;

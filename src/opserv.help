@@ -938,12 +938,20 @@
         "$bMODULES$b:    Shows loaded modules that implement commands.",
         "$bSERVICES$b:   Shows active service bots.",
         "Access level: $b${level/stats}$b",
+        "$b$b",
+        "$uSee Also:$u stats alerts"
         );
 
-"STATS ALERTS" ("/msg $O STATS ALERTS [filter]",
-        "Show alerts. If filter is given, only alerts whose criteria string matches the filter (use * and ? for wildcards)",
+"STATS ALERTS" ("/msg $O STATS ALERTS [Owner|Filter]",
+        "Show alerts. If a parameter is given, only alerts who match it are shown.",
+        "$b$b",
+        " Owner  - the account name of whoever created the alert",
+        " Filter - A wildcard (* and ?) match string compared against the criteria string",
+        "$b$b",
         "Example: STATS ALERTS *nick phil*",
+        "$uSee Also:$u addalert, delalert, stats"
         );
+
 "TRACK" ("/msg $O TRACK <+/-type|all|none>",
         "This specifies what will be tracked in the tracking channel.",
         "Use + to add flags and - to remove types. Use ALL to enable all",
