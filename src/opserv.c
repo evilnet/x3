@@ -2333,7 +2333,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
     for (it = dict_first(opserv_user_alerts); it; it = iter_next(it)) {
         alert = iter_data(it);
         if(m && (!match_ircglob(alert->text_discrim, m) && strcasecmp(alert->owner, m)) )
-             break; /* not a match to requested filter */
+             continue; /* not a match to requested filter */
         switch (alert->reaction) {
         case REACT_NOTICE: reaction = "notice"; break;
         case REACT_KILL: reaction = "kill"; break;
