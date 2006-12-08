@@ -940,6 +940,10 @@
         "Access level: $b${level/stats}$b",
         );
 
+"STATS ALERTS" ("/msg $O STATS ALERTS [filter]",
+        "Show alerts. If filter is given, only alerts whose criteria string matches the filter (use * and ? for wildcards)",
+        "Example: STATS ALERTS *nick phil*",
+        );
 "TRACK" ("/msg $O TRACK <+/-type|all|none>",
         "This specifies what will be tracked in the tracking channel.",
         "Use + to add flags and - to remove types. Use ALL to enable all",

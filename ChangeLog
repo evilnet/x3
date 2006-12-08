@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-07  Alex Schumann   <rubin@afternet.org>
+
+	* src/opserv.c: Add filter ability to stats alerts
+
+	* src/opserv.help: document filter feature of stats alerts
+
 2006-12-02  Alex Schumann   <rubin@afternet.org>
 
 	* src/chanserv.c: fix to levels command (- were missing)

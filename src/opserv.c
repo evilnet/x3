@@ -2322,6 +2322,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
     dict_iterator_t it;
     struct opserv_user_alert *alert;
     const char *reaction;
+    char *m;
 
     reply("OSMSG_ALERTS_LIST");
     reply("OSMSG_ALERTS_BAR");
@@ -2329,6 +2330,11 @@ static MODCMD_FUNC(cmd_stats_alerts) {
     reply("OSMSG_ALERTS_BAR");
     for (it = dict_first(opserv_user_alerts); it; it = iter_next(it)) {
         alert = iter_data(it);
+        if(argc > 1) {
+            m = unsplit_string(argv + 1, argc - 1, NULL);
+            if(!match_ircglob(alert->text_discrim, m))
+                break; /* not a match to requested filter */
+        }
         switch (alert->reaction) {
         case REACT_NOTICE: reaction = "notice"; break;
         case REACT_KILL: reaction = "kill"; break;
