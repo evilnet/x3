@@ -1,6 +1,20 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-08  Alex Schumann   <rubin@afternet.org>
+
+	* src/opserv.c: Moving some version reply housekeeping to proto-p10.c
+
+	* src/proto-p10.c: moving version reply storage here, adding webTV
+	no_notice support (automatiaclly dont send notices if version reply
+	says its a webtv user since they cant SEE notices. (other clients to
+	add?))  note, this needs a version query alert to get the version from
+	them.
+
+	* src/helpfile.c: honor the no_notices user bit
+
+	* src/hash.h: add no_notices user bit
+
 2006-12-07  Alex Schumann   <rubin@afternet.org>
 
 	* src/opserv.c: Add filter ability to stats alerts + fixup

@@ -188,6 +188,7 @@ struct userNode {
     unsigned int num_local : 18;
 #endif
     unsigned int loc;             /* Is user connecting via LOC? */
+    unsigned int no_notice;       /* Does the users client not see notices? */
     unsigned int dead : 1;        /* Is user waiting to be recycled? */
     irc_in_addr_t ip;             /* User's IP address */
     long modes;                   /* user flags +isw etc... */

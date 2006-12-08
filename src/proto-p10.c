@@ -380,6 +380,32 @@ GetUserN(const char *numeric) /* using numeric */
     return un;
 }
 
+extern struct userNode *opserv;
+static void
+check_ctcp(struct userNode *user, struct userNode *bot, char *text, UNUSED_ARG(int server_qualified))
+{
+    char *cmd;
+    /* if its a version reply, do an alert check (only alerts with version=something) */
+    if(bot == opserv) {
+        if(text[0] == '\001') {
+            text++;
+            cmd = mysep(&text, " ");
+            if(!irccasecmp(cmd, "VERSION")) {
+                char *version = mysep(&text, "\n");
+                if(!version)
+                    version = "";
+                /* opserv_debug("Opserv got CTCP VERSION Notice from %s: %s", user->nick, version); */
+                /* TODO: setup a ctcp_funcs thing to handle this and other CTCPS properly */
+                user->version_reply = strdup(version);
+                /* TODO: put this in the db */
+                if(match_ircglob(version, "WebTV;*"))
+                    user->no_notice = true; /* webbies cant see notices */
+            }
+        }
+    }
+}
+
+
 static void
 privmsg_user_helper(struct userNode *un, void *data)
 {
@@ -391,6 +417,7 @@ privmsg_user_helper(struct userNode *un, void *data)
         }
     } else {
         if ((num < num_notice_funcs) && notice_funcs[num]) {
+            check_ctcp(pd->user, un, pd->text, pd->is_qualified);
             notice_funcs[num](pd->user, un, pd->text, pd->is_qualified);
         }
     }
@@ -2366,6 +2393,7 @@ init_parse(void)
     userList_init(&dead_users);
     reg_del_channel_func(remove_unbursted_channel);
     reg_exit_func(parse_cleanup);
+    // reg_notice_func(opserv, check_ctcp);
 }
 
 int

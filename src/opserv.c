@@ -203,6 +203,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WHOIS_CHANNELS",   "Channels     : %s" },
     { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
     { "OSMSG_WHOIS_VERSION",    "Version      : %s" },  
+    { "OSMSG_WHOIS_NO_NOTICE",  "No_notices   : %s" },
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
     { "OSMSG_CHANNEL_VOICED", "All users on %s voiced." },
     { "OSMSG_CHANNEL_DEVOICED", "All voiced users on %s de-voiced." },
@@ -1966,6 +1967,7 @@ static MODCMD_FUNC(cmd_whois)
     if(target->version_reply) {
         reply("OSMSG_WHOIS_VERSION", target->version_reply);
     }
+    reply("OSMSG_WHOIS_NO_NOTICE", target->no_notice ? "YES":"NO");
   
     if (target->modes) {
         bpos = 0;
@@ -2738,7 +2740,7 @@ opserv_notice_handler(struct userNode *user, struct userNode *bot, char *text, U
                 if(!version)
                     version = "";
                 /* opserv_debug("Opserv got CTCP VERSION Notice from %s: %s", user->nick, version); */
-                user->version_reply = strdup(version);
+                /* user->version_reply = strdup(version); done in parse-p10.c now */
                 dict_foreach(opserv_user_alerts, alert_check_user, user);
             }
         }

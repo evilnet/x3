@@ -308,10 +308,18 @@ table_send(struct userNode *from, const char *to, unsigned int size, irc_send_fu
 
     if (irc_send)
         {} /* use that function */
-    else if (hi)
+    else if(IsChannelName(to)) {
+        irc_send = irc_privmsg;
+    }
+    else if (message_dest->no_notice) {
+        irc_send = irc_privmsg;
+    }
+    else if (hi) {
         irc_send = HANDLE_FLAGGED(hi, USE_PRIVMSG) ? irc_privmsg : irc_notice;
-    else
-        irc_send = IsChannelName(to) ? irc_privmsg : irc_notice;
+    }
+    else {
+        irc_send = irc_notice;
+    }
 
     /* Limit size to how much we can show at once */
     if (size > sizeof(line))
@@ -483,7 +491,10 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
         size = DEFAULT_LINE_SIZE;
     switch (msg_type & 3) {
         case 0:
-            irc_send = irc_notice;
+            if(message_dest && message_dest->no_notice)
+               irc_send = irc_privmsg;
+            else
+               irc_send = irc_notice;
             break;
         case 2:
             irc_send = irc_wallchops;
