@@ -92,7 +92,7 @@
             " $bROUTING MAP$b       Show what the active routing plan says the network should look like.",
             " $bREROUTE$b           Connect servers to the network, optionally squiting them first to change the routing.",
             " $b$b ",
-            " Start by creating a routing plan, and then adding servers to it, with their listning port, uplink, and a backup uplink. You can view it in $bSTATS ROUTING$b. Take care not to create loops, and that you make everything connected. Then set your new plan ACTIVE using $bROUTING SET$b. $O does the rest! See help topic $bROUTING EXAMPLE$b for a working example."
+            " Start by creating a routing plan, and then adding servers to it, with their listning port, uplink, and a backup uplink. You can view it in $bSTATS ROUTING planname$b. Take care not to create loops, and that you make everything connected. Then set your new plan ACTIVE using $bROUTING SET$b. $O does the rest! See help topic $bROUTING EXAMPLE$b for a working example."
             );
 
 "CHANNEL"  (
@@ -710,7 +710,7 @@
 "ROUTING ADDPLAN" ("/msg $O ROUTING ADDPLAN <name>",
         "Creates a new blank routing plan named name.",
         "You can then use $bROUTING ADDSERVER$b to build it.",
-        "Use $bSTATS ROUTING$b to view it, and $bROUTING SET ACTIVE$b to activate it.",
+        "Use $bSTATS ROUTING [name]$b to view it, and $bROUTING SET ACTIVE$b to activate it.",
         "$uSee Also:$u routing, stats routing, routing delplan, routing set, routing addserver"
         );
 "ROUTING DELPLAN" ("/msg $O ROUTING DELPLAN <name>",
@@ -793,8 +793,9 @@
         "$uSee also:$u routing, routing map, stats routing",
         );
 
-"STATS ROUTING" ("/msg $O STATS ROUTING",
+"STATS ROUTING" ("/msg $O STATS ROUTING [planmask]",
         "Provides information about The Auto Routing System's configuration. You can see the routing plans, and the current routing options.",
+        " If planmask is provided, you will see the full details for any plans matching the mask (* and ? wildcards)",
         "$uSee also:$u routing, routing set",
         );
 

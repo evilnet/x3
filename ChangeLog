@@ -4,14 +4,19 @@
 2006-12-09  Alex Schumann   <rubin@afternet.org>
 
 	* src/opserv.c: bugfixes to autorouting timer code
+	improved stats routing to clean up & take an argument
 
 	* src/opserv.h: bugfixes to autorouting timer code
+
+	* src/opserv.help: document new stats routing syntax
 
 	* src/timeq.c: added some usefull (commented out) debugging code for
 	figuring out timer problems.
 
 	* src/timerq.h: added some usefull (commented out) debugging code for
 	figuring out timer problems.
+
+	* src/proto-p10.c: cleanup/improve eob autorouting init
 
 2006-12-08  Alex Schumann   <rubin@afternet.org>
 

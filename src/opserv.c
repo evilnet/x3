@@ -311,15 +311,17 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ALERT_IS",      "$b%-20s$b %-6s (by %s)" },
     { "OSMSG_ALERT_END",     "----------------End of Alerts-----------------" },
     /* routing messages */
-    { "OSMSG_ROUTINGPLAN_LIST",  "$bRouting Plans$b" },
+    { "OSMSG_ROUTINGPLAN",  "$bRouting Plan(s)$b" },
+    { "OSMSG_ROUTINGPLAN_LIST_HEAD", "$bRouting Plans$b" },
     { "OSMSG_ROUTINGPLAN_BAR",   "----------------------------------------------" },
-    { "OSMSG_ROUTINGPLAN_END",   "-------------End of Routing Plans-------------" },
+    { "OSMSG_ROUTINGPLAN_END",   "------------End of Routing Plan(s)------------" },
     { "OSMSG_ROUTINGPLAN_OPTION", "%s is set to %s" },
     { "OSMSG_ROUTINGPLAN_ACTIVE", "Auto routing is active, using plan '%s'." },
     { "OSMSG_ROUTING_ACTIVATION_ERROR", "There was an error activating the routing plan. Check for loops, and make sure the map includes my own uplink." },
     { "OSMSG_ROUTINGPLAN_OPTION_NOT_FOUND", "There is no routing plan option '%s'." },
     { "OSMSG_ROUTINGPLAN_OPTION_NOT_SET", "Option '%s' is not currently set." },
     { "OSMSG_ROUTINGPLAN_NAME",  "$b%s:$b" },
+    { "OSMSG_ROUTINGPLAN_LIST",  "$b%s$b" },
     { "OSMSG_ROUTINGPLAN_SERVER","      %s:%d <-- %s[%d/%s] (%s)" }, 
     { "OSMSG_ADDPLAN_SUCCESS", "Added new routing plan '%s'." },
     { "OSMSG_ADDPLAN_FAILED", "Could not add new plan '%s' (does it already exist?)." },
@@ -3701,21 +3703,34 @@ static MODCMD_FUNC(cmd_stats_routing_plans) {
     dict_iterator_t rpit;
     dict_iterator_t it;
     struct routingPlan *rp;
-    reply("OSMSG_ROUTINGPLAN_LIST");
-    reply("OSMSG_ROUTINGPLAN_BAR");
-    for(rpit = dict_first(opserv_routing_plans); rpit; rpit = iter_next(rpit)) {
-        const char* name = iter_key(rpit);
-        rp = iter_data(rpit);
-        reply("OSMSG_ROUTINGPLAN_NAME", name);
-        for(it = dict_first(rp->servers); it; it = iter_next(it)) {
-            const char* servername = iter_key(it);
-            struct routingPlanServer *rps = iter_data(it);
-            reply("OSMSG_ROUTINGPLAN_SERVER", servername, rps->port, rps->uplink, rps->karma, rps->offline? "offline" : "online", rps->secondaryuplink ? rps->secondaryuplink : "None");
-        }
+    if(argc > 1) {
+        reply("OSMSG_ROUTINGPLAN");
+        reply("OSMSG_ROUTINGPLAN_BAR");
+        for(rpit = dict_first(opserv_routing_plans); rpit; rpit = iter_next(rpit)) {
+            const char* name = iter_key(rpit);
+            rp = iter_data(rpit);
+            if(match_ircglob(name, argv[1])) {
+                reply("OSMSG_ROUTINGPLAN_NAME", name);
+                for(it = dict_first(rp->servers); it; it = iter_next(it)) {
+                    const char* servername = iter_key(it);
+                    struct routingPlanServer *rps = iter_data(it);
+                    reply("OSMSG_ROUTINGPLAN_SERVER", servername, rps->port, rps->uplink, rps->karma, rps->offline? "offline" : "online", rps->secondaryuplink ? rps->secondaryuplink : "None");
+                }
+            }
 
+        }
+        reply("OSMSG_ROUTINGPLAN_END");
     }
-    reply("OSMSG_ROUTINGPLAN_END");
-    route_show_options(cmd, user);
+    else {
+        reply("OSMSG_ROUTINGPLAN_LIST_HEAD");
+        reply("OSMSG_ROUTINGPLAN_BAR");
+        for(rpit = dict_first(opserv_routing_plans); rpit; rpit = iter_next(rpit)) {
+            const char* name = iter_key(rpit);
+            reply("OSMSG_ROUTINGPLAN_LIST", name);
+        }
+        reply("OSMSG_ROUTINGPLAN_END");
+        route_show_options(cmd, user);
+    }
     return 1;
 }
 
