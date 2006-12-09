@@ -1,6 +1,18 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-09  Alex Schumann   <rubin@afternet.org>
+
+	* src/opserv.c: bugfixes to autorouting timer code
+
+	* src/opserv.h: bugfixes to autorouting timer code
+
+	* src/timeq.c: added some usefull (commented out) debugging code for
+	figuring out timer problems.
+
+	* src/timerq.h: added some usefull (commented out) debugging code for
+	figuring out timer problems.
+
 2006-12-08  Alex Schumann   <rubin@afternet.org>
 
 	* src/opserv.c: Moving some version reply housekeeping to proto-p10.c

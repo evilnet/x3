@@ -47,5 +47,7 @@ void routing_handle_connect_failure(struct server *source, char *server, char *m
 int activate_routing(struct svccmd *cmd, struct userNode *user, char *plan_name);
 void routing_handle_squit(char *server, char* uplink, char *message);
 void routing_handle_connect(char *server, char *uplink);
+void reroute_timer_reset(unsigned int time);
+void routing_init();
 
 #endif

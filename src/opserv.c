@@ -743,7 +743,7 @@ static MODCMD_FUNC(cmd_defcon)
     showDefConSettings(user, cmd);
 
     if (DefConTimeOut > 0) {
-        timeq_del(0, defcon_timeout, NULL, TIMEQ_IGNORE_DATA & TIMEQ_IGNORE_WHEN);
+        timeq_del(0, defcon_timeout, NULL, TIMEQ_IGNORE_DATA | TIMEQ_IGNORE_WHEN);
         timeq_add(now + DefConTimeOut, defcon_timeout, NULL);
     }
 
@@ -3142,13 +3142,25 @@ activate_routing(struct svccmd *cmd, struct userNode *user, char *plan_name)
             add_routestruct_server(opserv_route, servername, rps->port, uplink, NULL);
     }
     if(change_route_uplinks(opserv_route))
+    {
         return 1;
+    }
     else if(user) {
         reply("OSMSG_ROUTING_ACTIVATION_ERROR");
         activate_routing(cmd, user, "*");
         return 0;
     }
+    /* routing activation failed but we dont do anything? */
     return 1;
+}
+
+
+void routing_init()
+{
+    activate_routing(NULL, NULL, NULL);
+
+    /* start auto-routing system */
+    reroute_timer_reset(0); 
 }
 
 /*******************************************************
@@ -3380,6 +3392,9 @@ static MODCMD_FUNC(cmd_reroute) {
  * and setup timer.
  */
 void reroute_timer(void *data) {
+    /* Delete any other timers such as this one.. */
+    timeq_del(0, reroute_timer, NULL, TIMEQ_IGNORE_DATA | TIMEQ_IGNORE_WHEN);
+
     if(!opserv_route || !opserv_route->servers) 
         return; /* no active route */
     char *retry_period = dict_find(opserv_routing_plan_options, "RETRY_PERIOD", NULL);
@@ -3388,6 +3403,9 @@ void reroute_timer(void *data) {
     unsigned int freq = atoi(retry_period);
     if(freq < 1) 
         return; /* retry_period set to 0, disable */
+
+    /* opserv_debug("Reroute timer checking reroute"); */
+    log_module(MAIN_LOG, LOG_ERROR, "Reroute timer checking reroute()");
 
     /* Do the reroute C attempt */
     if(data)
@@ -3594,10 +3612,23 @@ routing_handle_connect_failure(struct server *source, char *server, char *messag
 /* Delete any existing timers, and start the timer again 
  * using the passed time for the first run.
  * - this is called during a retry_period change
- *   before it has saved the new value. */
+ *   before it has saved the new value. 
+ *
+ *   If time is 0, lookup the interval. */
 void reroute_timer_reset(unsigned int time)
 {
-    timeq_del(0, reroute_timer, NULL, TIMEQ_IGNORE_DATA & TIMEQ_IGNORE_WHEN);
+    timeq_del(0, reroute_timer, NULL, TIMEQ_IGNORE_DATA | TIMEQ_IGNORE_WHEN);
+    if(time == 0) {
+        if(!opserv_route || !opserv_route->servers)
+            return; /* no active route */
+        char *retry_period = dict_find(opserv_routing_plan_options, "RETRY_PERIOD", NULL);
+        if(!retry_period)
+            return; /* retry_period invalid */
+        time = atoi(retry_period);
+        if(time < 1)
+            return; /* retry_period set to 0, disable */
+
+    }
     timeq_add(now + time, reroute_timer, "run");
 }
 
@@ -6859,7 +6890,9 @@ init_opserv(const char *nick)
     }
 
     /* start auto-routing system */
-    reroute_timer(NULL);
+    /* this cant be done here, because the routing system isnt marked active yet. */
+    /* reroute_timer(NULL); */
+
     /* start the karma timer, using the saved one if available */
     routing_karma_timer(dict_find(opserv_routing_plan_options, "KARMA_TIMER", NULL));
 

@@ -28,8 +28,10 @@ typedef void (*timeq_func)(void *data);
 #define TIMEQ_IGNORE_DATA    0x04
 
 void timeq_init(void);
-void timeq_add(time_t when, timeq_func func, void *data);
-void timeq_del(time_t when, timeq_func func, void *data, int mask);
+#define timeq_add(x, y, z)   timeq_add_real(x, y, z, __func__)
+void timeq_add_real(time_t when, timeq_func func, void *data, const char *calling_func);
+#define timeq_del(x, y, z, m) timeq_del_real(x, y, z, m, __func__)
+void timeq_del_real(time_t when, timeq_func func, void *data, int mask, const char *calling_func);
 time_t timeq_next(void);
 unsigned int timeq_size(void);
 void timeq_run(void);

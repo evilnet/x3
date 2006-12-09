@@ -1234,7 +1234,8 @@ static CMD_FUNC(cmd_eob)
         /* now that we know who our uplink is,
          * we can center the routing map and activate auto-routing.
          */
-        activate_routing(NULL, NULL, NULL);
+        //activate_routing(NULL, NULL, NULL);
+        routing_init();
     }
     sender->self_burst = 0;
     recalc_bursts(sender);

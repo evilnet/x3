@@ -21,6 +21,7 @@
 #include "common.h"
 #include "heap.h"
 #include "timeq.h"
+#include "log.h"
 
 heap_t timeq;
 
@@ -52,10 +53,11 @@ timeq_next(void)
 }
 
 void
-timeq_add(time_t when, timeq_func func, void *data)
+timeq_add_real(time_t when, timeq_func func, void *data, UNUSED_ARG(const char *calling_func))
 {
     struct timeq_entry *ent;
     void *w;
+/*    log_module(MAIN_LOG, LOG_DEBUG, "TIMEQ: %s adding timer: %ul (address: %x)", calling_func, (unsigned int)when, (unsigned int)func); */
     ent = malloc(sizeof(struct timeq_entry));
     ent->func = func;
     ent->data = data;
@@ -78,6 +80,7 @@ timeq_del_matching(void *key, void *data, void *extra)
     if (((b->mask & TIMEQ_IGNORE_WHEN) || ((time_t)key == b->when))
 	&& ((b->mask & TIMEQ_IGNORE_FUNC) || (a->func == b->func))
 	&& ((b->mask & TIMEQ_IGNORE_DATA) || (a->data == b->data))) {
+        /* log_module(MAIN_LOG, LOG_DEBUG, "TIMEQ:     - deleting matching timer %x", a->func); */
         free(data);
         return 1;
     } else {
@@ -86,9 +89,10 @@ timeq_del_matching(void *key, void *data, void *extra)
 }
 
 void
-timeq_del(time_t when, timeq_func func, void *data, int mask)
+timeq_del_real(time_t when, timeq_func func, void *data, int mask, UNUSED_ARG(const char *calling_func))
 {
     struct timeq_extra extra;
+    /* log_module(MAIN_LOG, LOG_DEBUG, "TIMEQ: %s deleting timer: %d (address: %x mask: %x)", calling_func, (unsigned int)when, (unsigned int) func,  mask); */
     extra.when = when;
     extra.func = func;
     extra.data = data;
