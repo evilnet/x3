@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-10  Alex Schumann   <rubin@afternet.org>
+
+	* src/opserv.c: fix debug message left at wrong level ("checking
+	reroute()")
+
 2006-12-09  Alex Schumann   <rubin@afternet.org>
 
 	* src/opserv.c: bugfixes to autorouting timer code

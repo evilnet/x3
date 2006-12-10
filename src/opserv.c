@@ -3407,7 +3407,7 @@ void reroute_timer(void *data) {
         return; /* retry_period set to 0, disable */
 
     /* opserv_debug("Reroute timer checking reroute"); */
-    log_module(MAIN_LOG, LOG_ERROR, "Reroute timer checking reroute()");
+    log_module(MAIN_LOG, LOG_DEBUG, "Reroute timer checking reroute()");
 
     /* Do the reroute C attempt */
     if(data)
