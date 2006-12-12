@@ -1,6 +1,31 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-12  Neil Spierling  <sirvulcan@gmail.com>
+
+	* configure: Regenerated.
+
+	* configure.in: Add support for google core dumper. Plus updated
+	tre to 0.7.5.
+
+	* Makefile.in: Regenerated.
+
+	* rx/Makefile.in: Regenerated.
+
+	* src/config.h.in: Regenerated.
+
+	* src/Makefile.in: Regenerated.
+
+	* tools/core_install.sh: Just like tre_install.sh. This installs
+	the core dumper.
+
+	* tools/coredumper.tar.gz: Google core dumper 0.2.
+	http://sourceforge.net/projects/goog-coredumper/
+
+	* tools/tre_install.sh: Updated version to 0.7.5
+
+	* tools/tre.tar.gz: Updated tre to 0.7.5.
+
 2006-12-10  Alex Schumann   <rubin@afternet.org>
 
 	* src/opserv.c: fix debug message left at wrong level ("checking

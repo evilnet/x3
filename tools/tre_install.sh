@@ -2,7 +2,7 @@
 # 
 # This installs libtre in $HOME, 
 
-TRE_VERSION=0.7.4
+TRE_VERSION=0.7.5
 MAKE="make"
 
 OLD_DIR=`pwd`
