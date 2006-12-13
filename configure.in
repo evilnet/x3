@@ -2,7 +2,7 @@ dnl Process this file with autoconf to create a configure script.
 
 dnl General initialization.
 AC_REVISION([$Id$])
-AC_PREREQ(2.59)
+AC_PREREQ(2.60)
 AC_INIT([X3],[1.5],[evilnet-devel@lists.sourceforge.net])
 CODENAME=X3
 AC_CONFIG_HEADERS(src/config.h)
@@ -400,8 +400,8 @@ else
     CPPFLAGS="-I${HOME}/include -L${HOME}/lib"
     LIBS="$LIBS -L${HOME}/lib"
 fi
-AC_CHECK_HEADER(google/coredumper.h, , [AC_MSG_ERROR([google/coredumper.h, the coredumper headers, were not found. Install coredumper or use --with-coredumper=PATH to tell me how to find it, where PATH/include/google/coredumper.h exists.  For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])],)
-AC_CHECK_LIB(coredumper, WriteCoreDump, , [AC_MSG_ERROR([Coredumper library not found. Install coredumper, or use --with-coredumper=PATH to tell me how to find it, where PATH/lib/libcoredumper.so exists. For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])])
+AC_CHECK_HEADER(google/coredumper.h, , [AC_MSG_RESULT([google/coredumper.h, the coredumper headers, were not found. Install coredumper or use --with-coredumper=PATH to tell me how to find it, where PATH/include/google/coredumper.h exists.  For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])],)
+AC_CHECK_LIB(coredumper, WriteCoreDump, , [AC_MSG_RESULT([Coredumper library not found. Install coredumper, or use --with-coredumper=PATH to tell me how to find it, where PATH/lib/libcoredumper.so exists. For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])])
 
 AC_DEFINE_UNQUOTED(CODENAME, "${CODENAME}", [Code name for this release])
 AC_SUBST(MODULE_OBJS)

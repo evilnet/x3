@@ -1111,6 +1111,25 @@ irc_numeric(struct userNode *user, unsigned int num, const char *format, ...)
     putsock(":%s %03d %s %s", self->name, num, user->nick, buffer);
 }
 
+void
+irc_mark(struct userNode *user, char *mark)
+{
+    char *host = user->hostname;
+    /* if the mark will put us over the  host length, clip some off the left hand side
+     * to make room...
+     */
+    if(strlen(host) + 1 + strlen(mark) > HOSTLEN)
+        host += 1 + ( (strlen(host) + 1 + strlen(mark)) - HOSTLEN );
+    putsock("%s " CMD_MARK " %s DNSBL +m %s.%s", self->numeric, user->nick, mark, host);
+    putsock("%s " CMD_MARK " %s DNSBL_DATA %s", self->numeric, user->nick, mark);
+    /* If they are not otherwise marked, mark their host with fakehost */
+    if(!IsFakeHost(user) && !IsSetHost(user) && !(IsHiddenHost(user) && user->handle_info) )
+    {
+        putsock("%s " CMD_MODE " %s +x", self->numeric, user->nick);
+        putsock("%s " CMD_FAKEHOST " %s %s.%s", self->numeric, user->numeric, mark, host);
+    }
+}
+
 static void send_burst(void);
 
 static void
@@ -1695,6 +1714,37 @@ static CMD_FUNC(cmd_burst)
     return res;
 }
 
+/* TODO: 
+ * This is a stub that doesn't actually do anything. It should be completed
+ * so that bans on *!*@markname.* match users as it does in nefarious
+ */
+static CMD_FUNC(cmd_mark)
+{
+    struct userNode *target;
+    /* 
+     * log_module(MAIN_LOG, LOG_ERROR, "DEBUG: mark, user %s, type %s, arg %s", argv[1], argv[2], argv[3]);
+     */
+
+    if(argc < 4)
+        return 0;
+    target = GetUserH(argv[1]);
+    if(!target) {
+        log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose mark is changing.", argv[1]);
+        return 0;
+    }
+    if(!strcasecmp(argv[2], "DNSBL")) {
+        /* DNSBL <modes> */
+        return 1;
+    }
+    else if(!strcasecmp(argv[2], "DNSBL_DATA")) {
+        /* DNSBL_DATA name */
+        return 1;
+        
+    }
+    /* unknown type of mark */
+    return 1;
+}
+
 static CMD_FUNC(cmd_mode)
 {
     struct chanNode *cn;
@@ -2258,6 +2308,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_EOB_ACK, cmd_eob_ack);
     dict_insert(irc_func_dict, CMD_MODE, cmd_mode);
     dict_insert(irc_func_dict, TOK_MODE, cmd_mode);
+    dict_insert(irc_func_dict, CMD_MARK, cmd_mark);
+    dict_insert(irc_func_dict, TOK_MARK, cmd_mark);
     dict_insert(irc_func_dict, CMD_NICK, cmd_nick);
     dict_insert(irc_func_dict, TOK_NICK, cmd_nick);
     dict_insert(irc_func_dict, CMD_ACCOUNT, cmd_account);
@@ -2348,7 +2400,6 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_WALLUSERS, cmd_dummy);
     /* Ignore dnsbl exemptions */
     dict_insert(irc_func_dict, TOK_EXEMPT, cmd_dummy);
-    dict_insert(irc_func_dict, TOK_MARK, cmd_dummy);
     dict_insert(irc_func_dict, CMD_PRIVS, cmd_privs);
     dict_insert(irc_func_dict, TOK_PRIVS, cmd_privs);
     /* Ignore remote luser */

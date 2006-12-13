@@ -169,6 +169,7 @@ void irc_delete(struct userNode *user);
 void irc_account(struct userNode *user, const char *stamp, time_t timestamp);
 void irc_regnick(struct userNode *user);
 void irc_fakehost(struct userNode *user, const char *host);
+void irc_mark(struct userNode *user, char *mark);
 
 /* numeric messages */
 void irc_numeric(struct userNode *user, unsigned int num, const char *format, ...);

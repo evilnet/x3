@@ -165,12 +165,14 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ALREADY_THERE", "You are already in $b%s$b." },
     { "OSMSG_NOT_THERE", "You not in $b%s$b." },
     { "OSMSG_JOIN_DONE", "I have joined $b%s$b." },
+    { "OSMSG_MARK_SET", "Set the MARK." },
     { "OSMSG_SVSJOIN_SENT", "Sent the SVSJOIN." },
     { "OSMSG_SVSPART_SENT", "Sent the SVSPART." },
     { "OSMSG_ALREADY_JOINED", "I am already in $b%s$b." },
     { "OSMSG_NOT_ON_CHANNEL", "$b%s$b does not seem to be on $b%s$b." },
     { "OSMSG_KICKALL_DONE", "I have cleared out %s." },
     { "OSMSG_LEAVING", "Leaving $b%s$b." },
+    { "OSMSG_MARK_INVALID", "Sorry, marks must contain only letters, numbers, and dashes ('-')." },
     { "OSMSG_MODE_SET", "I have set the modes for $b%s$b." },
     { "OSMSG_OP_DONE", "Opped the requested lusers." },
     { "OSMSG_OPALL_DONE", "Opped everyone on $b%s$b." },
@@ -280,6 +282,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_USER_SEARCH_BAR",    "-------------------------------------------" },
     { "OSMSG_USER_SEARCH_COUNT",  "There were %4u matches" },
     { "OSMSG_USER_SEARCH_COUNT_BAR",  "------------ Found %4u matches -----------" },
+    { "OSMSG_MARK_NO_MARK", "MARK action requires mark criteria (what do you want to mark them as?)" },
     { "OSMSG_SVSJOIN_NO_TARGET", "SVSJOIN action requires chantarget criteria (where should they join?)" },
     { "OSMSG_SVSPART_NO_TARGET", "SVSPART action requires chantarget criteria (where should they join?)" },
     { "OSMSG_CHANNEL_SEARCH_RESULTS", "The following channels were found:" },
@@ -520,7 +523,7 @@ opserv_free_waiting_connection(void *data)
 
 typedef struct opservDiscrim {
     struct chanNode *channel;
-    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget;
+    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark;
     irc_in_addr_t ip_mask;
     unsigned long limit;
     time_t min_ts, max_ts;
@@ -557,7 +560,8 @@ typedef enum {
     REACT_SHUN,
     REACT_SVSJOIN,
     REACT_SVSPART,
-    REACT_VERSION
+    REACT_VERSION,
+    REACT_MARK
 } opserv_alert_reaction;
 
 struct opserv_user_alert {
@@ -1358,6 +1362,14 @@ opserv_version(struct userNode *target)
 }
 
 static void
+opserv_mark(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG(char *reason), char *mark)
+{
+    if(!mark)
+        return;
+    irc_mark(target, mark);
+}
+
+static void
 opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG(char *reason), char *channame)
 {
     struct chanNode *channel;
@@ -1818,6 +1830,40 @@ static MODCMD_FUNC(cmd_mode)
     }
     reply("OSMSG_MODE_SET", channel->name);
     return 1;
+}
+
+int is_valid_mark(char *mark)
+{
+    char *ptr; 
+
+    if(!mark || !*mark)
+        return 0;
+    if(strlen(mark) > MARKLEN)
+        return 0;
+
+    for(ptr = mark; *ptr; ptr++) {
+        if(! (isalnum(*ptr) || *ptr == '-'))
+            return 0;
+    }
+
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_mark) 
+{
+    char *mark = argv[2];
+    struct userNode *victim = GetUserH(argv[1]);
+    
+    if(!victim)
+        reply("MSG_NICK_UNKNOWN", argv[1]);
+    else if(!is_valid_mark(mark))
+        reply("OSMSG_MARK_INVALID");
+    else {
+        irc_mark(victim, mark);
+        reply("OSMSG_MARK_SET");
+        return 1;
+    }
+    return 0;
 }
 
 static MODCMD_FUNC(cmd_op)
@@ -2348,6 +2394,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_SVSJOIN: reaction = "svsjoin"; break;
         case REACT_SVSPART: reaction = "svspart"; break;
         case REACT_VERSION: reaction = "version"; break;
+        case REACT_MARK: reaction = "mark"; break;
         default: reaction = "<unknown>"; break;
         }
         reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
@@ -4571,8 +4618,10 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
     discrim_copy = strdup(text_discrim); /* save a copy of the discrim */
     wordc = split_line(discrim_copy, false, ArrayLength(wordv), wordv);
     alert->discrim = opserv_discrim_create(req, opserv, wordc, wordv, 0);
+    /* Check for missing required criteria or broken records */
     if (!alert->discrim || (reaction==REACT_SVSJOIN && !alert->discrim->chantarget) ||
-       (reaction==REACT_SVSPART && !alert->discrim->chantarget)) {
+       (reaction==REACT_SVSPART && !alert->discrim->chantarget) ||
+       (reaction==REACT_MARK && !alert->discrim->mark)) {
         free(alert->text_discrim);
         free(discrim_copy);
         free(alert);
@@ -4647,6 +4696,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_SVSPART;
     else if (!irccasecmp(react, "version"))
         reaction = REACT_VERSION;
+    else if (!irccasecmp(react, "mark"))
+        reaction = REACT_MARK;
     else {
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
@@ -4931,6 +4982,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_SVSJOIN: reaction = "svsjoin"; break;
             case REACT_SVSPART: reaction = "svspart"; break;
             case REACT_VERSION: reaction = "version"; break;
+            case REACT_MARK: reaction = "mark"; break;
             default:
                 reaction = NULL;
                 log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s (while writing database).", alert->reaction, iter_key(it));
@@ -5127,6 +5179,12 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 goto fail;
             }
             discrim->chantarget = argv[++i];
+    } else if (irccasecmp(argv[i], "mark") == 0) {
+        if(!is_valid_mark(argv[i+1])) {
+            send_message(user, bot, "OSMSG_MARK_INVALID");
+            goto fail;
+        }
+        discrim->mark = argv[++i];
     } else if (irccasecmp(argv[i], "authed") == 0) {
         i++; /* true_string and false_string are macros! */
         if (true_string(argv[i])) {
@@ -5607,6 +5665,18 @@ trace_kill_func(struct userNode *match, void *extra)
 }
 
 static int
+trace_mark_func(struct userNode *match, void *extra)
+{
+    struct discrim_and_source *das = extra;
+    char *mark = das->discrim->mark;
+
+    if(!mark)
+       return 1;
+    irc_mark(match, mark);
+    return 0;
+}
+
+static int
 trace_svsjoin_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
@@ -5796,6 +5866,8 @@ static MODCMD_FUNC(cmd_trace)
         action = trace_svspart_func;
     else if (!irccasecmp(argv[1], "version"))
         action = trace_version_func;
+    else if (!irccasecmp(argv[1], "mark"))
+        action = trace_mark_func;
     else {
         reply("OSMSG_BAD_ACTION", argv[1]);
         return 0;
@@ -5840,6 +5912,10 @@ static MODCMD_FUNC(cmd_trace)
     }
     else if (action == trace_svspart_func && !das.discrim->chantarget) {
         reply("OSMSG_SVSPART_NO_TARGET");
+        ret = 0;
+    }
+    else if (action == trace_mark_func && !das.discrim->mark) {
+        reply("OSMSG_MARK_NO_MARK");
         ret = 0;
     }
     else {
@@ -6304,6 +6380,9 @@ alert_check_user(const char *key, void *data, void *extra)
         if(!user->version_reply)
             opserv_version(user);
         break;
+    case REACT_MARK:
+        opserv_mark(user, alert->owner, alert->discrim->reason, alert->discrim->mark);
+        break;
     default:
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s.", alert->reaction, key);
         /* fall through to REACT_NOTICE case */
@@ -6490,6 +6569,8 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_SVSPART;
     else if(!irccasecmp(argv[2], "version"))
         reaction = REACT_VERSION;
+    else if(!irccasecmp(argv[2], "mark"))
+        reaction = REACT_MARK;
     else {
         reply("OSMSG_UNKNOWN_REACTION", argv[2]);
         return 0;
@@ -6758,6 +6839,7 @@ init_opserv(const char *nick)
     opserv_define_func("ADDALERT SVSJOIN", NULL, 999, 0, 0);
     opserv_define_func("ADDALERT SVSPART", NULL, 999, 0, 0);
     opserv_define_func("ADDALERT VERSION", NULL, 999, 0, 0);
+    opserv_define_func("ADDALERT MARK", NULL, 999, 0, 0);
     opserv_define_func("ADDBAD", cmd_addbad, 800, 0, 2);
     opserv_define_func("ADDEXEMPT", cmd_addexempt, 800, 0, 2);
     opserv_define_func("ADDTRUST", cmd_addtrust, 800, 0, 5);
@@ -6809,6 +6891,7 @@ init_opserv(const char *nick)
     opserv_define_func("KICKBANALL", cmd_kickbanall, 450, 2, 0);
     opserv_define_func("LOG", cmd_log, 900, 0, 2);
     opserv_define_func("MODE", cmd_mode, 100, 2, 2);
+    opserv_define_func("MARK", cmd_mark, 900, 0, 3);
     opserv_define_func("OP", cmd_op, 100, 2, 2);
     opserv_define_func("OPALL", cmd_opall, 400, 2, 0);
     opserv_define_func("HOP", cmd_hop, 100, 2, 2);
@@ -6865,6 +6948,7 @@ init_opserv(const char *nick)
     opserv_define_func("TRACE VERSION", NULL, 999, 0, 0);
     opserv_define_func("TRACE SVSJOIN", NULL, 999, 0, 0);
     opserv_define_func("TRACE SVSPART", NULL, 999, 0, 0);
+    opserv_define_func("TRACE MARK", NULL, 999, 0, 0);
     opserv_define_func("UNBAN", cmd_unban, 100, 2, 2);
     opserv_define_func("UNGAG", cmd_ungag, 600, 0, 2);
     opserv_define_func("UNGLINE", cmd_ungline, 600, 0, 2);
