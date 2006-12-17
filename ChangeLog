@@ -1,6 +1,20 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-17  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/chanserv.c: Added function check_bans to check bans in a
+	specific channel when needed (see below).
+
+	* src/chanserv.h: check_bans deceleration.
+
+	* src/proto-p10.c: First of all we dont need a handle_info when
+	checking for IsHiddenHost, the IRCd takes care of this. Made it
+	so we copy the fakehost into user->fakehost so X3 can check
+	IsFakeHost properly. Lastly after we set a fakehost in irc_mark
+	we need to recheck the users bans just in case a person has
+	lamer'ed the marked hostname.
+
 2006-12-12  Alex Schumann   <rubin@afternet.org>
 
 	* configure.in: making google core lib optional

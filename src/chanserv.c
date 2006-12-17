@@ -7098,6 +7098,61 @@ handle_new_channel(struct chanNode *channel)
         SetChannelTopic(channel, chanserv, chanserv, channel->channel_info->topic, 1);
 }
 
+int
+check_bans(struct userNode *user, char *channel)
+{
+    struct chanNode *chan;
+    struct mod_chanmode change;
+    struct chanData *cData;
+    struct banData *bData;
+
+    if (!(chan = GetChannel(channel)))
+        return 0;
+
+    if(!(cData = chan->channel_info))
+        return 0;
+
+    if(chan->banlist.used < MAXBANS)
+    {
+        /* Not joining through a ban. */
+        for(bData = cData->bans;
+            bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
+            bData = bData->next);
+
+        if(bData)
+        {
+            char kick_reason[MAXLEN];
+            sprintf(kick_reason, "(%s) %s", bData->owner, bData->reason);
+
+            bData->triggered = now;
+            if(bData != cData->bans)
+            {
+                /* Shuffle the ban to the head of the list. */
+                if(bData->next)
+                    bData->next->prev = bData->prev;
+                if(bData->prev)
+                    bData->prev->next = bData->next;
+
+                bData->prev = NULL;
+                bData->next = cData->bans;
+
+                if(cData->bans)
+                    cData->bans->prev = bData;
+                
+                cData->bans = bData;
+            }
+
+            change.args[0].mode = MODE_BAN;
+            change.args[0].u.hostmask = bData->mask;
+            mod_chanmode_announce(chanserv, chan, &change);
+            KickChannelUser(user, chan, chanserv, kick_reason);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 /* Welcome to my worst nightmare. Warning: Read (or modify)
    the code below at your own risk. */
 static int

@@ -853,6 +853,7 @@ irc_burst(struct chanNode *chan)
             pos = base_len;
             last_mode = -1;
         }
+
         memcpy(burst_line+pos, mn->user->numeric, strlen(mn->user->numeric));
         pos += strlen(mn->user->numeric);
         if (mn->modes && (mn->modes != last_mode)) {
@@ -1123,10 +1124,23 @@ irc_mark(struct userNode *user, char *mark)
     putsock("%s " CMD_MARK " %s DNSBL +m %s.%s", self->numeric, user->nick, mark, host);
     putsock("%s " CMD_MARK " %s DNSBL_DATA %s", self->numeric, user->nick, mark);
     /* If they are not otherwise marked, mark their host with fakehost */
-    if(!IsFakeHost(user) && !IsSetHost(user) && !(IsHiddenHost(user) && user->handle_info) )
+    if(!IsFakeHost(user) && !IsSetHost(user) && !IsHiddenHost(user))
     {
+        struct modeNode *mn = NULL;
+        char fakehost[HOSTLEN];
+        unsigned int count = 0;
+        unsigned int n = 0;
+
         putsock("%s " CMD_MODE " %s +x", self->numeric, user->nick);
         putsock("%s " CMD_FAKEHOST " %s %s.%s", self->numeric, user->numeric, mark, host);
+        
+        snprintf(fakehost, sizeof(fakehost), "%s.%s", mark, host);
+        safestrncpy(user->fakehost, fakehost, sizeof(user->fakehost));
+
+        for (n=count=0; n<user->channels.used; n++) {
+            mn = user->channels.list[n];
+            check_bans(user, mn->channel->name);
+        }
     }
 }
 
@@ -2110,6 +2124,7 @@ static CMD_FUNC(cmd_privmsg)
     pd.is_notice = 0;
     pd.text = argv[2];
     parse_foreach(argv[1], privmsg_chan_helper, NULL, privmsg_user_helper, privmsg_invalid, &pd);
+
     return 1;
 }
 
