@@ -3,6 +3,17 @@
 
 2006-12-17  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/chanserv.c: Woops forgot to init the channel mode change.
+
+	* src/chanserv.h: Tweak to check_bans.
+
+	* src/proto-p10.c: Add some sanity checks plus moved the +x to
+	after the CMD_FAKEHOST otherwise if the person auths then gets
+	marked they will cause 2 Registered quits on the IRCd. Only one
+	will happen now.
+
+2006-12-17  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/chanserv.c: Added function check_bans to check bans in a
 	specific channel when needed (see below).
 

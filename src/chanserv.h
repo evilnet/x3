@@ -222,6 +222,6 @@ char* user_level_name_from_level(int level);
 void process_adduser_pending(struct userNode *user);
 void wipe_adduser_pending(struct chanNode *channel, struct userNode *user);
 
-int check_bans(struct userNode *user, char *channel);
+int check_bans(struct userNode *user, const char *channel);
 
 #endif

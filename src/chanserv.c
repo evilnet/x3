@@ -7099,7 +7099,7 @@ handle_new_channel(struct chanNode *channel)
 }
 
 int
-check_bans(struct userNode *user, char *channel)
+check_bans(struct userNode *user, const char *channel)
 {
     struct chanNode *chan;
     struct mod_chanmode change;
@@ -7111,6 +7111,9 @@ check_bans(struct userNode *user, char *channel)
 
     if(!(cData = chan->channel_info))
         return 0;
+
+    mod_chanmode_init(&change);
+    change.argc = 1;
 
     if(chan->banlist.used < MAXBANS)
     {
@@ -7209,7 +7212,6 @@ handle_join(struct modeNode *mNode)
             uData = GetTrueChannelAccess(cData, handle);
         }
     }
-
 
 
     mod_chanmode_init(&change);
