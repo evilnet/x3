@@ -35,7 +35,7 @@
  * Restart srvx with the updated conf file (as above, butwith "bot"
  * "MemoServ"), and bind the commands to it:
  * /msg opserv bind memoserv * *memoserv.*
- * /msg opserv bind memoserv set *modcmd.joiner
+ * /msg opserv bind memoserv set *memoserv.set
  */
 
 #include "chanserv.h"
@@ -66,7 +66,8 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_UNKNOWN_SEND_FLAG", "Unreccognised send flag '%c', message not sent." },
     { "MSMSG_MEMO_SENT", "Message sent to $b%s$b (ID# %d)." },
     { "MSMSG_NO_MESSAGES", "You have no messages." },
-    { "MSMSG_MEMOS_FOUND", "Found $b%d$b matches.\nUse /msg $S READ <ID> to read a message." },
+    { "MSMSG_MEMOS_FOUND", "Found $b%d$b matches." },
+    { "MSMSG_HOWTO_READ", "Use /msg $S READ <ID> to read a message." },
     { "MSMSG_CLEAN_INBOX", "You have $b%d$b or more messages, please clean out your inbox.\nUse /msg $S READ <ID> to read a message." },
     { "MSMSG_LIST_HEAD",      "$bID$b   $bFrom$b       $bTime Sent$b" },
     { "MSMSG_LIST_FORMAT",    "%-2u     %s $b%s$b          %s" },
@@ -97,12 +98,13 @@ static const struct message_entry msgtab[] = {
 
     { "MSMSG_INVALID_OPTION",  "$b%s$b is not a valid option." },
     { "MSMSG_INVALID_BINARY",  "$b%s$b is an invalid binary value." },
-    { "MSMSG_SET_NOTIFY",          "$bNotify:        $b %s" },
-    { "MSMSG_SET_AUTHNOTIFY",      "$bAuthNotify:    $b %s" },
-    { "MSMSG_SET_PRIVATE",         "$bPrivate:       $b %s" },
-    { "MSMSG_SET_IGNORERECIEPTS",  "$bIgnoreReciepts:$b %s" },
-    { "MSMSG_SET_SENDRECIEPTS",    "$bSendReciepts:  $b %s" },
-    { "MSMSG_SET_LIMIT",           "$bLimit:         $b %d" },
+    { "MSMSG_SET_AUTHNOTIFY",      "$bAuthNotify$b:       %s" },
+    { "MSMSG_SET_NEWNOTIFY",       "$bNewNotify$b:        %s" },
+    { "MSMSG_SET_PRIVMSG",         "$bPrivmsg$b:          %s" },
+    { "MSMSG_SET_PRIVATE",         "$bPrivate$b:          %s" },
+    { "MSMSG_SET_IGNORERECIEPTS",  "$bIgnoreReciepts$b:   %s" },
+    { "MSMSG_SET_SENDRECIEPTS",    "$bSendReciepts$b:     %s" },
+    { "MSMSG_SET_LIMIT",           "$bLimit$b:            %d" },
     { "MSMSG_SET_OPTIONS",         "$bMessaging Options$b" },
     { "MSMSG_SET_OPTIONS_END", "-------------End of Options-------------" },
 
@@ -151,10 +153,11 @@ DEFINE_LIST(historyList, struct history*);
 #define MEMO_DENY_NONCHANNEL 0x00000004
 #define MEMO_IGNORE_RECIEPTS 0x00000008
 #define MEMO_ALWAYS_RECIEPTS 0x00000010
+#define MEMO_USE_PRIVMSG     0x00000020
 
 struct memo_account {
     struct handle_info *handle;
-    unsigned int flags;
+    unsigned int flags : 6;
     unsigned int limit;
     struct memoList sent;
     struct memoList recvd;
@@ -196,7 +199,7 @@ memoserv_get_account(struct handle_info *hi)
     if (!ma)
         return ma;
     ma->handle = hi;
-    ma->flags = MEMO_NOTIFY_NEW | MEMO_NOTIFY_LOGIN;
+    ma->flags = MEMO_NOTIFY_NEW | MEMO_NOTIFY_LOGIN | MEMO_USE_PRIVMSG;
     ma->limit = memoserv_conf.limit;
     dict_insert(memos, ma->handle->handle, ma);
     dict_insert(historys, ma->handle->handle, ma);
@@ -450,7 +453,7 @@ static MODCMD_FUNC(cmd_send)
         struct userNode *other;
 
         for (other = ma->handle->users; other; other = other->next_authed)
-            send_message(other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", user->nick);
+            send_message_type((ma->flags & MEMO_USE_PRIVMSG)? MSG_TYPE_PRIVMSG : MSG_TYPE_NOTICE, other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", user->nick);
     }
 
     reply("MSMSG_MEMO_SENT", ma->handle->handle, memo_id);
@@ -483,8 +486,10 @@ static MODCMD_FUNC(cmd_list)
         reply("MSG_NONE");
     else if (ii == 15)
         reply("MSMSG_CLEAN_INBOX", ii);
-    else
+    else {
         reply("MSMSG_MEMOS_FOUND", ii);
+        reply("MSMSG_HOWTO_READ");
+    }
 
     reply("MSMSG_LIST_END");
 
@@ -604,7 +609,7 @@ static MODCMD_FUNC(cmd_read)
                 struct userNode *other;
 
                 for (other = sender->handle->users; other; other = other->next_authed)
-                    send_message(other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", ma->handle->handle);
+                    send_message_type((ma->flags & MEMO_USE_PRIVMSG)? MSG_TYPE_PRIVMSG : MSG_TYPE_NOTICE, other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", ma->handle->handle);
             }
 
 
@@ -713,7 +718,7 @@ set_list(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, int 
 {
     option_func_t *opt;
     unsigned int i;
-    char *set_display[] = {"AUTHNOTIFY", "NOTIFY", "PRIVATE", "LIMIT",
+    char *set_display[] = {"AUTHNOTIFY", "NEWNOTIFY", "PRIVMSG", "PRIVATE", "LIMIT",
                            "IGNORERECIEPTS", "SENDRECIEPTS"};
 
     reply("MSMSG_SET_OPTIONS");
@@ -768,7 +773,7 @@ static MODCMD_FUNC(cmd_oset)
     return opt(cmd, user, hi, 1, argc-2, argv+2);
 }
 
-static OPTION_FUNC(opt_notify)
+static OPTION_FUNC(opt_newnotify)
 {
     struct memo_account *ma;
     char *choice;
@@ -788,7 +793,30 @@ static OPTION_FUNC(opt_notify)
     }
 
     choice = (ma->flags & MEMO_NOTIFY_NEW) ? "on" : "off";
-    reply("MSMSG_SET_NOTIFY", choice);
+    reply("MSMSG_SET_NEWNOTIFY", choice);
+    return 1;
+}
+
+static OPTION_FUNC(opt_privmsg)
+{
+    struct memo_account *ma;
+    char *choice;
+
+    if (!(ma = memoserv_get_account(hi)))
+        return 0;
+    if (argc > 1) {
+        choice = argv[1];
+        if (enabled_string(choice)) {
+            ma->flags |= MEMO_USE_PRIVMSG;
+        } else if (disabled_string(choice)) {
+            ma->flags &= ~MEMO_USE_PRIVMSG;
+        } else {
+            reply("MSMSG_INVALID_BINARY", choice);
+            return 0;
+        }
+    }
+    choice = (ma->flags & MEMO_USE_PRIVMSG) ? "on" : "off";
+    reply("MSMSG_SET_PRIVMSG", choice);
     return 1;
 }
 
@@ -1139,9 +1167,10 @@ memoserv_write_users(struct saxdb_context *ctx, struct memo_account *ma)
 static int
 memoserv_write_memos(struct saxdb_context *ctx, struct memo *memo)
 {
-    char str[7];
+    char str[20];
 
-    saxdb_start_record(ctx, inttobase64(str, memo->id, sizeof(str)), 0);
+    memset(str, '\0', sizeof(str));
+    saxdb_start_record(ctx, inttobase64(str, memo->id, sizeof(str)-1), 0);
 
     saxdb_write_int(ctx, KEY_SENT, memo->sent);
     saxdb_write_int(ctx, KEY_ID, memo->id);
@@ -1162,9 +1191,10 @@ memoserv_write_memos(struct saxdb_context *ctx, struct memo *memo)
 static int
 memoserv_write_history(struct saxdb_context *ctx, struct history *history)
 {
-    char str[7];
+    char str[20];
 
-    saxdb_start_record(ctx, inttobase64(str, history->id, sizeof(str)), 0);
+    memset(str, '\0', sizeof(str));
+    saxdb_start_record(ctx, inttobase64(str, history->id, sizeof(str)-1), 0);
 
     saxdb_write_int(ctx, KEY_SENT, history->sent);
     saxdb_write_int(ctx, KEY_ID, history->id);
@@ -1241,7 +1271,7 @@ memoserv_check_messages(struct userNode *user, UNUSED_ARG(struct handle_info *ol
                 unseen++;
         }
         if (ma->recvd.used && memoserv)
-            if(unseen) send_message(user, memoserv, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
+            if(unseen) send_message_type((ma->flags & MEMO_USE_PRIVMSG)? 1 : 0, user, memoserv, "MSMSG_MEMOS_INBOX", unseen, ma->recvd.used - unseen);
     }
 }
 
@@ -1294,7 +1324,8 @@ memoserv_init(void)
 
     memoserv_opt_dict = dict_new();
     dict_insert(memoserv_opt_dict, "AUTHNOTIFY", opt_authnotify);
-    dict_insert(memoserv_opt_dict, "NOTIFY", opt_notify);
+    dict_insert(memoserv_opt_dict, "NEWNOTIFY", opt_newnotify);
+    dict_insert(memoserv_opt_dict, "PRIVMSG", opt_privmsg);
     dict_insert(memoserv_opt_dict, "PRIVATE", opt_private);
     dict_insert(memoserv_opt_dict, "IGNORERECIEPTS", opt_ignorereciepts);
     dict_insert(memoserv_opt_dict, "SENDRECIEPTS", opt_sendreciepts);
