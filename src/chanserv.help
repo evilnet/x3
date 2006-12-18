@@ -212,30 +212,37 @@
         "Lamers are nick!user@host masks which $C watches for, and keeps out of your channel.",
         "If it exactly matches an existing lamer already in the list, the reason will be updated. If the existing lamer was a timed lamer, it will be extended into a permanent lamer.",
         "$uSee Also:$u llist, dellamer, mdellamer");
-"ADDUSER" ("/msg $C ADDUSER <#channel> <nick|*account> <level>",
+
+"ADDUSER" ("/msg $C ADDUSER <#channel> <nick|*account> <level> [duration]",
         "This command adds someone to the channel user list with the specified access level.  (You may only add users to levels less than your own.)",
         "The level may be one of $bpeon$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
-        "$uSee Also:$u deluser, users, levels");
+        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
+        "$uSee Also:$u deluser, users, levels, durations");
 
-"ADDPEON" ("/msg $C ADDPEON <#channel> <nick|*account>",
+"ADDPEON" ("/msg $C ADDPEON <#channel> <nick|*account> [duration]",
         "This command adds someone to the channel user list with PEON access level. (You may only add users to levels less than your own.)",
-        "$uSee Also:$u adduser, deluser, users");
+        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
+        "$uSee Also:$u adduser, deluser, users, durations");
 
-"ADDOP" ("/msg $C ADDOP <#channel> <nick|*account>",
+"ADDOP" ("/msg $C ADDOP <#channel> <nick|*account> [duration]",
         "This command adds someone to the channel user list with OP access level. (You may only add users to levels less than your own.)",
-        "$uSee Also:$u adduser, deluser, users");
+        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
+        "$uSee Also:$u adduser, deluser, users, durations");
 
-"ADDHOP" ("/msg $C ADDHOP <#channel> <nick|*account>",
+"ADDHOP" ("/msg $C ADDHOP <#channel> <nick|*account> [duration]",
         "This command adds someone to the channel user list with HALFOP access level. (You may only add users to levels less than your own.)",
-        "$uSee Also:$u adduser, deluser, users");
+        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
+        "$uSee Also:$u adduser, deluser, users, durations");
 
-"ADDMANAGER" ("/msg $C ADDMANAGER <#channel> <nick|*account>",
+"ADDMANAGER" ("/msg $C ADDMANAGER <#channel> <nick|*account> [duration]",
         "This command adds someone to the channel user list with MANAGER access level. (You may only add users to levels less than your own.)",
-        "$uSee Also:$u adduser, deluser, users");
+        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
+        "$uSee Also:$u adduser, deluser, users, durations");
 
-"ADDCOOWNER" ("/msg $C ADDCOOWNER <#channel> <nick|*account>",
+"ADDCOOWNER" ("/msg $C ADDCOOWNER <#channel> <nick|*account> [duration]",
         "This command adds someone to the channel user list with COOWNER access level. (You may only add users to levels less than your own.)",
-        "$uSee Also:$u adduser, deluser, users");
+        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
+        "$uSee Also:$u adduser, deluser, users, durations");
 
 "ADDTIMEDLAMER" ("/msg $C ADDTIMEDLAMER <#channel> <mask|nick> <Duration> [Reason]",
         "Adds an automatically expiring lamer to the channel lamer list.",

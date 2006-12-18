@@ -1,6 +1,19 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-19  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/chanserv.c: New feature, channel managers can now add people
+	with a duration. After the duration expires the person will be
+	automatically removed and deoped.
+
+	* src/chanserv.h: Added expiry.
+
+	* src/chanserv.help: Added information about timed accesses.
+
+	* src/modcmd.c: Tweaked addop, addhop etc so a duration can be
+	specified.
+
 2006-12-18  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/proto-p10.c: Reverted one of my line changes.

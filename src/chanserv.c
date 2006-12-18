@@ -116,6 +116,7 @@
 #define KEY_LEVEL		"level"
 #define KEY_INFO		"info"
 #define KEY_SEEN		"seen"
+#define KEY_EXPIRY		"expiry"
 
 /* Ban data */
 #define KEY_OWNER		"owner"
@@ -199,6 +200,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_DELETED_YOU", "Your $b%d$b access has been deleted from $b%s$b." },
 
 /* User management */
+    { "CSMSG_AUTO_DELETED", "Your %s access has expired in %s." },
     { "CSMSG_ADDED_USER", "Added %s to the %s user list with access %s (%d)." },
     { "CSMSG_DELETED_USER", "Deleted %s (with access %d) from the %s user list." },
     { "CSMSG_BAD_RANGE", "Invalid access range; minimum (%d) must be greater than maximum (%d)." },
@@ -1238,7 +1240,7 @@ register_channel(struct chanNode *cNode, char *registrar)
 }
 
 static struct userData*
-add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned short access, time_t seen, const char *info)
+add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned short access, time_t seen, const char *info, time_t expiry)
 {
     struct userData *ud;
 
@@ -1251,6 +1253,7 @@ add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned 
     ud->seen = seen;
     ud->access = access;
     ud->info = info ? strdup(info) : NULL;
+    ud->expiry = expiry;
 
     ud->prev = NULL;
     ud->next = channel->users;
@@ -1273,6 +1276,48 @@ add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned 
 
 static void unregister_channel(struct chanData *channel, const char *reason);
 
+static void
+chanserv_expire_tempuser(void *data)
+{
+    struct userData *uData = data;
+    char *handle;
+
+    if (data) {
+        handle = strdup(uData->handle->handle);
+        if (uData->expiry > 0) {
+            if (uData->present) {
+                struct userNode *user, *next_un = NULL;
+                struct handle_info *hi;
+
+                hi = get_handle_info(handle);
+                for (user = hi->users; user; user = next_un) {
+                    struct mod_chanmode *change;
+                    struct modeNode *mn;
+                    unsigned int count = 0;
+
+                    send_message(user, chanserv, "CSMSG_AUTO_DELETED", chanserv->nick, uData->channel->channel->name);
+                    if (!(mn = GetUserMode(uData->channel->channel, user)) || !(mn->modes & MODE_CHANOP)) {
+                        next_un = user->next_authed;
+                        continue;
+                    }
+
+                    change = mod_chanmode_alloc(2);
+                    change->args[count].mode = MODE_REMOVE | MODE_CHANOP;
+                    change->args[count++].u.member = mn;
+
+                    if (count) {
+                        change->argc = count;
+                        mod_chanmode_announce(chanserv, uData->channel->channel, change);
+                    }
+                    mod_chanmode_free(change);
+                    next_un = user->next_authed;
+                }
+            }
+            del_channel_user(uData, 1);
+        }
+    }
+}
+
 void
 del_channel_user(struct userData *user, int do_gc)
 {
@@ -1280,6 +1325,8 @@ del_channel_user(struct userData *user, int do_gc)
 
     channel->userCount--;
     userCount--;
+
+    timeq_del(0, chanserv_expire_tempuser, user, TIMEQ_IGNORE_WHEN);
 
     if(user->prev)
         user->prev->next = user->next;
@@ -1391,7 +1438,7 @@ process_adduser_pending(struct userNode *user)
         }
         else
         {
-            actee = add_channel_user(ap->channel->channel_info, ap->user->handle_info, ap->level, 0, NULL);
+            actee = add_channel_user(ap->channel->channel_info, ap->user->handle_info, ap->level, 0, NULL, 0);
             scan_user_presence(actee, NULL);
         }
         del_adduser_pending(ap);
@@ -2103,7 +2150,7 @@ static CHANSERV_FUNC(cmd_register)
         channel = AddChannel(argv[1], now, NULL, NULL, NULL);
 
     cData = register_channel(channel, user->handle_info->handle);
-    scan_user_presence(add_channel_user(cData, handle, UL_OWNER, 0, NULL), NULL);
+    scan_user_presence(add_channel_user(cData, handle, UL_OWNER, 0, NULL, 0), NULL);
     cData->modes = chanserv_conf.default_modes;
     if(off_channel > 0)
       cData->modes.modes_set |= MODE_REGISTERED;
@@ -2650,8 +2697,19 @@ static CHANSERV_FUNC(cmd_adduser)
 	return 0;
     }
 
-    actee = add_channel_user(channel->channel_info, handle, access, 0, NULL);
+    time_t expiry = 0;
+    unsigned int duration = 0;
+    if (argc > 3) {
+        if ((duration = ParseInterval(argv[3])))
+            expiry = now + duration;
+    }
+
+    actee = add_channel_user(channel->channel_info, handle, access, 0, NULL, expiry);
     scan_user_presence(actee, NULL);
+
+    if (duration > 0)
+        timeq_add(expiry, chanserv_expire_tempuser, actee);
+
     reply("CSMSG_ADDED_USER", handle->handle, channel->name, user_level_name_from_level(access), access);
     return 1;
 }
@@ -4184,9 +4242,9 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     lData.table.contents = malloc(lData.table.length*sizeof(*lData.table.contents));
 
     if(user->handle_info && user->handle_info->userlist_style == HI_STYLE_ADVANCED)
-        lData.table.width = 5; /* with level = 5 */
+        lData.table.width = 6; /* with level = 6 */
     else
-        lData.table.width = 4; /* without = 4 */
+        lData.table.width = 5; /* without = 5 */
     ary = malloc(lData.table.width*sizeof(**lData.table.contents));
     lData.table.contents[0] = ary;
     if(user->handle_info) {
@@ -4214,6 +4272,7 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
     ary[i] = "Last Seen";
     seen_index = i++;
     ary[i++] = "Status";
+    ary[i++] = "Expiry";
     for(matches = 1; matches < lData.table.length; ++matches)
     {
         struct userData *uData = lData.users[matches-1];
@@ -4258,7 +4317,18 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
             ary[i++] = "Vacation";
         else
             ary[i++] = "Normal";
+
+        if (uData->expiry > 0) {
+            char delay[INTERVALLEN];
+            time_t diff;
+
+            diff = uData->expiry - now;
+            intervalString(delay, diff, user->handle_info);
+            ary[i++] = delay;
+        } else
+            ary[i++] = "Never";
     }
+
     send_list(&lData);
     for(matches = 1; matches < lData.table.length; ++matches)
     {
@@ -6509,7 +6579,7 @@ static CHANSERV_FUNC(cmd_giveownership)
     {
         if(force)
         {
-            new_owner = add_channel_user(cData, new_owner_hi, UL_COOWNER, 0, NULL);
+            new_owner = add_channel_user(cData, new_owner_hi, UL_COOWNER, 0, NULL, 0);
         }
         else
         {
@@ -7993,7 +8063,7 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
 {
     struct handle_info *handle;
     struct userData *uData;
-    char *seen, *inf, *flags, *expires;
+    char *seen, *inf, *flags, *expires, *expiry;
     time_t last_seen;
     unsigned short access;
 
@@ -8015,6 +8085,7 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
     last_seen = seen ? (signed)strtoul(seen, NULL, 0) : now;
     flags = database_get_data(rd->d.object, KEY_FLAGS, RECDB_QSTRING);
     expires = database_get_data(rd->d.object, KEY_EXPIRES, RECDB_QSTRING);
+    expiry = database_get_data(rd->d.object, KEY_EXPIRY, RECDB_QSTRING);
     handle = get_handle_info(key);
     if(!handle)
     {
@@ -8022,9 +8093,12 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
         return;
     }
 
-    uData = add_channel_user(chan, handle, access, last_seen, inf);
+    uData = add_channel_user(chan, handle, access, last_seen, inf, 0);
     uData->flags = flags ? strtoul(flags, NULL, 0) : 0;
     uData->expires = expires ? strtoul(expires, NULL, 0) : 0;
+    uData->expiry = expiry ? strtoul(expiry, NULL, 0) : 0;
+    if (uData->expiry > 0)
+        timeq_add(uData->expiry, chanserv_expire_tempuser, uData);
 
     if((uData->flags & USER_SUSPENDED) && uData->expires)
     {
@@ -8424,6 +8498,7 @@ chanserv_write_users(struct saxdb_context *ctx, struct userData *uData)
         saxdb_start_record(ctx, uData->handle->handle, 0);
         saxdb_write_int(ctx, KEY_LEVEL, uData->access);
         saxdb_write_int(ctx, KEY_SEEN, uData->seen);
+        saxdb_write_int(ctx, KEY_EXPIRY, uData->expiry);
         if(uData->flags)
             saxdb_write_int(ctx, KEY_FLAGS, uData->flags);
         if(uData->expires)

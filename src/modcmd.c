@@ -2477,13 +2477,13 @@ create_default_binds(int rebind) {
 
         /* Now some silly hax.. (aliases that most people want) */
         if (!irccasecmp(def_binds[ii].svcname, "ChanServ")) {
-            service_make_alias(service, "addowner", "*chanserv.adduser", "$1", "owner", NULL);
-            service_make_alias(service, "addcoowner", "*chanserv.adduser", "$1", "coowner", NULL);
-            service_make_alias(service, "addco", "*chanserv.adduser", "$1", "coowner", NULL);
-            service_make_alias(service, "addmanager", "*chanserv.adduser", "$1", "manager", NULL);
-            service_make_alias(service, "addop", "*chanserv.adduser", "$1", "op", NULL);
-            service_make_alias(service, "addhop", "*chanserv.adduser", "$1", "halfop", NULL);
-            service_make_alias(service, "addpeon", "*chanserv.adduser", "$1", "peon", NULL);
+            service_make_alias(service, "addowner", "*chanserv.adduser", "$1", "owner", "$2", NULL);
+            service_make_alias(service, "addcoowner", "*chanserv.adduser", "$1", "coowner", "$2", NULL);
+            service_make_alias(service, "addco", "*chanserv.adduser", "$1", "coowner", "$2", NULL);
+            service_make_alias(service, "addmanager", "*chanserv.adduser", "$1", "manager", "$2", NULL);
+            service_make_alias(service, "addop", "*chanserv.adduser", "$1", "op", "$2", NULL);
+            service_make_alias(service, "addhop", "*chanserv.adduser", "$1", "halfop", "$2", NULL);
+            service_make_alias(service, "addpeon", "*chanserv.adduser", "$1", "peon", "$2", NULL);
             service_make_alias(service, "delowner", "*chanserv.deluser", "owner", "$1", NULL);
             service_make_alias(service, "delcoowner", "*chanserv.deluser", "coowner", "$1", NULL);
             service_make_alias(service, "delmanager", "*chanserv.deluser", "manager", "$1", NULL);
