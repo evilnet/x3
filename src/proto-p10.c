@@ -1124,7 +1124,7 @@ irc_mark(struct userNode *user, char *mark)
     putsock("%s " CMD_MARK " %s DNSBL +m %s.%s", self->numeric, user->nick, mark, host);
     putsock("%s " CMD_MARK " %s DNSBL_DATA %s", self->numeric, user->nick, mark);
     /* If they are not otherwise marked, mark their host with fakehost */
-    if(!IsFakeHost(user) && !IsSetHost(user) && !IsHiddenHost(user))
+    if(!IsFakeHost(user) && !IsSetHost(user) && !(IsHiddenHost(user) && user->handle_info) )
     {
         struct modeNode *mn = NULL;
         char fakehost[HOSTLEN];
