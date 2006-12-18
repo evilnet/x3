@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-18  Alex Schumann   <rubin@afternet.org>
+
+	* src/mod-memoserv.c: add a 'privmsg' flag for being notified via pm
+	instead of notice, when you get new memos. Fixed a buffer overrun with
+	memo ids. 
+
+	* src/mod-memoserv.help: fix-up help for settings.
+
 2006-12-19  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/chanserv.c: New feature, channel managers can now add people
