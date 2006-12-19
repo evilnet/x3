@@ -577,6 +577,8 @@
     };
     /* Track works just like Snoop except it only sends events for users
      * who have been specified
+     * DANGER: track is currently very broken, and will crash x3 and possibly corrupt your db file.
+     *  Unless your a developer, dont even compile it in!
      */
     "track" {
         // What to track by default?
