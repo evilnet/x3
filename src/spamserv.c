@@ -236,7 +236,7 @@ spamserv_register_channel(struct chanNode *channel, struct string_list *exceptio
 	cInfo->flags = flags;
 	safestrncpy(cInfo->info, info, sizeof(cInfo->info));
 	cInfo->suspend_expiry = 0;
-	dict_insert(registered_channels_dict, cInfo->channel->name, cInfo);
+	dict_insert(registered_channels_dict, strdup(cInfo->channel->name), cInfo);
 
 	return cInfo;
 }
@@ -300,7 +300,7 @@ spamserv_cs_move_merge(struct userNode *user, struct chanNode *channel, struct c
 		cInfo->channel = target;
 
 		dict_remove(registered_channels_dict, channel->name);
-		dict_insert(registered_channels_dict, target->name, cInfo);
+		dict_insert(registered_channels_dict, strdup(target->name), cInfo);
 
 		if(move)
 		{
@@ -524,7 +524,7 @@ spamserv_create_user(struct userNode *user)
 	uInfo->lastadv = 0;
 	uInfo->lastbad = 0;
 
-	dict_insert(connected_users_dict, user->nick, uInfo);
+	dict_insert(connected_users_dict, strdup(user->nick), uInfo);
 
 	if(kNode)
 	{
@@ -588,7 +588,7 @@ spamserv_del_user_func(struct userNode *user, struct userNode *killer, UNUSED_AR
 
 		kNode->time = now;
 
-		dict_insert(killed_users_dict, irc_ntoa(&user->ip), kNode);
+		dict_insert(killed_users_dict, strdup(irc_ntoa(&user->ip)), kNode);
 	}
 
 	spamserv_delete_user(uInfo);	
@@ -600,7 +600,7 @@ spamserv_nick_change_func(struct userNode *user, const char *old_nick)
 	struct userInfo *uInfo = get_userInfo(old_nick);
 
 	dict_remove(connected_users_dict, old_nick);
-	dict_insert(connected_users_dict, user->nick, uInfo);
+	dict_insert(connected_users_dict, strdup(user->nick), uInfo);
 }
 
 static int

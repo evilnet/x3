@@ -6,6 +6,8 @@
 	* src/chanserv.c: fixing a bug with unmatching userlevels and the del*
 	commands. (such as delpeon of a user with non-standard peon level)
 
+	* src/spamserv.c: fixing memory corruption problems with dicts
+
 2006-12-20  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/chanserv.help: Opps that will teach me for cut n pasting.
