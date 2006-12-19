@@ -2877,12 +2877,13 @@ static CHANSERV_FUNC(cmd_deluser)
     if(argc > 2)
     {
         access = user_level_from_name(argv[1], UL_OWNER);
+        char *useraccess = user_level_name_from_level(victim->access);
         if(!access)
         {
             reply("CSMSG_INVALID_ACCESS", argv[1]);
             return 0;
         }
-	if(access != victim->access)
+	if(strcasecmp(argv[1], useraccess))
 	{
 	    reply("CSMSG_INCORRECT_ACCESS", handle->handle, user_level_name_from_level(victim->access), argv[1]);
 	    return 0;
