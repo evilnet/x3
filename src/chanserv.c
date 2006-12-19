@@ -116,7 +116,9 @@
 #define KEY_LEVEL		"level"
 #define KEY_INFO		"info"
 #define KEY_SEEN		"seen"
-#define KEY_EXPIRY		"expiry"
+#define KEY_ACCESSEXPIRY	"accessexpiry"
+#define KEY_CLVLEXPIRY		"clvlexpiry"
+#define KEY_LASTLEVEL		"lastlevel"
 
 /* Ban data */
 #define KEY_OWNER		"owner"
@@ -201,6 +203,7 @@ static const struct message_entry msgtab[] = {
 
 /* User management */
     { "CSMSG_AUTO_DELETED", "Your %s access has expired in %s." },
+    { "CSMSG_CLVL_EXPIRED", "Your CLVL access has expired in %s." },
     { "CSMSG_ADDED_USER", "Added %s to the %s user list with access %s (%d)." },
     { "CSMSG_DELETED_USER", "Deleted %s (with access %d) from the %s user list." },
     { "CSMSG_BAD_RANGE", "Invalid access range; minimum (%d) must be greater than maximum (%d)." },
@@ -219,6 +222,7 @@ static const struct message_entry msgtab[] = {
 
     { "CSMSG_NO_SELF_CLVL", "You cannot change your own access." },
     { "CSMSG_NO_BUMP_ACCESS", "You cannot give users access greater than or equal to your own." },
+    { "CSMSG_NO_BUMP_EXPIRY", "You cannot give users timed $bCLVL$b's when they already have timed access." },
     { "CSMSG_MULTIPLE_OWNERS", "There is more than one owner in %s; please use $bCLVL$b, $bDELOWNER$b and/or $bADDOWNER$b instead." },
     { "CSMSG_NO_OWNER", "There is no owner for %s; please use $bCLVL$b and/or $bADDOWNER$b instead." },
     { "CSMSG_TRANSFER_WAIT", "You must wait %s before you can give ownership of $b%s$b to someone else." },
@@ -1240,7 +1244,7 @@ register_channel(struct chanNode *cNode, char *registrar)
 }
 
 static struct userData*
-add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned short access, time_t seen, const char *info, time_t expiry)
+add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned short access, time_t seen, const char *info, time_t accessexpiry)
 {
     struct userData *ud;
 
@@ -1253,7 +1257,9 @@ add_channel_user(struct chanData *channel, struct handle_info *handle, unsigned 
     ud->seen = seen;
     ud->access = access;
     ud->info = info ? strdup(info) : NULL;
-    ud->expiry = expiry;
+    ud->accessexpiry = accessexpiry ? accessexpiry : 0;
+    ud->clvlexpiry = 0;
+    ud->lastaccess = 0;
 
     ud->prev = NULL;
     ud->next = channel->users;
@@ -1284,7 +1290,7 @@ chanserv_expire_tempuser(void *data)
 
     if (data) {
         handle = strdup(uData->handle->handle);
-        if (uData->expiry > 0) {
+        if (uData->accessexpiry > 0) {
             if (uData->present) {
                 struct userNode *user, *next_un = NULL;
                 struct handle_info *hi;
@@ -1318,6 +1324,68 @@ chanserv_expire_tempuser(void *data)
     }
 }
 
+static void
+chanserv_expire_tempclvl(void *data)
+{
+    struct userData *uData = data;
+    char *handle;
+
+    if (data) {
+        handle = strdup(uData->handle->handle);
+        if (uData->clvlexpiry > 0) {
+            int changemodes = 0;
+            unsigned int mode = 0;
+ 
+            if (((uData->lastaccess == UL_PEON) || (uData->lastaccess == UL_HALFOP)) && (uData->access >= UL_OP)) {
+                changemodes = 1;
+                mode = MODE_REMOVE | MODE_CHANOP;
+            } else if ((uData->lastaccess == UL_PEON) && (uData->access == UL_HALFOP)) {
+                changemodes = 1;
+                mode = MODE_REMOVE | MODE_HALFOP;
+            } else
+                changemodes = 0;
+
+            if (uData->present) {
+                struct userNode *user, *next_un = NULL;
+                struct handle_info *hi;
+
+                hi = get_handle_info(handle);
+                for (user = hi->users; user; user = next_un) {
+                    struct mod_chanmode *change;
+                    struct modeNode *mn;
+                    unsigned int count = 0;
+
+                    send_message(user, chanserv, "CSMSG_CLVL_EXPIRED", uData->channel->channel->name);
+                    if (!(mn = GetUserMode(uData->channel->channel, user))) {
+                        next_un = user->next_authed;
+                        continue;
+                    }
+
+                    if (changemodes == 0) {
+                        next_un = user->next_authed;
+                        continue;
+                    }
+ 
+                    change = mod_chanmode_alloc(2);
+                    change->args[count].mode = mode;
+                    change->args[count++].u.member = mn;
+
+                    if (count) {
+                        change->argc = count;
+                        mod_chanmode_announce(chanserv, uData->channel->channel, change);
+                    }
+                    mod_chanmode_free(change);
+                    next_un = user->next_authed;
+                }
+            }
+
+            uData->access = uData->lastaccess;
+            uData->lastaccess = 0;
+            uData->clvlexpiry = 0;
+        }
+    }
+}
+
 void
 del_channel_user(struct userData *user, int do_gc)
 {
@@ -1327,6 +1395,7 @@ del_channel_user(struct userData *user, int do_gc)
     userCount--;
 
     timeq_del(0, chanserv_expire_tempuser, user, TIMEQ_IGNORE_WHEN);
+    timeq_del(0, chanserv_expire_tempclvl, user, TIMEQ_IGNORE_WHEN);
 
     if(user->prev)
         user->prev->next = user->next;
@@ -2697,18 +2766,18 @@ static CHANSERV_FUNC(cmd_adduser)
 	return 0;
     }
 
-    time_t expiry = 0;
+    time_t accessexpiry = 0;
     unsigned int duration = 0;
     if (argc > 3) {
         if ((duration = ParseInterval(argv[3])))
-            expiry = now + duration;
+            accessexpiry = now + duration;
     }
 
-    actee = add_channel_user(channel->channel_info, handle, access, 0, NULL, expiry);
+    actee = add_channel_user(channel->channel_info, handle, access, 0, NULL, accessexpiry);
     scan_user_presence(actee, NULL);
 
     if (duration > 0)
-        timeq_add(expiry, chanserv_expire_tempuser, actee);
+        timeq_add(accessexpiry, chanserv_expire_tempuser, actee);
 
     reply("CSMSG_ADDED_USER", handle->handle, channel->name, user_level_name_from_level(access), access);
     return 1;
@@ -2759,6 +2828,24 @@ static CHANSERV_FUNC(cmd_clvl)
     {
 	reply("CSMSG_NO_BUMP_ACCESS");
 	return 0;
+    }
+
+    time_t clvlexpiry = 0;
+    unsigned int duration = 0;
+    if (argc > 3) {
+        if ((duration = ParseInterval(argv[3])))
+            clvlexpiry = now + duration;
+    }
+
+    if (duration > 0) {
+        if (victim->accessexpiry > 0) {
+            reply("CSMSG_NO_BUMP_EXPIRY");
+            return 0;
+        }
+
+        victim->clvlexpiry = clvlexpiry;
+        victim->lastaccess = victim->access;
+        timeq_add(clvlexpiry, chanserv_expire_tempclvl, victim);
     }
 
     victim->access = new_access;
@@ -4318,12 +4405,17 @@ cmd_list_users(struct userNode *user, struct chanNode *channel, unsigned int arg
         else
             ary[i++] = "Normal";
 
-        if (uData->expiry > 0) {
+        if ((uData->accessexpiry > 0) || (uData->clvlexpiry > 0)) {
             char delay[INTERVALLEN];
             time_t diff;
 
-            diff = uData->expiry - now;
-            intervalString(delay, diff, user->handle_info);
+            if (uData->accessexpiry > 0) {
+                diff = uData->accessexpiry - now;
+                intervalString(delay, diff, user->handle_info);
+            } else {
+                diff = uData->clvlexpiry - now;
+                intervalString(delay, diff, user->handle_info);
+            }
             ary[i++] = delay;
         } else
             ary[i++] = "Never";
@@ -8063,9 +8155,9 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
 {
     struct handle_info *handle;
     struct userData *uData;
-    char *seen, *inf, *flags, *expires, *expiry;
+    char *seen, *inf, *flags, *expires, *accessexpiry, *clvlexpiry, *lstacc;
     time_t last_seen;
-    unsigned short access;
+    unsigned short access, lastaccess = 0;
 
     if(rd->type != RECDB_OBJECT || !dict_size(rd->d.object))
     {
@@ -8085,7 +8177,11 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
     last_seen = seen ? (signed)strtoul(seen, NULL, 0) : now;
     flags = database_get_data(rd->d.object, KEY_FLAGS, RECDB_QSTRING);
     expires = database_get_data(rd->d.object, KEY_EXPIRES, RECDB_QSTRING);
-    expiry = database_get_data(rd->d.object, KEY_EXPIRY, RECDB_QSTRING);
+    accessexpiry = database_get_data(rd->d.object, KEY_ACCESSEXPIRY, RECDB_QSTRING);
+    clvlexpiry = database_get_data(rd->d.object, KEY_CLVLEXPIRY, RECDB_QSTRING);
+    lstacc = database_get_data(rd->d.object, KEY_LASTLEVEL, RECDB_QSTRING);
+    lastaccess  = lstacc ? atoi(lstacc) : 0;
+
     handle = get_handle_info(key);
     if(!handle)
     {
@@ -8096,9 +8192,16 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
     uData = add_channel_user(chan, handle, access, last_seen, inf, 0);
     uData->flags = flags ? strtoul(flags, NULL, 0) : 0;
     uData->expires = expires ? strtoul(expires, NULL, 0) : 0;
-    uData->expiry = expiry ? strtoul(expiry, NULL, 0) : 0;
-    if (uData->expiry > 0)
-        timeq_add(uData->expiry, chanserv_expire_tempuser, uData);
+
+    uData->accessexpiry = accessexpiry ? strtoul(accessexpiry, NULL, 0) : 0;
+    if (uData->accessexpiry > 0)
+        timeq_add(uData->accessexpiry, chanserv_expire_tempuser, uData);
+
+    uData->clvlexpiry = clvlexpiry ? strtoul(clvlexpiry, NULL, 0) : 0;
+    if (uData->clvlexpiry > 0)
+        timeq_add(uData->clvlexpiry, chanserv_expire_tempclvl, uData);
+
+    uData->lastaccess = lastaccess;
 
     if((uData->flags & USER_SUSPENDED) && uData->expires)
     {
@@ -8498,7 +8601,9 @@ chanserv_write_users(struct saxdb_context *ctx, struct userData *uData)
         saxdb_start_record(ctx, uData->handle->handle, 0);
         saxdb_write_int(ctx, KEY_LEVEL, uData->access);
         saxdb_write_int(ctx, KEY_SEEN, uData->seen);
-        saxdb_write_int(ctx, KEY_EXPIRY, uData->expiry);
+        saxdb_write_int(ctx, KEY_ACCESSEXPIRY, uData->accessexpiry);
+        saxdb_write_int(ctx, KEY_CLVLEXPIRY, uData->clvlexpiry);
+        saxdb_write_int(ctx, KEY_LASTLEVEL, uData->lastaccess);
         if(uData->flags)
             saxdb_write_int(ctx, KEY_FLAGS, uData->flags);
         if(uData->expires)
@@ -8970,3 +9075,4 @@ init_chanserv(const char *nick)
     reg_exit_func(chanserv_db_cleanup);
     message_register_table(msgtab);
 }
+

@@ -138,7 +138,9 @@ struct userData
     char		*info;
     time_t 		seen;
     time_t              expires;
-    time_t              expiry; /* tempuser expiry */
+    time_t              accessexpiry;
+    time_t              clvlexpiry;
+    unsigned short      lastaccess;
     unsigned short      access;
     unsigned int	present : 1;
     unsigned int        flags : USER_FLAGS_SIZE;
