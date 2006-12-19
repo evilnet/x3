@@ -279,7 +279,7 @@
 "CLVL" ("/msg $C CLVL <#channel> <nick|*account> <level> [duration]",
         "Modifies a channel user's access level. You cannot give users access greater than or equal to your own.",
 	"You may use *Account instead of Nick as the name argument; the * makes $C use the name of a account directly (useful if the user is not online).",
-        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
+        "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically reverted back to their previous access level.",
         "$uSee Also:$u access, users, giveownership, durations");
 "CREATENOTE" ("/msg $S CREATENOTE <typename> <set-access> [access-arg] <view-access> <max-length>",
         "Defines a new note type.  $btypename$b is the name of the note type.  $bset-access$b is one of:",
