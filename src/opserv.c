@@ -5725,20 +5725,20 @@ trace_svsjoin_func(struct userNode *match, void *extra)
     }
 
     if (checkrestrictions) {
-        if (trace_check_bans(target, channel) == 1) {
-            return; /* found on lamer list */
+        if (trace_check_bans(match, channel) == 1) {
+            return 1; /* found on lamer list */
         }
 
         if (channel->modes & MODE_INVITEONLY) {
-            return; /* channel is invite only */
+            return 1; /* channel is invite only */
         }
 
         if (channel->members.used >= channel->limit) {
-            return; /* channel is invite on */
+            return 1; /* channel is invite on */
         }
 
         if (*channel->key) {
-            return; /* channel is password protected */
+            return 1; /* channel is password protected */
         }
     }
 

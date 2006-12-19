@@ -3,6 +3,12 @@
 
 2006-12-19  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/chanserv.c: check the ircd side ban list too
+
+	* src/opserv.c: Fixed a small bug, woops.
+
+2006-12-19  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/chanserv.c: Added trace_check_bans, cut down version of
 	check_bans for checkrestrictions
 

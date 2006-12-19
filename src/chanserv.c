@@ -7265,10 +7265,25 @@ trace_check_bans(struct userNode *user, struct chanNode *chan)
 {
     struct chanData *cData;
     struct banData *bData;
+    struct mod_chanmode *change;
 
     if(!(cData = chan->channel_info))
         return 0;
 
+    change = find_matching_bans(&chan->banlist, user, NULL);
+    if (change)
+       return 1;
+
+    /* ircd list
+    if (chan->banlist.used) {
+        unsigned int i;
+        for (i=0; i<chan->banlist.used; i++) {
+           if (!user_matches_glob(user, chan->banlist.list[i], MATCH_USENICK))
+               return 1;
+        }
+    }
+*/
+    /* lamer list */
     if(chan->banlist.used < MAXBANS)
     {
         for(bData = cData->bans;
