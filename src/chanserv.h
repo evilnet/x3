@@ -226,5 +226,6 @@ void process_adduser_pending(struct userNode *user);
 void wipe_adduser_pending(struct chanNode *channel, struct userNode *user);
 
 int check_bans(struct userNode *user, const char *channel);
+int trace_check_bans(struct userNode *user, struct chanNode *chan);
 
 #endif

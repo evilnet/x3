@@ -18,6 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
+#include "chanserv.h"
 #include "conf.h"
 #include "common.h"
 #include "gline.h"
@@ -537,6 +538,7 @@ typedef struct opservDiscrim {
     unsigned int intra_scmp : 2, intra_dcmp : 2;
     unsigned int use_regex : 1;
     unsigned int silent : 1;
+    unsigned int checkrestrictions : 2;
 } *discrim_t;
 
 struct discrim_and_source {
@@ -1370,7 +1372,7 @@ opserv_mark(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG(ch
 }
 
 static void
-opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG(char *reason), char *channame)
+opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG(char *reason), char *channame, unsigned int checkrestrictions)
 {
     struct chanNode *channel;
 
@@ -1385,6 +1387,24 @@ opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG
     if (GetUserMode(channel, target)) {
         /* already in it */
         return;
+    }
+
+    if (checkrestrictions) {
+        if (trace_check_bans(target, channel) == 1) {
+            return; /* found on lamer list */
+        }
+
+        if (channel->modes & MODE_INVITEONLY) {
+            return; /* channel is invite only */
+        }
+
+        if (channel->members.used >= channel->limit) {
+            return; /* channel is invite on */
+        }
+
+        if (*channel->key) {
+            return; /* channel is password protected */
+        }
     }
 
     irc_svsjoin(opserv, target, channel);
@@ -5179,6 +5199,16 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                 goto fail;
             }
             discrim->chantarget = argv[++i];
+    } else if (irccasecmp(argv[i], "checkrestrictions") == 0) {
+        i++;
+        if (true_string(argv[i])) {
+            discrim->checkrestrictions = 1;
+        } else if (false_string(argv[i])) {
+            discrim->checkrestrictions = 0;
+        } else {
+            send_message(user, bot, "MSG_INVALID_BINARY", argv[i]);
+            goto fail;
+        }
     } else if (irccasecmp(argv[i], "mark") == 0) {
         if(!is_valid_mark(argv[i+1])) {
             send_message(user, bot, "OSMSG_MARK_INVALID");
@@ -5682,6 +5712,7 @@ trace_svsjoin_func(struct userNode *match, void *extra)
     struct discrim_and_source *das = extra;
 
     char *channame = das->discrim->chantarget;
+    int checkrestrictions = das->discrim->checkrestrictions;
     struct chanNode *channel;
 
     if(!channame || !IsChannelName(channame)) {
@@ -5692,6 +5723,25 @@ trace_svsjoin_func(struct userNode *match, void *extra)
     if (!(channel = GetChannel(channame))) {
        channel = AddChannel(channame, now, NULL, NULL, NULL);
     }
+
+    if (checkrestrictions) {
+        if (trace_check_bans(target, channel) == 1) {
+            return; /* found on lamer list */
+        }
+
+        if (channel->modes & MODE_INVITEONLY) {
+            return; /* channel is invite only */
+        }
+
+        if (channel->members.used >= channel->limit) {
+            return; /* channel is invite on */
+        }
+
+        if (*channel->key) {
+            return; /* channel is password protected */
+        }
+    }
+
     if (GetUserMode(channel, match)) {
 //        reply("OSMSG_ALREADY_THERE", channel->name);
         return 1;
@@ -6366,7 +6416,7 @@ alert_check_user(const char *key, void *data, void *extra)
         opserv_shun(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
         return 1;
     case REACT_SVSJOIN:
-        opserv_svsjoin(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget);
+        opserv_svsjoin(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget, alert->discrim->checkrestrictions);
         break;
     case REACT_SVSPART:
         opserv_svspart(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget);

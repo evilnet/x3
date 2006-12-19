@@ -3,6 +3,20 @@
 
 2006-12-19  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/chanserv.c: Added trace_check_bans, cut down version of
+	check_bans for checkrestrictions
+
+	* src/chanserv.h: Declare trace_check_bans.
+
+	* src/opserv.c: Added addalert/trace option checkrestrictions. When
+	using SVSJOIN as an action this option will check the ban lists, invite
+	keys and limits of the target channel and if any match or exist (invite
+	etc) then the SVSJOIN wont go through
+
+	* src/opserv.help: Added information about checkrestrictions.
+
+2006-12-19  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/chanserv.c: Timed CLVL's. This just works like my last commit.
 
 	* src/chanserv.h: tweaked expiry to accessexpiry and added clvlexpiry

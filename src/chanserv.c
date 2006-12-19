@@ -7261,6 +7261,29 @@ handle_new_channel(struct chanNode *channel)
 }
 
 int
+trace_check_bans(struct userNode *user, struct chanNode *chan)
+{
+    struct chanData *cData;
+    struct banData *bData;
+
+    if(!(cData = chan->channel_info))
+        return 0;
+
+    if(chan->banlist.used < MAXBANS)
+    {
+        for(bData = cData->bans;
+            bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
+            bData = bData->next);
+
+        if(bData) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int
 check_bans(struct userNode *user, const char *channel)
 {
     struct chanNode *chan;
