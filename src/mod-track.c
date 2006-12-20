@@ -73,10 +73,10 @@
 
 /* set track status */
 #define set_track_nick(x)       ((x).snomask |= TRACK_NICK)
-#define set_track_join(x)       ((x).snomask |= TRACK_JOIN|TRACK_PART)
+#define set_track_join(x)       ((x).snomask |= TRACK_JOIN)
 #define set_track_part(x)       ((x).snomask |= TRACK_PART)
 #define set_track_kick(x)       ((x).snomask |= TRACK_KICK)
-#define set_track_new(x)        ((x).snomask |= TRACK_NEW|TRACK_DEL)
+#define set_track_new(x)        ((x).snomask |= TRACK_NEW)
 #define set_track_del(x)        ((x).snomask |= TRACK_DEL)
 #define set_track_auth(x)       ((x).snomask |= TRACK_AUTH)
 #define set_track_chanmode(x)   ((x).snomask |= TRACK_CHANMODE)
@@ -85,10 +85,10 @@
 
 /* clear track status */
 #define clear_track_nick(x)     ((x).snomask &= ~TRACK_NICK)
-#define clear_track_join(x)     ((x).snomask &= ~(TRACK_JOIN|TRACK_PART))
+#define clear_track_join(x)     ((x).snomask &= ~TRACK_JOIN)
 #define clear_track_part(x)     ((x).snomask &= ~TRACK_PART)
 #define clear_track_kick(x)     ((x).snomask &= ~TRACK_KICK)
-#define clear_track_new(x)      ((x).snomask &= ~(TRACK_NEW|TRACK_DEL))
+#define clear_track_new(x)      ((x).snomask &= ~TRACK_NEW)
 #define clear_track_del(x)      ((x).snomask &= ~TRACK_DEL)
 #define clear_track_auth(x)     ((x).snomask &= ~TRACK_AUTH)
 #define clear_track_chanmode(x) ((x).snomask &= ~TRACK_CHANMODE)
@@ -116,15 +116,25 @@ int track_finalize(void);
 #define TRACK(FORMAT, ARGS...) send_channel_message(track_cfg.channel, track_cfg.bot, "%s "FORMAT, timestamp , ## ARGS)
 #define UPDATE_TIMESTAMP() strftime(timestamp, sizeof(timestamp), "[%H:%M:%S]", localtime(&now))
 
-void add_track_user(struct userNode *user) { dict_insert(track_db, (const char *)user->nick, user); }
-static void del_track_user(struct userNode *user) { dict_remove2(track_db, (const char *)user->nick, 1); }
+void 
+add_track_user(struct userNode *user) 
+{ 
+    dict_insert(track_db, strdup(user->nick), user); 
+}
+
+static void 
+del_track_user(const char *nick) 
+{ 
+    dict_remove(track_db, nick); 
+}
+
 static int
-check_track_user(struct userNode *user)
+check_track_user(const char *nick)
 {
        int found;
-       if(!user)
+       if(!nick)
          return 0;
-       dict_find(track_db, (const char *)user->nick, &found);
+       dict_find(track_db, nick, &found);
        return found;
 }
 
@@ -182,10 +192,15 @@ parse_track_conf(char *line)
 static void
 track_nick_change(struct userNode *user, const char *old_nick) {
     if (!track_cfg.enabled) return;
-    if (check_track_nick(track_cfg) && check_track_user(user))
-    {
-           UPDATE_TIMESTAMP();
-           TRACK("$bNICK$b change %s -> %s", old_nick, user->nick);
+
+    if(check_track_user(old_nick)) {
+        del_track_user(old_nick);
+        add_track_user(user);
+        if (check_track_nick(track_cfg))
+        {
+               UPDATE_TIMESTAMP();
+               TRACK("$bNICK$b change %s -> %s", old_nick, user->nick);
+        }
     }
 }
 
@@ -195,7 +210,7 @@ track_join(struct modeNode *mNode) {
     struct chanNode *chan = mNode->channel;
     if (!track_cfg.enabled) return 0;
     if (user->uplink->burst && !track_cfg.show_bursts) return 0;
-    if (check_track_join(track_cfg) && check_track_user(user))
+    if (check_track_join(track_cfg) && check_track_user(user->nick))
     {
            UPDATE_TIMESTAMP();
            if (chan->members.used == 1) {
@@ -211,7 +226,7 @@ static void
 track_part(struct modeNode *mn, const char *reason) {
     if (!track_cfg.enabled) return;
     if (mn->user->dead) return;
-    if (check_track_part(track_cfg) && check_track_user(mn->user))
+    if (check_track_part(track_cfg) && check_track_user(mn->user->nick))
     {
            UPDATE_TIMESTAMP();
            TRACK("$bPART$b %s by %s (%s)", mn->channel->name, mn->user->nick, reason ? reason : "");
@@ -221,7 +236,7 @@ track_part(struct modeNode *mn, const char *reason) {
 static void
 track_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *chan) {
     if (!track_cfg.enabled) return;
-    if (check_track_kick(track_cfg) && ((check_track_user(kicker) || check_track_user(victim))))
+    if (check_track_kick(track_cfg) && ((check_track_user(kicker->nick) || check_track_user(victim->nick))))
     {
            UPDATE_TIMESTAMP();
            TRACK("$bKICK$b %s from %s by %s", victim->nick, chan->name, (kicker ? kicker->nick : "some server"));
@@ -232,7 +247,7 @@ static int
 track_new_user(struct userNode *user) {
     if (!track_cfg.enabled) return 0;
     if (user->uplink->burst && !track_cfg.show_bursts) return 0;
-    if (check_track_new(track_cfg) && check_track_user(user))
+    if (check_track_new(track_cfg) && check_track_user(user->nick))
     {
            UPDATE_TIMESTAMP();
            TRACK("$bNICK$b %s %s@%s [%s] on %s", user->nick, user->ident, user->hostname, irc_ntoa(&user->ip), user->uplink->name);
@@ -243,7 +258,7 @@ track_new_user(struct userNode *user) {
 static void
 track_del_user(struct userNode *user, struct userNode *killer, const char *why) {
     if (!track_cfg.enabled) return;
-    if (check_track_del(track_cfg) && (check_track_user(user) || (killer && check_track_user(killer))))
+    if (check_track_del(track_cfg) && (check_track_user(user->nick) || (killer && check_track_user(killer->nick))))
     {
            UPDATE_TIMESTAMP();
            if (killer) {
@@ -251,7 +266,7 @@ track_del_user(struct userNode *user, struct userNode *killer, const char *why) 
            } else {
                    TRACK("$bQUIT$b %s (%s@%s, on %s) (%s)", user->nick, user->ident, user->hostname, user->uplink->name, why);
            }
-           del_track_user(user);
+           del_track_user(user->nick);
     }
 }
 
@@ -259,7 +274,7 @@ static void
 track_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
     if (!track_cfg.enabled) return;
     if (user->uplink->burst && !track_cfg.show_bursts) return;
-    if (user->handle_info && (check_track_auth(track_cfg) && check_track_user(user))) {
+    if (user->handle_info && (check_track_auth(track_cfg) && check_track_user(user->nick))) {
         UPDATE_TIMESTAMP();
         TRACK("$bAUTH$b %s!%s@%s [%s] on %s as %s", user->nick, user->ident, user->hostname,
                        irc_ntoa(&user->ip), user->uplink->name, user->handle_info->handle);
@@ -271,7 +286,7 @@ track_user_mode(struct userNode *user, const char *mode_change) {
        if (!track_cfg.enabled) return;
        if (user->uplink->burst && !track_cfg.show_bursts) return;
        if (!mode_change[1]) return; /* warning there has to be atleast one char in the buffer */
-       if(check_track_umode(track_cfg) && check_track_user(user))
+       if(check_track_umode(track_cfg) && check_track_user(user->nick))
        {
                UPDATE_TIMESTAMP();
                TRACK("$bUMODE$b %s %s", user->nick, mode_change);
@@ -293,7 +308,7 @@ track_channel_mode(struct userNode *who, struct chanNode *channel, char **modes,
        if(who)
        {
                if (who->uplink->burst && !track_cfg.show_bursts) return;
-               if (!check_track_chanmode(track_cfg) || !check_track_user(who)) return;
+               if (!check_track_chanmode(track_cfg) || !check_track_user(who->nick)) return;
        } else
                return;
 
@@ -436,9 +451,9 @@ MODCMD_FUNC(cmd_track)
 		add = 2;
 		changed = true;
 
-		if(data[0] == '+')
+		if(*data == '+')
 			add = 1;
-		if(data[0] == '-')
+		if(*data == '-')
 			add = 0;
 
 		if(add == 2)
@@ -463,92 +478,55 @@ MODCMD_FUNC(cmd_track)
 			return 0;
 		}
 
-		*data++;
+		data++;
 
-		switch(tolower(data[0]))
-		{
-			case 'a':
-				if(!strcasecmp(data, "auth"))
-				{
-					if (add)
-						set_track_auth(track_cfg);
-					else
-						clear_track_auth(track_cfg);
-				}
-				break;
-			case 'c':
-				if(!strcasecmp(data, "chanmode"))
-				{
-					if (add)
-						set_track_chanmode(track_cfg);
-					else
-						clear_track_chanmode(track_cfg);
-				}
-				break;
-			case 'd':
-				if(!strcasecmp(data, "del"))
-				{
-					if (add)
-						set_track_del(track_cfg);
-					else
-						clear_track_del(track_cfg);
-				}
-				break;
-			case 'j':
-				if(!strcasecmp(data, "join"))
-				{
-					if(add)
-						set_track_join(track_cfg);
-					else
-						clear_track_join(track_cfg);
-				}
-				break;
-			case 'k':
-				if(!strcasecmp(data, "kick"))
-				{
-					if(add)
-						set_track_kick(track_cfg);
-					else
-						clear_track_kick(track_cfg);
-				}
-				break;
-			case 'n':
-				if(!strcasecmp(data, "new"))
-				{
-					if(add)
-						set_track_new(track_cfg);
-					else
-						clear_track_new(track_cfg);
-				}
-				if(!strcasecmp(data, "nick"))
-				{
-					if(add)
-						set_track_nick(track_cfg);
-					else
-						clear_track_nick(track_cfg);
-				}
-				break;
-			case 'p':
-				if(!strcasecmp(data, "part"))
-				{
-					if(add)
-						set_track_part(track_cfg);
-					else
-						clear_track_part(track_cfg);
-				}
-				break;
-			case 'u':
-				if(!strcasecmp(data, "umode"))
-				{
-					if(add)
-						set_track_umode(track_cfg);
-					else
-						clear_track_umode(track_cfg);
-				}
-				break;
-			default:
-				TRACK("Error, Unknown value %s", data);
-				break;
+                if(!strcasecmp(data, "auth")) {
+                        if (add)
+                                set_track_auth(track_cfg);
+                        else
+                                clear_track_auth(track_cfg);
+                } else if(!strcasecmp(data, "chanmode")) {
+                        if (add)
+                                set_track_chanmode(track_cfg);
+                        else
+                                clear_track_chanmode(track_cfg);
+                } else if(!strcasecmp(data, "del")) {
+                        if (add)
+                                set_track_del(track_cfg);
+                        else
+                                clear_track_del(track_cfg);
+                } else if(!strcasecmp(data, "join")) {
+                        if(add)
+                                set_track_join(track_cfg);
+                        else
+                                clear_track_join(track_cfg);
+                } else if(!strcasecmp(data, "kick")) {
+                        if(add)
+                                set_track_kick(track_cfg);
+                        else
+                                clear_track_kick(track_cfg);
+                } else if(!strcasecmp(data, "new")) {
+                        if(add)
+                                set_track_new(track_cfg);
+                        else
+                                clear_track_new(track_cfg);
+                } else if(!strcasecmp(data, "nick")) {
+                        if(add)
+                                set_track_nick(track_cfg);
+                        else
+                                clear_track_nick(track_cfg);
+                } else if(!strcasecmp(data, "part")) {
+                        if(add)
+                                set_track_part(track_cfg);
+                        else
+                                clear_track_part(track_cfg);
+                } else if(!strcasecmp(data, "umode")) {
+                        if(add)
+                                set_track_umode(track_cfg);
+                        else
+                                clear_track_umode(track_cfg);
+                } else {
+                    TRACK("Error, Unknown value %s", data);
 		}
 	}
 	check_track_state(user);
@@ -582,9 +560,9 @@ MODCMD_FUNC(cmd_deltrack)
 
 	if((argc > 1) && (un = dict_find(clients, argv[1], NULL)))
 	{
-		if(check_track_user(un))
+		if(check_track_user(un->nick))
 		{
-			del_track_user(un);
+			del_track_user(un->nick);
 			UPDATE_TIMESTAMP();
 			TRACK("$bALERT$b No longer monitoring %s!%s@%s on %s requested by %s",
 					un->nick, un->ident, un->hostname, un->uplink->name, user->nick);
@@ -602,22 +580,22 @@ MODCMD_FUNC(cmd_deltrack)
 
 MODCMD_FUNC(cmd_addtrack)
 {
-	struct userNode *un = NULL;
+    struct userNode *un = NULL;
 
-	if((argc > 1) && (un = dict_find(clients, argv[1], NULL)))
-	{
-		add_track_user(un);
-		UPDATE_TIMESTAMP();
-		TRACK("$bALERT$b Manually enabled monitoring of %s!%s@%s on %s requested by %s",
-				un->nick, un->ident, un->hostname, un->uplink->name, user->nick);
-        send_message_type(4, user, track_cfg.bot, "Now tracking %s!%s@%s on %s", un->nick,un->ident,un->hostname, un->uplink->name);
-	}
-	else
+    if((argc > 1) && (un = dict_find(clients, argv[1], NULL)))
     {
-		send_message_type(4, user, track_cfg.bot, "No nick or invalid nick specified.");
+	add_track_user(un);
+	UPDATE_TIMESTAMP();
+	TRACK("$bALERT$b Manually enabled monitoring of %s!%s@%s on %s requested by %s",
+			un->nick, un->ident, un->hostname, un->uplink->name, user->nick);
+        send_message_type(4, user, track_cfg.bot, "Now tracking %s!%s@%s on %s", un->nick,un->ident,un->hostname, un->uplink->name);
+    }
+    else
+    {
+	send_message_type(4, user, track_cfg.bot, "No nick or invalid nick specified.");
         svccmd_send_help_brief(user, track_cfg.bot, cmd);
     }
-	return 0;
+    return 0;
 }
 
 MODCMD_FUNC(cmd_listtrack)
@@ -668,11 +646,13 @@ void
 track_cleanup(void) {
     track_cfg.enabled = 0;
     unreg_del_user_func(track_del_user);
+    dict_delete(track_db);
 }
 
 int
 track_init(void) {
     track_db = dict_new();
+    dict_set_free_keys(track_db, free);
 
     reg_exit_func(track_cleanup);
     conf_register_reload(track_conf_read);

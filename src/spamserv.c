@@ -247,9 +247,9 @@ spamserv_unregister_channel(struct chanInfo *cInfo)
 	if(!cInfo)
 		return;
 
-	dict_remove(registered_channels_dict, cInfo->channel->name);
 	free_string_list(cInfo->exceptions);
 	free_string_list(cInfo->badwords);
+	dict_remove(registered_channels_dict, cInfo->channel->name);
 	free(cInfo);
 }
 
@@ -599,8 +599,10 @@ spamserv_nick_change_func(struct userNode *user, const char *old_nick)
 {
 	struct userInfo *uInfo = get_userInfo(old_nick);
 
-	dict_remove(connected_users_dict, old_nick);
-	dict_insert(connected_users_dict, strdup(user->nick), uInfo);
+        if(uInfo) {
+            dict_remove(connected_users_dict, old_nick);
+            dict_insert(connected_users_dict, strdup(user->nick), uInfo);
+        }
 }
 
 static int
@@ -758,7 +760,7 @@ timeq_joinflood(UNUSED_ARG(void *data))
 {
 	dict_iterator_t it;
 	struct userInfo *uInfo;
-	struct floodNode *fNode;
+	struct floodNode *fNode, *nextnode;
 
 	for(it = dict_first(connected_users_dict); it; it = iter_next(it))
 	{
@@ -767,8 +769,9 @@ timeq_joinflood(UNUSED_ARG(void *data))
 		if(!(fNode = uInfo->joinflood))
 			continue;
 
-		for(; fNode; fNode = fNode->next)
+		for(; fNode; fNode = nextnode)
 		{
+                        nextnode = fNode->next;
 			if(now - fNode->time > JOINFLOOD_EXPIRE)
 			{
 				if(!(--fNode->count))
@@ -843,13 +846,21 @@ timeq_kill(UNUSED_ARG(void *data))
 	dict_iterator_t it;
 	struct killNode *kNode;
 
-	for(it = dict_first(killed_users_dict); it; it = iter_next(it))
-	{
-		kNode = iter_data(it);
+        while(1) {
+            for(it = dict_first(killed_users_dict); it; it = iter_next(it))
+            {
+                    kNode = iter_data(it);
 
-		if(kNode->time - now > KILL_EXPIRE)
-			free(kNode);
-	}
+                    if(now - kNode->time > KILL_EXPIRE) {
+                            dict_remove(killed_users_dict, iter_key(it));
+                             /* have to restart the loop because next is
+                              * now invalid. FIXME: how could we do this better? */
+                             break; /* out of for() loop */
+                    }
+            }
+            /* no more killed_users to delete, so stop while loop */
+            break; /* out of while() loop */ 
+        }
 
 	timeq_add(now + KILL_TIMEQ_FREQ, timeq_kill, NULL);
 }
@@ -1935,31 +1946,25 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 				if(fNode->channel == channel)
 					break;
 				
-			if(!fNode)
-			{
+			if(!fNode) {
 				spamserv_create_floodNode(channel, user, &uInfo->flood);
-			}
-			else
-			{
-				if(((now - fNode->time) < FLOOD_EXPIRE))
-				{
+			} else {
+				if(((now - fNode->time) < FLOOD_EXPIRE)) {
 					fNode->count++;
 					
-					if(fNode->count == FLOOD_MAX_LINES - 1)
-					{
-						uInfo->warnlevel += FLOOD_WARNLEVEL;
+					if(fNode->count == FLOOD_MAX_LINES - 1) {
+					    uInfo->warnlevel += FLOOD_WARNLEVEL;
 
-						if(uInfo->warnlevel < MAX_WARNLEVEL) {
-							if (spamserv_conf.network_rules)
-								spamserv_notice(user, "SSMSG_WARNING_RULES_T", SSMSG_FLOOD, spamserv_conf.network_rules);
-							else
-								spamserv_notice(user, "SSMSG_WARNING_T", SSMSG_FLOOD, spamserv_conf.network_rules);
-						}
+					    if(uInfo->warnlevel < MAX_WARNLEVEL) {
+						if (spamserv_conf.network_rules)
+						    spamserv_notice(user, "SSMSG_WARNING_RULES_T", SSMSG_FLOOD, spamserv_conf.network_rules);
+						else
+						    spamserv_notice(user, "SSMSG_WARNING_T", SSMSG_FLOOD, spamserv_conf.network_rules);
+					    }
+				            fNode->time = now;
 					}
-					else if(fNode->count > FLOOD_MAX_LINES)
-					{
-						switch(cInfo->info[ci_WarnReaction])
-						{
+					else if(fNode->count > FLOOD_MAX_LINES) {
+						switch(cInfo->info[ci_WarnReaction]) {
 							case 'k': uInfo->flags |= USER_KICK; break;
 							case 'b': uInfo->flags |= USER_KICKBAN; break;
 							case 's': uInfo->flags |= USER_SHORT_TBAN; break;
@@ -1971,9 +1976,9 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 						uInfo->warnlevel += FLOOD_WARNLEVEL;
 						violation = 2;						
 					}
-				}
-
-				fNode->time = now;
+				} else {
+				    fNode->time = now;
+                                }
 			}
 		}
 	}
@@ -2276,10 +2281,12 @@ spamserv_db_cleanup(void)
 		spamserv_unregister_channel(iter_data(it));
 	}
 
-	while((it = dict_first(killed_users_dict)))
+/* now handled automatically
+ *	while((it = dict_first(killed_users_dict)))
 	{
 		free(iter_data(it));
 	}
+*/
 	
 	dict_delete(registered_channels_dict);
 	dict_delete(connected_users_dict);
@@ -2303,9 +2310,16 @@ init_spamserv(const char *nick)
 
 	SS_LOG = log_register_type("SpamServ", "file:spamserv.log");	
 
+        /* auto-free the keys for these dicts,
+         * and auto-free the keys AND data for killed_users_dict.
+         * other data need free'd manually. */
 	registered_channels_dict = dict_new();
+        dict_set_free_keys(registered_channels_dict, free);
 	connected_users_dict = dict_new();
+        dict_set_free_keys(connected_users_dict, free);
 	killed_users_dict = dict_new();
+        dict_set_free_keys(killed_users_dict, free);
+        dict_set_free_data(killed_users_dict, free);
 
 	saxdb_register("SpamServ", spamserv_saxdb_read, spamserv_saxdb_write);
 
