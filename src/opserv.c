@@ -206,6 +206,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WHOIS_CHANNELS",   "Channels     : %s" },
     { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
     { "OSMSG_WHOIS_VERSION",    "Version      : %s" },  
+    { "OSMSG_WHOIS_MARK",       "Mark         : %s" },  
     { "OSMSG_WHOIS_NO_NOTICE",  "No_notices   : %s" },
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
     { "OSMSG_CHANNEL_VOICED", "All users on %s voiced." },
@@ -524,7 +525,7 @@ opserv_free_waiting_connection(void *data)
 
 typedef struct opservDiscrim {
     struct chanNode *channel;
-    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark;
+    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark, *mask_mark;
     irc_in_addr_t ip_mask;
     unsigned long limit;
     time_t min_ts, max_ts;
@@ -2034,6 +2035,9 @@ static MODCMD_FUNC(cmd_whois)
     }
     if(target->version_reply) {
         reply("OSMSG_WHOIS_VERSION", target->version_reply);
+    }
+    if(target->mark) {
+        reply("OSMSG_WHOIS_MARK", target->mark);
     }
     reply("OSMSG_WHOIS_NO_NOTICE", target->no_notice ? "YES":"NO");
   
@@ -5193,6 +5197,8 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         }
         discrim->accountmask = argv[++i];
         discrim->authed = 1;
+    } else if (irccasecmp(argv[i], "marked") == 0) {
+        discrim->mask_mark = argv[++i];
     } else if (irccasecmp(argv[i], "chantarget") == 0) {
             if(!IsChannelName(argv[i+1])) {
                 send_message(user, bot, "MSG_NOT_CHANNEL_NAME");
@@ -5488,6 +5494,7 @@ discrim_match(discrim_t discrim, struct userNode *user)
         || (discrim->info_space == 0 && user->info[0] == ' ')
         || (discrim->info_space == 1 && user->info[0] != ' ')
         || (discrim->server && !match_ircglob(user->uplink->name, discrim->server))
+        || (discrim->mask_mark && (!user->mark || !match_ircglob(user->mark, discrim->mask_mark)))
         || (discrim->accountmask && (!user->handle_info || !match_ircglob(user->handle_info->handle, discrim->accountmask)))
         || (discrim->ip_mask_bits && !irc_check_mask(&user->ip, &discrim->ip_mask, discrim->ip_mask_bits))
         )

@@ -273,7 +273,7 @@
 "TRACE" ("/msg $O TRACE <action> <criteria> <value> [<criteria> <value>]...",
         "Searches through the current users for those matching the specified criteria, and applies the specified action to them. A detailed list of actions can be found in $bhelp trace action$b and a list of criteria in $bhelp trace criteria$b.",
         "Quick Ref ACTIONS: PRINT, COUNT, KILL, GLINE, SHUN, GAG, DOMAINS, SVSJOIN, SVSPART, VERSION",
-        "Quick Ref CRITERIA: MASK, NICK, IDENT, HOST, INFO, SERVER, IP, ACCOUNT, AUTHED, CHANNEL, NUMCHANNELS, LIMIT, NICKAGE, ACCESS, REASON, DEPTH, DURATION, CLONES, INFO_SPACE, CHECKRESTRICTIONS ABUSE OPERS, LOG, REGEX, CHANTARGET, SILENT, VERSION",
+        "Quick Ref CRITERIA: MASK, NICK, IDENT, HOST, INFO, SERVER, IP, ACCOUNT, AUTHED, CHANNEL, NUMCHANNELS, LIMIT, NICKAGE, ACCESS, REASON, DEPTH, DURATION, CLONES, INFO_SPACE, CHECKRESTRICTIONS ABUSE OPERS, LOG, REGEX, CHANTARGET, SILENT, VERSION, MARKED",
         "Access level: $b${level/trace}$b",
         "$uSee Also:$u trace action, trace criteria"
         );
@@ -322,6 +322,7 @@
         "$bREGEX$b yes/no             Specifies if NICK/IDENT/HOST/INFO should be treated as a regular expression.",
         "$bSILENT$b yes/no            If yes, AUTO is prepended to the gline message, making the gline silent in nefarious ircd.",
         "$bVERSION$b version          If they have been queried using the VERSION action and responded, they are matched if the reply they give matches.",
+        "$bMARKED$b mark              If they have a dnsbl mark matching mark. (e.g. from an X line or alert)",
         "$bCHANTARGET$b #channel      For use with SVSJOIN action, this specifies the channel they are svsjoined to.",
         "$bCHECKRESTRICTIONS$b yes/no For use with SVSJOIN action, this specifies to check channel modes like bans, invite, limits, and key before the SVSJOIN is issued.",
         "$bMARK$b mark                For use with the MARK action, this is what thety are marked with.",

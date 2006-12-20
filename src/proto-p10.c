@@ -1116,6 +1116,11 @@ void
 irc_mark(struct userNode *user, char *mark)
 {
     char *host = user->hostname;
+
+    /* TODO: Allow mark overwrite. If they are marked, and their fakehost is oldmark.hostname, update it to newmark.hostname so mark can be called multiple times. Probably requires ircd modification also */
+    if(user->mark)
+        return;
+
     /* if the mark will put us over the  host length, clip some off the left hand side
      * to make room...
      */
@@ -1123,6 +1128,10 @@ irc_mark(struct userNode *user, char *mark)
         host += 1 + ( (strlen(host) + 1 + strlen(mark)) - HOSTLEN );
     putsock("%s " CMD_MARK " %s DNSBL +m %s.%s", self->numeric, user->nick, mark, host);
     putsock("%s " CMD_MARK " %s DNSBL_DATA %s", self->numeric, user->nick, mark);
+
+    /* Save it in the user */
+    user->mark = strdup(mark);
+
     /* If they are not otherwise marked, mark their host with fakehost */
     if(!IsFakeHost(user) && !IsSetHost(user) && !(IsHiddenHost(user) && user->handle_info) )
     {
@@ -1753,6 +1762,7 @@ static CMD_FUNC(cmd_mark)
     }
     else if(!strcasecmp(argv[2], "DNSBL_DATA")) {
         /* DNSBL_DATA name */
+        target->mark = strdup(argv[3]);
         return 1;
         
     }
@@ -2872,6 +2882,12 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
     if(user->version_reply) {
         free(user->version_reply);
         user->version_reply = NULL;
+    }
+
+    /* clean up mark */
+    if(user->mark) {
+        free(user->mark);
+        user->mark = NULL;
     }
 
     /* clean up geoip data if any */

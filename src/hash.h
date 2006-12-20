@@ -210,6 +210,7 @@ struct userNode {
     int dma_code;
     int area_code;
     
+    char *mark;                   /* only filled if they are marked */
     char *version_reply;          /* only filled in if a version query was triggered */
 
     time_t timestamp;             /* Time of last nick change */
