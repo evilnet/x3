@@ -1,6 +1,16 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-20  Alex Schumann   <rubin@afternet.org>
+
+	* src/Makefile.in: undo temp fix
+
+	* src/opserv.c: perm fix to HAVE_TRACK define problems
+
+	* src/configure.in: perm fix to HAVE_TRACK define problems
+
+	* src/config.h.in: perm fix to HAVE_TRACK define problems
+
 2006-12-21  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/Makefile.in: Temp fix.
