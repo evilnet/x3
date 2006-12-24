@@ -11,11 +11,17 @@
 	"$b$b",
         "  ADDEXCEPTION  Adds a word to the exception list.",
         "  DELEXCEPTION  Deletes a word from the exception list.",
+        "$b$b",
+        "  ADDTRUST      Adds an account to the channel trust list.",
+        "  DELTRUST      Removes an account to the channel trust list.",
+        "  LISTTRUST     Lists the trusts for the given channel.",
 	"$b$b",
         "  SET           Changes various channel settings.",
         "  STATUS        Shows general information about $X.",
 	"$b$b",
         " $bPrivileged Commands:$b",
+        "  OADDTRUST     Adds an account to the global trust list.",
+        "  ODELTRUST     Removes an account to the global trust list.",
         "  REGISTER      Registers a new channel.",
         "  UNREGISTER    Removes $X from a registered channel.",
 	"$b$b",
@@ -35,6 +41,13 @@
 	  "$bThird example$b: You added \"GameSurge\" to the list and someone posts \"JOIN #channelxyz on GameSurge\", he will NOT get punished, because the word \"GameSurge\" is in the sentence.",
 	  "If he would say \"JOIN #channelxyz\", $X would punish him.",
 	  "$uSee Also:$u delbadword");
+
+"ADDTRUST" ("/msg $X ADDTRUST <nick/*account> <#channel>",
+        "Adds the specified account to the trusted user list for $X in the channel specified.",
+        "Users on the trusted user list will be immune to $X checks in the specified channel",
+        "Access level: $b${level/addtrust}$b",
+        "$uSee Also:$u deltrust, listtrust"
+        );
 
 "DELBADWORD" ("/msg $X DELBADWORD",
         "Without an argument, it will show all existing badwords.",
@@ -56,6 +69,34 @@
         "Without an argument, it will show all existing exceptions.",
         "With an argument, it will delete the given word from the exception list.",
         "$uSee Also:$u addexception");
+
+"DELTRUST" ("/msg $X DELTRUST <nick/*account> <#channel>",
+        "Removes the specified account to the trusted user list for $X in the channel specified.",
+        "Users on the trusted user list will be immune to $X checks in the specified channel",
+        "Access level: $b${level/deltrust}$b",
+        "$uSee Also:$u addtrust, listtrust"
+        );
+
+"LISTTRUST" ("/msg $X LISTTRUST <#channel/global>",
+        "Lists the trusted users in $X for the specified channel",
+        "$uSee Also:$u addtrust, deltrust, listtrust, oaddtrust, odeltrust"
+        );
+
+"OADDTRUST" ("/msg $X OADDTRUST <nick/*account> <#channel/global>",
+        "Adds the specified account to the trusted user list for $X in the channel specified.",
+        "If global is specified then the user will be added to the global trusted user list for $X.",
+        "Users on the trusted user list will be immune to $X checks in the specified channel(s)",
+        "Access level: $b${level/odeltrust}$b",
+        "$uSee Also:$u odeltrust, listtrust"
+        );
+
+"ODELTRUST" ("/msg $X ODELTRUST <nick/*account> <#channel/global>",
+        "Removes the specified account to the trusted user list for $X in the channel specified.",
+        "If global is specified then the user will be added to the global trusted user list for $X.",
+        "Users on the trusted user list will be immune to $X checks in the specified channel(s)",
+        "Access level: $b${level/odeltrust}$b",
+        "$uSee Also:$u oaddtrust, listtrust"
+        );
 
 "SET" ("/msg $X SET <#channel> [<parameter> [setting]]",
         "This command will set various channel options. With no arguments, it will show the current values of all channel options.",

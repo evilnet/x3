@@ -1,6 +1,15 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-25  Neil Spierling  <sirvulcan@gmail.com>
+
+	* Merry Christmas! :)
+
+	* src/spamserv.c: Added trusted accounts support (RFE 1577823).
+
+	* src/spamserv.help: ADDTRUST, DELTRUST, OADDTRUST, ODELTRUST,
+	and LISTTRUST added.
+
 2006-12-20  Alex Schumann   <rubin@afternet.org>
 
 	* src/Makefile.in: undo temp fix

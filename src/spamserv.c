@@ -35,7 +35,11 @@
 #define KEY_FLAGS                    "flags"
 #define KEY_INFO                     "info"
 #define KEY_EXPIRY                   "expiry"
-
+#define KEY_TRUSTED_HOSTS	     "trusted"
+#define KEY_CHANNELS		     "channel"
+#define KEY_ISSUER		     "issuer"
+#define KEY_ISSUED		     "issued"
+#define KEY_TRUSTED_ACCOUNTS	     "trusted"
 #define KEY_DEBUG_CHANNEL            "debug_channel"
 #define KEY_GLOBAL_EXCEPTIONS        "global_exceptions"
 #define KEY_GLOBAL_BADWORDS          "global_badwords"
@@ -72,6 +76,7 @@ static unsigned long	crc_table[256];
 dict_t registered_channels_dict;
 dict_t connected_users_dict;
 dict_t killed_users_dict;
+
 
 #define spamserv_notice(target, format...) send_message(target , spamserv , ## format)
 #define spamserv_debug(format...) do { if(spamserv_conf.debug_channel) send_channel_notice(spamserv_conf.debug_channel , spamserv , ## format); } while(0)
@@ -142,6 +147,21 @@ static const struct message_entry msgtab[] = {
     { "SSMSG_WARNING_RULES_T",          "%s is against the network rules. Read the network rules at %s" },
     { "SSMSG_WARNING_RULES_2_T",        "You are violating the network rules. Read the network rules at %s" },
 
+    { "SSMSG_ALREADY_TRUSTED", "Account $b%s$b is already trusted." },
+    { "SSMSG_NOT_TRUSTED", "Account $b%s$b is not trusted." },
+    { "SSMSG_ADDED_TRUSTED", "Added %s to the global trusted-accounts list" },
+    { "SSMSG_ADDED_TRUSTED_CHANNEL", "Added %s to the trusted-accounts list for channel %s." },
+    { "SSMSG_REMOVED_TRUSTED", "Removed %s from the global trusted-accounts list." },
+    { "SSMSG_REMOVED_TRUSTED_CHANNEL", "Removed %s from channel %s trusted-account list." },
+    { "SSMSG_TRUSTED_LIST", "$bTrusted Accounts$b" },
+    { "SSMSG_TRUSTED_LIST_HEADER", "Account         Added By   Time" },
+    { "SSMSG_HOST_IS_TRUSTED",      "%-15s %-10s set %s ago" },
+    { "SSMSG_TRUSTED_LIST_BAR", "----------------------------------------" },
+    { "SSMSG_TRUSTED_LIST_END", "---------End of Trusted Accounts--------" },
+    { "SSMSG_HOST_NOT_TRUSTED", "%s does not have a special trust." },
+
+    { "SSMSG_MUST_BE_HELPING", "You must have security override (helping mode) on to use this command." },
+
     { NULL, NULL }
 };
 
@@ -169,6 +189,8 @@ static const struct message_entry msgtab[] = {
 #define SSMSG_WARNING_RULES_2         "SSMSG_WARNING_RULES_2_T"
 */
 
+static dict_t spamserv_trusted_accounts;
+
 static struct
 {
 	struct chanNode *debug_channel;
@@ -188,7 +210,16 @@ static struct
 	unsigned int adv_chan_must_exist : 1;
 	unsigned int strip_mirc_codes : 1;
 	unsigned int allow_move_merge : 1;
+	unsigned long untrusted_max;
 } spamserv_conf;
+
+struct trusted_account {
+    char *account;
+    struct string_list *channel;
+    char *issuer;
+    unsigned long limit;
+    time_t issued;
+};
 
 /***********************************************/
 /*                   Channel                   */
@@ -1634,6 +1665,351 @@ SPAMSERV_FUNC(opt_scanvoiced)
 	BINARY_OPTION("ScanVoiced    ", CHAN_SCAN_VOICED);
 }
 
+static void
+spamserv_add_trusted_account(const char *account, struct string_list *channel, const char *issuer, time_t issued)
+{
+    struct trusted_account *ta;
+    ta = calloc(1, sizeof(*ta));
+    if (!ta)
+        return;
+    ta->account = strdup(account);
+    ta->channel = channel ? string_list_copy(channel) : alloc_string_list(1);
+    ta->issuer = strdup(issuer);
+    ta->issued = issued;
+    dict_insert(spamserv_trusted_accounts, strdup(ta->account), ta);
+}
+
+/*
+static void
+free_trusted_account(void *data)
+{
+    struct trusted_account *ta = data;
+    free(ta->account);
+    free_string_list(ta->channel);
+    free(ta->issuer);
+    free(ta);
+}
+*/
+
+static SPAMSERV_FUNC(cmd_addtrust)
+{
+    unsigned int i;
+    struct userData *uData;
+    struct chanData *cData;
+    struct chanInfo *cInfo;
+    struct trusted_account *ta;
+    struct string_list *templist;
+    struct handle_info *hi;
+
+    if (!(channel = GetChannel(argv[2]))) {
+        ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+        return 0;
+    }
+
+    cInfo = get_chanInfo(channel->name);
+    cData = channel->channel_info;
+    uData = GetChannelUser(cData, user->handle_info);
+
+    if (!cInfo || !channel->channel_info) {
+        ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+        return 0;
+    }
+
+    if (CHECK_SUSPENDED(cInfo)) {
+         ss_reply("SSMSG_SUSPENDED", channel->name);
+         return 0;
+    }
+
+    if (!uData || (uData->access < UL_MANAGER)) {
+        ss_reply("SSMSG_NO_ACCESS");
+        return 0;
+    }
+
+    if (!(hi = modcmd_get_handle_info(user, argv[1]))) {
+        return 0;
+    }
+
+    if ((ta = dict_find(spamserv_trusted_accounts, argv[1], NULL))) {
+        if (ta->channel->used && (argc > 1)) {
+            for (i=0; i < ta->channel->used; i++) {
+                if (!strcmp(ta->channel->list[i], argv[2])) {
+                    ss_reply("SSMSG_ALREADY_TRUSTED", hi->handle);
+                    return 0;
+                }
+            }
+        }
+
+        string_list_append(ta->channel, argv[2]);
+        ss_reply("SSMSG_ADDED_TRUSTED_CHANNEL", hi->handle, argv[2]);
+        return 1;
+    }
+
+    templist = alloc_string_list(sizeof(argv[2])+1);
+//    templist = alloc_string_list(1);
+    string_list_append(templist, argv[2]);
+
+    spamserv_add_trusted_account(hi->handle, templist, user->handle_info->handle, now);
+    ss_reply("SSMSG_ADDED_TRUSTED_CHANNEL", hi->handle, argv[2]);
+    return 1;
+}
+
+static SPAMSERV_FUNC(cmd_oaddtrust)
+{
+    unsigned int i, global = 0;
+    struct chanInfo *cInfo;
+    struct chanData *cData;
+    struct trusted_account *ta;
+    struct string_list *templist;
+    struct handle_info *hi;
+
+    if (!strcmp(argv[2], "global"))
+        global = 1;
+
+    if (!(channel = GetChannel(argv[2])) && (global == 0)) {
+        ss_reply("SSMSG_NOT_REGISTERED", channel ? channel->name : (global ? "global" : ""));
+        return 0;
+    }
+
+    if (channel) {
+        cInfo = get_chanInfo(channel->name);
+        cData = channel->channel_info;
+
+        if (!cInfo || !channel->channel_info) {
+            ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+            return 0;
+        }
+    }
+
+    if (!(hi = modcmd_get_handle_info(user, argv[1]))) {
+        return 0;
+    }
+
+    if ((ta = dict_find(spamserv_trusted_accounts, argv[1], NULL))) {
+        if (ta->channel->used && (argc > 1)) {
+            for (i=0; i < ta->channel->used; i++) {
+                if (!strcmp(ta->channel->list[i], argv[2])) {
+                    ss_reply("SSMSG_ALREADY_TRUSTED", argv[1]);
+                    return 0;
+                }
+            }
+        }
+
+        string_list_append(ta->channel, argv[2]);
+
+        if (global == 1)
+            ss_reply("SSMSG_ADDED_TRUSTED", argv[1]);
+        else
+            ss_reply("SSMSG_ADDED_TRUSTED_CHANNEL", argv[1], argv[2]);
+
+        return 1;
+    }
+
+    templist = alloc_string_list(sizeof(argv[2])+1);
+//    templist = alloc_string_list(1);
+    string_list_append(templist, argv[2]);
+
+    spamserv_add_trusted_account(hi->handle, templist, user->handle_info->handle, now);
+
+    if (global == 1)
+        ss_reply("SSMSG_ADDED_TRUSTED", hi->handle);
+    else
+        ss_reply("SSMSG_ADDED_TRUSTED_CHANNEL", hi->handle, argv[2]);
+
+    return 1;
+}
+
+static SPAMSERV_FUNC(cmd_deltrust)
+{
+    unsigned int i;
+    int rem = 0;
+    struct trusted_account *ta;
+    struct userData *uData;
+    struct chanData *cData;
+    struct chanInfo *cInfo;
+    struct handle_info *hi;
+
+    if (!(channel = GetChannel(argv[2]))) {
+        ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+        return 0;
+    }
+
+    cInfo = get_chanInfo(channel->name);
+    cData = channel->channel_info;
+    uData = GetChannelUser(cData, user->handle_info);
+
+    if (!cInfo || !channel->channel_info) {
+        ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+        return 0;
+    }
+
+    if (CHECK_SUSPENDED(cInfo)) {
+         ss_reply("SSMSG_SUSPENDED", channel->name);
+         return 0;
+    }
+
+    if (!uData || (uData->access < UL_MANAGER)) {
+        ss_reply("SSMSG_NO_ACCESS");
+        return 0;
+    }
+
+    if (!(hi = modcmd_get_handle_info(user, argv[1]))) {
+        return 0;
+    }
+
+    ta = dict_find(spamserv_trusted_accounts, hi->handle, NULL);
+
+    if (!ta) {
+        ss_reply("SSMSG_NOT_TRUSTED", argv[2]);
+        return 0;
+    }
+
+    if (argc > 1) {
+        if (ta->channel->used) {
+            for (i=0; i < ta->channel->used; i++) {
+                if (!strcmp(ta->channel->list[i], argv[2])) {
+                    string_list_delete(ta->channel, i);
+                    rem = 1;
+                }
+            }
+        }
+
+        if (rem == 1)
+            ss_reply("SSMSG_REMOVED_TRUSTED_CHANNEL", hi->handle, argv[2]);
+        else {
+            ss_reply("SSMSG_NOT_TRUSTED", hi->handle, argv[2]);
+            return 0;
+        }
+    } else {
+        dict_remove(spamserv_trusted_accounts, hi->handle);
+        ss_reply("SSMSG_REMOVED_TRUSTED", hi->handle);
+    }
+
+    return 1;
+}
+
+static SPAMSERV_FUNC(cmd_odeltrust)
+{
+    unsigned int i;
+    int rem = 0, global = 0;
+    struct trusted_account *ta;
+    struct chanInfo *cInfo;
+    struct chanData *cData;
+    struct handle_info *hi;
+
+    if (!strcmp(argv[2], "global"))
+        global = 1;
+
+    if (!(channel = GetChannel(argv[2])) && (global == 0)) {
+        ss_reply("SSMSG_NOT_REGISTERED", channel ? channel->name : (global ? "global" : ""));
+        return 0;
+    }
+
+    if (channel) {
+        cInfo = get_chanInfo(channel->name);
+        cData = channel->channel_info;
+
+        if (!cInfo || !channel->channel_info) {
+            ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+            return 0;
+        }
+    }
+
+    if (!(hi = modcmd_get_handle_info(user, argv[1]))) {
+        return 0;
+    }
+
+    ta = dict_find(spamserv_trusted_accounts, hi->handle, NULL);
+
+    if (!ta) {
+        ss_reply("SSMSG_NOT_TRUSTED", argv[2]);
+        return 0;
+    }
+
+    if (argc > 1) {
+        if (ta->channel->used) {
+            for (i=0; i < ta->channel->used; i++) {
+                if (!strcmp(ta->channel->list[i], argv[2])) {
+                    string_list_delete(ta->channel, i);
+                    rem = 1;
+                }
+            }
+        }
+
+        if (rem == 1)
+            ss_reply("SSMSG_REMOVED_TRUSTED_CHANNEL", hi->handle, argv[2]);
+        else {
+            ss_reply("SSMSG_NOT_TRUSTED", argv[2]);
+            return 0;
+        }
+    } else {
+        dict_remove(spamserv_trusted_accounts, hi->handle);
+        ss_reply("SSMSG_REMOVED_TRUSTED", hi->handle);
+    }
+
+    return 1;
+}
+
+static SPAMSERV_FUNC(cmd_listtrust) {
+    dict_iterator_t it;
+    struct trusted_account *ta;
+    char issued[INTERVALLEN];
+    char *chan;
+    unsigned int i;
+
+    if (argc > 0) {
+        if (!strcmp(argv[1], "global")) {
+            if (!IsHelping(user)) {
+                reply("SSMSG_MUST_BE_HELPING");
+                return 0;
+            } else
+                chan = "global";
+        } else {
+            channel = GetChannel(argv[1]);
+            if (channel)
+                chan = strdup(channel->name);
+            else {
+                ss_reply("SSMSG_NOT_REGISTERED", argv[1]);
+                return 0;
+            }
+        }
+    } else {
+        reply("MSG_INVALID_CHANNEL");
+        return 0;
+    }
+
+    reply("SSMSG_TRUSTED_LIST");
+    reply("SSMSG_TRUSTED_LIST_BAR");
+    reply("SSMSG_TRUSTED_LIST_HEADER");
+    reply("SSMSG_TRUSTED_LIST_BAR");
+    for (it = dict_first(spamserv_trusted_accounts); it; it = iter_next(it)) {
+        ta = iter_data(it);
+
+        if (ta->channel->used) {
+            for (i=0; i < ta->channel->used; i++) {
+
+                if (!strcmp(ta->channel->list[i], chan)) {
+                    if (ta->issued)
+                        intervalString(issued, now - ta->issued, user->handle_info);
+
+                    ss_reply("SSMSG_HOST_IS_TRUSTED", iter_key(it),
+                            (ta->issuer ? ta->issuer : "<unknown>"),
+                            (ta->issued ? issued : "some time"));
+
+                } else if (!strcmp(ta->channel->list[i], "global") && (!strcmp(chan, "global"))) {
+                    if (ta->issued)
+                        intervalString(issued, now - ta->issued, user->handle_info);
+
+                    ss_reply("SSMSG_HOST_IS_TRUSTED", iter_key(it),
+                            (ta->issuer ? ta->issuer : "<unknown>"),
+                             (ta->issued ? issued : 0));
+                }
+            }
+        }
+    }
+    ss_reply("SSMSG_TRUSTED_LIST_END");
+    return 1;
+}
+
 static void 
 to_lower(char *message)
 {
@@ -1820,6 +2196,7 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 	struct userData *uData;
 	struct spamNode *sNode;
 	struct floodNode *fNode;
+        struct trusted_account *ta;
 	unsigned int violation = 0;
 	char reason[MAXLEN];
 
@@ -1830,6 +2207,20 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 	cData = channel->channel_info;
 	uData = GetChannelUser(cData, user->handle_info);
 
+        if (user->handle_info) {
+          ta = dict_find(spamserv_trusted_accounts, user->handle_info->handle, NULL);
+          if (ta) {
+             unsigned int i = 0;
+             for (i=0; i < ta->channel->used; i++) {
+                if (!strcmp(ta->channel->list[i], channel->name))
+                    return;
+
+                if (!strcmp(ta->channel->list[i], "global"))
+                    return;
+              }
+           }
+        }
+
 	if(!CHECK_CHANOPS(cInfo))
 	{
 		struct modeNode *mn = GetUserMode(channel, user);
@@ -1837,8 +2228,8 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 			return;
 
 		/* Chan Ops covers all levels except peon and half op */
-		if(uData && ((uData->access < UL_OP) || (uData->access < UL_MANAGER) || 
-		  (uData->access < UL_COOWNER) || (uData->access < UL_OWNER)))
+		if(uData && ((uData->access == UL_OP) || (uData->access == UL_MANAGER) || 
+		  (uData->access == UL_COOWNER) || (uData->access == UL_OWNER)))
 			return;
 	}
 
@@ -1848,7 +2239,7 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 		if (mn && (mn->modes & MODE_HALFOP))
 			return;
 
-		if(uData && (uData->access < UL_HALFOP))
+		if(uData && (uData->access == UL_HALFOP))
 			return;
 	}
 	
@@ -1858,7 +2249,7 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 		if (mn && ((mn->modes & MODE_VOICE) && !(mn->modes & MODE_CHANOP) && !(mn->modes & MODE_HALFOP)))
 			return;
 
-		if(uData && (uData->access < UL_PEON))
+		if(uData && (uData->access == UL_PEON))
 			return;
 	}
 
@@ -2110,6 +2501,28 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 }
 
 static int
+trusted_account_read(const char *account, void *data, UNUSED_ARG(void *extra))
+{
+    struct record_data *rd = data;
+    const char *str, *issuer;
+    struct string_list *strlist;
+    time_t issued;
+
+    if (rd->type == RECDB_OBJECT) {
+        dict_t obj = GET_RECORD_OBJECT(rd);
+        /* new style structure */
+        strlist = database_get_data(obj, KEY_CHANNELS, RECDB_STRING_LIST);
+        issuer = database_get_data(obj, KEY_ISSUER, RECDB_QSTRING);
+        str = database_get_data(obj, KEY_ISSUED, RECDB_QSTRING);
+        issued = str ? ParseInterval(str) : 0;
+    } else
+        return 0;
+
+    spamserv_add_trusted_account(account, strlist, issuer, issued);
+    return 0;
+}
+
+static int
 spamserv_saxdb_read(struct dict *database)
 {
 	dict_iterator_t it;
@@ -2120,6 +2533,10 @@ spamserv_saxdb_read(struct dict *database)
 	unsigned int flags;
 	char *str, *info;	
 	time_t expiry;    
+	dict_t object;
+
+	if ((object = database_get_data(database, KEY_TRUSTED_HOSTS, RECDB_OBJECT)))
+		dict_foreach(object, trusted_account_read, spamserv_trusted_accounts);
 
 	for(it = dict_first(database); it; it = iter_next(it))
 	{
@@ -2132,6 +2549,8 @@ spamserv_saxdb_read(struct dict *database)
 		}
 
 		channel = GetChannel(iter_key(it));
+                if (!strcmp("trusted", iter_key(it)))
+                    continue;
 
 		strlist = database_get_data(hir->d.object, KEY_EXCEPTIONS, RECDB_STRING_LIST);
 		strlist2 = database_get_data(hir->d.object, KEY_BADWORDS, RECDB_STRING_LIST);
@@ -2172,6 +2591,19 @@ static int
 spamserv_saxdb_write(struct saxdb_context *ctx)
 {
 	dict_iterator_t it;
+
+        if (dict_size(spamserv_trusted_accounts)) {
+            saxdb_start_record(ctx, KEY_TRUSTED_ACCOUNTS, 1);
+            for (it = dict_first(spamserv_trusted_accounts); it; it = iter_next(it)) {
+                struct trusted_account *ta = iter_data(it);
+                saxdb_start_record(ctx, iter_key(it), 0);
+                if (ta->channel) saxdb_write_string_list(ctx, KEY_CHANNELS, ta->channel);
+                if (ta->issued) saxdb_write_int(ctx, KEY_ISSUED, ta->issued);
+                if (ta->issuer) saxdb_write_string(ctx, KEY_ISSUER, ta->issuer);
+                saxdb_end_record(ctx);
+            }
+            saxdb_end_record(ctx);
+        }
 
 	for(it = dict_first(registered_channels_dict); it; it = iter_next(it))
 	{
@@ -2291,6 +2723,7 @@ spamserv_db_cleanup(void)
 	dict_delete(registered_channels_dict);
 	dict_delete(connected_users_dict);
 	dict_delete(killed_users_dict);
+	dict_delete(spamserv_trusted_accounts);
 }
 
 void
@@ -2320,6 +2753,9 @@ init_spamserv(const char *nick)
 	killed_users_dict = dict_new();
         dict_set_free_keys(killed_users_dict, free);
         dict_set_free_data(killed_users_dict, free);
+        spamserv_trusted_accounts = dict_new();
+        dict_set_free_keys(spamserv_trusted_accounts, free);
+        dict_set_free_data(spamserv_trusted_accounts, free);
 
 	saxdb_register("SpamServ", spamserv_saxdb_read, spamserv_saxdb_write);
 
@@ -2337,6 +2773,12 @@ init_spamserv(const char *nick)
 	timeq_add(now + KILL_TIMEQ_FREQ, timeq_kill, NULL);
 
 	spamserv_module = module_register("SpamServ", SS_LOG, "spamserv.help", NULL);
+
+	modcmd_register(spamserv_module, "ADDTRUST", cmd_addtrust, 3, MODCMD_REQUIRE_AUTHED, "flags", "+acceptchan", NULL);
+	modcmd_register(spamserv_module, "DELTRUST", cmd_deltrust, 3, MODCMD_REQUIRE_AUTHED, "flags", "+acceptchan", NULL);
+	modcmd_register(spamserv_module, "OADDTRUST", cmd_oaddtrust, 3, MODCMD_REQUIRE_AUTHED, "flags", "+acceptchan,+helping", NULL);
+	modcmd_register(spamserv_module, "ODELTRUST", cmd_odeltrust, 3, MODCMD_REQUIRE_AUTHED, "flags", "+acceptchan,+helping", NULL);
+	modcmd_register(spamserv_module, "LISTTRUST", cmd_listtrust, 2, MODCMD_REQUIRE_AUTHED, NULL);
 	modcmd_register(spamserv_module, "REGISTER", cmd_register, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, "flags", "+acceptchan,+helping", NULL);
 	modcmd_register(spamserv_module, "UNREGISTER", cmd_unregister, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, "flags", "+loghostmask", NULL);
 	modcmd_register(spamserv_module, "ADDEXCEPTION", cmd_addexception, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
