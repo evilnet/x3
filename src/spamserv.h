@@ -21,6 +21,8 @@
 #ifndef _spamserv_h
 #define _spamserv_h
 
+#include "chanserv.h"
+
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
@@ -68,6 +70,7 @@ struct chanInfo
     struct chanNode        *channel;
     struct string_list     *exceptions;
     struct string_list     *badwords;
+    unsigned int           exceptlevel;
     unsigned int           flags : 30;
     char                   info[CHAN_INFO_SIZE];
     time_t                 suspend_expiry;

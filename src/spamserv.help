@@ -101,6 +101,7 @@
 "SET" ("/msg $X SET <#channel> [<parameter> [setting]]",
         "This command will set various channel options. With no arguments, it will show the current values of all channel options.",
         "Only channel owners and coowners may change settings.",
+        "EXCEPTLEVEL:    Users equal and above to this level will be exempt to $X checks.",
         "SPAMLIMIT:      Number of equal lines, a user may send.",
         "BADREACTION:    What happens when someone says a badword after warning.",
         "ADVREACTION:    What happens when someone advertises after warning.",
