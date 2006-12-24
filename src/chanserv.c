@@ -236,7 +236,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BAN_DONE", "Banned $b%s$b from %s." },
     { "CSMSG_REASON_CHANGE", "Reason for LAMER $b%s$b changed." },
     { "CSMSG_LAMER_EXTENDED", "Extended LAMER for $b%s$b, now expires in %s." },
-    { "CSMSG_BAN_REMOVED", "Matching ban(s) and LAMER(s) in $b%s$b were removed." },
+    { "CSMSG_BAN_REMOVED", "Ban(s) and LAMER(s) matching $b%s$b were removed." },
     { "CSMSG_TRIMMED_LAMERS", "Trimmed $b%d LAMERs$b from the %s LAMER list that were inactive for at least %s." },
     { "CSMSG_REDUNDANT_BAN", "$b%s$b is already banned in %s." },
     { "CSMSG_REDUNDANT_LAMER", "$b%s$b is already LAMER'd in %s." },
