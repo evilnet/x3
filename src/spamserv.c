@@ -28,6 +28,8 @@
 #include "timeq.h"
 #include "gline.h"
 
+#include <ctype.h>
+
 #define SPAMSERV_CONF_NAME           "services/spamserv"
 
 #define KEY_EXCEPTIONS               "exceptions"
@@ -57,11 +59,14 @@
 #define KEY_ADV_CHAN_MUST_EXIST      "adv_chan_must_exist"
 #define KEY_STRIP_MIRC_CODES         "strip_mirc_codes"
 #define KEY_ALLOW_MOVE_MERGE         "allow_move_merge"
+#define KEY_CAPSMIN                  "capsmin"
+#define KEY_CAPSPERCENT              "capspercent"
 #define KEY_EXCEPTLEVEL              "exceptlevel"
 #define KEY_EXCEPTSPAMLEVEL          "exceptspamlevel"
 #define KEY_EXCEPTFLOODLEVEL         "exceptfloodlevel"
 #define KEY_EXCEPTADVLEVEL           "exceptadvlevel"
 #define KEY_EXCEPTBADWORDLEVEL       "exceptbadwordlevel"
+#define KEY_EXCEPTCAPSLEVEL          "exceptcapslevel"
 
 #define SPAMSERV_FUNC(NAME)	MODCMD_FUNC(NAME)
 #define SPAMSERV_SYNTAX()	svccmd_send_help(user, spamserv, cmd)
@@ -88,9 +93,9 @@ dict_t killed_users_dict;
 #define spamserv_debug(format...) do { if(spamserv_conf.debug_channel) send_channel_notice(spamserv_conf.debug_channel , spamserv , ## format); } while(0)
 #define ss_reply(format...)	send_message(user , spamserv , ## format)
 
-#define SET_SUBCMDS_SIZE 15
+#define SET_SUBCMDS_SIZE 20
 
-const char *set_subcommands[SET_SUBCMDS_SIZE] = {"EXCEPTLEVEL", "EXCEPTADVLEVEL", "EXCEPTBADWORDLEVEL", "EXCEPTFLOODLEVEL", "EXCEPTSPAMLEVEL", "SPAMLIMIT", "BADREACTION", "ADVREACTION", "WARNREACTION", "ADVSCAN", "SPAMSCAN", "BADWORDSCAN", "CHANFLOODSCAN", "JOINFLOODSCAN"};
+const char *set_subcommands[SET_SUBCMDS_SIZE] = {"EXCEPTLEVEL", "EXCEPTADVLEVEL", "EXCEPTBADWORDLEVEL", "EXCEPTCAPSLEVEL", "EXCEPTFLOODLEVEL", "EXCEPTSPAMLEVEL", "SPAMLIMIT", "BADREACTION", "CAPSREACTION", "ADVREACTION", "WARNREACTION", "ADVSCAN", "CAPSSCAN", "SPAMSCAN", "BADWORDSCAN", "CHANFLOODSCAN", "JOINFLOODSCAN", "CAPSMIN", "CAPSPERCENT"};
 
 extern struct string_list *autojoin_channels;
 static void spamserv_clear_spamNodes(struct chanNode *channel);
@@ -168,9 +173,12 @@ static const struct message_entry msgtab[] = {
 
     { "SSMSG_MUST_BE_HELPING", "You must have security override (helping mode) on to use this command." },
 
-    { "SSMSG_SET_EXCEPTLEVEL"       , "$bExceptLevel$b        %d - level and above will be excepted from all checks." },
+    { "SSMSG_SET_CAPSMIN",            "$bCapsMin$b            %d - atleast this min caps and atleast CapsPercent of the total line." },
+    { "SSMSG_SET_CAPSPERCENT",        "$bCapsPercent$b        %d - atleast CapsPercent of the total line." },
+    { "SSMSG_SET_EXCEPTLEVEL"   ,     "$bExceptLevel$b        %d - level and above will be excepted from all checks." },
     { "SSMSG_SET_EXCEPTADVLEVEL",     "$bExceptAdvLevel$b     %d - and above will be excepted from advertising checks." },
     { "SSMSG_SET_EXCEPTBADWORDLEVEL", "$bExceptBadWordLevel$b %d - and above will be excepted from badword checks." },
+    { "SSMSG_SET_EXCEPTCAPSLEVEL"   , "$bExceptCapsLevel$b    %d - and above will be excepted from caps checks." },
     { "SSMSG_SET_EXCEPTFLOODLEVEL",   "$bExceptFloodLevel$b   %d - and above will be excepted from flood checks." },
     { "SSMSG_SET_EXCEPTSPAMLEVEL",    "$bExceptSpamLevel$b    %d - and above will be excepted from spam checks." },
 
@@ -187,6 +195,7 @@ static const struct message_entry msgtab[] = {
 #define SSMSG_FLOOD                   "Flooding the channel/network"
 #define SSMSG_ADV                     "Advertising"
 #define SSMSG_BAD                     "Badwords"
+#define SSMSG_CAPS                    "Caps"
 #define SSMSG_JOINFLOOD               "Join flooding the channel"
 
 #define SSMSG_WARNING                  "%s is against the network rules"
@@ -281,7 +290,13 @@ spamserv_register_channel(struct chanNode *channel, struct string_list *exceptio
 	cInfo->exceptspamlevel = 100;
 	cInfo->exceptadvlevel = 100;
 	cInfo->exceptbadwordlevel = 100;
+	cInfo->exceptcapslevel = 100;
 	cInfo->exceptfloodlevel = 100;
+        cInfo->capsmin = 10;
+        cInfo->capspercent = 25;
+        if (sizeof(info) == 4)
+            strcat(info, "s");
+
 	safestrncpy(cInfo->info, info, sizeof(cInfo->info));
 	cInfo->suspend_expiry = 0;
 	dict_insert(registered_channels_dict, strdup(cInfo->channel->name), cInfo);
@@ -571,6 +586,7 @@ spamserv_create_user(struct userNode *user)
 	uInfo->warnlevel = kNode ? kNode->warnlevel : 0;
 	uInfo->lastadv = 0;
 	uInfo->lastbad = 0;
+	uInfo->lastcaps = 0;
 
 	dict_insert(connected_users_dict, strdup(user->nick), uInfo);
 
@@ -849,6 +865,26 @@ timeq_bad(UNUSED_ARG(void *data))
 	}
 
 	timeq_add(now + BAD_TIMEQ_FREQ, timeq_bad, NULL);
+}
+
+static void
+timeq_caps(UNUSED_ARG(void *data))
+{
+	dict_iterator_t it;
+	struct userInfo *uInfo;
+
+	for(it = dict_first(connected_users_dict); it; it = iter_next(it))
+	{
+		uInfo = iter_data(it);
+
+		if(uInfo->lastcaps && uInfo->lastcaps - now > CAPS_EXPIRE)
+		{
+			uInfo->lastcaps = 0;
+			uInfo->flags &= ~USER_CAPS_WARNED;
+		}
+	}
+
+	timeq_add(now + CAPS_TIMEQ_FREQ, timeq_caps, NULL);
 }
 
 static void
@@ -1697,6 +1733,41 @@ channel_except_badword_level(struct userNode *user, struct chanNode *channel, in
 }
 
 static int
+channel_except_caps_level(struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
+{
+    struct chanData *cData = channel->channel_info;
+    struct chanInfo *cInfo;
+    struct userData *uData;
+    unsigned short value;
+
+    cInfo = get_chanInfo(channel->name);
+
+    if(argc > 1)
+    {
+        if(!ss_check_user_level(channel, user, cInfo->exceptcapslevel, 1, 1))
+        {
+            reply("SSMSG_CANNOT_SET");
+            return 0;
+        }
+        value = user_level_from_name(argv[1], UL_OWNER+1);
+        if(!value && strcmp(argv[1], "0"))
+	{
+	    reply("SSMSG_INVALID_ACCESS", argv[1]);
+            return 0;
+        }
+        uData = GetChannelUser(cData, user->handle_info);
+        if(!uData || ((uData->access < UL_OWNER) && (value > uData->access)))
+        {
+            reply("SSMSG_BAD_SETLEVEL");
+            return 0;
+        }
+        cInfo->exceptcapslevel = value;
+    }
+    reply("SSMSG_SET_EXCEPTCAPSLEVEL", cInfo->exceptcapslevel);
+    return 0;
+}
+
+static int
 channel_except_flood_level(struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
 {
     struct chanData *cData = channel->channel_info;
@@ -1767,6 +1838,64 @@ channel_except_spam_level(struct userNode *user, struct chanNode *channel, int a
 }
 
 static
+SPAMSERV_FUNC(opt_capsmin)
+{
+    struct chanInfo *cInfo;
+
+    cInfo = get_chanInfo(channel->name);
+
+    if(argc > 1)
+    {
+        char *mask = strdup(argv[1]);
+        unsigned int old = cInfo->capsmin;
+
+        if (isdigit(*mask) && strspn(mask, "1234567890,-") == strlen(mask)) {
+            cInfo->capsmin = mask ? strtoul(mask, NULL, 0) : 10;
+
+            if (cInfo->capsmin < 0) {
+                cInfo->capsmin = old;
+                reply("SSMSG_BAD_SETLEVEL");
+                return 0;
+            }
+        } else {
+            reply("SSMSG_BAD_SETLEVEL");
+            return 0;
+        }
+    }
+    reply("SSMSG_SET_CAPSMIN", cInfo->capsmin);
+    return 0;
+}
+
+static
+SPAMSERV_FUNC(opt_capspercent)
+{
+    struct chanInfo *cInfo;
+
+    cInfo = get_chanInfo(channel->name);
+
+    if(argc > 1)
+    {
+        char *mask = strdup(argv[1]);
+        unsigned int old = cInfo->capspercent;
+
+        if (isdigit(*mask) && strspn(mask, "1234567890,-") == strlen(mask)) {
+            cInfo->capspercent = mask ? strtoul(mask, NULL, 0) : 10;
+
+            if ((cInfo->capspercent < 0) || (cInfo->capspercent > 100)) {
+                cInfo->capspercent = old;
+                reply("SSMSG_BAD_SETLEVEL");
+                return 0;
+            }
+        } else {
+            reply("SSMSG_BAD_SETLEVEL");
+            return 0;
+        }
+    }
+    reply("SSMSG_SET_CAPSPERCENT", cInfo->capspercent);
+    return 0;
+}
+
+static
 SPAMSERV_FUNC(opt_exceptlevel)
 {
     return channel_except_level(SSFUNC_ARGS);
@@ -1782,6 +1911,12 @@ static
 SPAMSERV_FUNC(opt_exceptbadwordlevel)
 {
     return channel_except_badword_level(SSFUNC_ARGS);
+}
+
+static
+SPAMSERV_FUNC(opt_exceptcapslevel)
+{
+    return channel_except_caps_level(SSFUNC_ARGS);
 }
 
 static
@@ -1857,9 +1992,30 @@ SPAMSERV_FUNC(opt_badreaction)
 }
 
 static 
+SPAMSERV_FUNC(opt_capsreaction)
+{
+	struct valueData values[] =
+	{
+		{"Kick on disallowed caps.", 'k', 0},
+		{"Kickban on disallowed caps.", 'b', 0},
+		{"Short timed ban on disallowed caps.", 's', 0},
+		{"Long timed ban on disallowed caps.", 'l', 0},
+		{"Kill on disallowed caps.", 'd', 1}
+	};
+
+	MULTIPLE_OPTION("CapsReaction   ", "CapsReaction", ci_CapsReaction);
+}
+
+static 
 SPAMSERV_FUNC(opt_advscan)
 {
 	BINARY_OPTION("AdvScan       ", CHAN_ADV_SCAN);
+}
+
+static 
+SPAMSERV_FUNC(opt_capsscan)
+{
+	BINARY_OPTION("CapsScan      ", CHAN_CAPSSCAN);
 }
 
 static 
@@ -2316,6 +2472,27 @@ is_in_badword_list(struct chanInfo *cInfo, char *message)
 }
 
 static int
+check_caps(struct chanInfo *cInfo, char *message)
+{
+        int c;
+
+	if ( (c = strlen(message)) >= cInfo->capsmin) {
+		int i = 0;
+		char *s = strdup(message);
+
+		do {
+			if (isupper(*s))
+				i++;
+		} while (*s++);
+
+		if (i >= cInfo->capsmin && i * 100 / c >= cInfo->capspercent)
+			return 1;
+	}
+
+	return 0;
+}
+
+static int
 check_badwords(struct chanInfo *cInfo, char *message)
 {
 	if(spamserv_conf.strip_mirc_codes)
@@ -2445,6 +2622,41 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 
         if(uData && (uData->access >= cInfo->exceptlevel))
             return;
+
+	if(CHECK_CAPSSCAN(cInfo) && check_caps(cInfo, text))
+	{
+                if(uData && (uData->access >= cInfo->exceptcapslevel))
+                    return;
+
+		if(CHECK_CAPS_WARNED(uInfo))
+		{
+			switch(cInfo->info[ci_CapsReaction])
+			{
+				case 'k': uInfo->flags |= USER_KICK; break;
+				case 'b': uInfo->flags |= USER_KICKBAN; break;
+				case 's': uInfo->flags |= USER_SHORT_TBAN; break;
+				case 'l': uInfo->flags |= USER_LONG_TBAN; break;
+				case 'd': uInfo->flags |= CHECK_KILLED(uInfo) ? USER_GLINE : USER_KILL; break;
+			}
+
+			uInfo->warnlevel += CAPS_WARNLEVEL;
+			violation = 5;
+		}
+		else
+		{		
+			uInfo->flags |= USER_CAPS_WARNED;
+			uInfo->lastcaps = now;
+			uInfo->warnlevel += CAPS_WARNLEVEL;
+
+			if(uInfo->warnlevel < MAX_WARNLEVEL) {
+				if (spamserv_conf.network_rules)
+					spamserv_notice(user, "SSMSG_WARNING_RULES_T", SSMSG_CAPS, spamserv_conf.network_rules);
+				else
+					spamserv_notice(user, "SSMSG_WARNING_T", SSMSG_CAPS, spamserv_conf.network_rules);
+			}
+		}
+
+        }
 
 	to_lower(text);
 
@@ -2658,7 +2870,7 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 		else
 			uInfo->flags |= USER_KILL;
 
-		violation = 5;
+		violation = 6;
 	}
 
 	if(!violation)
@@ -2671,6 +2883,7 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 		case 2: snprintf(reason, sizeof(reason), spamserv_conf.network_rules ? SSMSG_WARNING_RULES : SSMSG_WARNING, SSMSG_FLOOD, spamserv_conf.network_rules); break;
 		case 3: snprintf(reason, sizeof(reason), spamserv_conf.network_rules ? SSMSG_WARNING_RULES : SSMSG_WARNING, SSMSG_ADV, spamserv_conf.network_rules); break;
 		case 4: snprintf(reason, sizeof(reason), spamserv_conf.network_rules ? SSMSG_WARNING_RULES : SSMSG_WARNING, SSMSG_BAD, spamserv_conf.network_rules); break;
+		case 5: snprintf(reason, sizeof(reason), spamserv_conf.network_rules ? SSMSG_WARNING_RULES : SSMSG_WARNING, SSMSG_CAPS, spamserv_conf.network_rules); break;
 		default: snprintf(reason, sizeof(reason), spamserv_conf.network_rules ? SSMSG_WARNING_RULES_2 : SSMSG_WARNING_2, spamserv_conf.network_rules); break;
 	}
 
@@ -2737,7 +2950,8 @@ spamserv_saxdb_read(struct dict *database)
 	struct string_list *strlist, *strlist2;
 	unsigned int flags;
         unsigned int exceptlevel, exceptadvlevel, exceptbadwordlevel;
-        unsigned int exceptfloodlevel, exceptspamlevel;
+        unsigned int exceptfloodlevel, exceptspamlevel, exceptcapslevel;
+        unsigned int capsmin, capspercent;
 	char *str, *info;	
 	time_t expiry;    
 	dict_t object;
@@ -2770,6 +2984,12 @@ spamserv_saxdb_read(struct dict *database)
 		str = database_get_data(hir->d.object, KEY_EXPIRY, RECDB_QSTRING);
 		expiry = str ? strtoul(str, NULL, 0) : 0;
 
+		str = database_get_data(hir->d.object, KEY_CAPSMIN, RECDB_QSTRING);
+		capsmin = str ? strtoul(str, NULL, 0) : 10;
+
+		str = database_get_data(hir->d.object, KEY_CAPSPERCENT, RECDB_QSTRING);
+		capspercent = str ? strtoul(str, NULL, 0) : 25;
+
 		str = database_get_data(hir->d.object, KEY_EXCEPTLEVEL, RECDB_QSTRING);
 		exceptlevel = str ? strtoul(str, NULL, 0) : UL_MANAGER;
 
@@ -2778,6 +2998,9 @@ spamserv_saxdb_read(struct dict *database)
 
 		str = database_get_data(hir->d.object, KEY_EXCEPTBADWORDLEVEL, RECDB_QSTRING);
 		exceptbadwordlevel = str ? strtoul(str, NULL, 0) : UL_OP;
+
+		str = database_get_data(hir->d.object, KEY_EXCEPTCAPSLEVEL, RECDB_QSTRING);
+		exceptcapslevel = str ? strtoul(str, NULL, 0) : UL_OP;
 
 		str = database_get_data(hir->d.object, KEY_EXCEPTFLOODLEVEL, RECDB_QSTRING);
 		exceptfloodlevel = str ? strtoul(str, NULL, 0) : UL_OP;
@@ -2801,9 +3024,12 @@ spamserv_saxdb_read(struct dict *database)
 				else
 					cInfo->suspend_expiry = expiry;
 
+				cInfo->capsmin      = capsmin;
+				cInfo->capspercent  = capspercent;
 				cInfo->exceptlevel        = exceptlevel;
 				cInfo->exceptadvlevel     = exceptadvlevel;
 				cInfo->exceptbadwordlevel = exceptbadwordlevel;
+				cInfo->exceptcapslevel    = exceptcapslevel;
 				cInfo->exceptfloodlevel   = exceptfloodlevel;
 				cInfo->exceptspamlevel    = exceptspamlevel;
 			}
@@ -2848,6 +3074,12 @@ spamserv_saxdb_write(struct saxdb_context *ctx)
 		if(cInfo->flags)
 			saxdb_write_int(ctx, KEY_FLAGS, cInfo->flags);
 
+		if(cInfo->capsmin)
+			saxdb_write_int(ctx, KEY_CAPSMIN, cInfo->capsmin);
+
+		if(cInfo->capspercent)
+			saxdb_write_int(ctx, KEY_CAPSPERCENT, cInfo->capspercent);
+
 		if(cInfo->exceptlevel)
 			saxdb_write_int(ctx, KEY_EXCEPTLEVEL, cInfo->exceptlevel);
 
@@ -2856,6 +3088,9 @@ spamserv_saxdb_write(struct saxdb_context *ctx)
 
 		if(cInfo->exceptbadwordlevel)
 			saxdb_write_int(ctx, KEY_EXCEPTBADWORDLEVEL, cInfo->exceptbadwordlevel);
+
+		if(cInfo->exceptcapslevel)
+			saxdb_write_int(ctx, KEY_EXCEPTCAPSLEVEL, cInfo->exceptcapslevel);
 
 		if(cInfo->exceptfloodlevel)
 			saxdb_write_int(ctx, KEY_EXCEPTFLOODLEVEL, cInfo->exceptfloodlevel);
@@ -3012,6 +3247,7 @@ init_spamserv(const char *nick)
 	timeq_add(now + JOINFLOOD_TIMEQ_FREQ, timeq_joinflood, NULL);
 	timeq_add(now + ADV_TIMEQ_FREQ, timeq_adv, NULL);
 	timeq_add(now + BAD_TIMEQ_FREQ, timeq_bad, NULL);
+	timeq_add(now + CAPS_TIMEQ_FREQ, timeq_caps, NULL);
 	timeq_add(now + WARNLEVEL_TIMEQ_FREQ, timeq_warnlevel, NULL);
 	timeq_add(now + KILL_TIMEQ_FREQ, timeq_kill, NULL);
 
@@ -3033,17 +3269,22 @@ init_spamserv(const char *nick)
 	modcmd_register(spamserv_module, "SET EXCEPTLEVEL", opt_exceptlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET EXCEPTADVLEVEL", opt_exceptadvlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET EXCEPTBADWORDLEVEL", opt_exceptbadwordlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET EXCEPTCAPSLEVEL", opt_exceptcapslevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET EXCEPTFLOODLEVEL", opt_exceptfloodlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET EXCEPTSPAMLEVEL", opt_exceptspamlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET SPAMLIMIT", opt_spamlimit, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET BADREACTION", opt_badreaction, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET CAPSREACTION", opt_capsreaction, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET ADVREACTION", opt_advreaction, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET WARNREACTION", opt_warnreaction, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET ADVSCAN", opt_advscan, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET CAPSSCAN", opt_capsscan, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET BADWORDSCAN", opt_badwordscan, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET SPAMSCAN", opt_spamscan, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET CHANFLOODSCAN", opt_chanfloodscan, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET JOINFLOODSCAN", opt_joinflood, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET CAPSMIN", opt_capsmin, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET CAPSPERCENT", opt_capspercent, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 
 	spamserv_service->trigger = spamserv_conf.trigger;
 

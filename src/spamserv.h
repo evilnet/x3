@@ -34,14 +34,15 @@
 enum channelinfo
 {
     ci_SpamLimit = 0,
-    ci_AdvReaction,
-    ci_WarnReaction,
-    ci_BadReaction,
+    ci_AdvReaction = 4,
+    ci_WarnReaction = 3,
+    ci_BadReaction = 3,
+    ci_CapsReaction = 3,
     ci_Max
 };
 
 #define CHAN_INFO_SIZE		(ci_Max + 1)
-#define CHAN_INFO_DEFAULT	"blss"
+#define CHAN_INFO_DEFAULT	"blsss"
 
 #define CHAN_SPAMSCAN		0x00000001
 #define CHAN_CHANFLOODSCAN	0x00000002
@@ -49,6 +50,7 @@ enum channelinfo
 #define CHAN_ADV_SCAN		0x00000008
 #define CHAN_SUSPENDED		0x00000080
 #define CHAN_BADWORDSCAN	0x00000100
+#define CHAN_CAPSSCAN		0x00000200
 
 #define CHAN_FLAGS_DEFAULT	(CHAN_SPAMSCAN | CHAN_CHANFLOODSCAN | CHAN_JOINFLOOD)
 
@@ -58,6 +60,7 @@ enum channelinfo
 #define CHECK_ADV(x)		((x)->flags & CHAN_ADV_SCAN)
 #define CHECK_SUSPENDED(x)	((x)->flags & CHAN_SUSPENDED)
 #define CHECK_BADWORDSCAN(x)	((x)->flags & CHAN_BADWORDSCAN)
+#define CHECK_CAPSSCAN(x)	((x)->flags & CHAN_CAPSSCAN)
 
 struct chanInfo
 {
@@ -67,10 +70,13 @@ struct chanInfo
     unsigned int           exceptlevel;
     unsigned int           exceptadvlevel;
     unsigned int           exceptbadwordlevel;
+    unsigned int           exceptcapslevel;
     unsigned int           exceptfloodlevel;
     unsigned int           exceptspamlevel;
     unsigned int           flags : 30;
-    char                   info[CHAN_INFO_SIZE];
+    int           capsmin;
+    int           capspercent;
+    char                   info[CHAN_INFO_SIZE+1];
     time_t                 suspend_expiry;
 };
 
@@ -88,6 +94,7 @@ struct chanInfo
 #define USER_KILLED         0x00000080
 #define USER_ADV_WARNED     0x00000100
 #define USER_BAD_WARNED     0x00000200
+#define USER_CAPS_WARNED    0x00000400
 
 #define CHECK_KICK(x)		((x)->flags & USER_KICK)
 #define CHECK_KICKBAN(x)	((x)->flags & USER_KICKBAN)
@@ -99,6 +106,7 @@ struct chanInfo
 #define CHECK_KILLED(x)		((x)->flags & USER_KILLED)
 #define CHECK_ADV_WARNED(x)	((x)->flags & USER_ADV_WARNED)
 #define CHECK_BAD_WARNED(x)	((x)->flags & USER_BAD_WARNED)
+#define CHECK_CAPS_WARNED(x)	((x)->flags & USER_CAPS_WARNED)
 
 #define SPAM_WARNLEVEL          1
 
@@ -119,6 +127,10 @@ struct chanInfo
 #define BAD_TIMEQ_FREQ          300
 #define BAD_EXPIRE              900
 #define BAD_WARNLEVEL           2
+
+#define CAPS_TIMEQ_FREQ          300
+#define CAPS_EXPIRE              900
+#define CAPS_WARNLEVEL           2
 
 #define WARNLEVEL_TIMEQ_FREQ    1800
 #define MAX_WARNLEVEL           6
@@ -162,6 +174,7 @@ struct userInfo
 	unsigned int		warnlevel;
 	time_t        		lastadv;
 	time_t        		lastbad;
+	time_t        		lastcaps;
 };
 
 /***********************************************/
