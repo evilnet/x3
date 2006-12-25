@@ -47,9 +47,6 @@ enum channelinfo
 #define CHAN_CHANFLOODSCAN	0x00000002
 #define CHAN_JOINFLOOD		0x00000004
 #define CHAN_ADV_SCAN		0x00000008
-#define CHAN_SCAN_CHANOPS	0x00000010
-#define CHAN_SCAN_HALFOPS	0x00000020
-#define CHAN_SCAN_VOICED	0x00000040
 #define CHAN_SUSPENDED		0x00000080
 #define CHAN_BADWORDSCAN	0x00000100
 
@@ -59,9 +56,6 @@ enum channelinfo
 #define CHECK_FLOOD(x)		((x)->flags & CHAN_CHANFLOODSCAN)
 #define CHECK_JOINFLOOD(x)	((x)->flags & CHAN_JOINFLOOD)
 #define CHECK_ADV(x)		((x)->flags & CHAN_ADV_SCAN)
-#define CHECK_CHANOPS(x)	((x)->flags & CHAN_SCAN_CHANOPS)
-#define CHECK_HALFOPS(x)	((x)->flags & CHAN_SCAN_HALFOPS)
-#define CHECK_VOICED(x)		((x)->flags & CHAN_SCAN_VOICED)
 #define CHECK_SUSPENDED(x)	((x)->flags & CHAN_SUSPENDED)
 #define CHECK_BADWORDSCAN(x)	((x)->flags & CHAN_BADWORDSCAN)
 
@@ -71,6 +65,10 @@ struct chanInfo
     struct string_list     *exceptions;
     struct string_list     *badwords;
     unsigned int           exceptlevel;
+    unsigned int           exceptadvlevel;
+    unsigned int           exceptbadwordlevel;
+    unsigned int           exceptfloodlevel;
+    unsigned int           exceptspamlevel;
     unsigned int           flags : 30;
     char                   info[CHAN_INFO_SIZE];
     time_t                 suspend_expiry;

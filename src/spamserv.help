@@ -36,16 +36,15 @@
 	  "With an argument, it will add the given word to the badword list.",
 	  "$X checks, if one of the words in the sentence of a user is in the badword list; if so, $X will not punish the user, doesn't matter, if it's a bad advertisement.",
 	  "This means, you have to make sure, all badwords are adequate.",
-	  "$bFirst example$b: You added the word \"gamesurge.net\" to the badword list and someone posts \"www.gamesurge.net/aup\", he won't get punished.",
+	  "$bFirst example$b: You added the word \"afternet.org\" to the badword list and someone posts \"www.afternet.org/aup\", he won't get punished.",
 	  "$bSecond example$b: You added the word \"support\" to the list and someone tells another person to join #support, he won't get punished.",
-	  "$bThird example$b: You added \"GameSurge\" to the list and someone posts \"JOIN #channelxyz on GameSurge\", he will NOT get punished, because the word \"GameSurge\" is in the sentence.",
+	  "$bThird example$b: You added \"afternet\" to the list and someone posts \"JOIN #channelxyz on afternet\", he will NOT get punished, because the word \"afternet\" is in the sentence.",
 	  "If he would say \"JOIN #channelxyz\", $X would punish him.",
 	  "$uSee Also:$u delbadword");
 
 "ADDTRUST" ("/msg $X ADDTRUST <nick/*account> <#channel>",
         "Adds the specified account to the trusted user list for $X in the channel specified.",
         "Users on the trusted user list will be immune to $X checks in the specified channel",
-        "Access level: $b${level/addtrust}$b",
         "$uSee Also:$u deltrust, listtrust"
         );
 
@@ -56,14 +55,14 @@
 
 "ADDEXCEPTION" ("/msg $X ADDEXCEPTION [word]",
         "Without an argument, it will show all existing exceptions.",
-	  "With an argument, it will add the given word to the exception list.",
-	  "$X checks, if one of the words in the sentence of a user is in the exception list; if so, $X will not punish the user, doesn't matter, if it's a bad advertisement.",
-	  "This means, you have to make sure, all exceptions are adequate.",
-	  "$bFirst example$b: You added the word \"gamesurge.net\" to the exception list and someone posts \"www.gamesurge.net/aup\", he won't get punished.",
-	  "$bSecond example$b: You added the word \"support\" to the list and someone tells another person to join #support, he won't get punished.",
-	  "$bThird example$b: You added \"GameSurge\" to the list and someone posts \"JOIN #channelxyz on GameSurge\", he will NOT get punished, because the word \"GameSurge\" is in the sentence.",
-	  "If he would say \"JOIN #channelxyz\", $X would punish him.",
-	  "$uSee Also:$u delexception");
+        "With an argument, it will add the given word to the exception list.",
+        "$X checks, if one of the words in the sentence of a user is in the exception list; if so, $X will not punish the user, doesn't matter, if it's a bad advertisement.",
+        "This means, you have to make sure, all exceptions are adequate.",
+        "$bFirst example$b: You added the word \"afternet.org\" to the exception list and someone posts \"www.afternet.org/aup\", he won't get punished.",
+        "$bSecond example$b: You added the word \"support\" to the list and someone tells another person to join #support, he won't get punished.",
+        "$bThird example$b: You added \"afternet\" to the list and someone posts \"JOIN #channelxyz on afternet\", he will NOT get punished, because the word \"afternet\" is in the sentence.",
+        "If he would say \"JOIN #channelxyz\", $X would punish him.",
+        "$uSee Also:$u delexception");
 
 "DELEXCEPTION" ("/msg $X DELEXCEPTION",
         "Without an argument, it will show all existing exceptions.",
@@ -73,7 +72,6 @@
 "DELTRUST" ("/msg $X DELTRUST <nick/*account> <#channel>",
         "Removes the specified account to the trusted user list for $X in the channel specified.",
         "Users on the trusted user list will be immune to $X checks in the specified channel",
-        "Access level: $b${level/deltrust}$b",
         "$uSee Also:$u addtrust, listtrust"
         );
 
@@ -86,7 +84,6 @@
         "Adds the specified account to the trusted user list for $X in the channel specified.",
         "If global is specified then the user will be added to the global trusted user list for $X.",
         "Users on the trusted user list will be immune to $X checks in the specified channel(s)",
-        "Access level: $b${level/odeltrust}$b",
         "$uSee Also:$u odeltrust, listtrust"
         );
 
@@ -94,27 +91,47 @@
         "Removes the specified account to the trusted user list for $X in the channel specified.",
         "If global is specified then the user will be added to the global trusted user list for $X.",
         "Users on the trusted user list will be immune to $X checks in the specified channel(s)",
-        "Access level: $b${level/odeltrust}$b",
         "$uSee Also:$u oaddtrust, listtrust"
         );
 
 "SET" ("/msg $X SET <#channel> [<parameter> [setting]]",
         "This command will set various channel options. With no arguments, it will show the current values of all channel options.",
         "Only channel owners and coowners may change settings.",
-        "EXCEPTLEVEL:    Users equal and above to this level will be exempt to $X checks.",
-        "SPAMLIMIT:      Number of equal lines, a user may send.",
-        "BADREACTION:    What happens when someone says a badword after warning.",
-        "ADVREACTION:    What happens when someone advertises after warning.",
-        "WARNREACTION:   What happens when someone continues spamming/flooding after warning.",
-        "ADVSCAN:        Enables/Disables scanning for advertisements.",
-        "BADWORDSCAN:    Enables/Disables scanning for badwords.",
-        "SPAMSCAN:       Enables/Disables scanning for spam.",
-        "CHANFLOODSCAN:  Enables/Disables scanning for channel flood.",
-        "JOINFLOODSCAN:  Enables/Disables scanning for joinflood.",
-        "SCANCHANOPS:    Indicates whether $X has to scan messages from channel op. (and those with op, manager, cowner and owner access).",
-        "SCANHALFOPS:    Indicates whether $X has to scan messages from channel halfops (and those with halfops access).",
-        "SCANVOICED:     Indicates whether $X has to scan messages from voiced users (and those with peon access).",
-        "$uSee Also:$u set spamlimit, set badreaction, set advreaction, set warnreaction, set advscan, set badwordscan, set spamscan, set chanfloodscan, set joinfloodscan, set scanchanops, set scanhalfops, set scanvoiced");
+        "EXCEPTLEVEL:        Users equal and above to this level will be exempt to all $X checks.",
+        "EXCEPTADVLEVEL:     Users equal and above to this level will be exempt to $X advertising checks.",
+        "EXCEPTBADWORDLEVEL: Users equal and above to this level will be exempt to $X badword checks.",
+        "EXCEPTFLOODLEVEL:   Users equal and above to this level will be exempt to $X flood checks.",
+        "EXCEPTSPAMLEVEL:    Users equal and above to this level will be exempt to $X spam checks.",
+        "SPAMLIMIT:          Number of equal lines, a user may send.",
+        "BADREACTION:        What happens when someone says a badword after warning.",
+        "ADVREACTION:        What happens when someone advertises after warning.",
+        "WARNREACTION:       What happens when someone continues spamming/flooding after warning.",
+        "ADVSCAN:            Enables/Disables scanning for advertisements.",
+        "BADWORDSCAN:        Enables/Disables scanning for badwords.",
+        "SPAMSCAN:           Enables/Disables scanning for spam.",
+        "CHANFLOODSCAN:      Enables/Disables scanning for channel flood.",
+        "JOINFLOODSCAN:      Enables/Disables scanning for joinflood.",
+        "$uSee Also:$u set spamlimit, set badreaction, set advreaction, set warnreaction, set advscan, set badwordscan, set spamscan, set chanfloodscan, set joinfloodscan");
+
+"SET EXCEPTLEVEL" ("/msg $X SET <#channel> EXCEPTLEVEL <level>",
+        "Any users equal or above to the specified level will be exempt to all $X checks",
+        "$uSee Also:$u set exceptadvlevel, set exceptbadwordlevel, set exceptfloodlevel, set exceptspamlevel");
+
+"SET EXCEPTADVLEVEL" ("/msg $X SET <#channel> EXCEPTADVLEVEL <level>",
+        "Any users equal or above to the specified level will be exempt to $X advertising checks",
+        "$uSee Also:$u set exceptlevel, set exceptbadwordlevel, set exceptfloodlevel, set exceptspamlevel");
+
+"SET EXCEPTBADWORDLEVEL" ("/msg $X SET <#channel> EXCEPTBADWORDLEVEL <level>",
+        "Any users equal or above to the specified level will be exempt to $X badword checks",
+        "$uSee Also:$u set exceptlevel, set exceptadvlevel, set exceptfloodlevel, set exceptspamlevel");
+
+"SET EXCEPTFLOODLEVEL" ("/msg $X SET <#channel> EXCEPTFLOODLEVEL <level>",
+        "Any users equal or above to the specified level will be exempt to $X flood checks",
+        "$uSee Also:$u set exceptlevel, set exceptadvlevel, set exceptbadwordlevel, set exceptspamlevel");
+
+"SET EXCEPTSPAMLEVEL" ("/msg $X SET <#channel> EXCEPTSPAMLEVEL <level>",
+        "Any users equal or above to the specified level will be exempt to $X spam checks",
+        "$uSee Also:$u set exceptlevel set exceptadvlevel, set exceptbadwordlevel, set exceptfloodlevel");
 
 "SET SPAMLIMIT" ("/msg $X SET <#channel> SPAMLIMIT <value>",
         "You can specify the number of equal messages, a user may send.  Valid settings are:",
@@ -154,7 +171,7 @@
 
 "SET ADVSCAN" ("/msg $X SET <#channel> ADVSCAN <1/0>",
         "If this setting is enabled, $X checks all messages for advertisements.",
-        "Advertisements are: www.*, http:*, ftp.*, ftp:* and #*; e.g. #srvx, http://www.srvx.net etc ..");
+        "Advertisements are: www.*, http:*, ftp.*, ftp:* and #*; e.g. #evilnet, http://evilnet.sourceforge.net etc ..");
 
 "SET BADSCAN" ("/msg $X SET <#channel> BADSCAN <1/0>",
         "If this setting is enabled, $X checks all messages for badwords.");
@@ -171,15 +188,6 @@
         "If this setting is enabled, $X checks, if a person joins the channel more than one time.",
         "Normally users join a channel and stay in the channel or part and do not rejoin after a few seconds.",
         "If they want to cause trouble, they join/part the channel very often. $X will punish every user, who does that.");
-
-"SET SCANCHANOPS" ("/msg $X SET <#channel> SCANCHANOPS <1/0>",
-        "If this setting is disabled, $X doesn't check messages from oped users for spam, flood and advertisements.");
-
-"SET SCANHALFOPS" ("/msg $X SET <#channel> SCANHALFOPS <1/0>",
-        "If this setting is disabled, $X doesn't check messages from halfopped users for spam, flood and advertisements.");
-
-"SET SCANVOICED" ("/msg $X SET <#channel> SCANVOICED <1/0>",
-        "If this setting is disabled, $X doesn't check messages from voiced users for spam, flood and advertisements.");
 
 "REGISTER" ("/msg $X REGISTER <#channel>",
         "Registers a channel with $X.",

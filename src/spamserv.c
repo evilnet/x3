@@ -58,6 +58,10 @@
 #define KEY_STRIP_MIRC_CODES         "strip_mirc_codes"
 #define KEY_ALLOW_MOVE_MERGE         "allow_move_merge"
 #define KEY_EXCEPTLEVEL              "exceptlevel"
+#define KEY_EXCEPTSPAMLEVEL          "exceptspamlevel"
+#define KEY_EXCEPTFLOODLEVEL         "exceptfloodlevel"
+#define KEY_EXCEPTADVLEVEL           "exceptadvlevel"
+#define KEY_EXCEPTBADWORDLEVEL       "exceptbadwordlevel"
 
 #define SPAMSERV_FUNC(NAME)	MODCMD_FUNC(NAME)
 #define SPAMSERV_SYNTAX()	svccmd_send_help(user, spamserv, cmd)
@@ -84,9 +88,9 @@ dict_t killed_users_dict;
 #define spamserv_debug(format...) do { if(spamserv_conf.debug_channel) send_channel_notice(spamserv_conf.debug_channel , spamserv , ## format); } while(0)
 #define ss_reply(format...)	send_message(user , spamserv , ## format)
 
-#define SET_SUBCMDS_SIZE 14
+#define SET_SUBCMDS_SIZE 15
 
-const char *set_subcommands[SET_SUBCMDS_SIZE] = {"EXCEPTLEVEL", "SPAMLIMIT", "BADREACTION", "ADVREACTION", "WARNREACTION", "ADVSCAN", "SPAMSCAN", "BADWORDSCAN", "CHANFLOODSCAN", "JOINFLOODSCAN", "SCANCHANOPS", "SCANHALFOPS", "SCANVOICED"};
+const char *set_subcommands[SET_SUBCMDS_SIZE] = {"EXCEPTLEVEL", "EXCEPTADVLEVEL", "EXCEPTBADWORDLEVEL", "EXCEPTFLOODLEVEL", "EXCEPTSPAMLEVEL", "SPAMLIMIT", "BADREACTION", "ADVREACTION", "WARNREACTION", "ADVSCAN", "SPAMSCAN", "BADWORDSCAN", "CHANFLOODSCAN", "JOINFLOODSCAN"};
 
 extern struct string_list *autojoin_channels;
 static void spamserv_clear_spamNodes(struct chanNode *channel);
@@ -164,7 +168,11 @@ static const struct message_entry msgtab[] = {
 
     { "SSMSG_MUST_BE_HELPING", "You must have security override (helping mode) on to use this command." },
 
-    { "SSMSG_SET_EXCEPTLEVEL", "$bExceptLevel$b   %d." }, 
+    { "SSMSG_SET_EXCEPTLEVEL"       , "$bExceptLevel$b        %d." }, 
+    { "SSMSG_SET_EXCEPTADVLEVEL",     "$bExceptAdvLevel$b     %d." }, 
+    { "SSMSG_SET_EXCEPTBADWORDLEVEL", "$bExceptBadWordLevel$b %d." }, 
+    { "SSMSG_SET_EXCEPTFLOODLEVEL",   "$bExceptFloodLevel$b   %d." }, 
+    { "SSMSG_SET_EXCEPTSPAMLEVEL",    "$bExceptSpamLevel$b    %d." }, 
 
     { NULL, NULL }
 };
@@ -270,6 +278,10 @@ spamserv_register_channel(struct chanNode *channel, struct string_list *exceptio
 	cInfo->badwords = badwords ? string_list_copy(badwords) : alloc_string_list(1);
 	cInfo->flags = flags;
 	cInfo->exceptlevel = 300;
+	cInfo->exceptspamlevel = 100;
+	cInfo->exceptadvlevel = 100;
+	cInfo->exceptbadwordlevel = 100;
+	cInfo->exceptfloodlevel = 100;
 	safestrncpy(cInfo->info, info, sizeof(cInfo->info));
 	cInfo->suspend_expiry = 0;
 	dict_insert(registered_channels_dict, strdup(cInfo->channel->name), cInfo);
@@ -1614,10 +1626,174 @@ channel_except_level(struct userNode *user, struct chanNode *channel, int argc, 
     return 0;
 }
 
+static int
+channel_except_adv_level(struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
+{
+    struct chanData *cData = channel->channel_info;
+    struct chanInfo *cInfo;
+    struct userData *uData;
+    unsigned short value;
+
+    cInfo = get_chanInfo(channel->name);
+
+    if(argc > 1)
+    {
+        if(!ss_check_user_level(channel, user, cInfo->exceptadvlevel, 1, 1))
+        {
+            reply("SSMSG_CANNOT_SET");
+            return 0;
+        }
+        value = user_level_from_name(argv[1], UL_OWNER+1);
+        if(!value && strcmp(argv[1], "0"))
+	{
+	    reply("SSMSG_INVALID_ACCESS", argv[1]);
+            return 0;
+        }
+        uData = GetChannelUser(cData, user->handle_info);
+        if(!uData || ((uData->access < UL_OWNER) && (value > uData->access)))
+        {
+            reply("SSMSG_BAD_SETLEVEL");
+            return 0;
+        }
+        cInfo->exceptadvlevel = value;
+    }
+    reply("SSMSG_SET_EXCEPTADVLEVEL", cInfo->exceptadvlevel);
+    return 0;
+}
+
+static int
+channel_except_badword_level(struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
+{
+    struct chanData *cData = channel->channel_info;
+    struct chanInfo *cInfo;
+    struct userData *uData;
+    unsigned short value;
+
+    cInfo = get_chanInfo(channel->name);
+
+    if(argc > 1)
+    {
+        if(!ss_check_user_level(channel, user, cInfo->exceptbadwordlevel, 1, 1))
+        {
+            reply("SSMSG_CANNOT_SET");
+            return 0;
+        }
+        value = user_level_from_name(argv[1], UL_OWNER+1);
+        if(!value && strcmp(argv[1], "0"))
+	{
+	    reply("SSMSG_INVALID_ACCESS", argv[1]);
+            return 0;
+        }
+        uData = GetChannelUser(cData, user->handle_info);
+        if(!uData || ((uData->access < UL_OWNER) && (value > uData->access)))
+        {
+            reply("SSMSG_BAD_SETLEVEL");
+            return 0;
+        }
+        cInfo->exceptbadwordlevel = value;
+    }
+    reply("SSMSG_SET_EXCEPTBADWORDLEVEL", cInfo->exceptbadwordlevel);
+    return 0;
+}
+
+static int
+channel_except_flood_level(struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
+{
+    struct chanData *cData = channel->channel_info;
+    struct chanInfo *cInfo;
+    struct userData *uData;
+    unsigned short value;
+
+    cInfo = get_chanInfo(channel->name);
+
+    if(argc > 1)
+    {
+        if(!ss_check_user_level(channel, user, cInfo->exceptfloodlevel, 1, 1))
+        {
+            reply("SSMSG_CANNOT_SET");
+            return 0;
+        }
+        value = user_level_from_name(argv[1], UL_OWNER+1);
+        if(!value && strcmp(argv[1], "0"))
+	{
+	    reply("SSMSG_INVALID_ACCESS", argv[1]);
+            return 0;
+        }
+        uData = GetChannelUser(cData, user->handle_info);
+        if(!uData || ((uData->access < UL_OWNER) && (value > uData->access)))
+        {
+            reply("SSMSG_BAD_SETLEVEL");
+            return 0;
+        }
+        cInfo->exceptfloodlevel = value;
+    }
+    reply("SSMSG_SET_EXCEPTFLOODLEVEL", cInfo->exceptfloodlevel);
+    return 0;
+}
+
+static int
+channel_except_spam_level(struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
+{
+    struct chanData *cData = channel->channel_info;
+    struct chanInfo *cInfo;
+    struct userData *uData;
+    unsigned short value;
+
+    cInfo = get_chanInfo(channel->name);
+
+    if(argc > 1)
+    {
+        if(!ss_check_user_level(channel, user, cInfo->exceptspamlevel, 1, 1))
+        {
+            reply("SSMSG_CANNOT_SET");
+            return 0;
+        }
+        value = user_level_from_name(argv[1], UL_OWNER+1);
+        if(!value && strcmp(argv[1], "0"))
+	{
+	    reply("SSMSG_INVALID_ACCESS", argv[1]);
+            return 0;
+        }
+        uData = GetChannelUser(cData, user->handle_info);
+        if(!uData || ((uData->access < UL_OWNER) && (value > uData->access)))
+        {
+            reply("SSMSG_BAD_SETLEVEL");
+            return 0;
+        }
+        cInfo->exceptspamlevel = value;
+    }
+    reply("SSMSG_SET_EXCEPTSPAMLEVEL", cInfo->exceptspamlevel);
+    return 0;
+}
+
 static
 SPAMSERV_FUNC(opt_exceptlevel)
 {
     return channel_except_level(SSFUNC_ARGS);
+}
+
+static
+SPAMSERV_FUNC(opt_exceptadvlevel)
+{
+    return channel_except_adv_level(SSFUNC_ARGS);
+}
+
+static
+SPAMSERV_FUNC(opt_exceptbadwordlevel)
+{
+    return channel_except_badword_level(SSFUNC_ARGS);
+}
+
+static
+SPAMSERV_FUNC(opt_exceptfloodlevel)
+{
+    return channel_except_flood_level(SSFUNC_ARGS);
+}
+
+static
+SPAMSERV_FUNC(opt_exceptspamlevel)
+{
+    return channel_except_spam_level(SSFUNC_ARGS);
 }
 
 static 
@@ -1708,24 +1884,6 @@ static
 SPAMSERV_FUNC(opt_joinflood)
 {
 	BINARY_OPTION("JoinFloodScan ", CHAN_JOINFLOOD);
-}
-
-static 
-SPAMSERV_FUNC(opt_scanops)
-{
-	BINARY_OPTION("ScanChanOps   ", CHAN_SCAN_CHANOPS);
-}
-
-static 
-SPAMSERV_FUNC(opt_scanhalfops)
-{
-	BINARY_OPTION("ScanHalfOps   ", CHAN_SCAN_HALFOPS);
-}
-
-static 
-SPAMSERV_FUNC(opt_scanvoiced)
-{
-	BINARY_OPTION("ScanVoiced    ", CHAN_SCAN_VOICED);
 }
 
 static void
@@ -2285,27 +2443,6 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
         }
 
 
-	if(!CHECK_CHANOPS(cInfo))
-	{
-		struct modeNode *mn = GetUserMode(channel, user);
-		if (mn && (mn->modes & MODE_CHANOP))
-			return;
-	}
-
-	if(!CHECK_HALFOPS(cInfo))
-	{
-		struct modeNode *mn = GetUserMode(channel, user);
-		if (mn && (mn->modes & MODE_HALFOP))
-			return;
-	}
-	
-	if(!CHECK_VOICED(cInfo))
-	{
-		struct modeNode *mn = GetUserMode(channel, user);
-		if (mn && ((mn->modes & MODE_VOICE) && !(mn->modes & MODE_CHANOP) && !(mn->modes & MODE_HALFOP)))
-			return;
-	}
-
         if(uData && (uData->access >= cInfo->exceptlevel))
             return;
 
@@ -2313,6 +2450,9 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 
 	if(CHECK_SPAM(cInfo))
 	{
+                if(uData && (uData->access >= cInfo->exceptspamlevel))
+                    return;
+
 		if(!(sNode = uInfo->spam))
 		{
 			spamserv_create_spamNode(channel, uInfo, text);
@@ -2383,6 +2523,9 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 
 	if(CHECK_FLOOD(cInfo))
 	{
+                if(uData && (uData->access >= cInfo->exceptfloodlevel))
+                    return;
+
 		if(!(fNode = uInfo->flood))
 		{
 			spamserv_create_floodNode(channel, user, &uInfo->flood);
@@ -2432,6 +2575,9 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 
 	if(CHECK_BADWORDSCAN(cInfo) && check_badwords(cInfo, text))
 	{
+                if(uData && (uData->access >= cInfo->exceptbadwordlevel))
+                    return;
+
 		if(CHECK_BAD_WARNED(uInfo))
 		{
 			switch(cInfo->info[ci_BadReaction])
@@ -2463,6 +2609,9 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 
 	if(CHECK_ADV(cInfo) && check_advertising(cInfo, text))
 	{
+                if(uData && (uData->access >= cInfo->exceptspamlevel))
+                    return;
+
 		if(CHECK_ADV_WARNED(uInfo))
 		{
 			switch(cInfo->info[ci_AdvReaction])
@@ -2586,7 +2735,9 @@ spamserv_saxdb_read(struct dict *database)
 	struct chanNode	*channel;
 	struct chanInfo	*cInfo;
 	struct string_list *strlist, *strlist2;
-	unsigned int flags, exceptlevel;
+	unsigned int flags;
+        unsigned int exceptlevel, exceptadvlevel, exceptbadwordlevel;
+        unsigned int exceptfloodlevel, exceptspamlevel;
 	char *str, *info;	
 	time_t expiry;    
 	dict_t object;
@@ -2622,6 +2773,18 @@ spamserv_saxdb_read(struct dict *database)
 		str = database_get_data(hir->d.object, KEY_EXCEPTLEVEL, RECDB_QSTRING);
 		exceptlevel = str ? strtoul(str, NULL, 0) : UL_MANAGER;
 
+		str = database_get_data(hir->d.object, KEY_EXCEPTADVLEVEL, RECDB_QSTRING);
+		exceptadvlevel = str ? strtoul(str, NULL, 0) : UL_OP;
+
+		str = database_get_data(hir->d.object, KEY_EXCEPTBADWORDLEVEL, RECDB_QSTRING);
+		exceptbadwordlevel = str ? strtoul(str, NULL, 0) : UL_OP;
+
+		str = database_get_data(hir->d.object, KEY_EXCEPTFLOODLEVEL, RECDB_QSTRING);
+		exceptfloodlevel = str ? strtoul(str, NULL, 0) : UL_OP;
+
+		str = database_get_data(hir->d.object, KEY_EXCEPTSPAMLEVEL, RECDB_QSTRING);
+		exceptspamlevel = str ? strtoul(str, NULL, 0) : UL_OP;
+
 		if(channel && info)
 		{
 			if((cInfo = spamserv_register_channel(channel, strlist, strlist2, flags, info)))
@@ -2638,7 +2801,11 @@ spamserv_saxdb_read(struct dict *database)
 				else
 					cInfo->suspend_expiry = expiry;
 
-				cInfo->exceptlevel = exceptlevel;
+				cInfo->exceptlevel        = exceptlevel;
+				cInfo->exceptadvlevel     = exceptadvlevel;
+				cInfo->exceptbadwordlevel = exceptbadwordlevel;
+				cInfo->exceptfloodlevel   = exceptfloodlevel;
+				cInfo->exceptspamlevel    = exceptspamlevel;
 			}
 		}
 		else
@@ -2683,6 +2850,18 @@ spamserv_saxdb_write(struct saxdb_context *ctx)
 
 		if(cInfo->exceptlevel)
 			saxdb_write_int(ctx, KEY_EXCEPTLEVEL, cInfo->exceptlevel);
+
+		if(cInfo->exceptadvlevel)
+			saxdb_write_int(ctx, KEY_EXCEPTADVLEVEL, cInfo->exceptadvlevel);
+
+		if(cInfo->exceptbadwordlevel)
+			saxdb_write_int(ctx, KEY_EXCEPTBADWORDLEVEL, cInfo->exceptbadwordlevel);
+
+		if(cInfo->exceptfloodlevel)
+			saxdb_write_int(ctx, KEY_EXCEPTFLOODLEVEL, cInfo->exceptfloodlevel);
+
+		if(cInfo->exceptspamlevel)
+			saxdb_write_int(ctx, KEY_EXCEPTSPAMLEVEL, cInfo->exceptspamlevel);
 
 		saxdb_write_string(ctx, KEY_INFO, cInfo->info);			
 
@@ -2852,6 +3031,10 @@ init_spamserv(const char *nick)
 	modcmd_register(spamserv_module, "STATUS", cmd_status, 1, 0, NULL);
 	modcmd_register(spamserv_module, "SET", cmd_set, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET EXCEPTLEVEL", opt_exceptlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET EXCEPTADVLEVEL", opt_exceptadvlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET EXCEPTBADWORDLEVEL", opt_exceptbadwordlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET EXCEPTFLOODLEVEL", opt_exceptfloodlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
+	modcmd_register(spamserv_module, "SET EXCEPTSPAMLEVEL", opt_exceptspamlevel, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET SPAMLIMIT", opt_spamlimit, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET BADREACTION", opt_badreaction, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET ADVREACTION", opt_advreaction, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
@@ -2861,9 +3044,6 @@ init_spamserv(const char *nick)
 	modcmd_register(spamserv_module, "SET SPAMSCAN", opt_spamscan, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET CHANFLOODSCAN", opt_chanfloodscan, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 	modcmd_register(spamserv_module, "SET JOINFLOODSCAN", opt_joinflood, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
-	modcmd_register(spamserv_module, "SET SCANCHANOPS", opt_scanops, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
-	modcmd_register(spamserv_module, "SET SCANHALFOPS", opt_scanhalfops, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
-	modcmd_register(spamserv_module, "SET SCANVOICED", opt_scanvoiced, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_CHANNEL, NULL);
 
 	spamserv_service->trigger = spamserv_conf.trigger;
 
