@@ -3,6 +3,10 @@
 
 2006-12-26  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/spamserv.c: Tweaked the SET output for the EXCEPT levels.
+
+2006-12-26  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/spamserv.c: Removed scan voiced/halfops/ops SET options.
 	Added 4 new except levels, EXCEPTADVLEVEL, EXCEPTBADWORDLEVEL,
 	EXCEPTFLOODLEVEL, and EXCEPTSPAMLEVEL. Users equal or above to

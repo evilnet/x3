@@ -168,11 +168,11 @@ static const struct message_entry msgtab[] = {
 
     { "SSMSG_MUST_BE_HELPING", "You must have security override (helping mode) on to use this command." },
 
-    { "SSMSG_SET_EXCEPTLEVEL"       , "$bExceptLevel$b        %d." }, 
-    { "SSMSG_SET_EXCEPTADVLEVEL",     "$bExceptAdvLevel$b     %d." }, 
-    { "SSMSG_SET_EXCEPTBADWORDLEVEL", "$bExceptBadWordLevel$b %d." }, 
-    { "SSMSG_SET_EXCEPTFLOODLEVEL",   "$bExceptFloodLevel$b   %d." }, 
-    { "SSMSG_SET_EXCEPTSPAMLEVEL",    "$bExceptSpamLevel$b    %d." }, 
+    { "SSMSG_SET_EXCEPTLEVEL"       , "$bExceptLevel$b        %d - level and above will be excepted from all checks." },
+    { "SSMSG_SET_EXCEPTADVLEVEL",     "$bExceptAdvLevel$b     %d - and above will be excepted from advertising checks." },
+    { "SSMSG_SET_EXCEPTBADWORDLEVEL", "$bExceptBadWordLevel$b %d - and above will be excepted from badword checks." },
+    { "SSMSG_SET_EXCEPTFLOODLEVEL",   "$bExceptFloodLevel$b   %d - and above will be excepted from flood checks." },
+    { "SSMSG_SET_EXCEPTSPAMLEVEL",    "$bExceptSpamLevel$b    %d - and above will be excepted from spam checks." },
 
     { NULL, NULL }
 };
