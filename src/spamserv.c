@@ -1562,8 +1562,25 @@ SPAMSERV_FUNC(cmd_set)
 	return subcmd->command->func(user, channel, argc - 1, argv + 1, subcmd);
 }
 
+int ss_check_user_level(struct chanNode *channel, struct userNode *user, unsigned int minimum, int allow_override, int exempt_owner)
+{
+    struct userData *uData;
+    struct chanData *cData = channel->channel_info;
+    if(!minimum)
+        return 1;
+    uData = _GetChannelUser(cData, user->handle_info, allow_override, 0);
+    if(!uData)
+        return 0;
+    if(minimum <= uData->access)
+        return 1;
+    if((minimum > UL_OWNER) && (uData->access == UL_OWNER) && exempt_owner)
+        return 1;
+    return 0;
+}
+
+
 static int
-channel_level_option(enum levelOption option, struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
+channel_except_level(struct userNode *user, struct chanNode *channel, int argc, char *argv[], struct svccmd *cmd)
 {
     struct chanData *cData = channel->channel_info;
     struct chanInfo *cInfo;
@@ -1574,7 +1591,7 @@ channel_level_option(enum levelOption option, struct userNode *user, struct chan
 
     if(argc > 1)
     {
-        if(!check_user_level(channel, user, option, 1, 1))
+        if(!ss_check_user_level(channel, user, cInfo->exceptlevel, 1, 1))
         {
             reply("SSMSG_CANNOT_SET");
             return 0;
@@ -1600,7 +1617,7 @@ channel_level_option(enum levelOption option, struct userNode *user, struct chan
 static
 SPAMSERV_FUNC(opt_exceptlevel)
 {
-    return channel_level_option(ci_SpamLimit, SSFUNC_ARGS);
+    return channel_except_level(SSFUNC_ARGS);
 }
 
 static 

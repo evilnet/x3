@@ -1,6 +1,13 @@
 /***********************************************************************
  X3 ChangeLog
 
+2006-12-25  Neil Spierling  <sirvulcan@gmail.com>
+
+	* Merry Christmas! :)
+
+	* src/spamserv.c: Meh cant sleep damn people outside. Fixed a bug
+	with setting exceptlevel.
+
 2006-12-24  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: fixed incorrect message when .dellamer is used on a
