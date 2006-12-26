@@ -294,7 +294,7 @@ spamserv_register_channel(struct chanNode *channel, struct string_list *exceptio
 	cInfo->exceptfloodlevel = 100;
         cInfo->capsmin = 10;
         cInfo->capspercent = 25;
-        if (sizeof(info) == 4)
+        if (strlen(info) < 5)
             strcat(info, "s");
 
 	safestrncpy(cInfo->info, info, sizeof(cInfo->info));

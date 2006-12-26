@@ -3,6 +3,11 @@
 
 2006-12-26  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/spamserv.c: Try this, tho sizeof worked fine for me with
+	info sizes of 4 and 5 ("blss" and "blsss") i had no crashes.
+
+2006-12-26  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/spamserv.c: Added CAPSSCAN for scanning caps, other related
 	options added, CAPSREACTION, CAPSMIN, and CAPSPERCENT.
 
