@@ -1,6 +1,11 @@
 /***********************************************************************
  X3 ChangeLog
 
+2007-01-01  Alex Schumann  <rubin@afternet.org>
+
+	* x3.conf.example: Fixed set_shows which didnt get updated a while
+	back.
+
 2006-12-26  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/spamserv.c: Try this, tho sizeof worked fine for me with
