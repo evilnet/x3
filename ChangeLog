@@ -1,6 +1,10 @@
 /***********************************************************************
  X3 ChangeLog
 
+2007-01-03  Alex Schumann  <rubin@afternet.org>
+
+	* src/opserv.c: fix crash in ctcp version checkin
+
 2007-01-01  Alex Schumann  <rubin@afternet.org>
 
 	* x3.conf.example: Fixed set_shows which didnt get updated a while

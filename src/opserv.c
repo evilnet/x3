@@ -2809,7 +2809,7 @@ opserv_notice_handler(struct userNode *user, struct userNode *bot, char *text, U
         if(text[0] == '\001') {
             text++;
             cmd = mysep(&text, " ");
-            if(!irccasecmp(cmd, "VERSION")) {
+            if(cmd && !irccasecmp(cmd, "VERSION")) {
                 char *version = mysep(&text, "\n");
                 if(!version)
                     version = "";
