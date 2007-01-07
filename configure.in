@@ -306,6 +306,10 @@ AC_ARG_ENABLE(modules,
       TRACK="-D HAVE_TRACK"
       AC_DEFINE(HAVE_TRACK, 1, [Define this if you are using mod-track])
     fi
+    if test "x$module" = "xhelpserv" ; then
+      TRACK="-D HAVE_HELPSERV"
+      AC_DEFINE(HAVE_HELPSERV, 1, [Define this if you are using mod-helpserv])
+    fi
   done
   IFS="$OIFS"
   MODULE_OBJS="$MODULE_OBJS $EXTRA_MODULE_OBJS"

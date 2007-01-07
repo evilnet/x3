@@ -1,9 +1,37 @@
-"<index>" ("Help Queue Manager commands",
-        "The following topics are available:",
-        "  HELP         How to use this service",
-        "  QUEUE        Managing the request queue",
-        "  USERS        Managing $S helpers",
-        "  OPER         IRC operator administration commands");
+"<index>" (
+	" Hello there!",
+	" Im $b$S$b, your helper service.",
+	"$b$b",
+	" With this service you can request help. Your",
+	" request will be picked up by a helper and you",
+	" will be assisted.",
+	"=---------------------------------------=",
+	"  $bQUEUE$b   - Managing the request queue.",
+	"  $bUSERS$b   - Managing $S helpers",
+        "  $bOPER$b    - IRC operator administration commands",
+	"$b$b",
+        " See $b/msg $S help <command>$b for syntax",
+	" and usage for a command.");
+
+"<userindex>" (
+	" Hello there!",
+	" Im $b$S$b, your helper service.",
+	"$b$b",
+	" With this service you can request help. Your",
+	" request will be picked up by a helper and you",
+	" will be assisted.",
+	"=---------------------------------------=",
+        "  $bCLOSEREQ$b - Close your current request.",
+        "  $bHELPER$b   - Find out whos currently helping you.",
+        "  $bSHOWREQ$b  - Detailed information on your current request.",
+	"  $bWAIT$b     - Find out where you are in the queue.",
+	"$b$b",
+        " See $b/msg $S help <command>$b for syntax",
+	" and usage for a command. To open a help request,",
+        " just type $b/msg $S <what you need help with>$b.",
+        " A request will be opened and picked up as soon as",
+        " possible by a helper");
+
 "QUEUE" ("Managing the request queue in $S",
         "  LIST        List open requests",
         "  NEXT        Pick up the next unassigned request",
@@ -15,6 +43,7 @@
         "  PAGE        Try to wake up other helpers",
         "  STATS       Get statistics on time and requests handled",
         "  STATSREPORT Shows statistics for all users");
+
 "USERS" ("Managing helpers in $S",
         "  USER ACCESS Description of the user access levels",
         "  HELPERS     List current helpers and their access levels",
@@ -25,6 +54,7 @@
         "  DELUSER     Remove a person from the service",
         "  CLVL        Change a user's access",
         "  SET         Change $S settings");
+
 "USER ACCESS" ("User access levels",
         "There are four levels of user access to $S: $btrial$b helper, $bhelper$b, $bmanager$b, and $bowner$b.",
         "Helpers can use the normal help queue management functions.",
@@ -33,6 +63,8 @@
         "Owners have those abilities, can add and remove managers, and change queue settings.");
 "OPER" ("IRC operator administration commands",
         "  REGISTER    Register a new HelpServ bot",
+        "  SUSPEND     Suspend a HelpServ bot",
+        "  UNSUSPEND   Unsuspend a HelpServ bot",
         "  ADDOWNER    Add an owner to an existing HelpServ",
         "  DELOWNER    Remove an owner from an existing HelpServ",
         "  MOVE        Change the channel or nick the service helps on",
@@ -42,110 +74,114 @@
         "  READHELP    Re-read help file");
 "COMMANDS" "${index}";
 
-"ADDTRIAL" ("$bADDTRIAL$b",
+"WAIT" (
+        "/msg $S WAIT",
+        "Tells you where you are sitting in the request queue and how long the first person has been sitting in the queue.");
+
+"ADDTRIAL" (
         "/msg $S ADDTRIAL <nick|*account>",
         "Add the specified user to the bot as a trial helper.",
         "$uSee also:$u helpers, addhelper, addmanager, clvl, deluser");
-"ADDHELPER" ("$bADDHELPER$b",
+"ADDHELPER" (
         "/msg $S ADDHELPER <nick|*account>",
         "Add the specified user to the bot as a helper.",
         "$uSee also:$u helpers, addtrial, addmanager, clvl, deluser");
-"ADDMANAGER" ("$bADDMANAGER$b",
+"ADDMANAGER" (
         "/msg $S ADDMANAGER <nick|*account>",
         "Add the specified user to the bot as a manager.",
         "$uSee also:$u helpers, addtrial, addhelper, clvl, deluser");
-"ADDOWNER" ("$bADDOWNER$b",
+"ADDOWNER" (
         "/msg $O HELPSERV ADDOWNER <bot-nick> <nick|*account>",
         "Add the specified user to the bot as a owner.",
         "$uSee also:$u clvl, delowner, helpers");
-"ADDNOTE" ("$bADDNOTE$b",
+"ADDNOTE" (
         "/msg $S ADDNOTE <reqid|nick|*account> <message>",
         "Adds a helper note to a request (useful for requests that last a long period of time).",
         "$uSee also:$u show");
-"BOTS" ("$bBOTS$b",
+"BOTS" (
         "/msg $O HELPSERV BOTS",
         "Lists the currently defined HelpServ bots (along with their channels and owners' accounts).",
         "$uSee also:$u EXPIRE");
-"EXPIRE" ("$bEXPIRE$b",
+"EXPIRE" (
         "/msg $O HELPSERV EXPIRE",
         "Expires any HelpServ bots that have been inactive for too long.",
         "$uSee also:$u BOTS");
-"GIVEOWNERSHIP" ("$bGIVEOWNERSHIP$b",
+"GIVEOWNERSHIP" (
         "/msg $S GIVEOWNERSHIP <nick|*account> CONFIRM",
         "Gives ownership of the bot to another user on the userlist.");
-"CLOSE" ("$bCLOSE$b",
+"CLOSE" (
         "/msg $S CLOSE <reqid|nick|*account> [reason]",
         "Closes out the specified request. The optional [reason] is included in the request log file.");
-"CLVL" ("$bCLVL$b",
+"CLVL" (
         "/msg $S CLVL <user|*nick> <new-level>",
         "Allows an owner or manager to change a user's access with $S.",
         "$uSee also:$u addtrial, addhelper, addmanager, deluser, helpers");
-"DELOWNER" ("$bDELOWNER$b",
+"DELOWNER" (
         "/msg $O HELPSERV DELOWNER <bot-nick> <nick|*account>",
         "Delete an owner from the channel user list.  (Secretly, this is just an alias for deluser.)",
         "$uSee also:$u clvl, deluser, helpers");
-"DELUSER" ("$bDELUSER$b",
+"DELUSER" (
         "/msg $S DELUSER <nick|*account>",
         "Delete a user from the channel user list.",
         "$uSee also:$u addhelper, addmanager, clvl, helpers");
-"HELP" ("$bHELP$b",
+"HELP" (
         "/msg $S HELP [command|topic]",
         "HELP will show you usage or other information for the command you give.",
         "All help entries will use the same syntax for usage, with optional parameters listed in [] and meta-parameters listed in <> (a meta-parameter is one that you must provide a value for).",
         "If you do not give a command or topic for HELP, an index is shown.");
-"HELPERS" ("$bHELPERS$b",
+"HELPERS" (
         "/msg $S HELPERS",
         "Displays the trials, helpers, managers and owner(s) registered with $S.",
         "$uSee also:$u addtrial, addhelper, addmanager, deluser, tlist, hlist, mlist, wlist");
-"WLIST" ("$bWLIST$b",
+"WLIST" (
         "/msg $S WLIST",
         "Displays the owner(s) registered with $S.",
         "$uSee also:$u helpers");
-"MLIST" ("$bMLIST$b",
+"MLIST" (
         "/msg $S MLIST",
         "Displays the managers registered with $S.",
         "$uSee also:$u helpers");
-"HLIST" ("$bHLIST$b",
+"HLIST" (
         "/msg $S HLIST",
         "Displays the helpers registered with $S.",
         "$uSee also:$u helpers");
-"TLIST" ("$bTLIST$b",
+"TLIST" (
         "/msg $S TLIST",
         "Displays the trials registered with $S.",
         "$uSee also:$u helpers");
-"LIST" ("$bLIST$b",
+"LIST" (
         "/msg $S LIST [unassigned|assigned|me|all]",
         "Lists open help requests of the specified type (if not specified, defaults to \"unassigned\").",
         "\"assigned\" means that a helper has picked up the request or been assigned to handle it.",
         "\"me\" means to only show requests assigned to you.",
         "$uSee also:$u next, pickup");
-"MOVE" ("$bMOVE$b",
+"MOVE" (
         "/msg $O HELPSERV MOVE <bot-nick> <new-nick|#new-channel>",
         "Makes the HelpServ bot use a different nick or channel.");
-"NEXT" ("$bNEXT$b",
+"NEXT" (
         "/msg $S NEXT",
         "Assigns the next unhandled help request to you.",
         "$uSee also:$u list, pickup, reassign, close");
-"PAGE" ("$bPAGE$b",
+"PAGE" (
         "/msg $S PAGE <reason for page>",
         "Pages the current page target, requesting attention.",
         "$uSee also:$u set");
-"PICKUP" ("$bPICKUP$b",
+"PICKUP" (
         "/msg $S PICKUP <reqid|nick|*account>",
         "Assigns the request with $breqid$b to you.",
         "$uSee also:$u list, next, reassign, close");
-"READHELP" ("$bREADHELP$b",
+"READHELP" (
         "/msg $O HELPSERV READHELP",
         "Re-reads the HelpServ help file.");
-"REASSIGN" ("$bREASSIGN$b",
+"REASSIGN" (
         "/msg $S REASSIGN <reqid|nick|*account> <new-helper-nick>",
         "Reassigns (or assigns) the specified request to $bnew_helper_nick$b.",
         "$uSee also:$u next, pickup, close");
-"REGISTER" ("$bREGISTER$b",
+"REGISTER" (
         "/msg $O HELPSERV REGISTER <bot-nick> <#channel> <owner-nick|*account>",
         "Registers a new HelpServ bot to the specified channel, and adds the given user as owner.",
         "$uSee also:$u unregister, helpers");
-"SET" ("$bSET$b",
+"SET" (
         "/msg $S SET [<option> [new-value]]",
         "Change service options.  If no option is specified, show all options.  If no value is specified, show current value of option.",
         "PageTarget       Send command pages to this channel",
@@ -173,74 +209,74 @@
         "AutoVoice        Automatically voices users when their request is assigned to a helper",
         "AutoDeVoice      Automatically devoices users when their request is closed or their helper is unassigned",
         "$uSee also:$u set <option-name>");
-"SET PAGETARGET" ("$bSET PAGETARGET$b",
+"SET PAGETARGET" (
         "/msg $S SET PAGETARGET [#channel-name]",
         "This sets the destination for pages and other alerts.  The target may be set to * to disable pages entirely.",
         "Just like $C registration requires an oper or helper, this option can only be set by an oper.",
         "$uSee also:$u set, set pagetype, set statuspagetype");
-"PAGE TYPES" ("$bPAGE TYPES$b",
+"PAGE TYPES" (
         "The following types of pages may be used:",
         "None            Disable this particular page type",
         "Notice          Send as a notice to PageTarget",
         "Privmsg         Send as a normal message to PageTarget",
         "Onotice         Send as a notice to channel operators in PageTarget",
         "$uSee also:$u set, set pagetarget, set pagetype, set statuspagetype");
-"SET PAGETYPE" ("$bSET PAGETYPE$b",
+"SET PAGETYPE" (
         "/msg $S SET PAGETYPE <page-type>",
         "This sets the type of page for pages sent using the $bpage$b command.",
         "$uSee also:$u set, set pagetarget, page types, page");
-"SET STATUSPAGETYPE" ("$bSET STATUSPAGETYPE$b",
+"SET STATUSPAGETYPE" (
         "/msg $S SET STATUSPAGETYPE <page-type>",
         "This sets the type of page sent when a new request is opened.",
         "$uSee also:$u set, set pagetarget, page types, page");
-"SET GREETING" ("$bSET GREETING$b",
+"SET GREETING" (
         "/msg $S SET GREETING <greeting-text>",
         "This sets the message sent to users when they join the channel -- for example, the URL for a FAQ or \"How to get help\" page.",
         "You may disable this message by using * as the text.",
         "$uSee also:$u set");
-"SET OPENREQ" ("$bSET OPENREQ$b",
+"SET OPENREQ" (
         "/msg $S SET OPENREQ <openreq-text>",
         "This sets a message sent to users when they open a new request with the bot.  It is sent just before more mechanical information about the request ID, current wait time, and request persistence.",
         "You may disable this message by using * as the text.",
         "$uSee also:$u set");
-"SET ASSIGNREQ" ("$bSET ASSIGNREQ$b",
+"SET ASSIGNREQ" (
         "/msg $S SET ASSIGNREQ <assignreq-text>",
         "This sets a message sent to users when their request is assigned to a helper (or re-assigned to another helper).",
         "You may disable this message by using * as the text.",
         "$uSee also:$u set");
-"SET CLOSEREQ" ("$bSET CLOSEREQ$b",
+"SET CLOSEREQ" (
         "/msg $S SET CLOSEREQ <closereq-text>",
         "This sets a message sent to users when their request is closed.",
         "You may disable this message by using * as the text.",
         "$uSee also:$u set");
-"SET IDLEDELAY" ("$bSET IDLEDELAY$b",
+"SET IDLEDELAY" (
         "/msg $S SET IDLEDELAY <interval>",
         "If a user idles in the help channel longer than the IdleDelay, then the bot will complain every WhineInterval reminding helpers of all the users that are waiting and idle at least IdleDelay. As a user without voice is forced to be idle, this makes sense primarily if the help channel is moderated (+m) and the helpers voice users (+v) to ask them what they need.",
         "You may disable this by using 0 as the interval.",
         "$uSee also:$u set, set whineinterval");
-"SET WHINEDELAY" ("$bSET WHINEDELAY$b",
+"SET WHINEDELAY" (
         "/msg $S SET WHINEDELAY <interval>",
         "If any unhandled requests in the queue are at least this old, the bot will send a page requesting someone to handle it.",
         "If the request remains unhandled, another complaint will be sent every WhineInterval.",
         "You may disable this by using 0 as the interval.",
         "$uSee also:$u set, set whineinterval");
-"SET WHINEINTERVAL" ("$bSET WHINEINTERVAL$b",
+"SET WHINEINTERVAL" (
         "/msg $S SET WHINEINTERVAL <interval>",
         "If any unhandled requests in the queue are at least WhineDelay old, then every WhineInterval, the bot will send a complaint about each unhandled request at least WhineDelay old, reminding helpers that the request is still unhandled.",
         "IdleDelay messages are also sent every WhineInterval.",
         "If you use 0 as the interval, only the initial request will be sent.",
         "$uSee also:$u set, set whinedelay, set idledelay");
-"SET EMPTYINTERVAL" ("$bSET EMPTYINTERVAL$b",
+"SET EMPTYINTERVAL" (
         "/msg $S SET EMPTYINTERVAL <interval>",
         "If the help channel is unstaffed (there are no helpers in the channel) the bot will send a complaint to PageTarget every EmptyInterval.",
         "You may disable this by using 0 as the interval.",
         "$uSee also:$u set");
-"SET STALEDELAY" ("$bSET STALEDELAY$b",
+"SET STALEDELAY" (
         "/msg $S SET STALEDELAY <interval>",
         "If a user adds additional information to a request that has been otherwise inactive for at least this amount of time, the PageTarget is sent a message set by StatusPageType mentioning the update.",
         "You may disable this by using 0 as the interval.",
         "$uSee also:$u set, set pagetarget, set statuspagetype");
-"SET REQPERSIST" ("$bSET REQPERSIST$b",
+"SET REQPERSIST" (
         "/msg $S SET REQPERSIST <persistence-type>",
         "This sets the \"request persistence\" for all requests.",
         "The following types of persistence may be used:",
@@ -249,7 +285,7 @@
         "Close           Request is only closed when a helper closes it",
         "$uPart$u and $uQuit$u type requests, and $uClose$u type requests with no associated account, will be automatically closed when the services restart.",
         "$uSee also:$u set, set helperpersist");
-"SET HELPERPERSIST" ("$bSET HELPERPERSIST$b",
+"SET HELPERPERSIST" (
         "/msg $S SET REQPERSIST <persistence-type>",
         "This sets the \"helper persistence\" for all requests.",
         "The following types of persistence may be used:",
@@ -258,7 +294,7 @@
         "Close           Request is never marked unassigned",
         "$uPart$u and $uQuit$u type requests will be marked unassigned when the services restart.",
         "$uSee also:$u set, set reqpersist");
-"SET NOTIFICATION" ("$bSET NOTIFICATION$b",
+"SET NOTIFICATION" (
         "/msg $S SET NOTIFICATION <notification-type>",
         "This sets the \"notification level\" for all requests. It determines which messages are sent to helpers when something happens with their request, or the user/handle the request is associated with.",
         "The following notification levels may be used:",
@@ -267,29 +303,54 @@
         "UserChanges      Above, and also notify of the user changing nick, disconnecting, or coming online",
         "AccountChanges   Above, and also notify when the user authenticates to a handle or unregisters a handle ($bcan only be set by an IRCOP$b)",
         "$uSee also:$u set");
-"SET PRIVMSGONLY" ("$bSET PRIVMSGONLY$b",
+"SET PRIVMSGONLY" (
         "/msg $S SET PRIVMSGONLY <Yes|No>",
         "This sets if messages to users communicating with $S will have their responses in privmsg format (overriding their account's preference for privmsg or notice).",
         "Helpers are not affected by this setting.",
         "$uSee also:$u set");
-"SET REQONJOIN" ("$bSET REQONJOIN$b",
+"SET REQONJOIN" (
         "/msg $S SET REQONJOIN <Yes|No>",
         "This sets if requests are automatically opened whenever someone joins the help channel. They contain no text by default.",
         "Helpers are not affected by this setting.",
         "$uSee also:$u set");
-"SHOW" ("$bSHOW$b",
+"SHOW" (
         "/msg $S SHOW <reqid|nick|*account>",
         "Shows the details of the specified request.",
         "$uSee also:$u list");
-"STATS" ("$bSTATS$b",
+"STATS" (
         "/msg $S STATS <nick|*account>",
         "Shows time and request statistics for the specified helper.  (If no one is specified, shows your own stats.)",
         "Only managers and owners may look at stats for other users.");
-"STATSREPORT" ("$bSTATSREPORT$b",
+"STATSREPORT" (
         "/msg $S STATSREPORT [NOTICE]",
         "Sends a list of how long each helper has been in the help channel for the past 4 weeks (separated by week)",
         "If you give the \"NOTICE\" argument, it will send the report as NOTICEs instead of PRIVMSGs.",
         "$uSee also:$u stats");
-"UNREGISTER" ("$bUNREGISTER$b",
+"UNREGISTER" (
         "/msg $S UNREGISTER CONFIRM",
         "Unregisters the channel and removes the service from the channel.");
+"SUSPEND" ("/msg $S SUSPEND <HelpBot> <duration> <reason>",
+        "This command will temporarily remove $b$S$b from a channel and suspend its registration.",
+        "The duration may be \"0\" to make it never expire; otherwise, $S will automatically unsuspend the channel after $uduration$u.",
+        "$uSee Also:$u unregister, unsuspend, durations");
+"UNSUSPEND" ("/msg $S UNSUSPEND <#channel>",
+        "Restores a channel's $b$S$b registration.",
+        "$uSee Also:$u suspend,");
+"DURATIONS" (
+        "This is the syntax used for commands that require time durations. A time duration is made up of numbers and units. Multiple units may be used in a row.",
+        "The valid unit letters are:",
+        "$by$b - years (365 days)",
+        "$bM$b - months (30 days)",
+        "$bw$b - weeks (7 days)",
+        "$bd$b - days (24 hours)",
+        "$bh$b - hours (60 minutes)",
+        "$bm$b - minutes (60 seconds)",
+        "$bs$b - seconds",
+        "If the unit letter is not givin, seconds are assumed.",
+        "$b$b",
+        "$uExamples$u:",
+        "$b5d$b is 5 days.",
+        "$b1y2M$b is 1 year and 2 months (425 days.)",
+        "$b1d1h$b is 1 day and 1 hour (25 hours.)",
+        "$b1h25m30s$b is 1 hour, 25 minutes and 30 seconds."
+        );

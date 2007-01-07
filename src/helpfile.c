@@ -512,7 +512,7 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
     expand_pos = pos = 0;
     chars_sent = 0;
     while (input.list[ipos]) {
-	char ch, *value, *free_value;
+	char ch, *value = NULL, *free_value;
 
         while ((ch = input.list[ipos]) && (ch != '$') && (ch != '\n') && (pos < size)) {
 	    line[pos++] = ch;
@@ -597,6 +597,11 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
         case 's':
             value = self->name;
             break;
+#ifdef HAVE_HELPSERV
+        case 'i':
+            value = strdup(get_helpserv_id(dest, src));
+            break;
+#endif
 	case 'H':
 	    value = handle ? handle->handle : "Account";
 	    break;

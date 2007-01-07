@@ -81,6 +81,8 @@ static const struct message_entry msgtab[] = {
     { "HSMSG_BOT_REGISTERED", "HelpServ %s (%s) registered to %s by %s." },
     { "HSMSG_BOT_EXPIRED", "HelpServ %s (%s) expired at request of %s." },
     { "HSMSG_BOT_UNREGISTERED", "HelpServ %s (%s) unregistered by %s." },
+    { "HSMSG_SUSPENDED_BY", "%s suspended by %s. (HelpServ)" },
+    { "HSMSG_UNSUSPENDED_BY", "%s unsuspended by %s. (HelpServ)" },
 
     /* nickserv.c */
     { "NSMSG_ACCOUNT_RENAMED", "%s renamed account %s to %s." },

@@ -2002,8 +2002,8 @@ static MODCMD_FUNC(cmd_version) {
 
     send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s %s]$b (Based on srvx 1.3.x), Built: "__DATE__", "__TIME__".", svnver, svndate);
     send_message_type(4, user, cmd->parent->bot, "$b$b");
-    send_message_type(4, user, cmd->parent->bot, "Copyright 2000-2006 srvx Development Team.");
-    send_message_type(4, user, cmd->parent->bot, "Copyright 2004-2006 X3 Development Team.");
+    send_message_type(4, user, cmd->parent->bot, "Copyright 2000-2007 srvx Development Team.");
+    send_message_type(4, user, cmd->parent->bot, "Copyright 2004-2007 X3 Development Team.");
     send_message_type(4, user, cmd->parent->bot, "This software is OSI Certified Open Source Software.");
     send_message_type(4, user, cmd->parent->bot, "OSI Certified is a certification mark of the Open Source Initiative.");
     send_message_type(4, user, cmd->parent->bot, "$b$b");

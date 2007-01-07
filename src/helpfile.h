@@ -108,4 +108,8 @@ void helpfile_finalize(void);
 struct helpfile *open_helpfile(const char *fname, expand_func_t expand);
 void close_helpfile(struct helpfile *hf);
 
+#ifdef HAVE_HELPSERV
+const char *get_helpserv_id(const char *nick, struct userNode *user);
+#endif
+
 #endif

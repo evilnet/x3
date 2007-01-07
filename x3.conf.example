@@ -548,6 +548,10 @@
         // How long should a helpserv be inactive (no requests assigned)
         // before it can be unregistered by the expire command?
         "expiration" "60d";
+
+        // If a user prefix's this before their helpserv commands then instead
+        // of a request being opened, they will be able to use helpserv commands.
+        "user_escape" "@";
     };
     /* SockCheck reads sockcheck.conf and can do configurable scans
      * to probe for open relays in an attempt to stop drones from using

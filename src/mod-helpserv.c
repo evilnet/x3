@@ -18,21 +18,13 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-/* Wishlist for helpserv.c
- * - Make HelpServ send unassigned request count to helpers as they join the
- *   channel
+/* Wishlist for mod-helpserv.c
  * - FAQ responses
  * - Get cmd_statsreport to sort by time and show requests closed
  * - .. then make statsreport show weighted combination of time and requests closed :)
- * - Something for users to use a subset of commands... like closing their
- *   own request(s), viewing what they've sent so far, and finding their
- *   helper's nick.
- * - It would be nice to have some variable expansions for the custom
- *   request open/close/etc messages. ${request/id}, etc
  * - Allow manipulation of the persist types on a per-request basis... so
  *   if it's normally set to close requests after a user quits, but there
  *   is a long-term issue, then that single request can remain
- * - Bot suspension
  */
 
 #include "conf.h"
@@ -87,6 +79,13 @@ const char *helpserv_module_deps[] = { NULL };
 #define KEY_AUTO_VOICE "auto_voice"
 #define KEY_AUTO_DEVOICE "auto_devoice"
 #define KEY_LAST_ACTIVE "last_active"
+#define KEY_JOIN_TOTAL "join_total"
+#define KEY_ALERT_NEW "alert_new" 
+#define KEY_SUSPENDED "suspended"
+#define KEY_EXPIRY "expiry"
+#define KEY_ISSUED "issued"
+#define KEY_SUSPENDER "suspender"
+#define KEY_REASON "reason"
 
 /* General */
 #define HSFMT_TIME               "%a, %d %b %Y %H:%M:%S %Z"
@@ -107,6 +106,7 @@ static const struct message_entry msgtab[] = {
 /* Greetings */
     { "HSMSG_GREET_EXISTING_REQ", "Welcome back to %s. You have already opened request ID#%lu. Any messages you send to $S will be appended to that request." },
     { "HSMSG_GREET_PRIVMSG_EXISTREQ", "Hello again. Your account has a previously opened request ID#%lu. This message and any further messages you send to $S will be appended to that request." },
+    { "HSMSG_REQUESTS_OPEN", "Hello. There are %d requests open. Use /msg %s LIST to view all requests, or use /msg %s NEXT to pickup the oldest request." },
 
 /* User Management */
     { "HSMSG_CANNOT_ADD", "You do not have permission to add users." },
@@ -136,7 +136,7 @@ static const struct message_entry msgtab[] = {
     { "HSMSG_MOVE_SAME_CHANNEL", "You cannot move %s to the same channel it is on." },
     { "HSMSG_INVALID_MOVE", "$b%s$b is not a valid nick or channel name." },
     { "HSMSG_NEED_GIVEOWNERSHIP_CONFIRM", "To transfer ownership of this bot, you must /msg $S giveownership newowner CONFIRM" },
-    { "HSMSG_MULTIPLE_OWNERS", "There is more than one owner of %s; please use other commands to change ownership." },
+    { "HSMSG_MULTIPLE_OWNERS", "There is more than one owner of %s; please use other commands to change ownership."},
     { "HSMSG_NO_TRANSFER_SELF", "You cannot give ownership to your own account." },
     { "HSMSG_OWNERSHIP_GIVEN", "Ownership of $b%s$b has been transferred to account $b%s$b." },
 
@@ -167,6 +167,8 @@ static const struct message_entry msgtab[] = {
     { "HSMSG_SET_REQONJOIN",      "$bReqOnJoin       $b %s" },
     { "HSMSG_SET_AUTOVOICE",      "$bAutoVoice       $b %s" },
     { "HSMSG_SET_AUTODEVOICE",    "$bAutoDevoice     $b %s" },
+    { "HSMSG_SET_JOINTOTAL",      "$bJoinTotal       $b %s" },
+    { "HSMSG_SET_ALERTNEW",       "$bAlertNew        $b %s" },
     { "HSMSG_PAGE_NOTICE", "notice" },
     { "HSMSG_PAGE_PRIVMSG", "privmsg" },
     { "HSMSG_PAGE_ONOTICE", "onotice" },
@@ -198,20 +200,21 @@ static const struct message_entry msgtab[] = {
     { "HSMSG_REQ_HIM_NOT_IN_OVERRIDE", "Note: %s is being assigned this request even though they are not in %s, because the restriction was overridden (you are a manager or owner). If they join and then part, this request will be marked unassigned." },
     { "HSMSG_REQ_ASSIGNED_YOU", "You have been assigned request ID#%lu:" },
     { "HSMSG_REQ_REASSIGNED", "You have been assigned request ID#%lu (reassigned from %s):" },
-    { "HSMSG_REQ_INFO_1", "Request ID#%lu:" },
-    { "HSMSG_REQ_INFO_2a", " - Nick %s / Account %s" },
-    { "HSMSG_REQ_INFO_2b", " - Nick %s / Not authed" },
-    { "HSMSG_REQ_INFO_2c", " - Online somewhere / Account %s" },
-    { "HSMSG_REQ_INFO_2d", " - Not online / Account %s" },
-    { "HSMSG_REQ_INFO_2e", " - Not online / No account" },
-    { "HSMSG_REQ_INFO_3", " - Opened at %s (%s ago)" },
-    { "HSMSG_REQ_INFO_4", " - Message:" },
+    { "HSMSG_REQ_INFO_1",       "Request ID#%lu:" },
+    { "HSMSG_REQ_INFO_2a",      " - Nick %s / Account %s" },
+    { "HSMSG_REQ_INFO_2b",      " - Nick %s / Not authed" },
+    { "HSMSG_REQ_INFO_2c",      " - Online somewhere / Account %s" },
+    { "HSMSG_REQ_INFO_2d",      " - Not online / Account %s" },
+    { "HSMSG_REQ_INFO_2e",      " - Not online / No account" },
+    { "HSMSG_REQ_INFO_3",       " - Opened at %s (%s ago)" },
+    { "HSMSG_REQ_INFO_4",       " - Message:" },
     { "HSMSG_REQ_INFO_MESSAGE", "   %s" },
     { "HSMSG_REQ_ASSIGNED", "Your helper for request ID#%lu is %s (Current nick: %s)" },
     { "HSMSG_REQ_ASSIGNED_AGAIN", "Your helper for request ID#%lu has been changed to %s (Current nick: %s)" },
     { "HSMSG_REQ_UNASSIGNED", "Your helper for request ID#%lu has %s, so your request is no longer being handled by them. It has been placed near the front of the unhandled request queue, based on how long ago your request was opened." },
     { "HSMSG_REQ_NEW", "Your message has been recorded and assigned request ID#%lu. A helper should contact you shortly." },
     { "HSMSG_REQ_NEWONJOIN", "Welcome to %s. You have been assigned request ID#%lu. A helper should contact you shortly." },
+    { "HSMSG_REQ_ALERT", "A new request (ID#%lu) has been opened in %s. Use /msg %s PICKUP %lu to pickup this request, or use /msg %s NEXT to pickup the oldest request." },
     { "HSMSG_REQ_UNHANDLED_TIME", "The oldest unhandled request has been waiting for %s." },
     { "HSMSG_REQ_NO_UNHANDLED", "There are no other unhandled requests." },
     { "HSMSG_REQ_PERSIST_QUIT", "Everything you tell me until you are helped (or you quit) will be recorded. If you disconnect, your request will be lost." },
@@ -296,10 +299,31 @@ static const struct message_entry msgtab[] = {
     { "HSMSG_STATS_REPORT_2", "Stats report for two weeks ago" },
     { "HSMSG_STATS_REPORT_3", "Stats report for three weeks ago" },
 
+/* Help */
+    { "HSMSG_HELP_COMMAND_ALIAS", "$uAlias for:$u %s" },
+    { "HSMSG_HELP_COMMAND_HEADER", "Command help for: $b%s$b" },
+    { "HSMSG_HELP_COMMAND_UNKNOWN", "No help available for that command." },
+    { "HSMSG_HELP_TOPIC_HEADER", "Help topic: $b%s$b" },
+    { "HSMSG_HELP_DIVIDER", "=---------------------------------------=" },
+    { "HSMSG_HELP_FOOTER", "=------------- End of Help -------------=" },
+    { "HSMSG_COMMAND_BINDING", "%s is a binding of: %s" },
+
+/* Channel [un]suspension */
+    { "HSMSG_ALREADY_SUSPENDED", "$b%s$b is already suspended." },
+    { "HSMSG_NOT_SUSPENDED", "$b%s$b is not suspended." },
+    { "HSMSG_SUSPENDED", "$b$S$b access to $b%s$b has been temporarily suspended." },
+    { "HSMSG_UNSUSPENDED", "$b$S$b access to $b%s$b has been restored." },
+    { "HSMSG_SUSPEND_NODELETE", "$b%s$b is protected from unregistration, and cannot be suspended." },
+    { "HSMSG_USER_SUSPENDED", "$b%s$b's access to $b%s$b has been suspended." },
+    { "HSMSG_USER_UNSUSPENDED", "$b%s$b's access to $b%s$b has been restored." },
+    { "HSMSG_BOT_NON_EXIST", "HelpServ bot %s does not exist." },
+
 /* Responses to user commands */
     { "HSMSG_YOU_BEING_HELPED", "You are already being helped." },
     { "HSMSG_YOU_BEING_HELPED_BY", "You are already being helped by $b%s$b." },
     { "HSMSG_WAIT_STATUS", "You are %d of %d in line; the first person has waited %s." },
+    { "HSMSG_NO_HELPER", "No one is currently helping you, please wait for a helper to pickup your request." },
+    { "HSMSG_HELPER", "You are currently being helped by %s." },
     { NULL, NULL }
 };
 
@@ -517,8 +541,15 @@ struct helpserv_bot {
     unsigned int req_on_join : 1;
     unsigned int auto_voice : 1;
     unsigned int auto_devoice : 1;
+    unsigned int join_total : 1;
+    unsigned int alert_new : 1;
 
     unsigned int helpchan_empty : 1;
+
+    unsigned int suspended : 1;
+    time_t expiry, issued;
+    char *suspender;
+    char *reason;
 
     time_t registered;
     time_t last_active;
@@ -608,10 +639,10 @@ static dict_t helpserv_users_byhand_dict; /* indexed by handle, holds a struct h
 /* This is so that overrides can "speak" from opserv */
 extern struct userNode *opserv;
 
-#define HELPSERV_SYNTAX() helpserv_help(hs, from_opserv, user, argv[0])
+#define HELPSERV_SYNTAX() helpserv_help(hs, from_opserv, user, argv[0], 0)
 #define HELPSERV_FUNC(NAME) int NAME(struct userNode *user, UNUSED_ARG(struct helpserv_bot *hs), int from_opserv, UNUSED_ARG(unsigned int argc), UNUSED_ARG(char *argv[]))
 typedef HELPSERV_FUNC(helpserv_func_t);
-#define HELPSERV_USERCMD(NAME) void NAME(struct helpserv_request *req, UNUSED_ARG(struct userNode *likely_helper), UNUSED_ARG(char *args))
+#define HELPSERV_USERCMD(NAME) int NAME(UNUSED_ARG(struct helpserv_request *req), UNUSED_ARG(struct userNode *likely_helper), UNUSED_ARG(char *args), UNUSED_ARG(int argc), UNUSED_ARG(char *argv[]), UNUSED_ARG(struct userNode *user), UNUSED_ARG(struct helpserv_bot *hs))
 typedef HELPSERV_USERCMD(helpserv_usercmd_t);
 #define HELPSERV_OPTION(NAME) HELPSERV_FUNC(NAME)
 typedef HELPSERV_OPTION(helpserv_option_func_t);
@@ -822,10 +853,13 @@ static struct helpserv_request * smart_get_request(struct helpserv_bot *hs, stru
 
 static struct helpserv_request * create_request(struct userNode *user, struct helpserv_bot *hs, int from_join) {
     struct helpserv_request *req = calloc(1, sizeof(struct helpserv_request));
-    char lbuf[3][MAX_LINE_SIZE], unh[INTERVALLEN];
+    char lbuf[3][MAX_LINE_SIZE], unh[INTERVALLEN], abuf[1][MAX_LINE_SIZE];
     struct helpserv_reqlist *reqlist, *hand_reqlist;
+    struct helpserv_user *hs_user;
+    struct userNode *target, *next_un = NULL;
     const unsigned int from_opserv = 0;
-    const char *fmt;
+    const char *fmt, *afmt;
+    dict_iterator_t it;
 
     assert(req);
 
@@ -924,6 +958,7 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
         fmt = user_find_message(user, "HSMSG_REQ_NEW");
         sprintf(lbuf[0], fmt, req->id);
     }
+
     if (req != hs->unhandled) {
         intervalString(unh, now - hs->unhandled->opened, user->handle_info);
         fmt = user_find_message(user, "HSMSG_REQ_UNHANDLED_TIME");
@@ -932,6 +967,20 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
         fmt = user_find_message(user, "HSMSG_REQ_NO_UNHANDLED");
         sprintf(lbuf[1], fmt);
     }
+
+    if (hs->alert_new) {
+        for (it = dict_first(hs->users); it; it = iter_next(it)) {
+            hs_user = iter_data(it);
+
+            afmt = user_find_message(user, "HSMSG_REQ_ALERT");
+            sprintf(abuf[0], afmt, req->id, hs->helpchan->name, hs->helpserv->nick, req->id, hs->helpserv->nick);
+            for (target = hs_user->handle->users; target; target = next_un) {
+                send_message_type(4, target, hs->helpserv, "%s", abuf[0]);
+                next_un = target->next_authed;
+            }
+        }
+    }
+
     switch (hs->persist_types[PERSIST_T_REQUEST]) {
         case PERSIST_PART:
             fmt = user_find_message(user, "HSMSG_REQ_PERSIST_PART");
@@ -968,7 +1017,7 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
 }
 
 /* Handle a message from a user to a HelpServ bot. */
-static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, char *text) {
+static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, char *text, char *argv[], int argc) {
     const int from_opserv = 0; /* for helpserv_notice */
     struct helpserv_request *req=NULL, *newest=NULL;
     struct helpserv_reqlist *reqlist, *hand_reqlist;
@@ -1021,7 +1070,30 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
 
     if (!req) {
         if (text[0] == helpserv_conf.user_escape) {
-            helpserv_msguser(user, "HSMSG_USERCMD_NO_REQUEST");
+            char cmdname[MAXLEN], *space;
+            helpserv_usercmd_t *usercmd;
+            struct userNode *likely_helper;
+
+            /* Allow HELP user command but no other if no open request,
+               this may change in the future if we make commands that
+               dont need an open request */
+
+            /* Find somebody likely to be the helper */
+            likely_helper = NULL;
+
+            space = strchr(text+1, ' ');
+            if (space)
+                strncpy(cmdname, text+1, space-text-1);
+            else
+                strcpy(cmdname, text+1);
+
+            /* Call the user command function */
+            usercmd = dict_find(helpserv_usercmd_dict, cmdname, NULL);
+            if (usercmd && !strcasecmp(cmdname, "HELP"))
+                usercmd(req, likely_helper, NULL, argc, argv, user, hs);
+            else
+                helpserv_msguser(user, "HSMSG_USERCMD_NO_REQUEST");
+
             return;
         }
         if ((hs->persist_types[PERSIST_T_REQUEST] == PERSIST_PART) && !GetUserMode(hs->helpchan, user)) {
@@ -1058,7 +1130,7 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
         /* Call the user command function */
         usercmd = dict_find(helpserv_usercmd_dict, cmdname, NULL);
         if (usercmd)
-            usercmd(req, likely_helper, space+1);
+            usercmd(req, likely_helper, space+1, argc, argv, user, hs);
         else
             helpserv_msguser(user, "HSMSG_USERCMD_UNKNOWN", cmdname);
         return;
@@ -1110,8 +1182,9 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
 static void helpserv_botmsg(struct userNode *user, struct userNode *target, char *text, UNUSED_ARG(int server_qualified)) {
     struct helpserv_bot *hs;
     struct helpserv_cmd *cmd;
-    struct helpserv_user *hs_user;
+    struct helpserv_user *hs_user = NULL;
     char *argv[MAXNUMPARAMS];
+    char *stext = strdup(text);
     int argc, argv_shift;
     const int from_opserv = 0; /* for helpserv_notice */
 
@@ -1121,17 +1194,28 @@ static void helpserv_botmsg(struct userNode *user, struct userNode *target, char
 
     hs = dict_find(helpserv_bots_dict, target->nick, NULL);
 
-    /* See if we should listen to their message as a command (helper)
-     * or a help request (user) */
-    if (!user->handle_info || !(hs_user = dict_find(hs->users, user->handle_info->handle, NULL))) {
-        helpserv_usermsg(user, hs, text);
+    
+    argv_shift = 1;
+    argc = split_line(stext, false, ArrayLength(argv)-argv_shift, argv+argv_shift);
+    if (!argc)
+        return;
+
+    text = strdup(text);
+
+    if (user->handle_info)
+        hs_user = dict_find(hs->users, user->handle_info->handle, NULL);
+
+    if (hs->suspended && !IsOper(user)) {
+        helpserv_notice(user, "HSMSG_SUSPENDED", hs->helpserv->nick);
         return;
     }
 
-    argv_shift = 1;
-    argc = split_line(text, false, ArrayLength(argv)-argv_shift, argv+argv_shift);
-    if (!argc)
+    /* See if we should listen to their message as a command (helper)
+     * or a help request (user) */
+    if (!user->handle_info || !hs_user) {
+        helpserv_usermsg(user, hs, text, argv, argc);
         return;
+    }
 
     cmd = dict_find(helpserv_func_dict, argv[argv_shift], NULL);
     if (!cmd) {
@@ -1199,8 +1283,27 @@ static MODCMD_FUNC(cmd_helpserv) {
     return retval;
 }
 
-static void helpserv_help(struct helpserv_bot *hs, int from_opserv, struct userNode *user, const char *topic) {
-    send_help(user, (from_opserv ? opserv : hs->helpserv), helpserv_helpfile, topic);
+static void helpserv_help(struct helpserv_bot *hs, int from_opserv, struct userNode *user, const char *topic, int from_user) {
+    char cmdname[MAXLEN];
+    unsigned int nn;
+
+    /* If there is no topic show the index */
+    if (!topic && from_user)
+        topic = "<userindex>";
+    else if (!topic && !from_user)
+        topic = "<index>";
+
+    /* make heading str (uppercase) */
+    for (nn=0; topic[nn]; nn++)
+            cmdname[nn] = toupper(topic[nn]);
+    cmdname[nn] = 0;
+
+    send_message(user, (from_opserv ? opserv : hs->helpserv), "HSMSG_HELP_TOPIC_HEADER", cmdname);
+    send_message(user, (from_opserv ? opserv : hs->helpserv), "HSMSG_HELP_DIVIDER");
+    if (!send_help(user, (from_opserv ? opserv : hs->helpserv), helpserv_helpfile, topic))
+        send_message(user, (from_opserv ? opserv : hs->helpserv), "MSG_TOPIC_UNKNOWN");
+    send_message(user, (from_opserv ? opserv : hs->helpserv), "HSMSG_HELP_FOOTER");
+
 }
 
 static int append_entry(const char *key, UNUSED_ARG(void *data), void *extra) {
@@ -1247,10 +1350,10 @@ static HELPSERV_USERCMD(usercmd_wait) {
             helpserv_user_reply("HSMSG_YOU_BEING_HELPED_BY", likely_helper->nick);
         else
             helpserv_user_reply("HSMSG_YOU_BEING_HELPED");
-        return;
+        return 0;
     }
 
-    for (other = req->hs->unhandled, pos = -1, count = 0; 
+    for (other = req->hs->unhandled, pos = -1, count = 0;
          other;
          other = other->next_unhandled, ++count) {
         if (other == req)
@@ -1259,6 +1362,30 @@ static HELPSERV_USERCMD(usercmd_wait) {
     assert(pos >= 0);
     intervalString(buf, now - req->hs->unhandled->opened, req->user->handle_info);
     helpserv_user_reply("HSMSG_WAIT_STATUS", pos+1, count, buf);
+
+    return 0;
+}
+
+static HELPSERV_USERCMD(usercmd_helper) {
+    if (req->helper) {
+        if (likely_helper)
+            helpserv_user_reply("HSMSG_HELPER", likely_helper->nick);
+    } else
+        helpserv_user_reply("HSMSG_NO_HELPER");
+
+    return 0;
+}
+
+static HELPSERV_USERCMD(usercmd_help) {
+    const char *topic;
+
+    if (argc < 2)
+        topic = NULL;
+    else
+        topic = unsplit_string(argv+2, argc-1, NULL);
+    helpserv_help(hs, 0, user, topic, 1);
+
+    return 0;
 }
 
 static HELPSERV_FUNC(cmd_help) {
@@ -1268,7 +1395,7 @@ static HELPSERV_FUNC(cmd_help) {
         topic = NULL;
     else
         topic = unsplit_string(argv+1, argc-1, NULL);
-    helpserv_help(hs, from_opserv, user, topic);
+    helpserv_help(hs, from_opserv, user, topic, 0);
 
     return 1;
 }
@@ -1703,6 +1830,94 @@ static HELPSERV_FUNC(cmd_close) {
     return 1;
 }
 
+static HELPSERV_USERCMD(usercmd_close) {
+    struct helpserv_request *newest=NULL;
+    struct helpserv_reqlist *nick_list, *hand_list;
+    char close_reason[MAXLEN], reqnum[12];
+    struct userNode *req_user=NULL;
+    unsigned long old_req;
+    unsigned int i;
+    int num_requests=0, from_opserv=0;
+
+    REQUIRE_PARMS(1);
+
+    sprintf(reqnum, "%lu", req->id);
+
+    if (num_requests > 1) {
+        helpserv_notice(user, "HSMSG_REQ_FOUNDMANY");
+        return 0;
+    }
+
+    helpserv_notice(user, "HSMSG_REQ_CLOSED", req->id);
+
+    if (req->user) {
+        req_user = req->user;
+        helpserv_message(hs, req->user, MSGTYPE_REQ_CLOSED);
+        if (req->handle)
+            helpserv_page(PGSRC_STATUS, "HSMSG_PAGE_CLOSE_REQUEST_1", req->id, req->user->nick, req->handle->handle, user->nick);
+        else
+            helpserv_page(PGSRC_STATUS, "HSMSG_PAGE_CLOSE_REQUEST_2", req->id, req->user->nick, user->nick);
+    } else {
+        if (req->handle)
+            helpserv_page(PGSRC_STATUS, "HSMSG_PAGE_CLOSE_REQUEST_3", req->id, req->handle->handle, user->nick);
+        else
+            helpserv_page(PGSRC_STATUS, "HSMSG_PAGE_CLOSE_REQUEST_4", req->id, user->nick);
+    }
+
+    /* Set these to keep track of the lists after the request is gone, but
+     * not if free_request() will helpserv_reqlist_free() them. */
+    nick_list = req->parent_nick_list;
+    if (nick_list && (nick_list->used == 1))
+        nick_list = NULL;
+    hand_list = req->parent_hand_list;
+    if (hand_list && (hand_list->used == 1))
+        hand_list = NULL;
+    old_req = req->id;
+
+    if (argc >= 1) {
+        if (user->handle_info)
+            snprintf(close_reason, MAXLEN, "Closed by %s: %s", user->handle_info->handle, unsplit_string(argv+1, argc-1, NULL));
+        else
+            snprintf(close_reason, MAXLEN, "Closed by %s: %s", user->nick, unsplit_string(argv+1, argc-1, NULL));
+    } else {
+        if (user->handle_info)
+            sprintf(close_reason, "Closed by %s", user->nick);
+        else
+            sprintf(close_reason, "Closed by %s", user->handle_info->handle);
+    }
+    helpserv_log_request(req, close_reason);
+    dict_remove(hs->requests, reqnum);
+
+    /* Look for other requests associated with them */
+    if (nick_list) {
+        for (i=0; i < nick_list->used; i++) {
+            req = nick_list->list[i];
+
+            if (req->hs != hs)
+                continue;
+            if (!newest || (newest->opened < req->opened))
+                newest = req;
+        }
+
+        if (newest)
+            helpserv_msguser(newest->user, "HSMSG_REQ_FOUND_ANOTHER", old_req, newest->id);
+    }
+
+    if (req_user && hs->auto_devoice) {
+        struct modeNode *mn = GetUserMode(hs->helpchan, req_user);
+        if ((!newest || !newest->helper) && mn && (mn->modes & MODE_VOICE)) {
+            struct mod_chanmode change;
+            mod_chanmode_init(&change);
+            change.argc = 1;
+            change.args[0].mode = MODE_REMOVE | MODE_VOICE;
+            change.args[0].u.member = mn;
+            mod_chanmode_announce(hs->helpserv, hs->helpchan, &change);
+        }
+    }
+
+    return 0;
+}
+
 static HELPSERV_FUNC(cmd_list) {
     dict_iterator_t it;
     int searchtype;
@@ -1934,6 +2149,18 @@ static HELPSERV_FUNC(cmd_show) {
     helpserv_notice(user, "HSMSG_REQ_INFO_1", req->id);
     helpserv_show(from_opserv, hs, user, req);
     return 1;
+}
+
+static HELPSERV_USERCMD(usercmd_show) {
+    int num_requests=0;
+    int from_opserv=0;
+
+    if (num_requests > 1)
+        helpserv_notice(user, "HSMSG_REQ_FOUNDMANY");
+
+    helpserv_notice(user, "HSMSG_REQ_INFO_1", req->id);
+    helpserv_show(from_opserv, hs, user, req);
+    return 0;
 }
 
 static HELPSERV_FUNC(cmd_pickup) {
@@ -2628,7 +2855,7 @@ static struct helpserv_bot *register_helpserv(const char *nick, const char *help
     if (!(hs->helpchan = GetChannel(help_channel))) {
         hs->helpchan = AddChannel(help_channel, now, NULL, NULL, NULL);
         AddChannelUser(hs->helpserv, hs->helpchan)->modes |= MODE_CHANOP;
-    } else {
+    } else if (!hs->suspended) {
         struct mod_chanmode change;
         mod_chanmode_init(&change);
         change.argc = 1;
@@ -2722,10 +2949,34 @@ static void helpserv_free_bot(void *data) {
     free(data);
 }
 
+static void helpserv_expire_suspension(void *data) {
+    struct helpserv_bot *hs = data;
+    struct chanNode *channel;
+    struct mod_chanmode *change;
+
+    channel = hs->helpchan;
+    hs->suspended = 0;
+    hs->expiry = 0;
+    hs->issued = 0;
+    hs->reason = NULL;
+    hs->suspender = NULL;
+
+    change = mod_chanmode_alloc(1);
+    change->argc = 1;
+    change->args[0].mode = MODE_CHANOP;
+    change->args[0].u.member = AddChannelUser(hs->helpserv, channel);
+
+    mod_chanmode_announce(hs->helpserv, channel, change);
+    mod_chanmode_free(change);
+}
+
 static void helpserv_unregister(struct helpserv_bot *bot, const char *quit_fmt, const char *global_fmt, const char *actor) {
     char reason[MAXLEN], channame[CHANNELLEN], botname[NICKLEN];
     struct helpserv_botlist *botlist;
     size_t len;
+
+    if (bot->suspended && bot->expiry)
+        timeq_del(bot->expiry, helpserv_expire_suspension, bot, 0);
 
     botlist = dict_find(helpserv_bots_bychan_dict, bot->helpchan->name, NULL);
     helpserv_botlist_remove(botlist, bot);
@@ -2752,6 +3003,72 @@ static HELPSERV_FUNC(cmd_unregister) {
 
     helpserv_unregister(hs, "Unregistered by %s", "HSMSG_BOT_UNREGISTERED", user->nick);
     return from_opserv;
+}
+
+static HELPSERV_FUNC(cmd_suspend) {
+    char reason[MAXLEN];
+    struct helpserv_bot *hsb;
+    time_t expiry, duration;
+
+    REQUIRE_PARMS(3);
+
+    if(!strcmp(argv[2], "0"))
+        expiry = 0;
+    else if((duration = ParseInterval(argv[2])))
+        expiry = now + duration;
+    else
+    {
+        helpserv_notice(user, "MSG_INVALID_DURATION", argv[1]);
+        return 0;
+    }
+
+    hsb = dict_find(helpserv_bots_dict, argv[1], NULL);
+    if (!hsb) {
+        helpserv_notice(user, "HSMSG_BOT_NON_EXIST", argv[1]);
+        return 0;
+    }
+
+    unsplit_string(argv + 3, argc - 3, reason);
+
+    hsb->suspended = 1;
+    hsb->issued = now;
+    hsb->expiry = expiry;
+    hsb->reason = strdup(reason);
+    hsb->suspender = strdup(user->handle_info->handle);
+
+    if(hsb->expiry)
+        timeq_add(hsb->expiry, helpserv_expire_suspension, hsb);
+
+    DelChannelUser(hsb->helpserv, hsb->helpchan, hsb->reason, 0);
+    helpserv_notice(user, "HSMSG_SUSPENDED", hsb->helpchan->name);
+    global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "HSMSG_SUSPENDED_BY",
+                        hsb->helpchan->name, hsb->suspender);
+
+   return 0;
+}
+
+static HELPSERV_FUNC(cmd_unsuspend) {
+    struct helpserv_bot *hsb;
+
+    hsb = dict_find(helpserv_bots_dict, argv[1], NULL);
+    if (!hsb) {
+        helpserv_notice(user, "HSMSG_BOT_NON_EXIST", argv[1]);
+        return 0;
+    }
+
+    if(!hsb->suspended)
+    {
+        helpserv_notice(user, "HSMSG_NOT_SUSPENDED", hsb->helpchan->name);
+        return 0;
+    }
+
+    /* Expire the suspension and join ChanServ to the channel. */
+    timeq_del(hsb->expiry, helpserv_expire_suspension, hsb, 0);
+    helpserv_expire_suspension(hsb);
+    helpserv_notice(user, "HSMSG_UNSUSPENDED", hsb->helpchan->name);
+    global_message_args(MESSAGE_RECIPIENT_OPERS|MESSAGE_RECIPIENT_HELPERS, "HSMSG_UNSUSPENDED_BY",
+                        hsb->helpchan->name, user->handle_info->handle);
+    return 1;
 }
 
 static HELPSERV_FUNC(cmd_expire) {
@@ -3184,6 +3501,14 @@ static HELPSERV_OPTION(opt_auto_devoice) {
     OPTION_BINARY(hs->auto_devoice, "HSMSG_SET_AUTODEVOICE");
 }
 
+static HELPSERV_OPTION(opt_join_total) {
+    OPTION_BINARY(hs->join_total, "HSMSG_SET_JOINTOTAL");
+}
+
+static HELPSERV_OPTION(opt_alert_new) {
+    OPTION_BINARY(hs->alert_new, "HSMSG_SET_ALERTNEW");
+}
+
 static HELPSERV_FUNC(cmd_set) {
     helpserv_option_func_t *opt;
 
@@ -3197,7 +3522,7 @@ static HELPSERV_FUNC(cmd_set) {
             opt_empty_interval, opt_stale_delay, opt_request_persistence,
             opt_helper_persistence, opt_notification, opt_id_wrap,
             opt_req_maxlen, opt_privmsg_only, opt_req_on_join, opt_auto_voice,
-            opt_auto_devoice
+            opt_auto_devoice, opt_join_total, opt_alert_new
         };
 
         helpserv_notice(user, "HSMSG_QUEUE_OPTIONS");
@@ -3225,6 +3550,56 @@ static HELPSERV_FUNC(cmd_set) {
         }
     }
     return opt(user, hs, from_opserv, argc-2, argv+2);
+}
+
+const char *
+get_helpserv_id(const char *nick, struct userNode *user) {
+    char id[MAX_LINE_SIZE];
+    int tid = 0;
+    struct helpserv_bot *hs;
+    struct userNode *target;
+    dict_iterator_t it;
+    struct helpserv_request *req=NULL, *newest=NULL;
+    struct helpserv_reqlist *reqlist;
+    unsigned int i;
+
+    if (!IsChannelName(nick))
+        target = GetUserN(nick);
+    else {
+        sprintf(id, "%s", "$i");
+        return strdup(id);
+    }
+
+    for (it=dict_first(helpserv_bots_dict); it; it=iter_next(it)) {
+        hs = iter_data(it);
+        if (strcasecmp(user->nick, hs->helpserv->nick))
+            continue;
+
+        if ((reqlist = dict_find(helpserv_reqs_bynick_dict, target->nick, NULL))) {
+            for (i=0; i < reqlist->used; i++) {
+                req = reqlist->list[i];
+                if (req->hs != hs)
+                    continue;
+                if (!newest || (newest->opened < req->opened))
+                    newest = req;
+            }
+
+            /* If nothing was found, this will set req to NULL */
+            req = newest;
+        }
+
+        if (req) {
+            tid = req->id;
+            break;
+        }
+    }
+
+    if (tid)
+        sprintf(id, "ID#%lu", req->id);
+    else
+        sprintf(id, "%s", "$i");
+
+    return strdup(id);
 }
 
 static int user_write_helper(const char *key, void *data, void *extra) {
@@ -3519,7 +3894,17 @@ helpserv_bot_write(const char *key, void *data, void *extra) {
     saxdb_write_int(ctx, KEY_REQ_ON_JOIN, hs->req_on_join);
     saxdb_write_int(ctx, KEY_AUTO_VOICE, hs->auto_voice);
     saxdb_write_int(ctx, KEY_AUTO_DEVOICE, hs->auto_devoice);
+    saxdb_write_int(ctx, KEY_JOIN_TOTAL, hs->join_total);
+    saxdb_write_int(ctx, KEY_ALERT_NEW, hs->alert_new);
     saxdb_write_int(ctx, KEY_LAST_ACTIVE, hs->last_active);
+
+    if (hs->suspended) {
+        saxdb_write_int(ctx, KEY_SUSPENDED, hs->suspended);
+        saxdb_write_int(ctx, KEY_EXPIRY, hs->expiry);
+        saxdb_write_int(ctx, KEY_ISSUED, hs->issued);
+        saxdb_write_string(ctx, KEY_SUSPENDER, hs->suspender);
+        saxdb_write_string(ctx, KEY_REASON, hs->reason);
+    }
 
     /* End bot record */
     saxdb_end_record(ctx);
@@ -3627,14 +4012,34 @@ static int helpserv_bot_read(const char *key, void *data, UNUSED_ARG(void *extra
     hs->auto_voice = str ? enabled_string(str) : 0;
     str = database_get_data(GET_RECORD_OBJECT(br), KEY_AUTO_DEVOICE, RECDB_QSTRING);
     hs->auto_devoice = str ? enabled_string(str) : 0;
+    str = database_get_data(GET_RECORD_OBJECT(br), KEY_JOIN_TOTAL, RECDB_QSTRING);
+    hs->join_total = str ? enabled_string(str) : 0;
+    str = database_get_data(GET_RECORD_OBJECT(br), KEY_ALERT_NEW, RECDB_QSTRING);
+    hs->alert_new = str ? enabled_string(str) : 0;
     str = database_get_data(GET_RECORD_OBJECT(br), KEY_LAST_ACTIVE, RECDB_QSTRING);
     hs->last_active = str ? atoi(str) : now;
+
+    str = database_get_data(GET_RECORD_OBJECT(br), KEY_SUSPENDED, RECDB_QSTRING);
+    hs->suspended = str ? atoi(str) : 0;
+    if (hs->suspended) {
+        str = database_get_data(GET_RECORD_OBJECT(br), KEY_EXPIRY, RECDB_QSTRING);
+        hs->expiry = str ? atoi(str) : 0;
+        str = database_get_data(GET_RECORD_OBJECT(br), KEY_ISSUED, RECDB_QSTRING);
+        hs->issued = str ? atoi(str) : 0;
+        str = database_get_data(GET_RECORD_OBJECT(br), KEY_SUSPENDER, RECDB_QSTRING);
+        hs->suspender = str ? str : 0;
+        str = database_get_data(GET_RECORD_OBJECT(br), KEY_REASON, RECDB_QSTRING);
+        hs->reason = str ? str : 0;
+    }
 
     dict_foreach(users, user_read_helper, hs);
 
     requests = database_get_data(GET_RECORD_OBJECT(br), KEY_REQUESTS, RECDB_OBJECT);
     if (requests)
         dict_foreach(requests, request_read_helper, hs);
+
+    if(hs->suspended && hs->expiry)
+        timeq_add(hs->expiry, helpserv_expire_suspension, hs);
 
     return 0;
 }
@@ -3969,6 +4374,18 @@ static int handle_join(struct modeNode *mNode) {
             if ((hs_user = dict_find(hs->users, user->handle_info->handle, NULL))) {
                 if (!hs_user->join_time)
                     hs_user->join_time = now;
+
+                if (hs->join_total) {
+                    if (hs_user->level >= HlHelper) {
+                        unsigned int total;
+                        struct helpserv_request *req;
+
+                        for (req = hs->unhandled, total=0; req; req = req->next_unhandled, total++) ;
+
+                        if (total > 0)
+                            helpserv_notice(user, "HSMSG_REQUESTS_OPEN", total, hs->helpserv->nick, hs->helpserv->nick);
+                    }
+                }
 
                 if (hs_user->level >= HlHelper && hs->intervals[INTERVAL_EMPTY_INTERVAL] && hs->helpchan_empty) {
                     hs->helpchan_empty = 0;
@@ -4513,6 +4930,8 @@ int helpserv_init() {
     helpserv_define_func("MOVE", cmd_move, HlOper, CMD_FROM_OPSERV_ONLY|CMD_NEED_BOT);
     helpserv_define_func("BOTS", cmd_bots, HlOper, CMD_FROM_OPSERV_ONLY|CMD_IGNORE_EVENT);
     helpserv_define_func("EXPIRE", cmd_expire, HlOper, CMD_FROM_OPSERV_ONLY);
+    helpserv_define_func("SUSPEND", cmd_suspend, HlOper, CMD_FROM_OPSERV_ONLY);
+    helpserv_define_func("UNSUSPEND", cmd_unsuspend, HlOper, CMD_FROM_OPSERV_ONLY);
     helpserv_define_func("WEEKSTART", cmd_weekstart, HlTrial, CMD_NEED_BOT);
 
     helpserv_option_dict = dict_new();
@@ -4541,8 +4960,14 @@ int helpserv_init() {
     helpserv_define_option("REQONJOIN", opt_req_on_join);
     helpserv_define_option("AUTOVOICE", opt_auto_voice);
     helpserv_define_option("AUTODEVOICE", opt_auto_devoice);
+    helpserv_define_option("JOINTOTAL", opt_join_total);
+    helpserv_define_option("ALERTNEW", opt_alert_new);
 
     helpserv_usercmd_dict = dict_new();
+    dict_insert(helpserv_usercmd_dict, "CLOSEREQ", usercmd_close);
+    dict_insert(helpserv_usercmd_dict, "HELP", usercmd_help);
+    dict_insert(helpserv_usercmd_dict, "HELPER", usercmd_helper);
+    dict_insert(helpserv_usercmd_dict, "SHOWREQ", usercmd_show);
     dict_insert(helpserv_usercmd_dict, "WAIT", usercmd_wait);
 
     helpserv_bots_dict = dict_new();

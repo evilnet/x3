@@ -1,6 +1,54 @@
 /***********************************************************************
  X3 ChangeLog
 
+2007-01-07  Neil Spierling  <sirvulcan@gmail.com>
+
+	* configure: Regenerated.
+
+	* configure.in: Added HAVE_HELPSERV.
+
+	* x3.conf.example: Seems theres been a hidden prefix option to
+	allow users to use helpserv commands (ones for users not helpers).
+
+	* src/config.h.in: Added HAVE_HELPSERV.
+
+	* src/mod-helpserv.c: Made helpserv more useable:
+
+	* Added CLOSEREQ for users to close their current request.
+
+	* Added SHOWREQ for users to show their current req (equiv of SHOW).
+
+	* Added JoinTotal, if ON then when a helper joins the channel they
+	will be sent a notice of the total UNASSIGNED requests. 
+
+	* Added AlertNew, if ON then when a user opens a new help request
+	all helpers will be alerted.
+
+	* Added SUSPEND/UNSUSPEND for suspending and unsuspending help 
+	bots.
+
+	* Added $i replacer for HelpServ SET's, changes $i to a valid
+	request id. If no iq exists for another bot uses $i then all
+	that is displayed is $i.
+
+	* Changed the USERCMD function type from void to int so that we
+	dont get a warning when trying to use REQUIRE_PARMS in a usercmd
+	function.
+
+	* Seeing as helpserv does its help slightly different i added in the
+	HEADER/DIVIDER/FOOTER help code from modcmd.c, so that the help
+	output looks the same.
+
+	* Addded usercmd_helpserv for to access USERINDEX.
+
+	* Allow users to use HELP even without an open request.
+
+	* src/mod-helpserv.help: Made the index a bit more like X3, O3 etc.
+	Also added a USERINDEX. Plus added help for the above things i
+	added to helpserv
+
+	* src/modcmd.c: Adjusted years.
+
 2007-01-03  Alex Schumann  <rubin@afternet.org>
 
 	* src/opserv.c: fix crash in ctcp version checkin
