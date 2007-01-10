@@ -3,6 +3,11 @@
 
 2007-01-10  Alex Schumann  <rubin@afternet.org>
 
+        * src/log.c: commented out impossible assertion which makes x3 core on
+	fatal errors instead of exit cleanly.
+
+2007-01-10  Alex Schumann  <rubin@afternet.org>
+
         * src/mod-helpserv.c: fix strncpy problem
 
 2007-01-07  Neil Spierling  <sirvulcan@gmail.com>

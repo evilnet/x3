@@ -602,7 +602,7 @@ log_module(struct log_type *type, enum log_severity sev, const char *format, ...
         fprintf(stderr, "%s: %s\n", log_severity_names[sev], msgbuf);
     }
     if (sev == LOG_FATAL) {
-        assert(0 && "fatal message logged");
+        //assert(0 && "fatal message logged");
         _exit(1);
     }
 }
