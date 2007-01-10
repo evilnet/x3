@@ -1083,7 +1083,7 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
 
             space = strchr(text+1, ' ');
             if (space)
-                strncpy(cmdname, text+1, space-text-1);
+                safestrncpy(cmdname, text+1, space-text-1);
             else
                 strcpy(cmdname, text+1);
 
@@ -1123,7 +1123,7 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
         /* Parse out command name */
         space = strchr(text+1, ' ');
         if (space)
-            strncpy(cmdname, text+1, space-text-1);
+            safestrncpy(cmdname, text+1, space-text-1);
         else
             strcpy(cmdname, text+1);
 
