@@ -3,6 +3,13 @@
 
 2007-01-07  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/chanserv.c: Fixed some bugs in trace_check_bans (Used with
+	checkrestrictions alerts.
+
+	* src/opserv.c: Fixed up how limits are check with checkrestrictions.
+
+2007-01-07  Neil Spierling  <sirvulcan@gmail.com>
+
 	* configure: Regenerated.
 
 	* configure.in: Added HAVE_HELPSERV.

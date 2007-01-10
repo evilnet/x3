@@ -1400,8 +1400,10 @@ opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG
             return; /* channel is invite only */
         }
 
-        if (channel->members.used >= channel->limit) {
-            return; /* channel is invite on */
+        if (channel->limit > 0) {
+            if (channel->members.used >= channel->limit) {
+                return; /* channel is invite on */
+            }
         }
 
         if (*channel->key) {
@@ -5741,8 +5743,10 @@ trace_svsjoin_func(struct userNode *match, void *extra)
             return 1; /* channel is invite only */
         }
 
-        if (channel->members.used >= channel->limit) {
-            return 1; /* channel is invite on */
+        if (channel->limit > 0) {
+            if (channel->members.used >= channel->limit) {
+                return 1; /* channel is invite on */
+            }
         }
 
         if (*channel->key) {

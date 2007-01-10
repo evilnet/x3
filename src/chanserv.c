@@ -7264,35 +7264,22 @@ handle_new_channel(struct chanNode *channel)
 int
 trace_check_bans(struct userNode *user, struct chanNode *chan)
 {
-    struct chanData *cData;
     struct banData *bData;
     struct mod_chanmode *change;
-
-    if(!(cData = chan->channel_info))
-        return 0;
 
     change = find_matching_bans(&chan->banlist, user, NULL);
     if (change)
        return 1;
 
-    /* ircd list
-    if (chan->banlist.used) {
-        unsigned int i;
-        for (i=0; i<chan->banlist.used; i++) {
-           if (!user_matches_glob(user, chan->banlist.list[i], MATCH_USENICK))
-               return 1;
-        }
-    }
-*/
     /* lamer list */
-    if(chan->banlist.used < MAXBANS)
-    {
-        for(bData = cData->bans;
-            bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
-            bData = bData->next);
+    if (chan->channel_info) {
+        for(bData = chan->channel_info->bans; bData; bData = bData->next) {
 
-        if(bData) {
-            return 1;
+            if(!user_matches_glob(user, bData->mask, MATCH_USENICK))
+                continue;
+
+            if(bData)
+               return 1;
         }
     }
 
