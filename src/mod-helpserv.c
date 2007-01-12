@@ -1023,13 +1023,16 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
     struct helpserv_reqlist *reqlist, *hand_reqlist;
     unsigned int i;
 
+    if(argc < 1)
+       return;
     if ((reqlist = dict_find(helpserv_reqs_bynick_dict, user->nick, NULL))) {
         for (i=0; i < reqlist->used; i++) {
             req = reqlist->list[i];
             if (req->hs != hs)
                 continue;
-            if (!newest || (newest->opened < req->opened))
-                newest = req;
+            /* if (!newest || (newest->opened < req->opened))  ?? XXX: this is a noop.. commenting it out -rubin */
+                                                               /* newest is set to null 9 lines up, and isnt changed between.. */
+            newest = req;
         }
 
         /* If nothing was found, this will set req to NULL */
@@ -1064,13 +1067,11 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
                 helpserv_msguser(user, "HSMSG_GREET_PRIVMSG_EXISTREQ", req->id);
             }
         }
-    } else {
-        hand_reqlist = NULL;
-    }
+    } 
 
     if (!req) {
-        if (text[0] == helpserv_conf.user_escape) {
-            char cmdname[MAXLEN], *space;
+        if (argv[1][0] == helpserv_conf.user_escape) {
+            char *cmdname;
             helpserv_usercmd_t *usercmd;
             struct userNode *likely_helper;
 
@@ -1081,11 +1082,7 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
             /* Find somebody likely to be the helper */
             likely_helper = NULL;
 
-            space = strchr(text+1, ' ');
-            if (space)
-                safestrncpy(cmdname, text+1, space-text-1);
-            else
-                strcpy(cmdname, text+1);
+            cmdname = argv[1]+1;
 
             /* Call the user command function */
             usercmd = dict_find(helpserv_usercmd_dict, cmdname, NULL);
@@ -1106,8 +1103,8 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
             helpserv_page(PGSRC_STATUS, "HSMSG_PAGE_NEW_REQUEST_AUTHED", req->id, user->nick, user->handle_info->handle);
         else
             helpserv_page(PGSRC_STATUS, "HSMSG_PAGE_NEW_REQUEST_UNAUTHED", req->id, user->nick);
-    } else if (text[0] == helpserv_conf.user_escape) {
-        char cmdname[MAXLEN], *space;
+    } else if (argv[1][0] == helpserv_conf.user_escape) {
+        char *cmdname;
         helpserv_usercmd_t *usercmd;
         struct userNode *likely_helper;
 
@@ -1120,17 +1117,12 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
             if (GetUserMode(hs->helpchan, likely_helper))
                 break;
 
-        /* Parse out command name */
-        space = strchr(text+1, ' ');
-        if (space)
-            safestrncpy(cmdname, text+1, space-text-1);
-        else
-            strcpy(cmdname, text+1);
+        cmdname = argv[1]+1;
 
         /* Call the user command function */
         usercmd = dict_find(helpserv_usercmd_dict, cmdname, NULL);
         if (usercmd)
-            usercmd(req, likely_helper, space+1, argc, argv, user, hs);
+            usercmd(req, likely_helper, text, argc, argv, user, hs);
         else
             helpserv_msguser(user, "HSMSG_USERCMD_UNKNOWN", cmdname);
         return;
@@ -1195,12 +1187,16 @@ static void helpserv_botmsg(struct userNode *user, struct userNode *target, char
     hs = dict_find(helpserv_bots_dict, target->nick, NULL);
 
     
+    /* XXX: For some unknown reason we are shifting +1 on the array and ignoring argv[0]; to avoid someone rightly assuming argv[0] 
+     * was the first argument later on and addressing random memory, were going to make argv[0] null. This whole thing is pretty unacceptable and needs fixed, though.*/
+    argv[0] = NULL;
     argv_shift = 1;
     argc = split_line(stext, false, ArrayLength(argv)-argv_shift, argv+argv_shift);
     if (!argc)
         return;
 
-    text = strdup(text);
+    /* XXX: why are we duplicating text here, and i don't see it being free'd anywhere.... */
+    /* text = strdup(text); */
 
     if (user->handle_info)
         hs_user = dict_find(hs->users, user->handle_info->handle, NULL);
@@ -1233,8 +1229,8 @@ static void helpserv_botmsg(struct userNode *user, struct userNode *target, char
     if (!cmd->func) {
         helpserv_notice(user, "HSMSG_INTERNAL_COMMAND", argv[argv_shift]);
     } else if (cmd->func(user, hs, 0, argc, argv+argv_shift)) {
-        unsplit_string(argv+argv_shift, argc, text);
-        log_audit(HS_LOG, LOG_COMMAND, user, hs->helpserv, hs->helpchan->name, 0, text);
+        char *buf = unsplit_string(argv+argv_shift, argc, NULL);
+        log_audit(HS_LOG, LOG_COMMAND, user, hs->helpserv, hs->helpchan->name, 0, buf);
     }
 }
 

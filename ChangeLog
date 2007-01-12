@@ -1,6 +1,14 @@
 /***********************************************************************
  X3 ChangeLog
 
+2007-01-12  Alex Schumann   <rubin@afternet.org>
+
+        * src/mod-helpserv.c: This module is coded very poorly, with lots of
+	newby c mistakes with pointers and malloc and whatnot. This fixes some
+	small part of that so that user commands work again, and to reduce
+	confusion.  It needs a LOT more work to be what I would consider
+	safe..
+
 2007-01-12  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/spamserv.c: Horrible but it will do, i need to rewrite
