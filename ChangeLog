@@ -1,6 +1,16 @@
 /***********************************************************************
  X3 ChangeLog
 
+2007-01-12  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/spamserv.c: Horrible but it will do, i need to rewrite
+	the flag system.
+
+	* src/spamserv.h: Oppsie, probably my fault. Fixed caps and
+	badreaction being linked up.
+
+	* src/proto-p10.c: Fixed handling of incoming SVSPART's.
+
 2007-01-10  Alex Schumann  <rubin@afternet.org>
 
         * src/log.c: commented out impossible assertion which makes x3 core on

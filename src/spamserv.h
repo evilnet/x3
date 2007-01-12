@@ -34,23 +34,23 @@
 enum channelinfo
 {
     ci_SpamLimit = 0,
-    ci_AdvReaction = 4,
-    ci_WarnReaction = 3,
+    ci_AdvReaction = 1,
+    ci_WarnReaction = 2,
     ci_BadReaction = 3,
-    ci_CapsReaction = 3,
+    ci_CapsReaction = 4,
     ci_Max
 };
 
 #define CHAN_INFO_SIZE		(ci_Max + 1)
-#define CHAN_INFO_DEFAULT	"blsss"
+#define CHAN_INFO_DEFAULT	"blssss"
 
 #define CHAN_SPAMSCAN		0x00000001
 #define CHAN_CHANFLOODSCAN	0x00000002
 #define CHAN_JOINFLOOD		0x00000004
 #define CHAN_ADV_SCAN		0x00000008
-#define CHAN_SUSPENDED		0x00000080
-#define CHAN_BADWORDSCAN	0x00000100
-#define CHAN_CAPSSCAN		0x00000200
+#define CHAN_SUSPENDED		0x00000010
+#define CHAN_BADWORDSCAN	0x00000020
+#define CHAN_CAPSSCAN		0x00000040
 
 #define CHAN_FLAGS_DEFAULT	(CHAN_SPAMSCAN | CHAN_CHANFLOODSCAN | CHAN_JOINFLOOD)
 

@@ -2026,7 +2026,7 @@ static CMD_FUNC(cmd_svspart)
 
     if (argc < 3)
         return 0;
-    user = GetUserH(argv[1]);
+    user = GetUserN(argv[1]);
     if (!user)
         return 0;
     parse_foreach(argv[2], part_helper, NULL, NULL, NULL, user);
