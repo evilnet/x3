@@ -571,7 +571,9 @@ static void
 spamserv_create_user(struct userNode *user)
 {
 	struct userInfo *uInfo = malloc(sizeof(struct userInfo));
-	struct killNode *kNode = dict_find(killed_users_dict, irc_ntoa(&user->ip), 0);
+	struct killNode *kNode = NULL;
+
+        kNode = dict_find(killed_users_dict, irc_ntoa(&user->ip), 0);
 
 	if(!uInfo)
 	{
@@ -596,8 +598,8 @@ spamserv_create_user(struct userNode *user)
 
 	if(kNode)
 	{
-		dict_remove(killed_users_dict, irc_ntoa(&user->ip));
 		free(kNode);
+		dict_remove(killed_users_dict, irc_ntoa(&user->ip));
 	}
 }
 

@@ -1,6 +1,12 @@
 /***********************************************************************
  X3 ChangeLog
 
+2007-01-15  Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/spamserv.c: As kNode points to an entry in killed_users_dict,
+	we need to free kNode before removing the entry. Fixed a nasty
+	glibc core.
+
 2007-01-12  Alex Schumann   <rubin@afternet.org>
 
         * src/mod-helpserv.c: This module is coded very poorly, with lots of
