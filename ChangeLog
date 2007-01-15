@@ -3,6 +3,12 @@
 
 2007-01-15  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/proto-p10.c: This will hide annoying rping/rping error messages
+	from the o3 alert channel when denora is linked. Will write proper
+	functions when i figure out how rping n rpong works.
+
+2007-01-15  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/spamserv.c: As kNode points to an entry in killed_users_dict,
 	we need to free kNode before removing the entry. Fixed a nasty
 	glibc core.

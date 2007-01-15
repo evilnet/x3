@@ -2399,6 +2399,12 @@ init_parse(void)
     dict_insert(irc_func_dict, CMD_ADMIN, cmd_admin);
     dict_insert(irc_func_dict, TOK_ADMIN, cmd_admin);
 
+    /* XXX write functions */
+    dict_insert(irc_func_dict, CMD_RPING, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_RPING, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_RPONG, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_RPONG, cmd_dummy);
+
     /* In P10, DESTRUCT doesn't do anything except be broadcast to servers.
      * Apparently to obliterate channels from any servers that think they
      * exist?
