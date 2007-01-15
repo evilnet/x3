@@ -3,6 +3,10 @@
 
 2007-01-15  Neil Spierling  <sirvulcan@gmail.com>
 
+	* src/proto-p10.c: RPING support.
+
+2007-01-15  Neil Spierling  <sirvulcan@gmail.com>
+
 	* src/proto-p10.c: This will hide annoying rping/rping error messages
 	from the o3 alert channel when denora is linked. Will write proper
 	functions when i figure out how rping n rpong works.

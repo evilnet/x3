@@ -745,6 +745,12 @@ irc_eob_ack(void)
 }
 
 void
+irc_rpong(const char *from1, const char *from2, const char *pingtime, const char *clientinfo)
+{
+    putsock("%s " P10_RPONG " %s %s %s :%s", self->numeric, from1, from2, pingtime, clientinfo);
+}
+
+void
 irc_ping(const char *payload)
 {
     putsock("%s " P10_PING " :%s", self->numeric, payload);
@@ -1301,6 +1307,19 @@ static CMD_FUNC(cmd_eob_ack)
         self->self_burst = self->burst = 0;
     }
     cManager.uplink->state = CONNECTED;
+    return 1;
+}
+
+static CMD_FUNC(cmd_rping)
+{
+    struct server *dest;
+
+    if (!(dest = GetServerN(argv[1])))
+        return 0;
+
+    if (dest == self)
+        irc_rpong(argv[2], argv[3], argv[4], argv[5]);
+
     return 1;
 }
 
@@ -2399,9 +2418,8 @@ init_parse(void)
     dict_insert(irc_func_dict, CMD_ADMIN, cmd_admin);
     dict_insert(irc_func_dict, TOK_ADMIN, cmd_admin);
 
-    /* XXX write functions */
-    dict_insert(irc_func_dict, CMD_RPING, cmd_dummy);
-    dict_insert(irc_func_dict, TOK_RPING, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_RPING, cmd_rping);
+    dict_insert(irc_func_dict, TOK_RPING, cmd_rping);
     dict_insert(irc_func_dict, CMD_RPONG, cmd_dummy);
     dict_insert(irc_func_dict, TOK_RPONG, cmd_dummy);
 
