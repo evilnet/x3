@@ -1,6 +1,13 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-01-28  Alex Schumann  <rubin@afternet.org>
+        
+	* src/mod-memoserv.c: if you bind memoserv commands to chanserv's
+	nick, and someone sends a memo, send them the memo from memoserv, if
+	there is a memoserv (not chanserv).  Also, make the mini-help prompts
+	more generic, for when they come from another bot besides memoserv.
+
 2007-01-15  Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/proto-p10.c: RPING support.

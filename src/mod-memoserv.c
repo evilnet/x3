@@ -67,8 +67,8 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_MEMO_SENT", "Message sent to $b%s$b (ID# %d)." },
     { "MSMSG_NO_MESSAGES", "You have no messages." },
     { "MSMSG_MEMOS_FOUND", "Found $b%d$b matches." },
-    { "MSMSG_HOWTO_READ", "Use /msg $S READ <ID> to read a message." },
-    { "MSMSG_CLEAN_INBOX", "You have $b%d$b or more messages, please clean out your inbox.\nUse /msg $S READ <ID> to read a message." },
+    { "MSMSG_HOWTO_READ", "Use READ <ID> to read a message." },
+    { "MSMSG_CLEAN_INBOX", "You have $b%d$b or more messages, please clean out your inbox.\nUse READ <ID> to read a message." },
     { "MSMSG_LIST_HEAD",      "$bID$b   $bFrom$b       $bTime Sent$b" },
     { "MSMSG_LIST_FORMAT",    "%-2u     %s $b%s$b          %s" },
     { "MSMSG_HISTORY_HEADER", "$bID$b   $bTo$b          $bTime Sent$b" },
@@ -85,11 +85,11 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_EXPIRY_OFF", "I am currently not expiring messages. (turned off)" },
     { "MSMSG_EXPIRY", "Messages will be expired when they are %s old (%d seconds)." },
     { "MSMSG_MESSAGES_EXPIRED", "$b%lu$b message(s) expired." },
-    { "MSMSG_MEMOS_INBOX", "You have $b%d$b new message(s) in your inbox and %d old messages.  Use /msg $S LIST to list them." },
-    { "MSMSG_NEW_MESSAGE", "You have a new message from $b%s$b. /msg $S LIST" },
+    { "MSMSG_MEMOS_INBOX", "You have $b%d$b new message(s) in your inbox and %d old messages.  Use LIST to list them." },
+    { "MSMSG_NEW_MESSAGE", "You have a new message from $b%s$b. Use LIST to see your messages." },
     { "MSMSG_FULL_INBOX",  "$b%s$b cannot recieve anymore memos as their inbox is full" },
     { "MSMSG_DELETED_ALL", "Deleted all of your messages." },
-    { "MSMSG_USE_CONFIRM", "Please use /msg $S DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
+    { "MSMSG_USE_CONFIRM", "Please use DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
 
     { "MSMSG_STATUS_HIST_TOTAL",   "I have $b%u$b history entries in my database." },
     { "MSMSG_STATUS_TOTAL",   "I have $b%u$b memos in my database." },
@@ -453,7 +453,7 @@ static MODCMD_FUNC(cmd_send)
         struct userNode *other;
 
         for (other = ma->handle->users; other; other = other->next_authed)
-            send_message_type((ma->flags & MEMO_USE_PRIVMSG)? MSG_TYPE_PRIVMSG : MSG_TYPE_NOTICE, other, cmd->parent->bot, "MSMSG_NEW_MESSAGE", user->nick);
+            send_message_type((ma->flags & MEMO_USE_PRIVMSG)? MSG_TYPE_PRIVMSG : MSG_TYPE_NOTICE, other, memoserv ? memoserv : cmd->parent->bot, "MSMSG_NEW_MESSAGE", user->nick);
     }
 
     reply("MSMSG_MEMO_SENT", ma->handle->handle, memo_id);
