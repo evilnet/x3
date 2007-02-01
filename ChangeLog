@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-01 Neil Spierling  <sirvulcan@gmail.com>
+
+	* src/nickserv.c: Fixed bug #1649326.
+
 2007-01-28  Alex Schumann  <rubin@afternet.org>
         
 	* src/mod-memoserv.c: if you bind memoserv commands to chanserv's

@@ -3166,7 +3166,7 @@ static OPTION_FUNC(opt_note)
         }
     }
 
-    reply("NSMSG_SET_NOTE", hi->note->note);
+    reply("NSMSG_SET_NOTE", hi->note ? hi->note->note : user_find_message(user, "MSG_NONE"));
     return 1;
 }
 
