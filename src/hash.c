@@ -713,7 +713,7 @@ ChannelUserKicked(struct userNode* kicker, struct userNode* victim, struct chanN
     unsigned int n;
     struct modeNode *mn;
 
-    if (!victim || !channel || IsService(victim) || !GetUserMode(channel, victim))
+    if (!victim || !channel || !GetUserMode(channel, victim))
         return;
 
     /* Update the kicker's idle time (kicker may be null if it was a server) */
