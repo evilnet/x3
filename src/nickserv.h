@@ -22,6 +22,7 @@
 #define _nickserv_h
 
 #include "hash.h"   /* for NICKLEN, etc., and common.h */
+#include <tre/regex.h> /* for regex in nickserv_config */
 struct svccmd;
 
 #define NICKSERV_HANDLE_LEN ACCOUNTLEN
@@ -127,6 +128,68 @@ struct handle_info_list {
 };
 
 extern const char *handle_flags;
+
+enum reclaim_action {
+    RECLAIM_NONE,
+    RECLAIM_WARN,
+    RECLAIM_SVSNICK,
+    RECLAIM_KILL
+};
+
+struct nickserv_config {
+    unsigned int disable_nicks : 1;
+    unsigned int valid_handle_regex_set : 1;
+    unsigned int valid_nick_regex_set : 1;
+    unsigned int valid_fakehost_regex_set : 1;
+    unsigned int autogag_enabled : 1;
+    unsigned int email_enabled : 1;
+    unsigned int email_required : 1;
+    unsigned int default_hostmask : 1;
+    unsigned int warn_nick_owned : 1;
+    unsigned int warn_clone_auth : 1;
+    unsigned int sync_log : 1;
+    unsigned long nicks_per_handle;
+    unsigned long password_min_length;
+    unsigned long password_min_digits;
+    unsigned long password_min_upper;
+    unsigned long password_min_lower;
+    unsigned long db_backup_frequency;
+    unsigned long handle_expire_frequency;
+    unsigned long autogag_duration;
+    unsigned long email_visible_level;
+    unsigned long cookie_timeout;
+    unsigned long handle_expire_delay;
+    unsigned long nochan_handle_expire_delay;
+    unsigned long modoper_level;
+    unsigned long set_epithet_level;
+    unsigned long set_title_level;
+    unsigned long set_fakehost_level;
+    unsigned long handles_per_email;
+    unsigned long email_search_level;
+    const char *network_name;
+    const char *titlehost_suffix;
+    regex_t valid_handle_regex;
+    regex_t valid_nick_regex;
+    regex_t valid_fakehost_regex;
+    dict_t weak_password_dict;
+    struct policer_params *auth_policer_params;
+    enum reclaim_action reclaim_action;
+    enum reclaim_action auto_reclaim_action;
+    unsigned long auto_reclaim_delay;
+    unsigned char default_maxlogins;
+    unsigned char hard_maxlogins;
+    const char *auto_oper;
+    const char *auto_admin;
+    char default_style;
+    struct string_list *denied_fakehost_words;
+    unsigned int ldap_enable;
+    const char *ldap_host;
+    unsigned int ldap_port;
+    const char *ldap_base;
+    const char *ldap_dn_fmt;
+    unsigned int ldap_version;
+    unsigned int ldap_autocreate;
+};
 
 void init_nickserv(const char *nick);
 struct handle_info *get_handle_info(const char *handle);

@@ -1,6 +1,29 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-05  Alex Schumann  <rubin@afternet.org>
+
+        * src/x3ldap.c: Beginnings of ldap authentication support
+
+	* src/x3ldap.h: Beginnings of ldap authentication support
+
+	* src/nickserv.h: Move config struct to .h so ldap.c can see it too
+
+	* src/nickserv.c: Beginnings of ldap authentication support
+
+	* x3.conf.example: ldap config settings
+
+	* src/md5.c: remove old debugging printf() code
+
+	* src/configure.in: add --enable-ldap support to configure
+
+	* configure: rebuilt from above
+
+	* src/Makefile.am: add --enable-ldap support to configure
+
+	* src/Makefile.in: rebuilt from above
+
+
 2007-02-04 Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/hash.c: Bug fix for bug #1651561.

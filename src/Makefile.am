@@ -40,7 +40,7 @@ x3_SOURCES = \
 	spamserv.c spamserv.h \
 	shun.c shun.h \
 	timeq.c timeq.h \
-	tools.c
+	tools.c x3ldap.c x3ldap.h
 
 checkdb_SOURCES = checkdb.c common.h compat.c compat.h dict-splay.c dict.h recdb.c recdb.h saxdb.c saxdb.h tools.c conf.h log.h modcmd.h saxdb.h timeq.h
 globtest_SOURCES = common.h compat.c compat.h dict-splay.c dict.h globtest.c tools.c

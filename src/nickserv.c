@@ -20,14 +20,20 @@
 
 #include "chanserv.h"
 #include "conf.h"
+#include "config.h"
 #include "global.h"
 #include "modcmd.h"
 #include "opserv.h" /* for gag_create(), opserv_bad_channel() */
 #include "saxdb.h"
 #include "sendmail.h"
 #include "timeq.h"
+#include "x3ldap.h"
 
 #include <tre/regex.h>
+
+#ifdef WITH_LDAP
+#include <ldap.h>
+#endif
 
 #define NICKSERV_CONF_NAME "services/nickserv"
 
@@ -106,6 +112,13 @@
 #define KEY_NOTE_SETTER "setter"
 #define KEY_NOTE_DATE "date"
 
+#define KEY_LDAP_ENABLE "ldap_enable"
+#define KEY_LDAP_HOST "ldap_host"
+#define KEY_LDAP_PORT "ldap_port"
+#define KEY_LDAP_BASE "ldap_base"
+#define KEY_LDAP_DN_FMT "ldap_dn_fmt"
+#define KEY_LDAP_VERSION "ldap_version"
+#define KEY_LDAP_AUTOCREATE "ldap_autocreate"
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
@@ -371,62 +384,10 @@ static const struct message_entry msgtab[] = {
     { NULL, NULL }
 };
 
-enum reclaim_action {
-    RECLAIM_NONE,
-    RECLAIM_WARN,
-    RECLAIM_SVSNICK,
-    RECLAIM_KILL
-};
 static void nickserv_reclaim(struct userNode *user, struct nick_info *ni, enum reclaim_action action);
 static void nickserv_reclaim_p(void *data);
 
-static struct {
-    unsigned int disable_nicks : 1;
-    unsigned int valid_handle_regex_set : 1;
-    unsigned int valid_nick_regex_set : 1;
-    unsigned int valid_fakehost_regex_set : 1;
-    unsigned int autogag_enabled : 1;
-    unsigned int email_enabled : 1;
-    unsigned int email_required : 1;
-    unsigned int default_hostmask : 1;
-    unsigned int warn_nick_owned : 1;
-    unsigned int warn_clone_auth : 1;
-    unsigned int sync_log : 1;
-    unsigned long nicks_per_handle;
-    unsigned long password_min_length;
-    unsigned long password_min_digits;
-    unsigned long password_min_upper;
-    unsigned long password_min_lower;
-    unsigned long db_backup_frequency;
-    unsigned long handle_expire_frequency;
-    unsigned long autogag_duration;
-    unsigned long email_visible_level;
-    unsigned long cookie_timeout;
-    unsigned long handle_expire_delay;
-    unsigned long nochan_handle_expire_delay;
-    unsigned long modoper_level;
-    unsigned long set_epithet_level;
-    unsigned long set_title_level;
-    unsigned long set_fakehost_level;
-    unsigned long handles_per_email;
-    unsigned long email_search_level;
-    const char *network_name;
-    const char *titlehost_suffix;
-    regex_t valid_handle_regex;
-    regex_t valid_nick_regex;
-    regex_t valid_fakehost_regex;
-    dict_t weak_password_dict;
-    struct policer_params *auth_policer_params;
-    enum reclaim_action reclaim_action;
-    enum reclaim_action auto_reclaim_action;
-    unsigned long auto_reclaim_delay;
-    unsigned char default_maxlogins;
-    unsigned char hard_maxlogins;
-    const char *auto_oper;
-    const char *auto_admin;
-    char default_style;
-    struct string_list *denied_fakehost_words;
-} nickserv_conf;
+struct nickserv_config nickserv_conf;
 
 /* We have 2^32 unique account IDs to use. */
 unsigned long int highest_id = 0;
@@ -1910,6 +1871,7 @@ static NICKSERV_FUNC(cmd_auth)
     struct handle_info *hi;
     const char *passwd;
     struct userNode *other;
+    int ldap_result = 0;
 
     if (user->handle_info) {
         reply("NSMSG_ALREADY_AUTHED", user->handle_info->handle);
@@ -1923,6 +1885,9 @@ static NICKSERV_FUNC(cmd_auth)
         return 0;
     }
     if (argc == 3) {
+#ifdef WITH_LDAP
+        ldap_result = ldap_check_auth(argv[1], argv[2]);
+#endif
         hi = dict_find(nickserv_handle_dict, argv[1], NULL);
         pw_arg = 2;
     } else if (argc == 2) {
@@ -1933,6 +1898,7 @@ static NICKSERV_FUNC(cmd_auth)
             }
         } else {
             /* try to look up their handle from their nick */
+            /* TODO: handle ldap auth on nickserv style networks, too */
             struct nick_info *ni;
             ni = get_nick_info(user->nick);
             if (!ni) {
@@ -1948,6 +1914,14 @@ static NICKSERV_FUNC(cmd_auth)
         return 0;
     }
     if (!hi) {
+        if(ldap_result == true) {
+           /* user not found, but authed to ldap successfully..
+            * create the account.
+            * TODO: fill this in
+            */
+           reply("NSMSG_HANDLE_NOT_FOUND");
+           return 0;
+        }
         reply("NSMSG_HANDLE_NOT_FOUND");
         return 0;
     }
@@ -1965,7 +1939,11 @@ static NICKSERV_FUNC(cmd_auth)
         argv[pw_arg] = "BADMASK";
         return 1;
     }
+#ifdef WITH_LDAP
+    if(!ldap_result) {
+#else
     if (!checkpass(passwd, hi->passwd)) {
+#endif
         unsigned int n;
         send_message_type(4, user, cmd->parent->bot,
                           handle_find_message(hi, "NSMSG_PASSWORD_INVALID"));
@@ -4323,6 +4301,28 @@ nickserv_conf_read(void)
     child = database_get_data(conf_node, KEY_AUTH_POLICER, RECDB_OBJECT);
     for (it=dict_first(child); it; it=iter_next(it))
         set_policer_param(iter_key(it), iter_data(it), nickserv_conf.auth_policer_params);
+
+    str = database_get_data(conf_node, KEY_LDAP_ENABLE, RECDB_QSTRING);
+    nickserv_conf.ldap_enable = str ? strtoul(str, NULL, 0) : 0;
+
+    str = database_get_data(conf_node, KEY_LDAP_HOST, RECDB_QSTRING);
+    nickserv_conf.ldap_host = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_PORT, RECDB_QSTRING);
+    nickserv_conf.ldap_port = str ? strtoul(str, NULL, 0) : LDAP_PORT;
+    
+    str = database_get_data(conf_node, KEY_LDAP_BASE, RECDB_QSTRING);
+    nickserv_conf.ldap_base = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_DN_FMT, RECDB_QSTRING);
+    nickserv_conf.ldap_dn_fmt = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_VERSION, RECDB_QSTRING);
+    nickserv_conf.ldap_version = str ? strtoul(str, NULL, 0) : 3;
+
+    str = database_get_data(conf_node, KEY_LDAP_AUTOCREATE, RECDB_QSTRING);
+    nickserv_conf.ldap_autocreate = str ? strtoul(str, NULL, 0) : 0;
+
 }
 
 static void
@@ -4627,6 +4627,9 @@ init_nickserv(const char *nick)
             AddChannelUser(nickserv, chan)->modes |= MODE_CHANOP;
         }
     }
+#ifdef WITH_LDAP
+    ldap_do_init(nickserv_conf);
+#endif
 
     message_register_table(msgtab);
 }

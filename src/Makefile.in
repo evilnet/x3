@@ -68,7 +68,8 @@ am_x3_OBJECTS = chanserv.$(OBJEXT) compat.$(OBJEXT) conf.$(OBJEXT) \
 	modcmd.$(OBJEXT) modules.$(OBJEXT) nickserv.$(OBJEXT) \
 	opserv.$(OBJEXT) policer.$(OBJEXT) recdb.$(OBJEXT) \
 	saxdb.$(OBJEXT) sendmail.$(OBJEXT) spamserv.$(OBJEXT) \
-	shun.$(OBJEXT) timeq.$(OBJEXT) tools.$(OBJEXT)
+	shun.$(OBJEXT) timeq.$(OBJEXT) tools.$(OBJEXT) \
+	x3ldap.$(OBJEXT)
 x3_OBJECTS = $(am_x3_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I.
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -223,7 +224,7 @@ x3_SOURCES = \
 	spamserv.c spamserv.h \
 	shun.c shun.h \
 	timeq.c timeq.h \
-	tools.c
+	tools.c x3ldap.c x3ldap.h
 
 checkdb_SOURCES = checkdb.c common.h compat.c compat.h dict-splay.c dict.h recdb.c recdb.h saxdb.c saxdb.h tools.c conf.h log.h modcmd.h saxdb.h timeq.h
 globtest_SOURCES = common.h compat.c compat.h dict-splay.c dict.h globtest.c tools.c
@@ -337,6 +338,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spamserv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeq.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3ldap.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

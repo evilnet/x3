@@ -625,7 +625,7 @@ char* md5(const char* pass, char* output)
     {
         sprintf(output + j * 2, "%02x", md5sum[j]);
     }
-    printf("The hash of %s is %s\n\n", pass, output);
+    /* printf("The hash of %s is %s\n\n", pass, output); */
     return 0;
 }
 

@@ -219,6 +219,18 @@
 
         // Nickserv 'style' setting affects .userlist and other outputs.
         "default_style" "n"; // can be: n = normal, c = clean, or a = advanced.
+
+
+        // LDAP configuration(s)
+        // THIS IS EXPERIMENTAL! DO NOT USE IT IF YOU ARNT'T A DEVELOPER!!
+        // LDAP stands for light directory access protocol. its what many larger orgs use for central user/password management. Its also the core technology behind windows active directory.
+        // If you have an ldap server, you can configure X3 to use it instead of saving passwords locally.
+        //"ldap_enable" "1";
+        //"ldap_host" "ldap.yourdomain.com"
+        //"ldap_port" "683"
+        //"ldap_base" "ou=Users,dc=afternet,dc=org"
+        //"ldap_dn_fmt" "uid=%s,ou=Users,dc=afternet,dc=org"
+        //"ldap_autocreate" "0"; // automatically create accounts if they exist in ldap but not x3
     };
 
     /* 

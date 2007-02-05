@@ -302,6 +302,9 @@
 /* Define if using the P10 dialect of IRC */
 #undef WITH_PROTOCOL_P10
 
+/* Define if you have ldap */
+#undef WITH_LDAP
+
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
 
@@ -313,3 +316,4 @@
 
 /* type to use in place of socklen_t if not defined */
 #undef socklen_t
+
