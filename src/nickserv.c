@@ -4309,7 +4309,11 @@ nickserv_conf_read(void)
     nickserv_conf.ldap_host = str ? str : "";
 
     str = database_get_data(conf_node, KEY_LDAP_PORT, RECDB_QSTRING);
+#ifdef WITH_LDAP
     nickserv_conf.ldap_port = str ? strtoul(str, NULL, 0) : LDAP_PORT;
+#else
+    nickserv_conf.ldap_port = str ? strtoul(str, NULL, 0) : 0;
+#endif
     
     str = database_get_data(conf_node, KEY_LDAP_BASE, RECDB_QSTRING);
     nickserv_conf.ldap_base = str ? str : "";
