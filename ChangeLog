@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-06  Alex Schumann  <rubin@afternet.org>
+
+        * configure.in: Better ldap library handling
+
+	* configure: regenerated from above
+
 2007-02-06 Neil Spierling  <sirvulcan@gmail.com>
 
 	* src/x3ldap.c: Added GPL header, also change the printf's to

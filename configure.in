@@ -246,24 +246,6 @@ else
   AC_MSG_ERROR([Unknown IRC dialect $withval])
 fi
 
-AC_MSG_CHECKING("enable ldap") 
-AC_ARG_ENABLE(ldap,
-[  --enable-ldap          Enable ldap],
-[
-  AC_MSG_RESULT(yes)
-  use_ldap="enabled"
-],
-[
-  AC_MSG_RESULT(no)
-  use_ldap="disabled"
-])
-
-if test "x$use_ldap" = "xenabled" ; then
-   AC_DEFINE(WITH_LDAP, 1, [Define if compiling in LDAP support])
-   AC_CHECK_LIB(ldap, ldap_init, ,AC_MSG_ERROR([Unable to find ldap library]))
-   AC_CHECK_HEADERS(ldap.h,,AC_MSG_ERROR([Unable to find ldap headers ldap.h]))
-fi
-
 AC_ARG_WITH(getopt,
 [  --without-getopt        Disables building of the GNU getopt library],
 [if test "$withval" = no; then
@@ -426,6 +408,39 @@ fi
 AC_CHECK_HEADER(google/coredumper.h, , [AC_MSG_RESULT([google/coredumper.h, the coredumper headers, were not found. Install coredumper or use --with-coredumper=PATH to tell me how to find it, where PATH/include/google/coredumper.h exists.  For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])],)
 AC_CHECK_LIB(coredumper, WriteCoreDump, , [AC_MSG_RESULT([Coredumper library not found. Install coredumper, or use --with-coredumper=PATH to tell me how to find it, where PATH/lib/libcoredumper.so exists. For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])])
 
+dnl ldap checking
+withval=''
+AC_ARG_WITH(ldap,
+[  --with-ldap=PATH    Base path to where the ldap library and headers are installed, 
+                      such that PATH/include/ldap.h and PATH/lib/libldap.so exist.],)
+if test "x$withval" != "x"; then
+   AC_MSG_RESULT(Using include dir $withval to find libldap)
+   CPPFLAGS="$CPPFLAGS -I$withval/include -L$withval/lib"
+   LIBS="$LIBS -L$withval/lib"
+else
+   AC_MSG_RESULT([Looking for ldap in system ])
+fi
+
+AC_CHECK_LIB(ldap, ldap_init, 
+[
+AC_CHECK_HEADERS(ldap.h, 
+[
+AC_DEFINE(WITH_LDAP, 1, [Define if LDAP libs are linked])
+ldap_message="LDAP library:       enabled"
+],
+[
+if "x$withval" != "x"; then
+   AC_MSG_ERROR([ldap.h not found])
+fi
+])
+],
+[
+if "x$withval" != "x"; then
+   AC_MSG_ERROR([libldap not found or not valid])
+fi
+]
+)
+
 AC_DEFINE_UNQUOTED(CODENAME, "${CODENAME}", [Code name for this release])
 AC_SUBST(MODULE_OBJS)
 AC_SUBST(MY_SUBDIRS)
@@ -463,6 +478,7 @@ X3 is now configured as follows:
   Protocol:           $x3_ircd
   Regexp Library      TRE $tre_version
   Coredumper Library  Coredumper $core_version
+  $ldap_message 
 
   Install to:         $prefix
 
