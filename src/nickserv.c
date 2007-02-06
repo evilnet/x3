@@ -32,7 +32,7 @@
 #include <tre/regex.h>
 
 #ifdef WITH_LDAP
-#include <ldap.h>
+#include <ldap.h> /* just needed for default LDAP_PORT */
 #endif
 
 #define NICKSERV_CONF_NAME "services/nickserv"
@@ -113,12 +113,15 @@
 #define KEY_NOTE_DATE "date"
 
 #define KEY_LDAP_ENABLE "ldap_enable"
+
+#ifdef WITH_LDAP
 #define KEY_LDAP_HOST "ldap_host"
 #define KEY_LDAP_PORT "ldap_port"
 #define KEY_LDAP_BASE "ldap_base"
 #define KEY_LDAP_DN_FMT "ldap_dn_fmt"
 #define KEY_LDAP_VERSION "ldap_version"
 #define KEY_LDAP_AUTOCREATE "ldap_autocreate"
+#endif
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
@@ -1871,7 +1874,10 @@ static NICKSERV_FUNC(cmd_auth)
     struct handle_info *hi;
     const char *passwd;
     struct userNode *other;
+#ifdef WITH_LDAP
     int ldap_result = 0;
+    char *email = NULL;
+#endif
 
     if (user->handle_info) {
         reply("NSMSG_ALREADY_AUTHED", user->handle_info->handle);
@@ -1887,6 +1893,14 @@ static NICKSERV_FUNC(cmd_auth)
     if (argc == 3) {
 #ifdef WITH_LDAP
         ldap_result = ldap_check_auth(argv[1], argv[2]);
+        if(ldap_result) {
+           /* pull the users info from ldap:
+            * * email
+            * * name if available
+            * *
+            */
+        }
+           
 #endif
         hi = dict_find(nickserv_handle_dict, argv[1], NULL);
         pw_arg = 2;
@@ -1914,16 +1928,39 @@ static NICKSERV_FUNC(cmd_auth)
         return 0;
     }
     if (!hi) {
-        if(ldap_result == true) {
+#ifdef WITH_LDAP
+        if(ldap_result == true && nickserv_conf.ldap_autocreate) {
            /* user not found, but authed to ldap successfully..
             * create the account.
-            * TODO: fill this in
             */
-           reply("NSMSG_HANDLE_NOT_FOUND");
-           return 0;
+             char *mask;
+             if(!(hi = nickserv_register(user, NULL, argv[1], argv[2], 0))) {
+                reply("NSMSG_UNABLE_TO_ADD");
+                return 0; /* couldn't add the user for some reason */
+             }
+             /* Add a *@* mask */
+             if(nickserv_conf.default_hostmask)
+                mask = "*@*";
+             else
+                mask = generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+
+             if(mask) {
+                char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+                string_list_append(hi->masks, mask_canonicalized);
+             }
+             if(email) {
+                nickserv_set_email_addr(hi, email);
+             }
+             if(nickserv_conf.sync_log)
+                SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, email ? email : "@", user->info);
         }
-        reply("NSMSG_HANDLE_NOT_FOUND");
-        return 0;
+        else {
+#endif
+             reply("NSMSG_HANDLE_NOT_FOUND");
+             return 0;
+#ifdef WITH_LDAP
+        }
+#endif
     }
     /* Responses from here on look up the language used by the handle they asked about. */
     passwd = argv[pw_arg];
@@ -4304,16 +4341,21 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_ENABLE, RECDB_QSTRING);
     nickserv_conf.ldap_enable = str ? strtoul(str, NULL, 0) : 0;
+#ifndef WITH_LDAP
+    if(nickserv_conf.ldap_enable > 0) {
+        /* ldap is enabled but not compiled in - error out */
+        log_module(MAIN_LOG, LOG_ERROR, "ldap is enabled in config, but not compiled in!");
+        nickserv_conf.ldap_enable = 0;
+        sleep(5);
+    }
+#endif 
 
+#ifdef WITH_LDAP
     str = database_get_data(conf_node, KEY_LDAP_HOST, RECDB_QSTRING);
     nickserv_conf.ldap_host = str ? str : "";
 
     str = database_get_data(conf_node, KEY_LDAP_PORT, RECDB_QSTRING);
-#ifdef WITH_LDAP
     nickserv_conf.ldap_port = str ? strtoul(str, NULL, 0) : LDAP_PORT;
-#else
-    nickserv_conf.ldap_port = str ? strtoul(str, NULL, 0) : 0;
-#endif
     
     str = database_get_data(conf_node, KEY_LDAP_BASE, RECDB_QSTRING);
     nickserv_conf.ldap_base = str ? str : "";
@@ -4326,6 +4368,7 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_AUTOCREATE, RECDB_QSTRING);
     nickserv_conf.ldap_autocreate = str ? strtoul(str, NULL, 0) : 0;
+#endif
 
 }
 

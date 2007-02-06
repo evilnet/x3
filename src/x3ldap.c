@@ -26,6 +26,7 @@
  *   * nickserv.c work to use said functions.
  */
 
+#include "config.h"
 #ifdef WITH_LDAP
 
 #include <stdio.h>
@@ -34,7 +35,6 @@
 //#include <sys/select.h>
 
 #include "conf.h"
-#include "config.h"
 #include "global.h"
 #include "log.h"
 #include "x3ldap.h"
@@ -62,6 +62,8 @@ LDAP *ld = NULL;
 
 int ldap_do_init()
 {
+   if(!nickserv_conf.ldap_enable)
+     return false;
    /* TODO: check here for all required config options and exit() out if not present */
    ld = ldap_init(nickserv_conf.ldap_host, nickserv_conf.ldap_port);
    if(ld == NULL) {
@@ -82,6 +84,9 @@ unsigned int ldap_check_auth( char *account, char *pass)
    char buff[MAXLEN];
    int q;
 
+   if(!nickserv_conf.ldap_enable)
+     return false;
+
    memset(buff, 0, MAXLEN);
    snprintf(buff, sizeof(buff)-1, nickserv_conf.ldap_dn_fmt /*"uid=%s,ou=Users,dc=afternet,dc=org"*/, account);
    int n = 0;
@@ -97,12 +102,15 @@ unsigned int ldap_check_auth( char *account, char *pass)
         log_module(MAIN_LOG, LOG_ERROR, "Bind failed: %s/******  (%d)\n", buff, q);
         ldap_perror(ld, "ldap");
         /* Re-init to re-connect to ldap server if thats the problem */
-        sleep(10);
+        //sleep(10);
         ldap_do_init(nickserv_conf);
       }
-      if(n++ > 6) {
-         log_module(MAIN_LOG, LOG_ERROR, "Failing to reconnect to ldap server. Dieing.");
-         exit(1);
+      if(n++ > 1) {
+         /* TODO: return to the user that this is a connection error and not a problem
+          * with their password
+          */
+         log_module(MAIN_LOG, LOG_ERROR, "Failing to reconnect to ldap server. Auth failing.");
+         return false;
       }
    }
    log_module(MAIN_LOG, LOG_DEBUG, "bind() successfull! You are bound as %s\n", buff);

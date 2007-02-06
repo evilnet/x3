@@ -183,12 +183,14 @@ struct nickserv_config {
     char default_style;
     struct string_list *denied_fakehost_words;
     unsigned int ldap_enable;
+#ifdef WITH_LDAP
     const char *ldap_host;
     unsigned int ldap_port;
     const char *ldap_base;
     const char *ldap_dn_fmt;
     unsigned int ldap_version;
     unsigned int ldap_autocreate;
+#endif
 };
 
 void init_nickserv(const char *nick);

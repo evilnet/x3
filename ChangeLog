@@ -3,11 +3,20 @@ X3 ChangeLog
 
 2007-02-06  Alex Schumann  <rubin@afternet.org>
 
-	* src/x3ldap.c: fix compiling problem when non-ldap
+	* src/x3ldap.c: fix compiling problem when non-ldap. Compile fixups
+	and sanity checks.
 
-        * configure.in: Better ldap library handling **oops
+        * configure.in: Better ldap library handling **oops ** helps to
+	actually have -lldap in LIBS...
 
-	* configure: regenerated from above **
+	* configure: regenerated from above ** **
+
+	* x3.conf.example: tweaked ldap settings
+
+	* src/nickserv.h: remove ldap config settings if not compiled in
+
+	* src/nickserv.c: automatiaclly add users who can auth to ldap and get
+	logins working.
 
 2007-02-06 Neil Spierling  <sirvulcan@gmail.com>
 

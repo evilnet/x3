@@ -379,11 +379,11 @@ AC_ARG_WITH(tre,
                           PATH/lib/libtre.so and PATH/include/tre/regex.h exist.], )
 if test "x$withval" != "x"; then
     AC_MSG_RESULT(Using include dir $withval to find libtre)
-    CPPFLAGS="-I$withval/include -L$withval/lib"
+    CPPFLAGS="$CPPFLAGS -I$withval/include -L$withval/lib"
     LIBS="$LIBS -L$withval/lib"
 else
     AC_MSG_RESULT([Looking for tre in system and home dirs (${HOME})...])
-    CPPFLAGS="-I${HOME}/include -L${HOME}/lib"
+    CPPFLAGS="$CPPFLAGS -I${HOME}/include -L${HOME}/lib"
     LIBS="$LIBS -L${HOME}/lib"
 fi
 AC_CHECK_HEADER(tre/regex.h, , [AC_MSG_ERROR([tre/regex.h, the TRE regex headers, were not found. Install tre or use --with-tre=PATH to tell me how to find it, where PATH/include/tre/regex.h exists.  For conveniance, just type 'tools/tre_install.sh' now, to install tre in your home directory.])],)
@@ -398,11 +398,11 @@ AC_ARG_WITH(coredumper,
                           PATH/include/google/coredumper.h exist.], )
 if test "x$withval" != "x"; then
     AC_MSG_RESULT(Using include dir $withval to find coredumper)
-    CPPFLAGS="-I$withval/include -L$withval/lib"
+    CPPFLAGS="$CPPFLAGS -I$withval/include -L$withval/lib"
     LIBS="$LIBS -L$withval/lib"
 else
     AC_MSG_RESULT([Looking for coredumper in system and home dirs (${HOME})...])
-    CPPFLAGS="-I${HOME}/include -L${HOME}/lib"
+    CPPFLAGS="$CPPFLAGS -I${HOME}/include -L${HOME}/lib"
     LIBS="$LIBS -L${HOME}/lib"
 fi
 AC_CHECK_HEADER(google/coredumper.h, , [AC_MSG_RESULT([google/coredumper.h, the coredumper headers, were not found. Install coredumper or use --with-coredumper=PATH to tell me how to find it, where PATH/include/google/coredumper.h exists.  For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])],)
@@ -421,8 +421,9 @@ else
    AC_MSG_RESULT([Looking for ldap in system ])
 fi
 
-AC_CHECK_LIB(ldap, ldap_init, 
+AC_CHECK_LIB(ldap, ldap_simple_bind_s, 
 [
+LIBS="-lldap $LIBS"
 AC_CHECK_HEADERS(ldap.h, 
 [
 AC_DEFINE(WITH_LDAP, 1, [Define if LDAP libs are linked])
@@ -440,6 +441,7 @@ if test "x$withval" != "x"; then
 fi
 ]
 )
+AC_MSG_RESULT($LIBS)
 
 AC_DEFINE_UNQUOTED(CODENAME, "${CODENAME}", [Code name for this release])
 AC_SUBST(MODULE_OBJS)
