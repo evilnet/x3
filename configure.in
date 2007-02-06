@@ -429,13 +429,13 @@ AC_DEFINE(WITH_LDAP, 1, [Define if LDAP libs are linked])
 ldap_message="LDAP library:       enabled"
 ],
 [
-if "x$withval" != "x"; then
+if test "x$withval" != "x"; then
    AC_MSG_ERROR([ldap.h not found])
 fi
 ])
 ],
 [
-if "x$withval" != "x"; then
+if test "x$withval" != "x"; then
    AC_MSG_ERROR([libldap not found or not valid])
 fi
 ]

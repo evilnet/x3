@@ -26,6 +26,8 @@
  *   * nickserv.c work to use said functions.
  */
 
+#ifdef WITH_LDAP
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ldap.h>
@@ -47,7 +49,6 @@
 #include <sys/socket.h>
 #endif
 
-#ifdef WITH_LDAP
 
 /* char dn[] = "uid=%s,ou=Users,dc=afternet,dc=org";
 char password[] = "xxxxxxx";
