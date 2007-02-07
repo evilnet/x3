@@ -1996,7 +1996,8 @@ static NICKSERV_FUNC(cmd_auth)
         return 1;
     }
 #ifdef WITH_LDAP
-    if(ldap_result == LDAP_INVALID_CREDENTIALS) {
+    if( ( nickserv_conf.ldap_enable && ldap_result == LDAP_INVALID_CREDENTIALS )  ||
+        ( !nickserv_conf.ldap_enable && !checkpass(passwd, hi->passwd) ) )
 #else
     if (!checkpass(passwd, hi->passwd)) {
 #endif

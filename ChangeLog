@@ -5,7 +5,8 @@ X3 ChangeLog
 
 	* src/x3ldap.c: improve error result feedback
 
-	* src/nickserv.c: improve error result feedback
+	* src/nickserv.c: improve error result feedback (oops, fix for if
+	ldap_enable is 0)
 
 2007-02-07  Alex Schumann  <rubin@afternet.org>
 
