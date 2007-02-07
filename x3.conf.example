@@ -233,6 +233,18 @@
         //"ldap_dn_fmt" "uid=%s,ou=Users,dc=afternet,dc=org";
         // automatically create accounts if they exist in ldap but not x3
         //"ldap_autocreate" "1"; 
+        //
+        // If you will be allowing users to register on IRC you need these:
+        //"ldap_admin_dn" "cn=Admin,dc=afternet,dc=org";
+        //"ldap_admin_pass" "xyzzyx";
+        //"ldap_add_objects" ( "top", "inetOrgAnon" );
+        //      NOTE: inetOrgAnon is something I made up. its schema
+        //      can be found in the tools/ directory. ldap servers wont
+        //      know what that is by default.
+        // These configure what I store, and where.
+        //"ldap_add_account" "uid";
+        //"ldap_add_password "userPassword";
+        //"ldap_add_email" "";
     };
 
     /* 

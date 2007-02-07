@@ -25,6 +25,7 @@
 int ldap_do_init();
 
 unsigned int ldap_check_auth(char *account, char *pass);
+int ldap_do_add(const char *account, const char *password, const char *email);
 
 void ldap_close();
 

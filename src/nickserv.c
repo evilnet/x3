@@ -121,6 +121,11 @@
 #define KEY_LDAP_DN_FMT "ldap_dn_fmt"
 #define KEY_LDAP_VERSION "ldap_version"
 #define KEY_LDAP_AUTOCREATE "ldap_autocreate"
+#define KEY_LDAP_ADMIN_DN "ldap_admin_dn"
+#define KEY_LDAP_ADMIN_PASS "ldap_admin_pass"
+#define KEY_LDAP_FIELD_ACCOUNT "ldap_field_account"
+#define KEY_LDAP_FIELD_PASSWORD "ldap_field_password"
+#define KEY_LDAP_FIELD_EMAIL "ldap_field_email"
 #endif
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
@@ -1057,6 +1062,9 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     }
     if (settee && (user != settee))
         send_message(settee, nickserv, "NSMSG_OREGISTER_VICTIM", user->nick, hi->handle);
+#ifdef WITH_LDAP
+    ldap_do_add(handle, passwd, hi->email_addr);
+#endif
     return hi;
 }
 
@@ -4368,6 +4376,22 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_AUTOCREATE, RECDB_QSTRING);
     nickserv_conf.ldap_autocreate = str ? strtoul(str, NULL, 0) : 0;
+
+    str = database_get_data(conf_node, KEY_LDAP_ADMIN_DN, RECDB_QSTRING);
+    nickserv_conf.ldap_admin_dn = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_ADMIN_PASS, RECDB_QSTRING);
+    nickserv_conf.ldap_admin_pass = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_FIELD_ACCOUNT, RECDB_QSTRING);
+    nickserv_conf.ldap_field_account = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_FIELD_PASSWORD, RECDB_QSTRING);
+    nickserv_conf.ldap_field_password = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_FIELD_EMAIL, RECDB_QSTRING);
+    nickserv_conf.ldap_field_email = str ? str : "";
+
 #endif
 
 }

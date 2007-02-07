@@ -75,35 +75,30 @@ int ldap_do_init()
    return true;
 }
 
+
 /* Try to auth someone. If theres problems, try reconnecting 
  * once every 10 seconds for 1 minute.
  * TODO: move this stuff to config file
  */
-unsigned int ldap_check_auth( char *account, char *pass)
+unsigned int ldap_do_bind( const char *dn, const char *pass)
 {
-   char buff[MAXLEN];
    int q;
 
-   if(!nickserv_conf.ldap_enable)
-     return false;
-
-   memset(buff, 0, MAXLEN);
-   snprintf(buff, sizeof(buff)-1, nickserv_conf.ldap_dn_fmt /*"uid=%s,ou=Users,dc=afternet,dc=org"*/, account);
    int n = 0;
    while(1) {
-      q = ldap_simple_bind_s(ld, buff, pass);
+      q = ldap_simple_bind_s(ld, dn, pass);
       if(q == LDAP_SUCCESS) {
-         return true;
+           log_module(MAIN_LOG, LOG_DEBUG, "bind() successfull! You are bound as %s\n", dn);
+           /* unbind now */
+           return true;
       }
       else if(q == LDAP_INVALID_CREDENTIALS) {
         return false;
       }
       else {
-        log_module(MAIN_LOG, LOG_ERROR, "Bind failed: %s/******  (%d)\n", buff, q);
+        log_module(MAIN_LOG, LOG_ERROR, "Bind failed: %s/******  (%d)\n", dn, q);
         ldap_perror(ld, "ldap");
-        /* Re-init to re-connect to ldap server if thats the problem */
-        //sleep(10);
-        ldap_do_init(nickserv_conf);
+        ldap_do_init();
       }
       if(n++ > 1) {
          /* TODO: return to the user that this is a connection error and not a problem
@@ -113,8 +108,20 @@ unsigned int ldap_check_auth( char *account, char *pass)
          return false;
       }
    }
-   log_module(MAIN_LOG, LOG_DEBUG, "bind() successfull! You are bound as %s\n", buff);
-   return true;
+   log_module(MAIN_LOG, LOG_ERROR, "ldap_do_bind falling off the end. this shouldnt happen");
+   return false;
+}
+
+unsigned int ldap_check_auth( char *account, char *pass)
+{
+   char buff[MAXLEN];
+
+   if(!nickserv_conf.ldap_enable)
+     return false;
+
+   memset(buff, 0, MAXLEN);
+   snprintf(buff, sizeof(buff)-1, nickserv_conf.ldap_dn_fmt /*"uid=%s,ou=Users,dc=afternet,dc=org"*/, account);
+   return ldap_do_bind(buff, pass);
 
 }
 
@@ -165,6 +172,102 @@ LDAPMessage ldap_search_user(char uid)
 }
 
 #endif
+
+LDAPMod **make_mods(const char *account, const char *password, const char *email, int *num_mods_ret)
+{
+    static char *account_vals[] = { NULL, NULL };
+    static char *password_vals[] = { NULL, NULL };
+    static char *email_vals[] = { NULL, NULL };
+    char newdn[MAXLEN];
+    int num_mods = 3;
+    int i;
+    /* TODO: take this from nickserv_conf.ldap_add_objects */
+    static char *object_vals[] = { "top", "inetOrgAnonAccount", NULL };
+    LDAPMod **mods;
+
+    account_vals[0] = (char *) account;
+    password_vals[0] = (char *) password;
+    email_vals[0] = (char *) email;
+
+    if(!(nickserv_conf.ldap_field_account && *nickserv_conf.ldap_field_account))
+       return 0; /* account required */
+    if(!(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password))
+       return 0; /* password required */
+    if(email && *email && nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email)
+       num_mods++;
+
+    mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
+    for( i = 0; i < num_mods; i++) {
+      mods[i] = (LDAPMod *) malloc(sizeof(LDAPMod));
+      memset(mods[i], 0, sizeof(LDAPMod));
+    }
+
+    memset(newdn, 0, MAXLEN);
+    mods[0]->mod_op = LDAP_MOD_ADD;
+    mods[0]->mod_type = strdup("objectclass");
+    mods[0]->mod_values = object_vals;
+
+    mods[1]->mod_op = LDAP_MOD_ADD;
+    mods[1]->mod_type = strdup(nickserv_conf.ldap_field_account);
+    mods[1]->mod_values = account_vals;
+
+    mods[2]->mod_op = LDAP_MOD_ADD;
+    mods[2]->mod_type = strdup(nickserv_conf.ldap_field_password);
+    mods[2]->mod_values = password_vals;
+
+    if(nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email && email && *email) {
+        mods[3]->mod_op = LDAP_MOD_ADD;
+        mods[3]->mod_type = strdup(nickserv_conf.ldap_field_email);
+        mods[3]->mod_values = email_vals;
+        mods[4] = NULL;
+    }
+    else
+       mods[3] = NULL;
+    *num_mods_ret = num_mods;
+    return mods;
+}
+
+int ldap_do_admin_bind()
+{
+   if(!(nickserv_conf.ldap_admin_dn && *nickserv_conf.ldap_admin_dn && 
+      nickserv_conf.ldap_admin_pass && *nickserv_conf.ldap_admin_pass)) {
+       log_module(MAIN_LOG, LOG_ERROR, "Tried to admin bind, but no admin credentials configured in config file. ldap_admin_dn/ldap_admin_pass");
+       return false; /* not configured to do this */
+    }
+    return(ldap_do_bind(nickserv_conf.ldap_admin_dn, nickserv_conf.ldap_admin_pass));
+}
+
+int ldap_do_add(const char *account, const char *password, const char *email)
+{
+    char newdn[MAXLEN];
+    LDAPMod **mods;
+    int rc, i;
+    int num_mods;
+    
+    if(!( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return false;
+    }
+    
+    snprintf(newdn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
+    mods = make_mods(account, password, email, &num_mods);
+    if(!mods) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
+       return false;
+    }
+    rc = ldap_add_ext_s(ld, newdn, mods, NULL, NULL);
+    if(rc != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error adding ldap account: %s -- %s", account, ldap_err2string(rc));
+       return false;
+    }
+    //ldap_unbind_s(ld);
+    for(i = 0; i < num_mods; i++) {
+       free(mods[i]->mod_type);
+       free(mods[i]);
+    }
+    free(mods);
+    return true;
+}
 
 void ldap_close()
 {
