@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2007-02-07  Alex Schumann  <rubin@afternet.org>
 
+	* src/x3ldap.c: improve error result feedback
+
+	* src/nickserv.c: improve error result feedback
+
+2007-02-07  Alex Schumann  <rubin@afternet.org>
+
 	* src/x3ldap.c: ldap_add functionality
 
 	* src/x3ldap.h: ldap_add functionality

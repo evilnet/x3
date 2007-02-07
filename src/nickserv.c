@@ -166,6 +166,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_PASSWORD_ACCOUNT", "Your password may not be the same as your account name." },
     { "NSMSG_PASSWORD_DICTIONARY", "Your password is too simple. You must choose a password that is not just a word or name." },
     { "NSMSG_PASSWORD_READABLE", "Your password must have at least %lu digit(s), %lu capital letter(s), and %lu lower-case letter(s)." },
+    { "NSMSG_LDAP_FAIL", "There was a problem in contacting the account server (ldap): %s. Please try again later." },
     { "NSMSG_PARTIAL_REGISTER", "Account has been registered to you; nick was already registered to someone else." },
     { "NSMSG_OREGISTER_VICTIM", "%s has registered a new account for you (named %s)." },
     { "NSMSG_OREGISTER_H_SUCCESS", "Account has been registered." },
@@ -1039,6 +1040,13 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
         return 0;
 
     cryptpass(passwd, crypted);
+#ifdef WITH_LDAP
+    int rc;
+    if(LDAP_SUCCESS != (rc = ldap_do_add(handle, passwd, NULL))) {
+       send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+       return 0;
+    }
+#endif
     hi = register_handle(handle, crypted, 0);
     hi->masks = alloc_string_list(1);
     hi->ignores = alloc_string_list(1);
@@ -1062,9 +1070,6 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     }
     if (settee && (user != settee))
         send_message(settee, nickserv, "NSMSG_OREGISTER_VICTIM", user->nick, hi->handle);
-#ifdef WITH_LDAP
-    ldap_do_add(handle, passwd, hi->email_addr);
-#endif
     return hi;
 }
 
@@ -1883,7 +1888,7 @@ static NICKSERV_FUNC(cmd_auth)
     const char *passwd;
     struct userNode *other;
 #ifdef WITH_LDAP
-    int ldap_result = 0;
+    int ldap_result = LDAP_OTHER;
     char *email = NULL;
 #endif
 
@@ -1900,13 +1905,19 @@ static NICKSERV_FUNC(cmd_auth)
     }
     if (argc == 3) {
 #ifdef WITH_LDAP
-        ldap_result = ldap_check_auth(argv[1], argv[2]);
-        if(ldap_result) {
-           /* pull the users info from ldap:
-            * * email
-            * * name if available
-            * *
-            */
+        if(nickserv_conf.ldap_enable) {
+            ldap_result = ldap_check_auth(argv[1], argv[2]);
+            if(ldap_result == LDAP_SUCCESS) {
+               /* pull the users info from ldap:
+                * * email
+                * * name if available
+                * *
+                */
+            }
+            else if(ldap_result != LDAP_INVALID_CREDENTIALS) {
+               reply("NSMSG_LDAP_FAIL", ldap_err2string(ldap_result));
+               return 0;
+            }
         }
            
 #endif
@@ -1937,7 +1948,7 @@ static NICKSERV_FUNC(cmd_auth)
     }
     if (!hi) {
 #ifdef WITH_LDAP
-        if(ldap_result == true && nickserv_conf.ldap_autocreate) {
+        if(nickserv_conf.ldap_enable && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
            /* user not found, but authed to ldap successfully..
             * create the account.
             */
@@ -1985,7 +1996,7 @@ static NICKSERV_FUNC(cmd_auth)
         return 1;
     }
 #ifdef WITH_LDAP
-    if(!ldap_result) {
+    if(ldap_result == LDAP_INVALID_CREDENTIALS) {
 #else
     if (!checkpass(passwd, hi->passwd)) {
 #endif
