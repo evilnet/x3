@@ -2074,6 +2074,7 @@ static NICKSERV_FUNC(cmd_auth)
              }
              if(email) {
                 nickserv_set_email_addr(hi, email);
+                free(email);
              }
              if(nickserv_conf.sync_log)
                 SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, email ? email : "@", user->info);

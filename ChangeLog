@@ -9,7 +9,7 @@ X3 ChangeLog
 	* src/x3ldap.h: func defs for search
 
 	* src/nicserv.c: update local copy of email address when they log
-	in via ldap
+	in via ldap. fix memory leak.
 
 2007-02-08  Alex Schumann  <rubin@afternet.org>
 
