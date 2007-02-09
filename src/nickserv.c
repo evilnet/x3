@@ -126,6 +126,7 @@
 #define KEY_LDAP_FIELD_ACCOUNT "ldap_field_account"
 #define KEY_LDAP_FIELD_PASSWORD "ldap_field_password"
 #define KEY_LDAP_FIELD_EMAIL "ldap_field_email"
+#define KEY_LDAP_OBJECT_CLASSES "ldap_object_classes"
 #endif
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
@@ -534,12 +535,21 @@ free_handle_info(void *vhi)
 
 static void set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp);
 
-static void
+static int
 nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, struct userNode *bot)
 {
     unsigned int n;
     struct userNode *uNode;
 
+#ifdef WITH_LDAP
+    int rc;
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if( (rc = ldap_delete_account(hi->handle)) != LDAP_SUCCESS) {
+           send_message(notify, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+           return false;
+        }
+    }
+#endif
     for (n=0; n<unreg_func_used; n++)
         unreg_func_list[n](notify, hi);
     while (hi->users) {
@@ -561,6 +571,7 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, stru
         SyncLog("UNREGISTER %s", hi->handle);
 
     dict_remove(nickserv_handle_dict, hi->handle);
+    return true;
 }
 
 struct handle_info*
@@ -1039,14 +1050,15 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     if (!is_secure_password(handle, passwd, user))
         return 0;
 
-    cryptpass(passwd, crypted);
 #ifdef WITH_LDAP
     int rc;
-    if(LDAP_SUCCESS != (rc = ldap_do_add(handle, passwd, NULL))) {
+    rc = ldap_do_add(handle, passwd, NULL);
+    if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
        send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
        return 0;
     }
 #endif
+    cryptpass(passwd, crypted);
     hi = register_handle(handle, crypted, 0);
     hi->masks = alloc_string_list(1);
     hi->ignores = alloc_string_list(1);
@@ -1790,6 +1802,15 @@ static NICKSERV_FUNC(cmd_rename_handle)
         reply("NMSG_HANDLE_TOLONG", argv[2], 15);
         return 0;
     }
+#ifdef WITH_LDAP
+    int rc;
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if( (rc = ldap_rename_account(hi->handle, argv[2])) != LDAP_SUCCESS) {
+            reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+            return 0;
+        }
+    }
+#endif
 
     dict_remove2(nickserv_handle_dict, old_handle = hi->handle, 1);
     hi->handle = strdup(argv[2]);
@@ -1997,7 +2018,7 @@ static NICKSERV_FUNC(cmd_auth)
     }
 #ifdef WITH_LDAP
     if( ( nickserv_conf.ldap_enable && ldap_result == LDAP_INVALID_CREDENTIALS )  ||
-        ( !nickserv_conf.ldap_enable && !checkpass(passwd, hi->passwd) ) )
+        ( !nickserv_conf.ldap_enable && !checkpass(passwd, hi->passwd) ) ) {
 #else
     if (!checkpass(passwd, hi->passwd)) {
 #endif
@@ -2432,6 +2453,15 @@ static NICKSERV_FUNC(cmd_pass)
 	reply("NSMSG_PASSWORD_INVALID");
 	return 0;
     }
+#ifdef WITH_LDAP
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        int rc;
+        if((rc == ldap_do_modify(hi->handle, new_pass, NULL)) != LDAP_SUCCESS) {
+             reply("NSMSG_LDAP_FAIL");
+             return 0;
+        }
+    }
+#endif
     cryptpass(new_pass, hi->passwd);
     if (nickserv_conf.sync_log)
       SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
@@ -2818,6 +2848,15 @@ static OPTION_FUNC(opt_password)
 	return 0;
     }
 
+#ifdef WITH_LDAP
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        int rc;
+        if((rc == ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
+             reply("NSMSG_LDAP_FAIL");
+             return 0;   
+        }
+    }
+#endif
     if (argc > 1)
 	cryptpass(argv[1], hi->passwd);
 
@@ -3291,8 +3330,10 @@ static NICKSERV_FUNC(cmd_unregister)
     passwd = argv[1];
     argv[1] = "****";
     if (checkpass(passwd, hi->passwd)) {
-        nickserv_unregister_handle(hi, user, cmd->parent->bot);
-        return 1;
+        if(nickserv_unregister_handle(hi, user, cmd->parent->bot))
+            return 1;
+        else
+            return 0;
     } else {
 	log_module(NS_LOG, LOG_INFO, "Account '%s' tried to unregister with the wrong password.", hi->handle);
 	reply("NSMSG_PASSWORD_INVALID");
@@ -3307,8 +3348,10 @@ static NICKSERV_FUNC(cmd_ounregister)
     NICKSERV_MIN_PARMS(2);
     if (!(hi = get_victim_oper(cmd, user, argv[1])))
         return 0;
-    nickserv_unregister_handle(hi, user, cmd->parent->bot);
-    return 1;
+    if(nickserv_unregister_handle(hi, user, cmd->parent->bot))
+        return 1;
+    else
+        return 0;
 }
 
 static NICKSERV_FUNC(cmd_status)
@@ -3601,6 +3644,9 @@ static NICKSERV_FUNC(cmd_merge)
 
     /* Unregister the "from" handle. */
     nickserv_unregister_handle(hi_from, NULL, cmd->parent->bot);
+    /* TODO: fix it so that if the ldap delete in nickserv_unregister_handle fails, 
+     * the process isn't completed.
+     */
 
     return 1;
 }
@@ -4403,6 +4449,16 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_FIELD_EMAIL, RECDB_QSTRING);
     nickserv_conf.ldap_field_email = str ? str : "";
+
+    free_string_list(nickserv_conf.ldap_object_classes);
+    strlist = database_get_data(conf_node, KEY_LDAP_OBJECT_CLASSES, RECDB_STRING_LIST);
+    if(strlist)
+        strlist = string_list_copy(strlist);
+    else {
+        strlist = alloc_string_list(4);
+        string_list_append(strlist, strdup("top"));
+    }
+    nickserv_conf.ldap_object_classes = strlist;
 
 #endif
 

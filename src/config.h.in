@@ -305,6 +305,9 @@
 /* Define if you have ldap */
 #undef WITH_LDAP
 
+/* Define if you have SSL */
+#undef WITH_SSL
+
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
 

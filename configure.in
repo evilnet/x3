@@ -408,6 +408,41 @@ fi
 AC_CHECK_HEADER(google/coredumper.h, , [AC_MSG_RESULT([google/coredumper.h, the coredumper headers, were not found. Install coredumper or use --with-coredumper=PATH to tell me how to find it, where PATH/include/google/coredumper.h exists.  For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])],)
 AC_CHECK_LIB(coredumper, WriteCoreDump, , [AC_MSG_RESULT([Coredumper library not found. Install coredumper, or use --with-coredumper=PATH to tell me how to find it, where PATH/lib/libcoredumper.so exists. For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])])
 
+dnl openssl checking
+withval=''
+AC_ARG_WITH(ssl,
+[  --with-ssl=PATH      Base path to where openssl is installed],)
+if test "x$withval" != "x"; then
+   AC_MSG_RESULT(Using include dir $withval to find openssl)
+   CPPFLAGS="$CPPFLAGS -I$withval/include -L$withval/lib"
+   LIBS="$LIBS -L$withval/lib"
+else
+   AC_MSG_RESULT([Looking for openssl in system ])
+fi
+
+AC_CHECK_LIB(ssl, BIO_new,
+[
+LIBS="-lssl $LIBS"
+AC_CHECK_HEADERS(openssl/bio.h,
+[
+AC_DEFINE(WITH_SSL, 1, [Define if SSL libs are linked])
+ssl_message="LDAP library:        enabled"
+],
+[
+if test "x$withval" != "x"; then
+   AC_MSG_ERROR([ssl headers not found])
+fi
+])
+],
+[
+if test "x$withval" != "x"; then
+   AC_MSG_ERROR([libldap not found or not valid])
+fi
+]
+)
+AC_MSG_RESULT($LIBS)
+
+
 dnl ldap checking
 withval=''
 AC_ARG_WITH(ldap,

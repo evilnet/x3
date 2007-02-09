@@ -3,6 +3,27 @@ X3 ChangeLog
 
 2007-02-07  Alex Schumann  <rubin@afternet.org>
 
+	* configure.in: adding compile/configure support for ssl libs (not
+	        yet needed)
+
+	* configure: updated from above.
+
+	* src/config.h.in: adding compile/configure support for ssl libs (not
+	yet needed)
+
+	* src/x3ldap.c: ldap crypted password pain. SUpport for object classes
+	in config file.
+
+	* src/x3ldap.h: ldap crypted password pain. Support for object classes
+	in config file.
+
+	* src/nickserv.c: change password in ldap when its changed in
+	nickserv. Support for object classes in config file.
+	
+	* src/nickserv.h: support for object classes in conf file
+
+2007-02-07  Alex Schumann  <rubin@afternet.org>
+
 	* src/x3ldap.c: improve error result feedback
 
 	* src/nickserv.c: improve error result feedback (oops, fix for if

@@ -196,6 +196,7 @@ struct nickserv_config {
     const char *ldap_field_account;
     const char *ldap_field_password;
     const char *ldap_field_email;
+    struct string_list *ldap_object_classes;
 #endif
 };
 

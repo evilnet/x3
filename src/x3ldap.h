@@ -26,6 +26,9 @@ int ldap_do_init();
 
 unsigned int ldap_check_auth(char *account, char *pass);
 int ldap_do_add(const char *account, const char *password, const char *email);
+int ldap_rename_account(char *oldaccount, char *newaccount);
+int ldap_delete_account(char *account);
+int ldap_do_modify(const char *account, const char *password, const char *email);
 
 void ldap_close();
 

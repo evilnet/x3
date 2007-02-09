@@ -34,6 +34,11 @@
 #include <ldap.h>
 //#include <sys/select.h>
 
+#ifdef WITH_SSL
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#endif
+
 #include "conf.h"
 #include "global.h"
 #include "log.h"
@@ -173,17 +178,34 @@ LDAPMessage ldap_search_user(char uid)
 
 #endif
 
-LDAPMod **make_mods(const char *account, const char *password, const char *email, int *num_mods_ret)
+char **make_object_vals()
+{
+    unsigned int y;
+    static char **object_vals = NULL;
+
+    if(object_vals)
+       free(object_vals);
+
+    object_vals = malloc(sizeof( *object_vals ) * nickserv_conf.ldap_object_classes->used);
+
+    for(y = 0; y < nickserv_conf.ldap_object_classes->used; y++) {
+        object_vals[y] = nickserv_conf.ldap_object_classes->list[y];
+    }
+    object_vals[y] = NULL;
+    return object_vals;
+}
+
+LDAPMod **make_mods_add(const char *account, const char *password, const char *email, int *num_mods_ret)
 {
     static char *account_vals[] = { NULL, NULL };
     static char *password_vals[] = { NULL, NULL };
     static char *email_vals[] = { NULL, NULL };
-    char newdn[MAXLEN];
     int num_mods = 3;
     int i;
     /* TODO: take this from nickserv_conf.ldap_add_objects */
-    static char *object_vals[] = { "top", "inetOrgAnonAccount", NULL };
     LDAPMod **mods;
+    static char **object_vals;
+    object_vals = make_object_vals();
 
     account_vals[0] = (char *) account;
     password_vals[0] = (char *) password;
@@ -202,7 +224,6 @@ LDAPMod **make_mods(const char *account, const char *password, const char *email
       memset(mods[i], 0, sizeof(LDAPMod));
     }
 
-    memset(newdn, 0, MAXLEN);
     mods[0]->mod_op = LDAP_MOD_ADD;
     mods[0]->mod_type = strdup("objectclass");
     mods[0]->mod_values = object_vals;
@@ -250,7 +271,7 @@ int ldap_do_add(const char *account, const char *password, const char *email)
     }
     
     snprintf(newdn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
-    mods = make_mods(account, password, email, &num_mods);
+    mods = make_mods_add(account, password, email, &num_mods);
     if(!mods) {
        log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
        return LDAP_OTHER;
@@ -266,6 +287,245 @@ int ldap_do_add(const char *account, const char *password, const char *email)
        free(mods[i]);
     }
     free(mods);
+    return rc;
+}
+
+int ldap_delete_account(char *account)
+{
+    char dn[MAXLEN];
+    memset(dn, 0, MAXLEN);
+    snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
+    return(ldap_delete_s(ld, dn));
+}
+
+int ldap_rename_account(char *oldaccount, char *newaccount)
+{
+    char dn[MAXLEN], newdn[MAXLEN];
+    int rc;
+
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+
+    memset(dn, 0, MAXLEN);
+    memset(newdn, 0, MAXLEN);
+    snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, oldaccount);
+    strcat(newdn, nickserv_conf.ldap_field_account);
+    strcat(newdn, "=");
+    strcat(newdn, newaccount);
+    rc = ldap_modrdn2_s(ld, dn, newdn, true);
+    if(rc != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error modifying ldap account: %s -- %s", oldaccount, ldap_err2string(rc));
+       return rc;
+    }
+    return rc;
+    
+}
+
+LDAPMod **make_mods_modify(const char *password, const char *email, int *num_mods_ret)
+{
+    static char *password_vals[] = { NULL, NULL };
+    static char *email_vals[] = { NULL, NULL };
+    int num_mods = 1;
+    int i;
+    /* TODO: take this from nickserv_conf.ldap_add_objects */
+    LDAPMod **mods;
+
+    password_vals[0] = (char *) password;
+    email_vals[0] = (char *) email;
+
+    if(!(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password))
+       return 0; /* password required */
+    if(email && *email && nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email)
+       num_mods++;
+
+    mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
+    for( i = 0; i < num_mods; i++) {
+      mods[i] = (LDAPMod *) malloc(sizeof(LDAPMod));
+      memset(mods[i], 0, sizeof(LDAPMod));
+    }
+
+    i = 0;
+    if(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password && 
+       password) {
+        mods[i]->mod_op = LDAP_MOD_REPLACE;
+        mods[i]->mod_type = strdup(nickserv_conf.ldap_field_password);
+        mods[i]->mod_values = password_vals;
+        i++;
+    }
+
+    if(nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email && email) {
+        mods[i]->mod_op = LDAP_MOD_REPLACE;
+        mods[i]->mod_type = strdup(nickserv_conf.ldap_field_email);
+        mods[i]->mod_values = email_vals;
+        i++;
+    }
+    mods[i] = NULL;
+    *num_mods_ret = num_mods;
+    return mods;
+}
+
+/********* base64 stuff ***********/
+
+unsigned char *pack(char *str, unsigned int *len)
+{
+    int nibbleshift = 4;
+    int first = 1;
+    char *v;
+    static unsigned char buf[MAXLEN+1];
+    int outputpos = -1;
+
+    memset(buf, 0, MAXLEN+1);
+    v = str;
+    while(*v) {
+        char n = *(v++);
+
+        if((n >= '0') && (n <= '9')) {
+            n -= '0';
+        } else if ((n >= 'A') && (n <= 'F')) {
+                n -= ('A' - 10);
+        } else if ((n >= 'a') && (n <= 'f')) {
+                n -= ('a' - 10);
+        } else {
+                printf("pack type H: illegal hex digit %c", n);
+                n = 0;
+        }
+
+        if (first--) {
+                buf[++outputpos] = 0;
+        } else {
+                first = 1;
+        }
+
+        buf[outputpos] |= (n << nibbleshift);
+        nibbleshift = (nibbleshift + 4) & 7;
+    }
+    *len = outputpos+1;
+    return(buf);
+}
+
+
+/* from php5 sources */
+static char base64_table[] =
+        { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+          'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+          'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+          'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+          '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/', '\0'
+        };
+static char base64_pad = '=';
+
+char *base64_encode(const unsigned  char *str, int length, int *ret_length)
+{
+    const unsigned char *current = str;
+    char *p;
+    char *result;
+
+    if ((length + 2) < 0 || ((length + 2) / 3) >= (1 << (sizeof(int) * 8 - 2))) {
+        if (ret_length != NULL) {
+            *ret_length = 0;
+        }
+        return NULL;
+    }
+
+    result = (char *)calloc(((length + 2) / 3) * 4, sizeof(char));
+    p = result;
+
+    while (length > 2) { /* keep going until we have less than 24 bits */
+        *p++ = base64_table[current[0] >> 2];
+        *p++ = base64_table[((current[0] & 0x03) << 4) + (current[1] >> 4)];
+        *p++ = base64_table[((current[1] & 0x0f) << 2) + (current[2] >> 6)];
+        *p++ = base64_table[current[2] & 0x3f];
+
+        current += 3;
+        length -= 3; /* we just handle 3 octets of data */
+    }
+
+    /* now deal with the tail end of things */
+    if (length != 0) {
+        *p++ = base64_table[current[0] >> 2];
+        if (length > 1) {
+            *p++ = base64_table[((current[0] & 0x03) << 4) + (current[1] >> 4)];
+            *p++ = base64_table[(current[1] & 0x0f) << 2];
+            *p++ = base64_pad;
+        } else {
+            *p++ = base64_table[(current[0] & 0x03) << 4];
+            *p++ = base64_pad;
+            *p++ = base64_pad;
+        }
+    }
+    if (ret_length != NULL) {
+        *ret_length = (int)(p - result);
+    }
+    *p = '\0';
+    return result;
+}
+
+
+/* Save email or password to server
+ *
+ * password - UNENCRYPTED password. This function encrypts if libs are available
+ * email    - email address
+ *
+ * NULL to make no change
+ */
+int ldap_do_modify(const char *account, const char *password, const char *email)
+{
+    char dn[MAXLEN];
+    LDAPMod **mods;
+    int rc, i;
+    int num_mods;
+    char *passbuf = NULL;
+    
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+
+    if(password) {
+/* If we have the ssl lib, (and thus the base64 libraries) save the passwords as ldap md5 */
+       char *base64pass;
+       char crypted[MD5_CRYPT_LENGTH+1];
+       unsigned char *packed;
+       unsigned int len, i;
+       unsigned char c;
+       cryptpass(password, crypted);
+       
+//       printf("Crypted pass is: '%s'\n", crypted);
+       packed = pack(crypted, &len);
+       base64pass = base64_encode(packed, len, NULL);
+//       printf("base64pass is: '%s'\n", base64pass);
+//       for(i = 0; i<=len; i++) {
+//          c = packed[i];
+//          printf("%d ", packed[i]);
+//       }
+
+       passbuf = malloc(strlen(base64pass) + 1 + 5);
+       strcpy(passbuf, "{MD5}");
+       strcat(passbuf, base64pass);
+       log_module(MAIN_LOG, LOG_DEBUG, "Encoded password is: '%s'", passbuf);
+       free(base64pass);
+    }
+    
+    snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
+    mods = make_mods_modify(passbuf, email, &num_mods);
+    if(!mods) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
+       return LDAP_OTHER;
+    }
+    rc = ldap_modify_s(ld, dn, mods);
+    if(rc != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error adding ldap account: %s -- %s", account, ldap_err2string(rc));
+       return rc;
+    }
+    for(i = 0; i < num_mods; i++) {
+       free(mods[i]->mod_type);
+       free(mods[i]);
+    }
+    free(mods);
+    if(passbuf)
+      free(passbuf);
     return rc;
 }
 
