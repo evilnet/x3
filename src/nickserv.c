@@ -168,6 +168,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_PASSWORD_DICTIONARY", "Your password is too simple. You must choose a password that is not just a word or name." },
     { "NSMSG_PASSWORD_READABLE", "Your password must have at least %lu digit(s), %lu capital letter(s), and %lu lower-case letter(s)." },
     { "NSMSG_LDAP_FAIL", "There was a problem in contacting the account server (ldap): %s. Please try again later." },
+    { "NSMSG_LDAP_FAIL_EMAIL", "There was a problem in storing your email address in the account server (ldap): %s. Please try again later." },
     { "NSMSG_PARTIAL_REGISTER", "Account has been registered to you; nick was already registered to someone else." },
     { "NSMSG_OREGISTER_VICTIM", "%s has registered a new account for you (named %s)." },
     { "NSMSG_OREGISTER_H_SUCCESS", "Account has been registered." },
@@ -1360,8 +1361,25 @@ static NICKSERV_FUNC(cmd_register)
     }
 
     /* Set their email address. */
-    if (email_addr)
+    if (email_addr) {
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc == ldap_do_modify(hi->handle, NULL, email_addr)) != LDAP_SUCCESS) {
+                /* Falied to update email in ldap, but still 
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
+            } else {
+                nickserv_set_email_addr(hi, email_addr);
+            }
+        }
+        else {
+            nickserv_set_email_addr(hi, email_addr);
+        }
+#else
         nickserv_set_email_addr(hi, email_addr);
+#endif
+    }
 
     /* If they need to do email verification, tell them. */
     if (no_auth)
@@ -1451,7 +1469,23 @@ static NICKSERV_FUNC(cmd_oregister)
         return 0; /* error reply handled by above */
     }
     if (email) {
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc == ldap_do_modify(hi->handle, NULL, email)) != LDAP_SUCCESS) {
+                /* Falied to update email in ldap, but still 
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
+            } else {
+                nickserv_set_email_addr(hi, email);
+            }
+        }
+        else {
+            nickserv_set_email_addr(hi, email);
+        }
+#else
         nickserv_set_email_addr(hi, email);
+#endif
     }
     if (mask) {
         char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
@@ -1976,12 +2010,14 @@ static NICKSERV_FUNC(cmd_auth)
 #ifdef WITH_LDAP
         if(nickserv_conf.ldap_enable) {
             ldap_result = ldap_check_auth(argv[1], argv[2]);
+            /* Get the users email address and update it */
             if(ldap_result == LDAP_SUCCESS) {
-               /* pull the users info from ldap:
-                * * email
-                * * name if available
-                * *
-                */
+               int rc;
+               if((rc = ldap_get_user_info(argv[1], &email) != LDAP_SUCCESS))
+               {
+                    reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
+                    return 0;
+               }
             }
             else if(ldap_result != LDAP_INVALID_CREDENTIALS) {
                reply("NSMSG_LDAP_FAIL", ldap_err2string(ldap_result));
@@ -2300,7 +2336,23 @@ static NICKSERV_FUNC(cmd_odelcookie)
           if (nickserv_conf.sync_log)
             SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, hi->cookie->data, user->info);
         }
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc == ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
+                /* Falied to update email in ldap, but still 
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
+            } else {
+                nickserv_set_email_addr(hi, hi->cookie->data);
+            }
+        }
+        else {
+            nickserv_set_email_addr(hi, hi->cookie->data);
+        }
+#else
         nickserv_set_email_addr(hi, hi->cookie->data);
+#endif
         if (nickserv_conf.sync_log)
           SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
         break;
@@ -2408,6 +2460,17 @@ static NICKSERV_FUNC(cmd_cookie)
           SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
         break;
     case EMAIL_CHANGE:
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc == ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
+                /* Falied to update email in ldap, but still 
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
+               return 0;
+            }
+        }
+#endif
         if (!hi->email_addr && nickserv_conf.sync_log) {
           /*
            * This should only happen if an OREGISTER was sent. Require
@@ -2416,6 +2479,7 @@ static NICKSERV_FUNC(cmd_cookie)
           if (nickserv_conf.sync_log)
             SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, hi->cookie->data, user->info);
         }
+
         nickserv_set_email_addr(hi, hi->cookie->data);
         reply("NSMSG_EMAIL_CHANGED");
         if (nickserv_conf.sync_log)
@@ -2521,7 +2585,7 @@ static NICKSERV_FUNC(cmd_pass)
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
         if((rc == ldap_do_modify(hi->handle, new_pass, NULL)) != LDAP_SUCCESS) {
-             reply("NSMSG_LDAP_FAIL");
+             reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
              return 0;
         }
     }
@@ -2916,7 +2980,7 @@ static OPTION_FUNC(opt_password)
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
         if((rc == ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
-             reply("NSMSG_LDAP_FAIL");
+             reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
              return 0;   
         }
     }
@@ -2972,6 +3036,15 @@ static OPTION_FUNC(opt_email)
         else if (!override)
                 nickserv_make_cookie(user, hi, EMAIL_CHANGE, argv[1], 0);
         else {
+#ifdef WITH_LDAP
+            if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+                int rc;
+                if((rc == ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
+                   reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+                   return 0;
+                }
+            }
+#endif
             nickserv_set_email_addr(hi, argv[1]);
             if (hi->cookie)
                 nickserv_eat_cookie(hi->cookie);

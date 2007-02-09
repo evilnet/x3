@@ -94,6 +94,16 @@ unsigned int ldap_do_bind( const char *dn, const char *pass)
    log_module(MAIN_LOG, LOG_ERROR, "ldap_do_bind falling off the end. this shouldnt happen");
    return q;
 }
+int ldap_do_admin_bind()
+{
+   if(!(nickserv_conf.ldap_admin_dn && *nickserv_conf.ldap_admin_dn && 
+      nickserv_conf.ldap_admin_pass && *nickserv_conf.ldap_admin_pass)) {
+       log_module(MAIN_LOG, LOG_ERROR, "Tried to admin bind, but no admin credentials configured in config file. ldap_admin_dn/ldap_admin_pass");
+       return LDAP_OTHER; /* not configured to do this */
+    }
+    return(ldap_do_bind(nickserv_conf.ldap_admin_dn, nickserv_conf.ldap_admin_pass));
+}
+
 
 unsigned int ldap_check_auth( char *account, char *pass)
 {
@@ -108,35 +118,71 @@ unsigned int ldap_check_auth( char *account, char *pass)
 
 }
 
-#ifdef notdef /* not used yet - will be used to pull email etc out of ldap */
-LDAPMessage ldap_search_user(char uid)
+int ldap_search_user(char *account, LDAPMessage **entry)
 {
 
-   char filter[] = "cn=admin";
+   char filter[MAXLEN+1];
+   int rc;
+   LDAPMessage *res;
 
    struct timeval timeout;
+
+   memset(filter, 0, MAXLEN+1);
+   snprintf(filter, MAXLEN, "%s=%s", nickserv_conf.ldap_field_account, account);
    /*
     Now we do a search;
     */
    timeout.tv_usec = 0;
    timeout.tv_sec  = 5;
-   if( ldap_search_st(ld, base, LDAP_SCOPE_ONELEVEL, filter, NULL, 0, &timeout, &res) != LDAP_SUCCESS) {
-       log_module(MAIN_LOG, LOG_ERROR, "search failed: %s   %s\n", base, filter);
-       exit(1);
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+   if( (rc = ldap_search_st(ld, nickserv_conf.ldap_base, LDAP_SCOPE_ONELEVEL, filter, NULL, 0, &timeout, &res)) != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "search failed: %s   %s: %s", nickserv_conf.ldap_base, filter, ldap_err2string(rc));
+       return(rc);
    }
-   log_module(MAIN_LOG, LOG_DEBUG, "Search successfull!  %s    %s\n", base, filter);
-   log_module(MAIN_LOG, LOG_DEBUG, "Got %d entries\n", ldap_count_entries(ld, res));
-   {
-      LDAPMessage *entry;
-      char **value;
-      entry = ldap_first_entry(ld, res);
-      value = ldap_get_values(ld, entry, "cn");
-      log_module(MAIN_LOG, LOG_DEBUG, "cn: %s\n", value[0]);
-      value = ldap_get_values(ld, entry, "description");
-      log_module(MAIN_LOG, LOG_DEBUG, "Description: %s\n", value[0]);
-      value = ldap_get_values(ld, entry, "userPassword");
-      log_module(MAIN_LOG, LOG_DEBUG, "pass: %s\n", value ? value[0] : "error");
+   log_module(MAIN_LOG, LOG_DEBUG, "Search successfull!  %s    %s\n", nickserv_conf.ldap_base, filter);
+   if(ldap_count_entries(ld, res) != 1) {
+      log_module(MAIN_LOG, LOG_ERROR, "LDAP search got %d entries when looking for %s", ldap_count_entries(ld, res), account);
+      return(LDAP_OTHER); /* Search was a success, but user not found.. */
    }
+   log_module(MAIN_LOG, LOG_DEBUG, "LDAP search got %d entries", ldap_count_entries(ld, res));
+   *entry = ldap_first_entry(ld, res);
+   return(rc);
+}
+
+/* queries the ldap server for account..
+ * if a single account match is found, 
+ * email is allocated and set to the email address
+ * and returns LDAP_SUCCESS. returns LDAP_OTHER if
+ * 0 or 2+ entries are matched, or the proper ldap error
+ * code for other errors.
+ */ 
+int ldap_get_user_info(char *account, char **email) 
+{
+    int rc;
+    char **value;
+    LDAPMessage *entry, *res;
+    *email = NULL;
+    if( (rc = ldap_search_user(account, &res)) == LDAP_SUCCESS) {
+        entry = ldap_first_entry(ld, res);
+        value = ldap_get_values(ld, entry, nickserv_conf.ldap_field_email);
+        if(!value) {
+           return(LDAP_OTHER);
+        }
+        *email = strdup(value[0]);
+        log_module(MAIN_LOG, LOG_DEBUG, "%s: %s\n", nickserv_conf.ldap_field_email, value[0]);
+        /*
+        value = ldap_get_values(ld, entry, "description");
+        log_module(MAIN_LOG, LOG_DEBUG, "Description: %s\n", value[0]);
+        value = ldap_get_values(ld, entry, "userPassword");
+        log_module(MAIN_LOG, LOG_DEBUG, "pass: %s\n", value ? value[0] : "error");
+        */
+    }
+    return(rc);
+}
+
    /*
    ldap_result();
    ldap_first_entry();
@@ -149,12 +195,9 @@ LDAPMessage ldap_search_user(char uid)
    ldap_parse_result();
 
    ldap_unbind_ext();
-
    */
    /* get errors with ldap_err2string(); */
-}
 
-#endif
 
 /********* base64 stuff ***********/
 
@@ -341,16 +384,6 @@ LDAPMod **make_mods_add(const char *account, const char *password, const char *e
        mods[3] = NULL;
     *num_mods_ret = num_mods;
     return mods;
-}
-
-int ldap_do_admin_bind()
-{
-   if(!(nickserv_conf.ldap_admin_dn && *nickserv_conf.ldap_admin_dn && 
-      nickserv_conf.ldap_admin_pass && *nickserv_conf.ldap_admin_pass)) {
-       log_module(MAIN_LOG, LOG_ERROR, "Tried to admin bind, but no admin credentials configured in config file. ldap_admin_dn/ldap_admin_pass");
-       return LDAP_OTHER; /* not configured to do this */
-    }
-    return(ldap_do_bind(nickserv_conf.ldap_admin_dn, nickserv_conf.ldap_admin_pass));
 }
 
 int ldap_do_add(const char *account, const char *password, const char *email)
