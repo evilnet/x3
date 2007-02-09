@@ -32,34 +32,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ldap.h>
-//#include <sys/select.h>
-
-#ifdef WITH_SSL
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#endif
 
 #include "conf.h"
 #include "global.h"
 #include "log.h"
 #include "x3ldap.h"
 
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
-#endif
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
-
-
-/* char dn[] = "uid=%s,ou=Users,dc=afternet,dc=org";
-char password[] = "xxxxxxx";
-char base[] = "ou=Users,dc=afternet,dc=org";
-int ldap_version = 3;
-*/
 extern struct nickserv_config nickserv_conf;
 
 
@@ -93,7 +71,7 @@ unsigned int ldap_do_bind( const char *dn, const char *pass)
    while(1) {
       q = ldap_simple_bind_s(ld, dn, pass);
       if(q == LDAP_SUCCESS) {
-           log_module(MAIN_LOG, LOG_DEBUG, "bind() successfull! You are bound as %s\n", dn);
+           log_module(MAIN_LOG, LOG_DEBUG, "bind() successfull! You are bound as %s", dn);
            /* unbind now */
            return q;
       }
@@ -101,7 +79,7 @@ unsigned int ldap_do_bind( const char *dn, const char *pass)
         return q;
       }
       else {
-        log_module(MAIN_LOG, LOG_ERROR, "Bind failed: %s/******  (%d)\n", dn, q);
+        log_module(MAIN_LOG, LOG_ERROR, "Bind failed: %s/******  (%d)", dn, q);
         ldap_perror(ld, "ldap");
         ldap_do_init();
       }
@@ -177,194 +155,6 @@ LDAPMessage ldap_search_user(char uid)
 }
 
 #endif
-
-char **make_object_vals()
-{
-    unsigned int y;
-    static char **object_vals = NULL;
-
-    if(object_vals)
-       free(object_vals);
-
-    object_vals = malloc(sizeof( *object_vals ) * nickserv_conf.ldap_object_classes->used);
-
-    for(y = 0; y < nickserv_conf.ldap_object_classes->used; y++) {
-        object_vals[y] = nickserv_conf.ldap_object_classes->list[y];
-    }
-    object_vals[y] = NULL;
-    return object_vals;
-}
-
-LDAPMod **make_mods_add(const char *account, const char *password, const char *email, int *num_mods_ret)
-{
-    static char *account_vals[] = { NULL, NULL };
-    static char *password_vals[] = { NULL, NULL };
-    static char *email_vals[] = { NULL, NULL };
-    int num_mods = 3;
-    int i;
-    /* TODO: take this from nickserv_conf.ldap_add_objects */
-    LDAPMod **mods;
-    static char **object_vals;
-    object_vals = make_object_vals();
-
-    account_vals[0] = (char *) account;
-    password_vals[0] = (char *) password;
-    email_vals[0] = (char *) email;
-
-    if(!(nickserv_conf.ldap_field_account && *nickserv_conf.ldap_field_account))
-       return 0; /* account required */
-    if(!(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password))
-       return 0; /* password required */
-    if(email && *email && nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email)
-       num_mods++;
-
-    mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
-    for( i = 0; i < num_mods; i++) {
-      mods[i] = (LDAPMod *) malloc(sizeof(LDAPMod));
-      memset(mods[i], 0, sizeof(LDAPMod));
-    }
-
-    mods[0]->mod_op = LDAP_MOD_ADD;
-    mods[0]->mod_type = strdup("objectclass");
-    mods[0]->mod_values = object_vals;
-
-    mods[1]->mod_op = LDAP_MOD_ADD;
-    mods[1]->mod_type = strdup(nickserv_conf.ldap_field_account);
-    mods[1]->mod_values = account_vals;
-
-    mods[2]->mod_op = LDAP_MOD_ADD;
-    mods[2]->mod_type = strdup(nickserv_conf.ldap_field_password);
-    mods[2]->mod_values = password_vals;
-
-    if(nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email && email && *email) {
-        mods[3]->mod_op = LDAP_MOD_ADD;
-        mods[3]->mod_type = strdup(nickserv_conf.ldap_field_email);
-        mods[3]->mod_values = email_vals;
-        mods[4] = NULL;
-    }
-    else
-       mods[3] = NULL;
-    *num_mods_ret = num_mods;
-    return mods;
-}
-
-int ldap_do_admin_bind()
-{
-   if(!(nickserv_conf.ldap_admin_dn && *nickserv_conf.ldap_admin_dn && 
-      nickserv_conf.ldap_admin_pass && *nickserv_conf.ldap_admin_pass)) {
-       log_module(MAIN_LOG, LOG_ERROR, "Tried to admin bind, but no admin credentials configured in config file. ldap_admin_dn/ldap_admin_pass");
-       return LDAP_OTHER; /* not configured to do this */
-    }
-    return(ldap_do_bind(nickserv_conf.ldap_admin_dn, nickserv_conf.ldap_admin_pass));
-}
-
-int ldap_do_add(const char *account, const char *password, const char *email)
-{
-    char newdn[MAXLEN];
-    LDAPMod **mods;
-    int rc, i;
-    int num_mods;
-    
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
-       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
-       return rc;
-    }
-    
-    snprintf(newdn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
-    mods = make_mods_add(account, password, email, &num_mods);
-    if(!mods) {
-       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
-       return LDAP_OTHER;
-    }
-    rc = ldap_add_ext_s(ld, newdn, mods, NULL, NULL);
-    if(rc != LDAP_SUCCESS) {
-       log_module(MAIN_LOG, LOG_ERROR, "Error adding ldap account: %s -- %s", account, ldap_err2string(rc));
-       return rc;
-    }
-    //ldap_unbind_s(ld);
-    for(i = 0; i < num_mods; i++) {
-       free(mods[i]->mod_type);
-       free(mods[i]);
-    }
-    free(mods);
-    return rc;
-}
-
-int ldap_delete_account(char *account)
-{
-    char dn[MAXLEN];
-    memset(dn, 0, MAXLEN);
-    snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
-    return(ldap_delete_s(ld, dn));
-}
-
-int ldap_rename_account(char *oldaccount, char *newaccount)
-{
-    char dn[MAXLEN], newdn[MAXLEN];
-    int rc;
-
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
-       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
-       return rc;
-    }
-
-    memset(dn, 0, MAXLEN);
-    memset(newdn, 0, MAXLEN);
-    snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, oldaccount);
-    strcat(newdn, nickserv_conf.ldap_field_account);
-    strcat(newdn, "=");
-    strcat(newdn, newaccount);
-    rc = ldap_modrdn2_s(ld, dn, newdn, true);
-    if(rc != LDAP_SUCCESS) {
-       log_module(MAIN_LOG, LOG_ERROR, "Error modifying ldap account: %s -- %s", oldaccount, ldap_err2string(rc));
-       return rc;
-    }
-    return rc;
-    
-}
-
-LDAPMod **make_mods_modify(const char *password, const char *email, int *num_mods_ret)
-{
-    static char *password_vals[] = { NULL, NULL };
-    static char *email_vals[] = { NULL, NULL };
-    int num_mods = 1;
-    int i;
-    /* TODO: take this from nickserv_conf.ldap_add_objects */
-    LDAPMod **mods;
-
-    password_vals[0] = (char *) password;
-    email_vals[0] = (char *) email;
-
-    if(!(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password))
-       return 0; /* password required */
-    if(email && *email && nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email)
-       num_mods++;
-
-    mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
-    for( i = 0; i < num_mods; i++) {
-      mods[i] = (LDAPMod *) malloc(sizeof(LDAPMod));
-      memset(mods[i], 0, sizeof(LDAPMod));
-    }
-
-    i = 0;
-    if(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password && 
-       password) {
-        mods[i]->mod_op = LDAP_MOD_REPLACE;
-        mods[i]->mod_type = strdup(nickserv_conf.ldap_field_password);
-        mods[i]->mod_values = password_vals;
-        i++;
-    }
-
-    if(nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email && email) {
-        mods[i]->mod_op = LDAP_MOD_REPLACE;
-        mods[i]->mod_type = strdup(nickserv_conf.ldap_field_email);
-        mods[i]->mod_values = email_vals;
-        i++;
-    }
-    mods[i] = NULL;
-    *num_mods_ret = num_mods;
-    return mods;
-}
 
 /********* base64 stuff ***********/
 
@@ -463,6 +253,218 @@ char *base64_encode(const unsigned  char *str, int length, int *ret_length)
 }
 
 
+char **make_object_vals()
+{
+    unsigned int y;
+    static char **object_vals = NULL;
+
+    if(object_vals)
+       free(object_vals);
+
+    object_vals = malloc(sizeof( *object_vals ) * nickserv_conf.ldap_object_classes->used);
+
+    for(y = 0; y < nickserv_conf.ldap_object_classes->used; y++) {
+        object_vals[y] = nickserv_conf.ldap_object_classes->list[y];
+    }
+    object_vals[y] = NULL;
+    return object_vals;
+}
+
+char *make_password(const char *password)
+{
+       char *base64pass;
+       char crypted[MD5_CRYPT_LENGTH+1];
+       unsigned char *packed;
+       unsigned int len;
+       char *passbuf;
+       cryptpass(password, crypted);
+
+       packed = pack(crypted, &len);
+       base64pass = base64_encode(packed, len, NULL);
+       passbuf = malloc(strlen(base64pass) + 1 + 5);
+       strcpy(passbuf, "{MD5}");
+       strcat(passbuf, base64pass);
+       //log_module(MAIN_LOG, LOG_DEBUG, "Encoded password is: '%s'", passbuf);
+       free(base64pass);
+       return passbuf;
+
+}
+
+LDAPMod **make_mods_add(const char *account, const char *password, const char *email, int *num_mods_ret)
+{
+    static char *account_vals[] = { NULL, NULL };
+    static char *password_vals[] = { NULL, NULL };
+    static char *email_vals[] = { NULL, NULL };
+    int num_mods = 3;
+    int i;
+    /* TODO: take this from nickserv_conf.ldap_add_objects */
+    LDAPMod **mods;
+    static char **object_vals;
+    object_vals = make_object_vals();
+
+    account_vals[0] = (char *) account;
+    password_vals[0] = (char *) password;
+    email_vals[0] = (char *) email;
+
+    if(!(nickserv_conf.ldap_field_account && *nickserv_conf.ldap_field_account))
+       return 0; /* account required */
+    if(!(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password))
+       return 0; /* password required */
+    if(email && *email && nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email)
+       num_mods++;
+
+    mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
+    for( i = 0; i < num_mods; i++) {
+      mods[i] = (LDAPMod *) malloc(sizeof(LDAPMod));
+      memset(mods[i], 0, sizeof(LDAPMod));
+    }
+
+    mods[0]->mod_op = LDAP_MOD_ADD;
+    mods[0]->mod_type = strdup("objectclass");
+    mods[0]->mod_values = object_vals;
+
+    mods[1]->mod_op = LDAP_MOD_ADD;
+    mods[1]->mod_type = strdup(nickserv_conf.ldap_field_account);
+    mods[1]->mod_values = account_vals;
+
+    mods[2]->mod_op = LDAP_MOD_ADD;
+    mods[2]->mod_type = strdup(nickserv_conf.ldap_field_password);
+    mods[2]->mod_values = password_vals;
+
+    if(nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email && email && *email) {
+        mods[3]->mod_op = LDAP_MOD_ADD;
+        mods[3]->mod_type = strdup(nickserv_conf.ldap_field_email);
+        mods[3]->mod_values = email_vals;
+        mods[4] = NULL;
+    }
+    else
+       mods[3] = NULL;
+    *num_mods_ret = num_mods;
+    return mods;
+}
+
+int ldap_do_admin_bind()
+{
+   if(!(nickserv_conf.ldap_admin_dn && *nickserv_conf.ldap_admin_dn && 
+      nickserv_conf.ldap_admin_pass && *nickserv_conf.ldap_admin_pass)) {
+       log_module(MAIN_LOG, LOG_ERROR, "Tried to admin bind, but no admin credentials configured in config file. ldap_admin_dn/ldap_admin_pass");
+       return LDAP_OTHER; /* not configured to do this */
+    }
+    return(ldap_do_bind(nickserv_conf.ldap_admin_dn, nickserv_conf.ldap_admin_pass));
+}
+
+int ldap_do_add(const char *account, const char *password, const char *email)
+{
+    char newdn[MAXLEN];
+    LDAPMod **mods;
+    int rc, i;
+    int num_mods;
+    char *passbuf;
+    
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+    
+    passbuf = make_password(password);
+    snprintf(newdn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
+    mods = make_mods_add(account, password, email, &num_mods);
+    if(!mods) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
+       return LDAP_OTHER;
+    }
+    rc = ldap_add_ext_s(ld, newdn, mods, NULL, NULL);
+    if(rc != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error adding ldap account: %s -- %s", account, ldap_err2string(rc));
+       return rc;
+    }
+    //ldap_unbind_s(ld);
+    for(i = 0; i < num_mods; i++) {
+       free(mods[i]->mod_type);
+       free(mods[i]);
+    }
+    free(mods);
+    free(passbuf);
+    return rc;
+}
+
+int ldap_delete_account(char *account)
+{
+    char dn[MAXLEN];
+    memset(dn, 0, MAXLEN);
+    snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
+    return(ldap_delete_s(ld, dn));
+}
+
+int ldap_rename_account(char *oldaccount, char *newaccount)
+{
+    char dn[MAXLEN], newdn[MAXLEN];
+    int rc;
+
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+
+    memset(dn, 0, MAXLEN);
+    memset(newdn, 0, MAXLEN);
+    snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, oldaccount);
+    strcat(newdn, nickserv_conf.ldap_field_account);
+    strcat(newdn, "=");
+    strcat(newdn, newaccount);
+    rc = ldap_modrdn2_s(ld, dn, newdn, true);
+    if(rc != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error modifying ldap account: %s -- %s", oldaccount, ldap_err2string(rc));
+       return rc;
+    }
+    return rc;
+    
+}
+
+LDAPMod **make_mods_modify(const char *password, const char *email, int *num_mods_ret)
+{
+    static char *password_vals[] = { NULL, NULL };
+    static char *email_vals[] = { NULL, NULL };
+    int num_mods = 1;
+    int i;
+    /* TODO: take this from nickserv_conf.ldap_add_objects */
+    LDAPMod **mods;
+
+    password_vals[0] = (char *) password;
+    email_vals[0] = (char *) email;
+
+    if(!(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password))
+       return 0; /* password required */
+    if(email && *email && nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email)
+       num_mods++;
+
+    mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
+    for( i = 0; i < num_mods; i++) {
+      mods[i] = (LDAPMod *) malloc(sizeof(LDAPMod));
+      memset(mods[i], 0, sizeof(LDAPMod));
+    }
+
+    i = 0;
+    if(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password && 
+       password) {
+        mods[i]->mod_op = LDAP_MOD_REPLACE;
+        mods[i]->mod_type = strdup(nickserv_conf.ldap_field_password);
+        mods[i]->mod_values = password_vals;
+        i++;
+    }
+
+    if(nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email && email) {
+        mods[i]->mod_op = LDAP_MOD_REPLACE;
+        mods[i]->mod_type = strdup(nickserv_conf.ldap_field_email);
+        mods[i]->mod_values = email_vals;
+        i++;
+    }
+    mods[i] = NULL;
+    *num_mods_ret = num_mods;
+    return mods;
+}
+
+
 /* Save email or password to server
  *
  * password - UNENCRYPTED password. This function encrypts if libs are available
@@ -484,28 +486,7 @@ int ldap_do_modify(const char *account, const char *password, const char *email)
     }
 
     if(password) {
-/* If we have the ssl lib, (and thus the base64 libraries) save the passwords as ldap md5 */
-       char *base64pass;
-       char crypted[MD5_CRYPT_LENGTH+1];
-       unsigned char *packed;
-       unsigned int len, i;
-       unsigned char c;
-       cryptpass(password, crypted);
-       
-//       printf("Crypted pass is: '%s'\n", crypted);
-       packed = pack(crypted, &len);
-       base64pass = base64_encode(packed, len, NULL);
-//       printf("base64pass is: '%s'\n", base64pass);
-//       for(i = 0; i<=len; i++) {
-//          c = packed[i];
-//          printf("%d ", packed[i]);
-//       }
-
-       passbuf = malloc(strlen(base64pass) + 1 + 5);
-       strcpy(passbuf, "{MD5}");
-       strcat(passbuf, base64pass);
-       log_module(MAIN_LOG, LOG_DEBUG, "Encoded password is: '%s'", passbuf);
-       free(base64pass);
+       passbuf = make_password(password);
     }
     
     snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);

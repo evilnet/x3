@@ -1864,7 +1864,9 @@ struct handle_info *loc_auth(char *handle, char *password)
     int wildmask = 0;
     struct handle_info *hi;
     struct userNode *other;
+#ifdef WITH_LDAP
     int ldap_result;
+#endif
 
     hi = dict_find(nickserv_handle_dict, handle, NULL);
     pw_arg = 2;
@@ -2487,7 +2489,9 @@ static NICKSERV_FUNC(cmd_pass)
 {
     struct handle_info *hi;
     char *old_pass, *new_pass;
+#ifdef WITH_LDAP
     int ldap_result;
+#endif
 
     NICKSERV_MIN_PARMS(3);
     hi = user->handle_info;

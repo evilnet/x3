@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2007-02-08  Alex Schumann  <rubin@afternet.org>
 
+        * src/x3ldap.c: cleaning up and switching adduser to use the new
+	crypted password scheme.
+
+        * src/nickserv.c: testing with ldap_enabled set to 0, and/or WITH_LDAP
+	not defined, uncovered some warnings etc.
+
+2007-02-08  Alex Schumann  <rubin@afternet.org>
+
         * src/nickserv.c: Filling in ldap support for all password related
 	operations: cmd_pass, loc_auth, etc.
 
