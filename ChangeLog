@@ -1,6 +1,17 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-09  Neil Spierling  <sirvulcan@gmail.com>
+
+	* tools/ldap/ldap_convert.php: Few tweaks.
+
+2007-02-08  Alex Schumann  <rubin@afternet.org>
+
+	* tools/ldap/inetorganon.schema: Scheme for ldap.
+
+	* tools/ldap/ldap_convert.php: Conversion script for converting
+	x3 users to the ldap server.
+
 2007-02-07  Alex Schumann  <rubin@afternet.org>
 
 	* configure.in: adding compile/configure support for ssl libs (not

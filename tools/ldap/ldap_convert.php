@@ -33,6 +33,7 @@ if (!extension_loaded('ldap'))
 $handle=fopen($db, r);
 $ns = 0;
 $add = 0;
+$np = 0;
 $parse = 0;
 
 if ($handle) {
@@ -98,13 +99,19 @@ if ($handle) {
                 $info["objectclass"][] = "inetOrgAnonAccount";
                 $info["uid"]=$user;
                 $info["mail"]=$email;
-                $info["userPassword"]='{MD5}'.base64_encode(pack('H*',$pass));
+		if ($pass[0] == "$") {
+			$info["userPassword"] = "";
+			echo "ALERT: $user ADDED WITH NO PASSWORD (old crypt style)\n";
+			$alert = 1;
+			$np++;
+		} else
+	                $info["userPassword"]='{MD5}'.base64_encode(pack('H*',$pass));
 
-#                $r=@ldap_add($ds, "uid=".$user.",$ldap_add", $info);
+                $r=@ldap_add($ds, "uid=".$user.",$ldap_add", $info);
                 if ($r) {
                     $add++;
                     echo "Added $user (email: $email) (pass: $pass)\n";
-                    print_r($info);
+                    /* print_r($info);*/
                 } else
                     echo "Failed adding $user (email: $email) (pass: $pass) - ". ldap_error($ds) ."\n";
 
@@ -129,5 +136,6 @@ $parse--;
 $parse--;
 echo "Processed $parse accounts.\n";
 echo "Added $add accounts to the ldap server\n";
-
+if (($alert == 1) && ($np > 0))
+	echo "ALERT: $np ACCOUNTS ADDED WITH NO PASSWORD (old crypt style)\n";
 ?>
