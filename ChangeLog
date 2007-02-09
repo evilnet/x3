@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-08  Alex Schumann  <rubin@afternet.org>
+
+        * src/nickserv.c: Filling in ldap support for all password related
+	operations: cmd_pass, loc_auth, etc.
+
 2007-02-09  Neil Spierling  <sirvulcan@gmail.com>
 
 	* tools/ldap/ldap_convert.php: Few tweaks.

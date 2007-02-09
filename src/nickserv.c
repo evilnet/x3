@@ -1864,9 +1864,58 @@ struct handle_info *loc_auth(char *handle, char *password)
     int wildmask = 0;
     struct handle_info *hi;
     struct userNode *other;
+    int ldap_result;
 
     hi = dict_find(nickserv_handle_dict, handle, NULL);
-        pw_arg = 2;
+    pw_arg = 2;
+
+#ifdef WITH_LDAP
+    if(nickserv_conf.ldap_enable) {
+        ldap_result = ldap_check_auth(handle, password);
+        if(ldap_result == LDAP_SUCCESS) {
+           /* pull the users info from ldap:
+            * * email
+            * * name if available
+            * *
+            */
+        }
+        else if(ldap_result != LDAP_INVALID_CREDENTIALS) {
+           return NULL;
+        }
+    }
+    else           
+#else
+    if (!checkpass(password, hi->passwd)) {
+        return NULL;
+    }
+#endif
+#ifdef WITH_LDAP
+    if(!hi && nickserv_conf.ldap_enable && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
+         /* user not found, but authed to ldap successfully..
+          * create the account.
+          */
+         char *mask;
+
+         /* Add a *@* mask */
+         if(nickserv_conf.default_hostmask)
+            mask = "*@*";
+         else
+            return NULL; /* They dont have a *@* mask so they can't loc */
+
+         if(!(hi = nickserv_register(NULL, NULL, handle, password, 0))) {
+            return 0; /* couldn't add the user for some reason */
+         }
+
+         if(mask) {
+            char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+            string_list_append(hi->masks, mask_canonicalized);
+         }
+         if(nickserv_conf.sync_log)
+            SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, "@", handle);
+    }
+#endif
+
+    /* Still no account, so just fail out */
     if (!hi) {
         return NULL;
     }
@@ -1886,13 +1935,10 @@ struct handle_info *loc_auth(char *handle, char *password)
     if(wildmask < 1)
         return NULL;
 
-    /* Responses from here on look up the language used by the handle they asked about. */
-    if (!checkpass(password, hi->passwd)) {
-        return NULL;
-    }
     if (HANDLE_FLAGGED(hi, SUSPENDED)) {
         return NULL;
     }
+
     maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
     for (used = 0, other = hi->users; other; other = other->next_authed) {
         if (++used >= maxlogins) {
@@ -2440,7 +2486,8 @@ static NICKSERV_FUNC(cmd_regnick) {
 static NICKSERV_FUNC(cmd_pass)
 {
     struct handle_info *hi;
-    const char *old_pass, *new_pass;
+    char *old_pass, *new_pass;
+    int ldap_result;
 
     NICKSERV_MIN_PARMS(3);
     hi = user->handle_info;
@@ -2448,12 +2495,25 @@ static NICKSERV_FUNC(cmd_pass)
     new_pass = argv[2];
     argv[2] = "****";
     if (!is_secure_password(hi->handle, new_pass, user)) return 0;
+
+#ifdef WITH_LDAP
+    if(nickserv_conf.ldap_enable) {
+        ldap_result = ldap_check_auth(hi->handle, old_pass);
+        if(ldap_result != LDAP_SUCCESS) {
+            if(ldap_result == LDAP_INVALID_CREDENTIALS) 
+	       reply("NSMSG_PASSWORD_INVALID");
+            else
+               reply("NSMSG_LDAP_FAIL", ldap_err2string(ldap_result));
+           return 0;
+        }
+    }else
+#endif
     if (!checkpass(old_pass, hi->passwd)) {
         argv[1] = "BADPASS";
 	reply("NSMSG_PASSWORD_INVALID");
 	return 0;
     }
-#ifdef WITH_LDAP
+#ifdef WITH_LDAP   
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
         if((rc == ldap_do_modify(hi->handle, new_pass, NULL)) != LDAP_SUCCESS) {
