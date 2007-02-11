@@ -32,8 +32,8 @@ if (!extension_loaded('ldap'))
 
 $handle=fopen($db, r);
 $ns = 0;
+$bs = 0;
 $add = 0;
-$np = 0;
 $parse = 0;
 
 if ($handle) {
@@ -60,13 +60,16 @@ if ($handle) {
         $user = NULL;
         $pass = NULL;
         $email = NULL;
-        if ($line == "\"NickServ\" {") {
+        if (($line == "\"NickServ\" {") && ($bs == 0)) {
+	    echo "SSTARTT\n";
             $ns = 1;
             continue;
         }
 
-        if ($line == "\"ChanServ\" {")
+        if ($line == "\"ChanServ\" {") {
+	    $bs = 1;
             $ns = 0;
+	}
 
         if ($ns == 1) {
             $parse++;
@@ -102,8 +105,6 @@ if ($handle) {
 		if ($pass[0] == "$") {
 			$info["userPassword"] = "";
 			echo "ALERT: $user ADDED WITH NO PASSWORD (old crypt style)\n";
-			$alert = 1;
-			$np++;
 		} else
 	                $info["userPassword"]='{MD5}'.base64_encode(pack('H*',$pass));
 
@@ -111,7 +112,6 @@ if ($handle) {
                 if ($r) {
                     $add++;
                     echo "Added $user (email: $email) (pass: $pass)\n";
-                    /* print_r($info);*/
                 } else
                     echo "Failed adding $user (email: $email) (pass: $pass) - ". ldap_error($ds) ."\n";
 
@@ -136,6 +136,5 @@ $parse--;
 $parse--;
 echo "Processed $parse accounts.\n";
 echo "Added $add accounts to the ldap server\n";
-if (($alert == 1) && ($np > 0))
-	echo "ALERT: $np ACCOUNTS ADDED WITH NO PASSWORD (old crypt style)\n";
+
 ?>

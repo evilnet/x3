@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-11  Neil Spierling  <sirvulcan@gmail.com>
+
+	* tools/ldap/ldap_convert.php: Fixes after more testing.
+
 2007-02-09  Alex Schumann  <rubin@afternet.org>
 
         * src/x3ldap.c: addid search function to get users email address from
