@@ -1907,7 +1907,7 @@ struct handle_info *loc_auth(char *handle, char *password)
     struct handle_info *hi;
     struct userNode *other;
 #ifdef WITH_LDAP
-    int ldap_result;
+    int ldap_result = LDAP_SUCCESS;
 #endif
 
     hi = dict_find(nickserv_handle_dict, handle, NULL);
