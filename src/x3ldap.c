@@ -458,7 +458,7 @@ LDAPMod **make_mods_modify(const char *password, const char *email, int *num_mod
 {
     static char *password_vals[] = { NULL, NULL };
     static char *email_vals[] = { NULL, NULL };
-    int num_mods = 1;
+    int num_mods = 0;
     int i;
     /* TODO: take this from nickserv_conf.ldap_add_objects */
     LDAPMod **mods;
@@ -468,7 +468,13 @@ LDAPMod **make_mods_modify(const char *password, const char *email, int *num_mod
 
     if(!(nickserv_conf.ldap_field_password && *nickserv_conf.ldap_field_password))
        return 0; /* password required */
+    /*
     if(email && *email && nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email)
+       num_mods++;
+    */
+    if(password)
+       num_mods++;
+    if(email)
        num_mods++;
 
     mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
@@ -542,6 +548,93 @@ int ldap_do_modify(const char *account, const char *password, const char *email)
       free(passbuf);
     return rc;
 }
+
+LDAPMod **make_mods_group(const char *account, int operation, int *num_mods_ret)
+{
+    static char *uid_vals[] = { NULL, NULL };
+    int num_mods = 1;
+    int i;
+    /* TODO: take this from nickserv_conf.ldap_add_objects */
+    LDAPMod **mods;
+
+    uid_vals[0] = (char *) account;
+
+    if(!(nickserv_conf.ldap_field_group_member && *nickserv_conf.ldap_field_group_member))
+       return 0; /* password required */
+
+    mods = ( LDAPMod ** ) malloc(( num_mods + 1 ) * sizeof( LDAPMod * ));
+    for( i = 0; i < num_mods; i++) {
+      mods[i] = (LDAPMod *) malloc(sizeof(LDAPMod));
+      memset(mods[i], 0, sizeof(LDAPMod));
+    }
+
+    i = 0;
+    mods[i]->mod_op = operation;
+    mods[i]->mod_type = strdup(nickserv_conf.ldap_field_group_member);
+    mods[i]->mod_values = uid_vals;
+    i++;
+    mods[i] = NULL;
+    *num_mods_ret = num_mods;
+    return mods;
+}
+
+
+int ldap_add2group(char *account, const char *group)
+{
+    LDAPMod **mods;
+    int num_mods;
+    int rc, i;
+
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+    mods = make_mods_group(account, LDAP_MOD_ADD, &num_mods);
+    if(!mods) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for add2group");
+       return LDAP_OTHER;
+    }
+    rc = ldap_modify_s(ld, group, mods);
+    if(rc != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error adding %s to group %s: %s", account, group, ldap_err2string(rc));
+       return rc;
+    }
+    for(i = 0; i < num_mods; i++) {
+       free(mods[i]->mod_type);
+       free(mods[i]);
+    }
+    free(mods);
+    return rc;
+}
+
+int ldap_delfromgroup(char *account, const char *group)
+{
+    LDAPMod **mods;
+    int num_mods;
+    int rc, i;
+
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+    mods = make_mods_group(account, LDAP_MOD_DELETE, &num_mods);
+    if(!mods) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for delfromgroup");
+       return LDAP_OTHER;
+    }
+    rc = ldap_modify_s(ld, group, mods);
+    if(rc != LDAP_SUCCESS) {
+       log_module(MAIN_LOG, LOG_ERROR, "Error removing %s from group %s: %s", account, group, ldap_err2string(rc));
+       return rc;
+    }
+    for(i = 0; i < num_mods; i++) {
+       free(mods[i]->mod_type);
+       free(mods[i]);
+    }
+    free(mods);
+    return rc;
+}
+
 
 void ldap_close()
 {

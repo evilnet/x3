@@ -1,6 +1,18 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-11  Alex Schumann  <rubin@afternet.org>
+
+	* src/opserv.c: Added oper group support to ldap
+
+	* src/x3ldap.c: Added group support to ldap. Fixed set email bug
+
+	* src/x3ldap.h: Added group support to ldap. 
+
+	* src/nickserv.c: Added group support to ldap
+
+	* src/nickserv.h: Added group support to ldap
+
 2007-02-11  Neil Spierling  <sirvulcan@gmail.com>
 
 	* tools/ldap/ldap_convert.php: Fixes after more testing.

@@ -32,7 +32,7 @@
 #include <tre/regex.h>
 
 #ifdef WITH_LDAP
-#include <ldap.h> /* just needed for default LDAP_PORT */
+#include <ldap.h>
 #endif
 
 #define NICKSERV_CONF_NAME "services/nickserv"
@@ -127,6 +127,8 @@
 #define KEY_LDAP_FIELD_PASSWORD "ldap_field_password"
 #define KEY_LDAP_FIELD_EMAIL "ldap_field_email"
 #define KEY_LDAP_OBJECT_CLASSES "ldap_object_classes"
+#define KEY_LDAP_OPER_GROUP_DN "ldap_oper_group_dn"
+#define KEY_LDAP_FIELD_GROUP_MEMBER "ldap_field_group_member"
 #endif
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
@@ -162,7 +164,7 @@ static char handle_inverse_flags[256];
 static unsigned int flag_access_levels[32];
 static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLE_EXISTS", "Account $b%s$b is already registered." },
-    { "NSMSG_HANDLE_TOLONG", "The account name %s is too long. Account names must be %lu charactors or less."},
+    { "NSMSG_HANDLE_TOLONG", "The account name %s is too long. Account names must be %lu characters or less."},
     { "NSMSG_PASSWORD_SHORT", "Your password must be at least %lu characters long." },
     { "NSMSG_PASSWORD_ACCOUNT", "Your password may not be the same as your account name." },
     { "NSMSG_PASSWORD_DICTIONARY", "Your password is too simple. You must choose a password that is not just a word or name." },
@@ -546,8 +548,11 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, stru
     int rc;
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         if( (rc = ldap_delete_account(hi->handle)) != LDAP_SUCCESS) {
-           send_message(notify, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
-           return false;
+           if(notify) {
+                send_message(notify, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+           }
+           if(rc != LDAP_NO_SUCH_OBJECT)
+             return false; /* if theres noone there to delete, its kinda ok, right ?:) */
         }
     }
 #endif
@@ -3102,6 +3107,7 @@ static OPTION_FUNC(opt_language)
     return 1;
 }
 
+/* Called from opserv from cmd_access */
 int
 oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level) {
     if (!oper_has_access(user, bot, nickserv_conf.modoper_level, 0))
@@ -3122,6 +3128,19 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
         send_message(user, bot, "MSG_STUPID_ACCESS_CHANGE");
         return 0;
     }
+#ifdef WITH_LDAP
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_oper_group_dn && nickserv_conf.ldap_admin_dn) {
+        int rc;
+        if(new_level > 0)
+          rc = ldap_add2group(target->handle, nickserv_conf.ldap_oper_group_dn);
+        else
+          rc = ldap_delfromgroup(target->handle, nickserv_conf.ldap_oper_group_dn);
+        if(rc != LDAP_SUCCESS) {
+           send_message(user, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+           return 0;
+        }
+    }
+#endif
     if (target->opserv_level == new_level)
         return 0;
     log_module(NS_LOG, LOG_INFO, "Account %s setting oper level for account %s to %d (from %d).",
@@ -4587,6 +4606,12 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_FIELD_EMAIL, RECDB_QSTRING);
     nickserv_conf.ldap_field_email = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_OPER_GROUP_DN, RECDB_QSTRING);
+    nickserv_conf.ldap_oper_group_dn = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_FIELD_GROUP_MEMBER, RECDB_QSTRING);
+    nickserv_conf.ldap_field_group_member = str ? str : "";
 
     free_string_list(nickserv_conf.ldap_object_classes);
     strlist = database_get_data(conf_node, KEY_LDAP_OBJECT_CLASSES, RECDB_STRING_LIST);

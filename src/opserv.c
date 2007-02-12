@@ -45,7 +45,6 @@
 #include <arpa/inet.h>
 #endif
 
-
 #define OPSERV_CONF_NAME "services/opserv"
 
 #define KEY_ALERT_CHANNEL "alert_channel"
