@@ -182,6 +182,7 @@ struct nickserv_config {
     const char *auto_admin;
     char default_style;
     struct string_list *denied_fakehost_words;
+    unsigned int force_handles_lowercase;
     unsigned int ldap_enable;
 #ifdef WITH_LDAP
     const char *ldap_host;

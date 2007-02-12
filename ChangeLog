@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2007-02-12  Alex Schumann  <rubin@afternet.org>
 
+	* src/nickserv.h: lowercase account name setting
+
+	* x3.conf.example: lowercase account name setting
+
+	* src/nickservc: only lowercase account names if the option is set.
+
+2007-02-12  Alex Schumann  <rubin@afternet.org>
+
 	* src/tools.c: adding ircd_strtolower() func
 
 	* src/common.h: adding ircd_strtolower() func

@@ -136,6 +136,10 @@
         // Whats a valid hostname look like for fakehosts?
         "valid_fakehost_regex" "^[-_a-zA-Z0-9.]+$";
 
+        // Force account names to lowercase? 1=yes 0=no
+        //   WARNING: this will convert when reading them from the db, too.
+        "force_handles_lowercase" "0";
+
         // "Nickserv" networks, set this to 0. "Authserv" networks,
         // set it to 1.
         "disable_nicks" "1"; 
