@@ -269,6 +269,8 @@ void string_buffer_append_substring(struct string_buffer *buf, const char *tail,
 void string_buffer_append_vprintf(struct string_buffer *buf, const char *fmt, va_list args);
 void string_buffer_append_printf(struct string_buffer *buf, const char *fmt, ...);
 void string_buffer_replace(struct string_buffer *buf, unsigned int from, unsigned int len, const char *repl);
+void
+irc_strtolower(char *str);
 
 int str_is_number(const char *str);
 #define enabled_string(string)  (!irccasecmp((string), "on") || !strcmp((string), "1") || !irccasecmp((string), "enabled"))

@@ -357,6 +357,14 @@ static char irc_tolower[256];
 #undef tolower
 #define tolower(X) irc_tolower[(unsigned char)(X)]
 
+void
+irc_strtolower(char *str) {
+    char *p;
+    for(p = str;*p;p++) {
+       *p = tolower(*p);
+    }
+}
+
 int
 irccasecmp(const char *stra, const char *strb) {
     while (*stra && (tolower(*stra) == tolower(*strb)))

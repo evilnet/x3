@@ -1293,6 +1293,7 @@ static NICKSERV_FUNC(cmd_register)
 
     NICKSERV_MIN_PARMS((unsigned)3 + nickserv_conf.email_required);
 
+    irc_strtolower(argv[1]);
     if (!is_valid_handle(argv[1])) {
         reply("NSMSG_BAD_HANDLE", argv[1]);
         return 0;
@@ -1423,6 +1424,7 @@ static NICKSERV_FUNC(cmd_oregister)
    
     account = argv[1];
     pass = argv[2];
+    irc_strtolower(account);
     if (nickserv_conf.email_required) {
         NICKSERV_MIN_PARMS(4);
         email = argv[3];
@@ -1826,6 +1828,7 @@ static NICKSERV_FUNC(cmd_rename_handle)
     unsigned int nn;
 
     NICKSERV_MIN_PARMS(3);
+    irc_strtolower(argv[2]);
     if (!(hi = get_victim_oper(cmd, user, argv[1])))
         return 0;
     if (!is_valid_handle(argv[2])) {
@@ -4169,6 +4172,7 @@ nickserv_db_read_handle(const char *handle, dict_t obj)
         authed_users = NULL;
         channels = NULL;
     }
+    irc_strtolower(handle);
     hi = register_handle(handle, str, id);
     if (authed_users) {
         hi->users = authed_users;
