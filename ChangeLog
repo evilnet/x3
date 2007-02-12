@@ -7,7 +7,8 @@ X3 ChangeLog
 
 	* src/common.h: adding ircd_strtolower() func
 
-	* src/nickserv.c: force accounts to lowercase at all inputs
+	* src/nickserv.c: force accounts to lowercase at all inputs. ++fix
+	warning
 
 2007-02-11  Alex Schumann  <rubin@afternet.org>
 

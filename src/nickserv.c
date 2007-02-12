@@ -4142,7 +4142,7 @@ static MODCMD_FUNC(cmd_checkpass)
 }
 
 static void
-nickserv_db_read_handle(const char *handle, dict_t obj)
+nickserv_db_read_handle(char *handle, dict_t obj)
 {
     const char *str;
     struct string_list *masks, *slist, *ignores;
@@ -4292,10 +4292,13 @@ static int
 nickserv_saxdb_read(dict_t db) {
     dict_iterator_t it;
     struct record_data *rd;
+    char *handle;
 
     for (it=dict_first(db); it; it=iter_next(it)) {
         rd = iter_data(it);
-        nickserv_db_read_handle(iter_key(it), rd->d.object);
+        handle = strdup(iter_key(it));
+        nickserv_db_read_handle(handle, rd->d.object);
+        free(handle);
     }
     return 0;
 }
