@@ -1370,7 +1370,7 @@ static NICKSERV_FUNC(cmd_register)
 #ifdef WITH_LDAP
         if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
             int rc;
-            if((rc == ldap_do_modify(hi->handle, NULL, email_addr)) != LDAP_SUCCESS) {
+            if((rc = ldap_do_modify(hi->handle, NULL, email_addr)) != LDAP_SUCCESS) {
                 /* Falied to update email in ldap, but still 
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
@@ -1477,7 +1477,7 @@ static NICKSERV_FUNC(cmd_oregister)
 #ifdef WITH_LDAP
         if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
             int rc;
-            if((rc == ldap_do_modify(hi->handle, NULL, email)) != LDAP_SUCCESS) {
+            if((rc = ldap_do_modify(hi->handle, NULL, email)) != LDAP_SUCCESS) {
                 /* Falied to update email in ldap, but still 
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
@@ -2345,7 +2345,7 @@ static NICKSERV_FUNC(cmd_odelcookie)
 #ifdef WITH_LDAP
         if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
             int rc;
-            if((rc == ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
+            if((rc = ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
                 /* Falied to update email in ldap, but still 
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
@@ -2469,7 +2469,7 @@ static NICKSERV_FUNC(cmd_cookie)
 #ifdef WITH_LDAP
         if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
             int rc;
-            if((rc == ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
+            if((rc = ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
                 /* Falied to update email in ldap, but still 
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
@@ -2590,7 +2590,7 @@ static NICKSERV_FUNC(cmd_pass)
 #ifdef WITH_LDAP   
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
-        if((rc == ldap_do_modify(hi->handle, new_pass, NULL)) != LDAP_SUCCESS) {
+        if((rc = ldap_do_modify(hi->handle, new_pass, NULL)) != LDAP_SUCCESS) {
              reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
              return 0;
         }
@@ -2985,7 +2985,7 @@ static OPTION_FUNC(opt_password)
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
-        if((rc == ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
+        if((rc = ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
              reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
              return 0;   
         }
@@ -3045,7 +3045,7 @@ static OPTION_FUNC(opt_email)
 #ifdef WITH_LDAP
             if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
                 int rc;
-                if((rc == ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
+                if((rc = ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
                    reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
                    return 0;
                 }
