@@ -2462,6 +2462,17 @@ static NICKSERV_FUNC(cmd_cookie)
 
     switch (hi->cookie->type) {
     case ACTIVATION:
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
+                /* Falied to update email in ldap, but still 
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+               return 0;
+            }
+        }
+#endif
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
         set_user_handle_info(user, hi, 1);
         reply("NSMSG_HANDLE_ACTIVATED");
@@ -2469,6 +2480,17 @@ static NICKSERV_FUNC(cmd_cookie)
           SyncLog("ACCOUNTACC %s", hi->handle);
         break;
     case PASSWORD_CHANGE:
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
+                /* Falied to update email in ldap, but still 
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+               return 0;
+            }
+        }
+#endif
         set_user_handle_info(user, hi, 1);
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
         reply("NSMSG_PASSWORD_CHANGED");
@@ -2991,6 +3013,9 @@ static OPTION_FUNC(opt_announcements)
 static OPTION_FUNC(opt_password)
 {
     char crypted[MD5_CRYPT_LENGTH+1];
+    if(argc < 1) {
+       return 0;
+    }
     if (!override) {
 	reply("NSMSG_USE_CMD_PASS");
 	return 0;
