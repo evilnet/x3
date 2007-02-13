@@ -229,30 +229,28 @@
         // THIS IS EXPERIMENTAL! DO NOT USE IT IF YOU ARNT'T A DEVELOPER!!
         // LDAP stands for light directory access protocol. its what many larger orgs use for central user/password management. Its also the core technology behind windows active directory.
         // If you have an ldap server, you can configure X3 to use it instead of saving passwords locally.
-        //"ldap_enable" "1";
-        //"ldap_host" "ldap.yourdomain.com";
-        // port defaults to ldap default 389 if left commented
+
+        //"ldap_enable" "0";
+        //"ldap_host" "ldap.yournetwork.server";
         //"ldap_port" "389";
-        //"ldap_base" "ou=Users,dc=yournet,dc=org";
+        //"ldap_base" "ou=Users,dc=afternet,dc=org";
         //"ldap_dn_fmt" "uid=%s,ou=Users,dc=afternet,dc=org";
-        // automatically create accounts if they exist in ldap but not x3
-        //"ldap_autocreate" "1"; 
-        //
-        // If you will be allowing users to register on IRC you need these:
+        //"ldap_autocreate" "1"; // automatically create accounts if they exist in ldap but not x3
+        //// If you will be allowing users to register on IRC you need these:
         //"ldap_admin_dn" "cn=Admin,dc=afternet,dc=org";
-        //"ldap_admin_pass" "xyzzyx";
-        //"ldap_add_objects" ( "top", "inetOrgAnon" );
-        //      NOTE: inetOrgAnon is something I made up. its schema
-        //      can be found in the tools/ directory. ldap servers wont
-        //      know what that is by default.
-        // These configure what I store, and where.
+        //"ldap_admin_pass" "xxxxxxxxxxx";
+        //"ldap_object_classes" ( "top", "inetOrgAnonAccount" );
+        ////      NOTE: inetOrgAnon is something I made up. its schema
+        ////      can be found in the tools/ directory. ldap servers wont
+        ////      know what that is by default.
+        //// These configure what I store, and where.
         //"ldap_field_account" "uid";
-        //"ldap_field_password "userPassword";
+        //"ldap_field_password" "userPassword";
         //"ldap_field_email" "mail";
-        //
-        // This bit is needed if you want to put ircops into a group:
+        //// This bit is needed if you want to put ircops into a group:
         //"ldap_oper_group_dn" "cn=Opers,ou=Groups,dc=afternet,dc=org";
-        //"ldap_field_group_member" "memberUid";
+        //"ldap_field_group_member" "memberUid"; // what field group members are in
+
     };
 
     /* 
