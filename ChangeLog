@@ -3,7 +3,12 @@ X3 ChangeLog
 
 2007-02-12  Alex Schumann  <rubin@afternet.org>
 
-	* src/x3.conf.example: fix ldap config example so it actually works
+	* src/x3ldap.conf: fix ldap_delete not binding first, so causing
+	access denied sometimes.
+
+2007-02-12  Alex Schumann  <rubin@afternet.org>
+
+	* x3.conf.example: fix ldap config example so it actually works
 
 2007-02-12  Alex Schumann  <rubin@afternet.org>
 

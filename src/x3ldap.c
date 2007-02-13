@@ -424,6 +424,13 @@ int ldap_do_add(const char *account, const char *password, const char *email)
 int ldap_delete_account(char *account)
 {
     char dn[MAXLEN];
+    int rc;
+
+    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+       log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+       return rc;
+    }
+
     memset(dn, 0, MAXLEN);
     snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
     return(ldap_delete_s(ld, dn));
