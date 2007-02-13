@@ -171,7 +171,8 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_PASSWORD_DICTIONARY", "Your password is too simple. You must choose a password that is not just a word or name." },
     { "NSMSG_PASSWORD_READABLE", "Your password must have at least %lu digit(s), %lu capital letter(s), and %lu lower-case letter(s)." },
     { "NSMSG_LDAP_FAIL", "There was a problem in contacting the account server (ldap): %s. Please try again later." },
-    { "NSMSG_LDAP_FAIL_EMAIL", "There was a problem in storing your email address in the account server (ldap): %s. Please try again later." },
+    { "NSMSG_LDAP_FAIL_SEND_EMAIL", "There was a problem in storing your email address in the account server (ldap): %s. Please try again later." },
+    { "NSMSG_LDAP_FAIL_GET_EMAIL", "There was a problem in retrieving your email address from the account server (ldap): %s. Please try again later." },
     { "NSMSG_PARTIAL_REGISTER", "Account has been registered to you; nick was already registered to someone else." },
     { "NSMSG_OREGISTER_VICTIM", "%s has registered a new account for you (named %s)." },
     { "NSMSG_OREGISTER_H_SUCCESS", "Account has been registered." },
@@ -1057,15 +1058,15 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     if (!is_secure_password(handle, passwd, user))
         return 0;
 
+    cryptpass(passwd, crypted);
 #ifdef WITH_LDAP
     int rc;
-    rc = ldap_do_add(handle, passwd, NULL);
+    rc = ldap_do_add(handle, crypted, NULL);
     if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
        send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
        return 0;
     }
 #endif
-    cryptpass(passwd, crypted);
     hi = register_handle(handle, crypted, 0);
     hi->masks = alloc_string_list(1);
     hi->ignores = alloc_string_list(1);
@@ -2027,8 +2028,10 @@ static NICKSERV_FUNC(cmd_auth)
                int rc;
                if((rc = ldap_get_user_info(argv[1], &email) != LDAP_SUCCESS))
                {
-                    reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
-                    return 0;
+                    if(nickserv_conf.email_required) {
+                        reply("NSMSG_LDAP_FAIL_GET_EMAIL", ldap_err2string(rc));
+                        return 0;
+                    }
                }
             }
             else if(ldap_result != LDAP_INVALID_CREDENTIALS) {
@@ -2355,7 +2358,7 @@ static NICKSERV_FUNC(cmd_odelcookie)
             if((rc = ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
                 /* Falied to update email in ldap, but still 
                  * updated it here.. what should we do? */
-               reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
+               reply("NSMSG_LDAP_FAIL_SEND_EMAIL", ldap_err2string(rc));
             } else {
                 nickserv_set_email_addr(hi, hi->cookie->data);
             }
@@ -2479,7 +2482,7 @@ static NICKSERV_FUNC(cmd_cookie)
             if((rc = ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
                 /* Falied to update email in ldap, but still 
                  * updated it here.. what should we do? */
-               reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
+               reply("NSMSG_LDAP_FAIL_SEND_EMAIL", ldap_err2string(rc));
                return 0;
             }
         }
@@ -2566,6 +2569,7 @@ static NICKSERV_FUNC(cmd_pass)
 {
     struct handle_info *hi;
     char *old_pass, *new_pass;
+    char crypted[MD5_CRYPT_LENGTH+1];
 #ifdef WITH_LDAP
     int ldap_result;
 #endif
@@ -2594,16 +2598,18 @@ static NICKSERV_FUNC(cmd_pass)
 	reply("NSMSG_PASSWORD_INVALID");
 	return 0;
     }
+    cryptpass(new_pass, crypted);
 #ifdef WITH_LDAP   
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
-        if((rc = ldap_do_modify(hi->handle, new_pass, NULL)) != LDAP_SUCCESS) {
+        if((rc = ldap_do_modify(hi->handle, crypted, NULL)) != LDAP_SUCCESS) {
              reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
              return 0;
         }
     }
 #endif
-    cryptpass(new_pass, hi->passwd);
+    //cryptpass(new_pass, hi->passwd);
+    strcpy(hi->passwd, crypted);
     if (nickserv_conf.sync_log)
       SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
     argv[1] = "****";
@@ -2984,23 +2990,23 @@ static OPTION_FUNC(opt_announcements)
 
 static OPTION_FUNC(opt_password)
 {
+    char crypted[MD5_CRYPT_LENGTH+1];
     if (!override) {
 	reply("NSMSG_USE_CMD_PASS");
 	return 0;
     }
 
+    cryptpass(argv[1], crypted);
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
-        if((rc = ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
+        if((rc = ldap_do_modify(hi->handle, crypted, NULL)) != LDAP_SUCCESS) {
              reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
              return 0;   
         }
     }
 #endif
-    if (argc > 1)
-	cryptpass(argv[1], hi->passwd);
-
+    strcpy(hi->passwd, crypted);
     if (nickserv_conf.sync_log)
         SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
 
@@ -3052,7 +3058,7 @@ static OPTION_FUNC(opt_email)
 #ifdef WITH_LDAP
             if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
                 int rc;
-                if((rc = ldap_do_modify(hi->handle, argv[1], NULL)) != LDAP_SUCCESS) {
+                if((rc = ldap_do_modify(hi->handle, NULL, argv[1])) != LDAP_SUCCESS) {
                    reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
                    return 0;
                 }

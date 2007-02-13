@@ -201,7 +201,7 @@ int ldap_get_user_info(char *account, char **email)
 
 /********* base64 stuff ***********/
 
-unsigned char *pack(char *str, unsigned int *len)
+unsigned char *pack(const char *str, unsigned int *len)
 {
     int nibbleshift = 4;
     int first = 1;
@@ -210,7 +210,7 @@ unsigned char *pack(char *str, unsigned int *len)
     int outputpos = -1;
 
     memset(buf, 0, MAXLEN+1);
-    v = str;
+    v = (char *)str;
     while(*v) {
         char n = *(v++);
 
@@ -313,14 +313,12 @@ char **make_object_vals()
     return object_vals;
 }
 
-char *make_password(const char *password)
+char *make_password(const char *crypted)
 {
        char *base64pass;
-       char crypted[MD5_CRYPT_LENGTH+1];
        unsigned char *packed;
        unsigned int len;
        char *passbuf;
-       cryptpass(password, crypted);
 
        packed = pack(crypted, &len);
        base64pass = base64_encode(packed, len, NULL);
@@ -386,7 +384,7 @@ LDAPMod **make_mods_add(const char *account, const char *password, const char *e
     return mods;
 }
 
-int ldap_do_add(const char *account, const char *password, const char *email)
+int ldap_do_add(const char *account, const char *crypted, const char *email)
 {
     char newdn[MAXLEN];
     LDAPMod **mods;
@@ -399,9 +397,9 @@ int ldap_do_add(const char *account, const char *password, const char *email)
        return rc;
     }
     
-    passbuf = make_password(password);
+    passbuf = make_password(crypted);
     snprintf(newdn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
-    mods = make_mods_add(account, password, email, &num_mods);
+    mods = make_mods_add(account, passbuf, email, &num_mods);
     if(!mods) {
        log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
        return LDAP_OTHER;
