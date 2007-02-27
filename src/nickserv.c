@@ -1928,7 +1928,7 @@ struct handle_info *loc_auth(char *handle, char *password)
             * *
             */
         }
-        else if(ldap_result != LDAP_INVALID_CREDENTIALS) {
+        else {
            return NULL;
         }
     }

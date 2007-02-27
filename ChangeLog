@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-02-26  Alex Schumann  <rubin@afternet.org>
+
+	* src/nickserv.c: fix bug with LOC logic and ldap.
+
 2007-02-13  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: Fix bugs with ldap cookies. Fix opt_password
