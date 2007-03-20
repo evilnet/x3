@@ -4,7 +4,7 @@ X3 ChangeLog
 2007-03-20  Alex Schumann  <rubin@afternet.org>
  
         * src/nickserv.c: fix trying to do ldap when not enabled during
-	cmd_register
+	cmd_register + also with cmd_unregister
 
 2007-03-20  Alex Schumann  <rubin@afternet.org>
 

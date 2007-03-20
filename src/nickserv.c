@@ -547,14 +547,16 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, stru
     struct userNode *uNode;
 
 #ifdef WITH_LDAP
-    int rc;
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
-        if( (rc = ldap_delete_account(hi->handle)) != LDAP_SUCCESS) {
-           if(notify) {
-                send_message(notify, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
-           }
-           if(rc != LDAP_NO_SUCH_OBJECT)
-             return false; /* if theres noone there to delete, its kinda ok, right ?:) */
+        int rc;
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            if( (rc = ldap_delete_account(hi->handle)) != LDAP_SUCCESS) {
+               if(notify) {
+                    send_message(notify, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+               }
+               if(rc != LDAP_NO_SUCH_OBJECT)
+                 return false; /* if theres noone there to delete, its kinda ok, right ?:) */
+            }
         }
     }
 #endif
@@ -1852,8 +1854,8 @@ static NICKSERV_FUNC(cmd_rename_handle)
         return 0;
     }
 #ifdef WITH_LDAP
-    int rc;
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        int rc;
         if( (rc = ldap_rename_account(hi->handle, argv[2])) != LDAP_SUCCESS) {
             reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
             return 0;
