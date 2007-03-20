@@ -1994,6 +1994,7 @@ struct handle_info *loc_auth(char *handle, char *password)
             return NULL;
         }
     }
+    /* TODO - Add LOGGING to this function so LOC's are logged.. */
     return hi;
 }
 

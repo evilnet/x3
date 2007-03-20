@@ -7343,6 +7343,18 @@ check_bans(struct userNode *user, const char *channel)
     return 0;
 }
 
+int
+channel_user_is_exempt(struct userNode *user, struct chanNode *channel)
+{
+   unsigned int ii;
+   for(ii = 0; ii < channel->exemptlist.used; ii++)
+   {
+       if(user_matches_glob(user, channel->exemptlist.list[ii]->exempt, MATCH_USENICK))
+           return true;
+   }
+   return false;
+}
+
 
 /* Welcome to my worst nightmare. Warning: Read (or modify)
    the code below at your own risk. */
@@ -7407,7 +7419,7 @@ handle_join(struct modeNode *mNode)
 
     /* TODO: maybe only people above inviteme level? -Rubin */
     /* We don't kick people with access */
-    if(!uData)
+    if(!uData && !channel_user_is_exempt(user, channel))
     {
         if(channel->banlist.used < MAXBANS)
         {

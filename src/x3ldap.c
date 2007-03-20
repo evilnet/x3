@@ -79,8 +79,8 @@ unsigned int ldap_do_bind( const char *dn, const char *pass)
         return q;
       }
       else {
-        log_module(MAIN_LOG, LOG_ERROR, "Bind failed: %s/******  (%d)", dn, q);
-        ldap_perror(ld, "ldap");
+        log_module(MAIN_LOG, LOG_ERROR, "Bind failed: %s/******  (%s)", dn, ldap_err2string(q));
+        /* ldap_perror(ld, "ldap"); */
         ldap_do_init();
       }
       if(n++ > 1) {
