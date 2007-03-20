@@ -1060,11 +1060,13 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
 
     cryptpass(passwd, crypted);
 #ifdef WITH_LDAP
-    int rc;
-    rc = ldap_do_add(handle, crypted, NULL);
-    if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
-       send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
-       return 0;
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        int rc;
+        rc = ldap_do_add(handle, crypted, NULL);
+        if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
+           send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+           return 0;
+        }
     }
 #endif
     hi = register_handle(handle, crypted, 0);
