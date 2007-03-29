@@ -673,8 +673,16 @@ is_valid_handle(const char *handle)
 static int
 is_registerable_nick(const char *nick)
 {
-    /* make sure it could be used as an account name */
-    if (!is_valid_handle(nick))
+    struct userNode *user;
+    /* cant register a juped nick/service nick as nick, to prevent confusion */
+    user = GetUserH(nick);
+    if (user && IsLocal(user))
+        return 0;
+    /* for consistency, only allow nicks names that could be nicks */
+    if (!is_valid_nick(nick))
+        return 0;
+    /* disallow nicks that look like bad words */
+    if (opserv_bad_channel(nick))
         return 0;
     /* check length */
     if (strlen(nick) > NICKLEN)
