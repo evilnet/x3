@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2007-03-20  Alex Schumann  <rubin@afternet.org>
 
+        * src/nickserv.c: ButtaS2sLore sent in this patch to fix the default
+	style when registering new users.
+
+2007-03-20  Alex Schumann  <rubin@afternet.org>
+
 	* src/nickserv.c: applied patch from playa which fixes the nickname
 	valid checks when registering a nick.
 

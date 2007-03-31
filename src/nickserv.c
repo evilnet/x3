@@ -436,7 +436,7 @@ register_handle(const char *handle, const char *passwd, UNUSED_ARG(unsigned long
     struct handle_info *hi;
 
     hi = calloc(1, sizeof(*hi));
-    hi->userlist_style = HI_DEFAULT_STYLE;
+    hi->userlist_style = nickserv_conf.default_style ? nickserv_conf.default_style : HI_DEFAULT_STYLE;
     hi->announcements = '?';
     hi->handle = strdup(handle);
     safestrncpy(hi->passwd, passwd, sizeof(hi->passwd));
