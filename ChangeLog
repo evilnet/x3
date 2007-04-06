@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-04-07  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/helpfile.c: Added colour support $k.
+
 2007-03-20  Alex Schumann  <rubin@afternet.org>
 
         * src/nickserv.c: ButtaS2sLore sent in this patch to fix the default

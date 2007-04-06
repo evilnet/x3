@@ -566,6 +566,9 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
 	case 'b':
 	    value = use_color ? "\002" : "";
 	    break;
+	case 'k':
+	    value = use_color ? "\003" : "";
+	    break;
 	case 'o':
 	    value = use_color ? "\017" : "";
 	    break;
