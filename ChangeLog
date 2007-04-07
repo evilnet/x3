@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-04-06  Alex Schumann  <rubin@afternet.org>
+
+        * src/chanserv.help: added Jigsy's mode help MODE CHANNEL and MODE
+	USER
+
 2007-04-07  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* ChangeLog: Email update.

@@ -716,3 +716,68 @@
         "Futher, the X3 team would like to thank:",
         "     $breed$b - who tirelessly nagged us to upgrade our services",
         "$bAfterNET Users and Opers$b - who faught both for and against the change, for the better of Afternet.");
+
+"MODES" (
+        "/msg $C HELP MODES <option>",
+        "This command will return information for either:",
+        "CHANNEL: Channel mode(s).",
+        "USER:    User mode(s).",
+        "$b$b",
+        "See MODES USER, and MODES CHANNEL for the meaning of modes.",
+        "$uSee also:$u set",
+        );
+
+"MODES USER" (
+        "*a - IRC administrator.",
+        " d - Deaf mode. All #channel messages are ignored.",
+        "*f - Fake host mode. ($bInvisible mode, will not be visibly set. Can only be set by a U:lined service.$b)",
+        " g - Allows you to see desynch wallops.",
+        "*h - Sethost mode. ($bInvisible mode, will not be visibly set.$b)",
+        " i - Invisible. A user will not be able to see you in /names or /who list(s). They $bmust$b know your exact nick.",
+        " k - Network service. You cannot be deopped, kicked or killed.",
+        "*n - Channels will not be shown in a user(s) /whois reply.",
+        " o - Global IRC operator.",
+        " r - Registered user. ($bInvisible mode, will not be visibly set. Can only be set by a U:lined service.$b)",
+        " s - Server notices.",
+        " w - See wallops and wallusers messages.",
+        " x - Real host will be obfuscated if authed to $N. ($bFixed mode, cannot be unset.$b)",
+        "*B - User is a bot.",
+        "*I - Idle time will not be shown in a user(s) /whois reply.",
+        "*O - Local IRC operator. ($bDeprecated and disabled. *ALL* IRC operators are global.$b)",
+        "*R - Only registered user(s) are allowed to message you.",
+        "*W - /whois paranoia. IRC operators are informed of a /whois taking place on them. ($bDisabled.$b)",
+        "*X - Extra oper. Gives extra abilities and privileges to IRC operators.",
+        "$b$b",
+        "$bNote:$b * indicates that the mode is only available on some networks."
+        );
+
+"MODES CHANNEL" (
+        "*a - IRC administrators only. ($bCan only be set by IRC administrators/operators. Can be overriden by /invite.$b)",
+        " b - Bans a user from a channel. ($bCan be overriden by /invite.$b)",
+        "*c - Incoming colour messages to the channel are blocked.",
+        "*e - Excludes a user from being banned from a channel. If they're +b'd and +e'd, they will still be able to join.",
+        "*h - Gives a user hop status. ($b%%$b)",
+        " i - Invite only. A user must be /invite'd to the channel in order to join.",
+        " k - Channel requires a key in order to join. ($bCan be overriden by /invite.$b)",
+        " l - Limit. Only a certain number of user(s) are allowed to join the channel. ($bCan be overriden by /invite.$b)",
+        " m - Moderated. Nobody other than hops ($b%%$b), ops ($b@$b) or voices ($b+$b) can talk.",
+        " n - All external messages will be blocked. ($bMust be in the channel in order to talk.$b)",
+        " o - Gives a user op status. ($b@$b)",
+        " p - Private. The channel will not appear in /list but will appear in /whois replies.",
+        " r - A user must be registered in order to join the channel. ($bCan be overriden by /invite.$b)",
+        " s - Secret. The channel will not appear in /list and /whois replies.",
+        " t - Only op(s) can change the topic.",
+        " v - Gives a user voice status. ($b+$b)",
+        "*z - Persistant channel. Once the last user has left, the channel will not be destroyed. ($bDisabled.$b)",
+        "*C - /ctcp messages to the channel are blocked.",
+        "*L - Mode(s) will not be displayed in /list.",
+        "*M - Only registered user(s) are allowed to talk in a channel. (Excludes hops ($b%%$b), ops ($b@$b) and voices. ($b+$b))",
+        "*N - /notices to the channel are blocked.",
+        "*O - IRC operators only. ($bCan only be set by either $C or IRC adminstrators/operators. Can be overriden by /invite.$b)",
+        "*Q - Part and quit messages will not be displayed in a channel.",
+        "*S - Bold, colour, reverse and underline code(s) are stripped from incoming messages.",
+        "*T - /amsgs to the channel are blocked.",
+        "*Z - SSL user(s) only. ($bCan only be set by either $C or those on an SSL connection.$b)",
+        "$b$b",
+        "$bNote:$b * indicates that the mode is only available on some networks."
+        );

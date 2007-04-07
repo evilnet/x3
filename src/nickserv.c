@@ -164,6 +164,7 @@ static dict_t nickserv_email_dict; /* contains struct handle_info_list*, indexed
 static char handle_inverse_flags[256];
 static unsigned int flag_access_levels[32];
 static const struct message_entry msgtab[] = {
+    { "NSMSG_NO_ANGLEBRACKETS", "The < and > in help indicate that that word is a required parameter, but DO NOT actually type them in messages to me." },
     { "NSMSG_HANDLE_EXISTS", "Account $b%s$b is already registered." },
     { "NSMSG_HANDLE_TOLONG", "The account name %s is too long. Account names must be %lu characters or less."},
     { "NSMSG_PASSWORD_SHORT", "Your password must be at least %lu characters long." },
@@ -300,7 +301,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_DB_UNREADABLE", "Unable to read database file %s; check the log for more information." },
     { "NSMSG_DB_MERGED", "$N merged DB from %s (in "FMT_TIME_T".%03lu seconds)." },
     { "NSMSG_HANDLE_CHANGED", "$b%s$b's account name has been changed to $b%s$b." },
-    { "NSMSG_BAD_HANDLE", "Account $b%s$b not registered because it is in use by a network service, is too long, or contains invalid characters." },
+    { "NSMSG_BAD_HANDLE", "Account $b%s$b is not allowed because it is reserved, is too long, or contains invalid characters." },
     { "NSMSG_BAD_NICK", "Nickname $b%s$b not registered because it is in use by a network service, is too long, or contains invalid characters." },
     { "NSMSG_BAD_EMAIL_ADDR", "Please use a well-formed email address." },
     { "NSMSG_FAIL_RENAME", "Account $b%s$b not renamed to $b%s$b because it is in use by a network services, or contains invalid characters." },
@@ -2034,6 +2035,15 @@ static NICKSERV_FUNC(cmd_auth)
     }
     if (argc == 3) {
 #ifdef WITH_LDAP
+        if(strchr(argv[1], '<') || strchr(argv[1], '>')) {
+            reply("NSMSG_NO_ANGLEBRACKETS");
+            return 0;
+        }
+        if (!is_valid_handle(argv[1])) {
+                reply("NSMSG_BAD_HANDLE", argv[1]);
+                return 0;
+        }
+
         if(nickserv_conf.ldap_enable) {
             ldap_result = ldap_check_auth(argv[1], argv[2]);
             /* Get the users email address and update it */
