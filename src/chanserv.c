@@ -7371,7 +7371,7 @@ handle_join(struct modeNode *mNode)
     unsigned int modes = 0, info = 0;
     char *greeting;
 
-    if(IsLocal(user) || !channel->channel_info || IsSuspended(channel->channel_info))
+    if(IsLocal(user) || !channel || !channel->channel_info || IsSuspended(channel->channel_info))
         return 0;
 
     cData = channel->channel_info;

@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-04-08  Alex Schumann  <rubin@afternet.org>
+
+        * src/chanserv.c: fix for a core when adding kill alert for numchans 1
+
 2007-04-06  Alex Schumann  <rubin@afternet.org>
 
         * src/chanserv.help: added Jigsy's mode help MODE CHANNEL and MODE
