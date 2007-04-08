@@ -103,22 +103,22 @@ Compiling:
      with no verbosity, use the '-f' flag. If you just want to run it,
      execute X3 without any flags.
 
- 10) Once you have X3 started, you'll need to register a NickServ
+ 10) Once you have X3 started, you'll need to register a AuthServ
      account:
-       /msg NickServ@services.irc.com register <account> <password>
+       /msg AuthServ@services.irc.com register <account> <password>
      Make sure that you register the first account -- it is
      automatically granted certain privileges and gives you root-level
-     access to OpServ once you are opered up.
+     access to O3 once you are opered up.
 
- 11) New operators can be given access to OpServ through NickServ's
+ 11) New operators can be given access to O3 through AuthServ's
      (or whatever you've named the nick/authentication service) oset
      command:
-       /msg NickServ oset <nick>|*<account> level <level>
+       /msg AuthServ oset <nick>|*<account> level <level>
      Levels are generally beween 0 and 1000 by convention; higher
      numbers correspond to more access. You can also add helpers
      (users with extra privileges such as security override in
-     traditional configurations) through NickServ:
-       /msg NickServ oset <nick>|*<account> flags +H
+     traditional configurations) through AuthServ:
+       /msg AuthServ oset <nick>|*<account> flags +H
 
 End of file, INSTALL.
 
