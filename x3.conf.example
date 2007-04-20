@@ -231,8 +231,7 @@
         // If you have an ldap server, you can configure X3 to use it instead of saving passwords locally.
 
         //"ldap_enable" "0";
-        //"ldap_host" "ldap.yournetwork.server";
-        //"ldap_port" "389";
+        //"ldap_uri"  "ldaps://ldap.yournetwork.server:636";
         //"ldap_base" "ou=Users,dc=afternet,dc=org";
         //"ldap_dn_fmt" "uid=%s,ou=Users,dc=afternet,dc=org";
         //"ldap_autocreate" "1"; // automatically create accounts if they exist in ldap but not x3

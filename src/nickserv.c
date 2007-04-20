@@ -116,8 +116,7 @@
 #define KEY_LDAP_ENABLE "ldap_enable"
 
 #ifdef WITH_LDAP
-#define KEY_LDAP_HOST "ldap_host"
-#define KEY_LDAP_PORT "ldap_port"
+#define KEY_LDAP_URI "ldap_uri"
 #define KEY_LDAP_BASE "ldap_base"
 #define KEY_LDAP_DN_FMT "ldap_dn_fmt"
 #define KEY_LDAP_VERSION "ldap_version"
@@ -1056,13 +1055,15 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     char crypted[MD5_CRYPT_LENGTH];
 
     if ((hi = dict_find(nickserv_handle_dict, handle, NULL))) {
-	send_message(user, nickserv, "NSMSG_HANDLE_EXISTS", handle);
+        if(user)
+	  send_message(user, nickserv, "NSMSG_HANDLE_EXISTS", handle);
 	return 0;
     }
 
     if(strlen(handle) > 15)
     {  
-        send_message(user, nickserv, "NSMSG_HANDLE_TOLONG", handle, 15);
+        if(user)
+          send_message(user, nickserv, "NSMSG_HANDLE_TOLONG", handle, 15);
         return 0;
     }
 
@@ -1075,7 +1076,8 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
         int rc;
         rc = ldap_do_add(handle, crypted, NULL);
         if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
-           send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+           if(user)
+             send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
            return 0;
         }
     }
@@ -1091,17 +1093,18 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     if (settee && !no_auth)
         set_user_handle_info(settee, hi, 1);
 
-    if (user != settee)
+    if (user && user != settee)
         send_message(user, nickserv, "NSMSG_OREGISTER_H_SUCCESS");
-    else if (nickserv_conf.disable_nicks)
+    else if (user && nickserv_conf.disable_nicks)
         send_message(user, nickserv, "NSMSG_REGISTER_H_SUCCESS");
-    else if ((ni = dict_find(nickserv_nick_dict, user->nick, NULL)))
+    else if (user && (ni = dict_find(nickserv_nick_dict, user->nick, NULL)))
         send_message(user, nickserv, "NSMSG_PARTIAL_REGISTER");
     else {
         register_nick(user->nick, hi);
-        send_message(user, nickserv, "NSMSG_REGISTER_HN_SUCCESS");
+        if(user)
+          send_message(user, nickserv, "NSMSG_REGISTER_HN_SUCCESS");
     }
-    if (settee && (user != settee))
+    if (user && settee && (user != settee))
         send_message(settee, nickserv, "NSMSG_OREGISTER_VICTIM", user->nick, hi->handle);
     return hi;
 }
@@ -1926,6 +1929,8 @@ struct handle_info *loc_auth(char *handle, char *password)
     struct userNode *other;
 #ifdef WITH_LDAP
     int ldap_result = LDAP_SUCCESS;
+    char *email = NULL;
+
 #endif
 
     hi = dict_find(nickserv_handle_dict, handle, NULL);
@@ -1934,29 +1939,23 @@ struct handle_info *loc_auth(char *handle, char *password)
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable) {
         ldap_result = ldap_check_auth(handle, password);
-        if(ldap_result == LDAP_SUCCESS) {
-           /* pull the users info from ldap:
-            * * email
-            * * name if available
-            * *
-            */
-        }
-        else {
+        if(ldap_result != LDAP_SUCCESS) {
            return NULL;
         }
     }
-    else           
+//    else           
 #else
     if (!checkpass(password, hi->passwd)) {
         return NULL;
     }
 #endif
 #ifdef WITH_LDAP
-    if(!hi && nickserv_conf.ldap_enable && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
+    if( (!hi) && nickserv_conf.ldap_enable && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
          /* user not found, but authed to ldap successfully..
           * create the account.
           */
          char *mask;
+         int rc;
 
          /* Add a *@* mask */
          if(nickserv_conf.default_hostmask)
@@ -1968,6 +1967,16 @@ struct handle_info *loc_auth(char *handle, char *password)
             return 0; /* couldn't add the user for some reason */
          }
 
+         if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
+         {
+            if(nickserv_conf.email_required) {
+                return 0;
+            }
+         }
+         if(email) {
+            nickserv_set_email_addr(hi, email);
+            free(email);
+         }
          if(mask) {
             char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
             string_list_append(hi->masks, mask_canonicalized);
@@ -4644,12 +4653,9 @@ nickserv_conf_read(void)
 #endif 
 
 #ifdef WITH_LDAP
-    str = database_get_data(conf_node, KEY_LDAP_HOST, RECDB_QSTRING);
-    nickserv_conf.ldap_host = str ? str : "";
+    str = database_get_data(conf_node, KEY_LDAP_URI, RECDB_QSTRING);
+    nickserv_conf.ldap_uri = str ? str : "";
 
-    str = database_get_data(conf_node, KEY_LDAP_PORT, RECDB_QSTRING);
-    nickserv_conf.ldap_port = str ? strtoul(str, NULL, 0) : LDAP_PORT;
-    
     str = database_get_data(conf_node, KEY_LDAP_BASE, RECDB_QSTRING);
     nickserv_conf.ldap_base = str ? str : "";
 

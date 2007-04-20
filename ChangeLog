@@ -1,6 +1,19 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-04-20  Alex Schumann  <rubin@afternet.org>
+
+        * src/x3ldap.c: support for ldaps (ssl/tls) was added. ldap_host and
+	ldap_port changed to ldap_uri.
+
+	* src/nickserv.c: fixed LOC bugs with accounts that exist in ldap but
+	not x3 not being created.  changed to ldap_uri config instead of
+	host/port
+
+	* src/nickserv.h: changed to ldap_uri
+
+	* x3.conf.example: changed to ldap_uri
+
 2007-04-09  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* README: testing.

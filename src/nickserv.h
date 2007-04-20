@@ -185,8 +185,7 @@ struct nickserv_config {
     unsigned int force_handles_lowercase;
     unsigned int ldap_enable;
 #ifdef WITH_LDAP
-    const char *ldap_host;
-    unsigned int ldap_port;
+    const char *ldap_uri;
     const char *ldap_base;
     const char *ldap_dn_fmt;
     unsigned int ldap_version;

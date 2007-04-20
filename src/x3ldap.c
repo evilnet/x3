@@ -48,13 +48,15 @@ int ldap_do_init()
    if(!nickserv_conf.ldap_enable)
      return false;
    /* TODO: check here for all required config options and exit() out if not present */
-   ld = ldap_init(nickserv_conf.ldap_host, nickserv_conf.ldap_port);
-   if(ld == NULL) {
+   //ld = ldap_init(nickserv_conf.ldap_host, nickserv_conf.ldap_port);
+
+   //if(ld == NULL) {
+   if(ldap_initialize(&ld, nickserv_conf.ldap_uri)) {
       log_module(MAIN_LOG, LOG_ERROR, "LDAP initilization failed!\n");
       exit(1);
    }
    ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &nickserv_conf.ldap_version);
-   log_module(MAIN_LOG, LOG_INFO, "Success! ldap_init() was successfull in connecting to %s port %d\n", nickserv_conf.ldap_host, nickserv_conf.ldap_port );
+   log_module(MAIN_LOG, LOG_INFO, "Success! ldap_init() was successfull in connecting to %s\n", nickserv_conf.ldap_uri);
    return true;
 }
 
