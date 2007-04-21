@@ -407,7 +407,7 @@ int ldap_do_add(const char *account, const char *crypted, const char *email)
        return LDAP_OTHER;
     }
     rc = ldap_add_ext_s(ld, newdn, mods, NULL, NULL);
-    if(rc != LDAP_SUCCESS) {
+    if(rc != LDAP_SUCCESS && rc!= LDAP_ALREADY_EXISTS) {
        log_module(MAIN_LOG, LOG_ERROR, "Error adding ldap account: %s -- %s", account, ldap_err2string(rc));
        return rc;
     }
@@ -602,7 +602,7 @@ int ldap_add2group(char *account, const char *group)
        return LDAP_OTHER;
     }
     rc = ldap_modify_s(ld, group, mods);
-    if(rc != LDAP_SUCCESS) {
+    if(rc != LDAP_SUCCESS && rc != LDAP_ALREADY_EXISTS) {
        log_module(MAIN_LOG, LOG_ERROR, "Error adding %s to group %s: %s", account, group, ldap_err2string(rc));
        return rc;
     }
@@ -630,7 +630,7 @@ int ldap_delfromgroup(char *account, const char *group)
        return LDAP_OTHER;
     }
     rc = ldap_modify_s(ld, group, mods);
-    if(rc != LDAP_SUCCESS) {
+    if(rc != LDAP_SUCCESS && rc != LDAP_NO_SUCH_ATTRIBUTE) {
        log_module(MAIN_LOG, LOG_ERROR, "Error removing %s from group %s: %s", account, group, ldap_err2string(rc));
        return rc;
     }

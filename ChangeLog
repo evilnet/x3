@@ -2,6 +2,10 @@
 X3 ChangeLog
 
 2007-04-21  Alex Schumann  <rubin@afternet.org>
+        * src/nickserv.c: remove some un-needed errors with duplicate
+	add/deletes in ldap 
+
+2007-04-21  Alex Schumann  <rubin@afternet.org>
 
         * src/nickserv.c: fix bug with register_user from loc causing core
 
