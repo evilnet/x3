@@ -135,7 +135,7 @@ int ldap_search_user(char *account, LDAPMessage **entry)
     Now we do a search;
     */
    timeout.tv_usec = 0;
-   timeout.tv_sec  = 5;
+   timeout.tv_sec  = nickserv_conf.ldap_timeout;
     if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;

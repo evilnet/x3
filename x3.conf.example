@@ -249,6 +249,7 @@
         //// This bit is needed if you want to put ircops into a group:
         //"ldap_oper_group_dn" "cn=Opers,ou=Groups,dc=afternet,dc=org";
         //"ldap_field_group_member" "memberUid"; // what field group members are in
+        //"ldap_timeout" "10"; // seconds
 
     };
 

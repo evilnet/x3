@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-04-21  Alex Schumann  <rubin@afternet.org>
+
+        * src/nickserv.c: fix bug with register_user from loc causing core
+
 2007-04-20  Alex Schumann  <rubin@afternet.org>
 
         * src/x3ldap.c: support for ldaps (ssl/tls) was added. ldap_host and

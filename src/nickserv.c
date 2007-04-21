@@ -129,6 +129,7 @@
 #define KEY_LDAP_OBJECT_CLASSES "ldap_object_classes"
 #define KEY_LDAP_OPER_GROUP_DN "ldap_oper_group_dn"
 #define KEY_LDAP_FIELD_GROUP_MEMBER "ldap_field_group_member"
+#define KEY_LDAP_TIMEOUT "ldap_timeout"
 #endif
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
@@ -1093,19 +1094,31 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     if (settee && !no_auth)
         set_user_handle_info(settee, hi, 1);
 
-    if (user && user != settee)
+    if (user != settee) {
+      if(user)
         send_message(user, nickserv, "NSMSG_OREGISTER_H_SUCCESS");
-    else if (user && nickserv_conf.disable_nicks)
-        send_message(user, nickserv, "NSMSG_REGISTER_H_SUCCESS");
-    else if (user && (ni = dict_find(nickserv_nick_dict, user->nick, NULL)))
-        send_message(user, nickserv, "NSMSG_PARTIAL_REGISTER");
-    else {
-        register_nick(user->nick, hi);
-        if(user)
-          send_message(user, nickserv, "NSMSG_REGISTER_HN_SUCCESS");
     }
-    if (user && settee && (user != settee))
+    else if (nickserv_conf.disable_nicks) {
+      if(user) {
+        send_message(user, nickserv, "NSMSG_REGISTER_H_SUCCESS");
+      }
+    }
+    else if ((ni = dict_find(nickserv_nick_dict, user->nick, NULL))) {
+      if(user) {
+        send_message(user, nickserv, "NSMSG_PARTIAL_REGISTER");
+      }
+    }
+    else {
+        if(user) {
+          register_nick(user->nick, hi);
+          send_message(user, nickserv, "NSMSG_REGISTER_HN_SUCCESS");
+        }
+    }
+    if (settee && (user != settee)) {
+      if(user) {
         send_message(settee, nickserv, "NSMSG_OREGISTER_VICTIM", user->nick, hi->handle);
+      }
+    }
     return hi;
 }
 
@@ -4667,6 +4680,9 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_AUTOCREATE, RECDB_QSTRING);
     nickserv_conf.ldap_autocreate = str ? strtoul(str, NULL, 0) : 0;
+
+    str = database_get_data(conf_node, KEY_LDAP_TIMEOUT, RECDB_QSTRING);
+    nickserv_conf.ldap_timeout = str ? strtoul(str, NULL, 0) : 5;
 
     str = database_get_data(conf_node, KEY_LDAP_ADMIN_DN, RECDB_QSTRING);
     nickserv_conf.ldap_admin_dn = str ? str : "";

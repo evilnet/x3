@@ -199,6 +199,7 @@ struct nickserv_config {
     struct string_list *ldap_object_classes;
     const char *ldap_oper_group_dn;
     const char *ldap_field_group_member;
+    unsigned int ldap_timeout;
 #endif
 };
 
