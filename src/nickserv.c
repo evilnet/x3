@@ -172,6 +172,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_PASSWORD_DICTIONARY", "Your password is too simple. You must choose a password that is not just a word or name." },
     { "NSMSG_PASSWORD_READABLE", "Your password must have at least %lu digit(s), %lu capital letter(s), and %lu lower-case letter(s)." },
     { "NSMSG_LDAP_FAIL", "There was a problem in contacting the account server (ldap): %s. Please try again later." },
+    { "NSMSG_LDAP_FAIL_ADD", "There was a problem in adding account %s to ldap: %s." },
     { "NSMSG_LDAP_FAIL_SEND_EMAIL", "There was a problem in storing your email address in the account server (ldap): %s. Please try again later." },
     { "NSMSG_LDAP_FAIL_GET_EMAIL", "There was a problem in retrieving your email address from the account server (ldap): %s. Please try again later." },
     { "NSMSG_PARTIAL_REGISTER", "Account has been registered to you; nick was already registered to someone else." },
@@ -3901,6 +3902,9 @@ struct nickserv_discrim {
     const char *hostmask;
     const char *handlemask;
     const char *emailmask;
+#ifdef WITH_LDAP
+    unsigned int inldap;
+#endif
 };
 
 typedef void (*discrim_search_func)(struct userNode *source, struct handle_info *hi);
@@ -3926,6 +3930,9 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
     discrim->min_registered = 0;
     discrim->max_registered = INT_MAX;
     discrim->lastseen = now;
+#ifdef WITH_LDAP
+    discrim->inldap = 2;
+#endif
 
     for (i=0; i<argc; i++) {
         if (i == argc - 1) {
@@ -3990,7 +3997,7 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
                 discrim->hostmask_type = SUPERSET;
             }
             discrim->hostmask = argv[++i];
-        } else if (!irccasecmp(argv[i], "handlemask") || !irccasecmp(argv[i], "accountmask")) {
+        } else if (!irccasecmp(argv[i], "handlemask") || !irccasecmp(argv[i], "accountmask") || !irccasecmp(argv[i], "account")) {
             if (!irccasecmp(argv[++i], "*")) {
                 discrim->handlemask = 0;
             } else {
@@ -4025,7 +4032,18 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
             } else {
                 reply("MSG_INVALID_CRITERIA", cmp);
             }
-        } else {
+        } else if (nickserv_conf.ldap_enable && !irccasecmp(argv[i], "inldap")) {
+          i++;
+          if(true_string(argv[i])) {
+             discrim->inldap = 1;
+          }
+          else if (false_string(argv[i])) {
+             discrim->inldap = 0;
+          }
+          else {
+            reply("MSG_INVALID_BINARY", argv[i]);
+          }
+        } else { 
             reply("MSG_INVALID_CRITERIA", argv[i]);
             goto fail;
         }
@@ -4073,6 +4091,17 @@ nickserv_discrim_match(struct nickserv_discrim *discrim, struct handle_info *hi)
         }
         if (!nick) return 0;
     }
+#ifdef WITH_LDAP
+    if(nickserv_conf.ldap_enable && discrim->inldap != 2) {
+        int rc;
+        rc = ldap_get_user_info(hi->handle, NULL);
+        if(discrim->inldap == 1 && rc != LDAP_SUCCESS)
+           return 0;
+        if(discrim->inldap == 0 && rc == LDAP_SUCCESS)
+           return 0;
+    }
+
+#endif
     return 1;
 }
 
@@ -4110,6 +4139,17 @@ search_unregister_func (struct userNode *source, struct handle_info *match)
 {
     if (oper_has_access(source, nickserv, match->opserv_level, 0))
         nickserv_unregister_handle(match, source, nickserv); // XXX nickserv hard coded
+}
+
+static void
+search_add2ldap_func (struct userNode *source, struct handle_info *match)
+{
+#ifdef WITH_LDAP
+    int rc = ldap_do_add(match->handle, match->passwd, match->email_addr);
+    if(rc != LDAP_SUCCESS) {
+       send_message(source, nickserv, "NSMSG_LDAP_FAIL_ADD", match->handle, ldap_err2string(rc));
+    }
+#endif
 }
 
 static int
@@ -4176,6 +4216,10 @@ static NICKSERV_FUNC(cmd_search)
         action = search_count_func;
     else if (!irccasecmp(argv[1], "unregister"))
         action = search_unregister_func;
+#ifdef WITH_LDAP
+    else if (nickserv_conf.ldap_enable && !irccasecmp(argv[1], "add2ldap"))
+        action = search_add2ldap_func;
+#endif
     else {
         reply("NSMSG_INVALID_ACTION", argv[1]);
         return 0;

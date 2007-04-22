@@ -1,6 +1,15 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-04-22  Alex Schumann  <rubin@afternet.org>
+
+        * src/nickserv.c: change authserv search accountmask to just account.
+	added inldap search criteria. added add2ldap search target.
+
+	* src/nickserv.help: added help for ldap searching.
+
+	* src/x3ldap.c: clean up of some error messages/handling.
+
 2007-04-21  Alex Schumann  <rubin@afternet.org>
         * src/nickserv.c: remove some un-needed errors with duplicate
 	add/deletes in ldap 

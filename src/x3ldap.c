@@ -42,6 +42,7 @@ extern struct nickserv_config nickserv_conf;
 
 
 LDAP *ld = NULL;
+int admin_bind = false;
 
 int ldap_do_init()
 {
@@ -98,12 +99,16 @@ unsigned int ldap_do_bind( const char *dn, const char *pass)
 }
 int ldap_do_admin_bind()
 {
+   int rc;
    if(!(nickserv_conf.ldap_admin_dn && *nickserv_conf.ldap_admin_dn && 
       nickserv_conf.ldap_admin_pass && *nickserv_conf.ldap_admin_pass)) {
        log_module(MAIN_LOG, LOG_ERROR, "Tried to admin bind, but no admin credentials configured in config file. ldap_admin_dn/ldap_admin_pass");
        return LDAP_OTHER; /* not configured to do this */
     }
-    return(ldap_do_bind(nickserv_conf.ldap_admin_dn, nickserv_conf.ldap_admin_pass));
+    rc = ldap_do_bind(nickserv_conf.ldap_admin_dn, nickserv_conf.ldap_admin_pass);
+    if(rc == LDAP_SUCCESS)
+       admin_bind = true;
+    return rc;
 }
 
 
@@ -116,6 +121,7 @@ unsigned int ldap_check_auth( char *account, char *pass)
 
    memset(buff, 0, MAXLEN);
    snprintf(buff, sizeof(buff)-1, nickserv_conf.ldap_dn_fmt /*"uid=%s,ou=Users,dc=afternet,dc=org"*/, account);
+   admin_bind = false;
    return ldap_do_bind(buff, pass);
 
 }
@@ -136,7 +142,7 @@ int ldap_search_user(char *account, LDAPMessage **entry)
     */
    timeout.tv_usec = 0;
    timeout.tv_sec  = nickserv_conf.ldap_timeout;
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
@@ -146,7 +152,7 @@ int ldap_search_user(char *account, LDAPMessage **entry)
    }
    log_module(MAIN_LOG, LOG_DEBUG, "Search successfull!  %s    %s\n", nickserv_conf.ldap_base, filter);
    if(ldap_count_entries(ld, res) != 1) {
-      log_module(MAIN_LOG, LOG_ERROR, "LDAP search got %d entries when looking for %s", ldap_count_entries(ld, res), account);
+      log_module(MAIN_LOG, LOG_DEBUG, "LDAP search got %d entries when looking for %s", ldap_count_entries(ld, res), account);
       return(LDAP_OTHER); /* Search was a success, but user not found.. */
    }
    log_module(MAIN_LOG, LOG_DEBUG, "LDAP search got %d entries", ldap_count_entries(ld, res));
@@ -166,14 +172,16 @@ int ldap_get_user_info(char *account, char **email)
     int rc;
     char **value;
     LDAPMessage *entry, *res;
-    *email = NULL;
+    if(email)
+      *email = NULL;
     if( (rc = ldap_search_user(account, &res)) == LDAP_SUCCESS) {
         entry = ldap_first_entry(ld, res);
         value = ldap_get_values(ld, entry, nickserv_conf.ldap_field_email);
         if(!value) {
            return(LDAP_OTHER);
         }
-        *email = strdup(value[0]);
+        if(email)
+          *email = strdup(value[0]);
         log_module(MAIN_LOG, LOG_DEBUG, "%s: %s\n", nickserv_conf.ldap_field_email, value[0]);
         /*
         value = ldap_get_values(ld, entry, "description");
@@ -394,7 +402,7 @@ int ldap_do_add(const char *account, const char *crypted, const char *email)
     int num_mods;
     char *passbuf;
     
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
@@ -409,7 +417,7 @@ int ldap_do_add(const char *account, const char *crypted, const char *email)
     rc = ldap_add_ext_s(ld, newdn, mods, NULL, NULL);
     if(rc != LDAP_SUCCESS && rc!= LDAP_ALREADY_EXISTS) {
        log_module(MAIN_LOG, LOG_ERROR, "Error adding ldap account: %s -- %s", account, ldap_err2string(rc));
-       return rc;
+    //   return rc;
     }
     //ldap_unbind_s(ld);
     for(i = 0; i < num_mods; i++) {
@@ -426,7 +434,7 @@ int ldap_delete_account(char *account)
     char dn[MAXLEN];
     int rc;
 
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
@@ -441,7 +449,7 @@ int ldap_rename_account(char *oldaccount, char *newaccount)
     char dn[MAXLEN], newdn[MAXLEN];
     int rc;
 
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
@@ -455,7 +463,7 @@ int ldap_rename_account(char *oldaccount, char *newaccount)
     rc = ldap_modrdn2_s(ld, dn, newdn, true);
     if(rc != LDAP_SUCCESS) {
        log_module(MAIN_LOG, LOG_ERROR, "Error modifying ldap account: %s -- %s", oldaccount, ldap_err2string(rc));
-       return rc;
+       //return rc;
     }
     return rc;
     
@@ -526,7 +534,7 @@ int ldap_do_modify(const char *account, const char *password, const char *email)
     int num_mods;
     char *passbuf = NULL;
     
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
@@ -538,13 +546,13 @@ int ldap_do_modify(const char *account, const char *password, const char *email)
     snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
     mods = make_mods_modify(passbuf, email, &num_mods);
     if(!mods) {
-       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
+       log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_do_modify");
        return LDAP_OTHER;
     }
     rc = ldap_modify_s(ld, dn, mods);
     if(rc != LDAP_SUCCESS) {
-       log_module(MAIN_LOG, LOG_ERROR, "Error adding ldap account: %s -- %s", account, ldap_err2string(rc));
-       return rc;
+       log_module(MAIN_LOG, LOG_ERROR, "Error modifying ldap account: %s -- %s", account, ldap_err2string(rc));
+    //   return rc;
     }
     for(i = 0; i < num_mods; i++) {
        free(mods[i]->mod_type);
@@ -592,7 +600,7 @@ int ldap_add2group(char *account, const char *group)
     int num_mods;
     int rc, i;
 
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
@@ -620,7 +628,7 @@ int ldap_delfromgroup(char *account, const char *group)
     int num_mods;
     int rc, i;
 
-    if(LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
@@ -645,6 +653,7 @@ int ldap_delfromgroup(char *account, const char *group)
 
 void ldap_close()
 {
+   admin_bind = false;
    ldap_unbind(ld);
 }
 
