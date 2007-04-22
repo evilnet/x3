@@ -272,7 +272,7 @@ char *base64_encode(const unsigned  char *str, int length, int *ret_length)
         return NULL;
     }
 
-    result = (char *)calloc(((length + 2) / 3) * 4, sizeof(char));
+    result = (char *)calloc((((length + 2) / 3) * 4)+1, sizeof(char));
     p = result;
 
     while (length > 2) { /* keep going until we have less than 24 bits */

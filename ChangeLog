@@ -8,7 +8,8 @@ X3 ChangeLog
 
 	* src/nickserv.help: added help for ldap searching.
 
-	* src/x3ldap.c: clean up of some error messages/handling.
+	* src/x3ldap.c: clean up of some error messages/handling. + add a byte
+	to password malloc to maybe solve a core problem?
 
 2007-04-21  Alex Schumann  <rubin@afternet.org>
         * src/nickserv.c: remove some un-needed errors with duplicate
