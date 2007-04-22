@@ -6,10 +6,12 @@ X3 ChangeLog
         * src/nickserv.c: change authserv search accountmask to just account.
 	added inldap search criteria. added add2ldap search target.
 
-	* src/nickserv.help: added help for ldap searching.
+	* src/nickserv.help: added help for ldap searching. + only add2ldap if
+	all the info is there.
 
 	* src/x3ldap.c: clean up of some error messages/handling. + add a byte
-	to password malloc to maybe solve a core problem?
+	to password malloc to maybe solve a core problem? + fix an error
+	checking option.
 
 2007-04-21  Alex Schumann  <rubin@afternet.org>
         * src/nickserv.c: remove some un-needed errors with duplicate

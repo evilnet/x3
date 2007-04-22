@@ -3219,7 +3219,7 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
           rc = ldap_add2group(target->handle, nickserv_conf.ldap_oper_group_dn);
         else
           rc = ldap_delfromgroup(target->handle, nickserv_conf.ldap_oper_group_dn);
-        if(rc != LDAP_SUCCESS) {
+        if(rc != LDAP_SUCCESS && rc != LDAP_TYPE_OR_VALUE_EXISTS && rc != LDAP_NO_SUCH_ATTRIBUTE) {
            send_message(user, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
            return 0;
         }
@@ -4145,9 +4145,12 @@ static void
 search_add2ldap_func (struct userNode *source, struct handle_info *match)
 {
 #ifdef WITH_LDAP
-    int rc = ldap_do_add(match->handle, match->passwd, match->email_addr);
-    if(rc != LDAP_SUCCESS) {
-       send_message(source, nickserv, "NSMSG_LDAP_FAIL_ADD", match->handle, ldap_err2string(rc));
+    int rc;
+    if(match->email_addr && match->passwd && match->handle) {
+	    rc  = ldap_do_add(match->handle, match->passwd, match->email_addr);
+	    if(rc != LDAP_SUCCESS) {
+	       send_message(source, nickserv, "NSMSG_LDAP_FAIL_ADD", match->handle, ldap_err2string(rc));
+	    }
     }
 #endif
 }

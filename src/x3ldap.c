@@ -610,7 +610,7 @@ int ldap_add2group(char *account, const char *group)
        return LDAP_OTHER;
     }
     rc = ldap_modify_s(ld, group, mods);
-    if(rc != LDAP_SUCCESS && rc != LDAP_ALREADY_EXISTS) {
+    if(rc != LDAP_SUCCESS && rc != LDAP_TYPE_OR_VALUE_EXISTS) {
        log_module(MAIN_LOG, LOG_ERROR, "Error adding %s to group %s: %s", account, group, ldap_err2string(rc));
        return rc;
     }
