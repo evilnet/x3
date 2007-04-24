@@ -4032,6 +4032,7 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
             } else {
                 reply("MSG_INVALID_CRITERIA", cmp);
             }
+#ifdef WITH_LDAP
         } else if (nickserv_conf.ldap_enable && !irccasecmp(argv[i], "inldap")) {
           i++;
           if(true_string(argv[i])) {
@@ -4043,6 +4044,7 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
           else {
             reply("MSG_INVALID_BINARY", argv[i]);
           }
+#endif
         } else { 
             reply("MSG_INVALID_CRITERIA", argv[i]);
             goto fail;

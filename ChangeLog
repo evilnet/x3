@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-04-24  Alex Schumann  <rubin@afternet.org>
+
+        * src/nickserv.c: add missing ifdef for inldap search.
+
 2007-04-22  Alex Schumann  <rubin@afternet.org>
 
         * src/nickserv.c: change authserv search accountmask to just account.
