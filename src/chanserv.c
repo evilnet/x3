@@ -6705,8 +6705,8 @@ static CHANSERV_FUNC(cmd_giveownership)
 
     giveownership = calloc(1, sizeof(*giveownership));
     giveownership->issued = now;
-    giveownership->old_owner = curr_user->handle->handle;
-    giveownership->target = new_owner_hi->handle;
+    giveownership->old_owner = strdup(curr_user->handle->handle);
+    giveownership->target = strdup(new_owner_hi->handle);
     giveownership->target_access = new_owner_old_access;
     if(override)
     {
