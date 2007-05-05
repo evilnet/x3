@@ -1,6 +1,15 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-06-06  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/proto-p10.c: Quick fix (as its 12:11am and i have work at 8:30am).
+	This will stop the "Unable to find user irc.servername.com whose mark 
+	is changing." messages. When a user reconnects and an existing exempt
+	is on the network for the user, their lastseen time is sent out to
+	all the servers. This quick fix moves the user checking part to
+	the relevant part of the function that actually uses users.
+
 2007-05-04  Alex Schumann  <rubin@afternet.org>
 
         * src/chanserv.c: fixed problem with giveownership logs where the

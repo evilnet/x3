@@ -1770,17 +1770,17 @@ static CMD_FUNC(cmd_mark)
 
     if(argc < 4)
         return 0;
-    target = GetUserH(argv[1]);
-    if(!target) {
-        log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose mark is changing.", argv[1]);
-        return 0;
-    }
     if(!strcasecmp(argv[2], "DNSBL")) {
         /* DNSBL <modes> */
         return 1;
     }
     else if(!strcasecmp(argv[2], "DNSBL_DATA")) {
         /* DNSBL_DATA name */
+        target = GetUserH(argv[1]);
+        if(!target) {
+            log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose mark is changing.", argv[1]);
+            return 0;
+        }
         target->mark = strdup(argv[3]);
         return 1;
         
