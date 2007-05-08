@@ -640,6 +640,11 @@
     "webtv" {
         "bot" "IRC";
 	"modes" "+k";
+
+	// Should clients need to be marked to use this service? 
+	"required_mark" "1";
+	// which marks are valid webtv marks?
+	"valid_marks" ("webtv", "msntv", "msntv2");
     };
 };
 

@@ -3,6 +3,13 @@ X3 ChangeLog
 
 2007-06-08  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/mod-webtv.c: Added NICK and WHOIS commands. As well as 2 x3.conf
+	config options, required_mark and valid_marks.
+
+	* src/mod-webtv.help: Added INDEX, NICK, and WHOIS.
+
+2007-06-08  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* configure: Run autogen.sh.
 
 	* configure.in: Tweaks for google core dumper 1.1.
