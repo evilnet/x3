@@ -189,9 +189,9 @@ target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
 AM_CPPFLAGS = @RX_INCLUDES@
-noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help spamserv.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help
+noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help spamserv.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help mod-webtv.help
 EXTRA_DIST = $(noinst_DATA)
-EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
+EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c mod-webtv.c
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
 x3_SOURCES = \
@@ -324,6 +324,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mod-snoop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mod-sockcheck.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mod-track.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mod-webtv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/modcmd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/modules.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nickserv.Po@am__quote@

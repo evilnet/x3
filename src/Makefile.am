@@ -4,10 +4,10 @@ TRACK = @TRACK@
 
 noinst_PROGRAMS = x3
 EXTRA_PROGRAMS = checkdb globtest
-noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help spamserv.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help
+noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help spamserv.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help mod-webtv.help
 EXTRA_DIST = $(noinst_DATA)
 
-EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c
+EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c mod-webtv.c
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
 x3_SOURCES = \

@@ -390,7 +390,7 @@ AC_CHECK_HEADER(tre/regex.h, , [AC_MSG_ERROR([tre/regex.h, the TRE regex headers
 AC_CHECK_LIB(tre, regexec, , [AC_MSG_ERROR([TRE regex library not found. Install tre, or use --with-tre=PATH to tell me how to find it, where PATH/lib/libtre.so exists. For conveniance, just type 'tools/tre_install.sh' now, to install tre in your home directory.])])
 
 dnl core dumper checking
-core_version="0.2"
+core_version="1.1"
 withval=''
 AC_ARG_WITH(coredumper,
 [  --with-coredumper=PATH  Base path to where core dumper is installed, such
@@ -403,7 +403,7 @@ if test "x$withval" != "x"; then
 else
     AC_MSG_RESULT([Looking for coredumper in system and home dirs (${HOME})...])
     CPPFLAGS="$CPPFLAGS -I${HOME}/include -L${HOME}/lib"
-    LIBS="$LIBS -L${HOME}/lib"
+    LIBS="$LIBS -Wl,--rpath -Wl,${HOME}/lib"
 fi
 AC_CHECK_HEADER(google/coredumper.h, , [AC_MSG_RESULT([google/coredumper.h, the coredumper headers, were not found. Install coredumper or use --with-coredumper=PATH to tell me how to find it, where PATH/include/google/coredumper.h exists.  For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])],)
 AC_CHECK_LIB(coredumper, WriteCoreDump, , [AC_MSG_RESULT([Coredumper library not found. Install coredumper, or use --with-coredumper=PATH to tell me how to find it, where PATH/lib/libcoredumper.so exists. For conveniance, just type 'tools/core_install.sh' now, to install coredumper in your home directory.])])

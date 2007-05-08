@@ -1,6 +1,29 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-06-08  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* configure: Run autogen.sh.
+
+	* configure.in: Tweaks for google core dumper 1.1.
+
+	* x3.conf.example: Basic webtv module section.
+
+	* src/config.h.in: Run autogen.sh.
+
+	* src/Makefile.am: Run autogen.sh.
+
+	* src/Makefile.in: Run autogen.sh.
+
+	* src/mod-webtv.c: Basic module for now. (Does nothing so dont
+	bother compiling in).
+
+	* src/mod-webtv.help: Empty help file for webtv module.
+
+	* tools/core_install.sh: Update google core dumper to 1.1.
+
+	* tools/coredumper.tar.gz: Update google core dumper to 1.1.
+
 2007-06-06  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/proto-p10.c: Quick fix (as its 12:11am and i have work at 8:30am).

@@ -2,7 +2,7 @@
 # 
 # This installs coredumper in $HOME, 
 
-CORE_VERSION=0.2
+CORE_VERSION=1.1
 MAKE="make"
 
 OLD_DIR=`pwd`
