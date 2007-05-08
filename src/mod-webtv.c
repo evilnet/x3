@@ -51,6 +51,11 @@ static const struct message_entry msgtab[] = {
     { "WBMSG_NICK_INVALID",   "The nickname $b%s$b is invalid." },
     { "WBMSG_NICK_IN_USE", "The nickname $b%s$b is in use, please choose another." },
 
+    { "WBMSG_CHANNEL_BANNED",   "You are banned on %s." },
+    { "WBMSG_CHANNEL_LIMIT",    "%s has reached the maximum allowed chatters." },
+    { "WBMSG_CHANNEL_INVITE",   "%s is invite only." },
+    { "WBMSG_CHANNEL_PASSWORD", "%s is password protected." },
+
     { "WBMSG_WHOIS_NICKIDENT",  "[%s] (%s@%s): %s" },
     { "WBMSG_WHOIS_CHANNELS",   "On %s" },
     { "WBMSG_WHOIS_SERVER",     "[%s] %s : %s" },
@@ -237,6 +242,97 @@ static MODCMD_FUNC(cmd_whois)
     return 1;
 }
 
+void
+part_all_channels(struct userNode *target)
+{
+    unsigned int n=0;
+    struct modeNode *mn;
+
+    for (n=0; n<target->channels.used; n++) {
+        mn = target->channels.list[n];
+        irc_svspart(webtv, target, mn->channel);
+    }
+
+    return;
+}
+
+static MODCMD_FUNC(cmd_join)
+{
+    struct chanNode *target;
+
+    if (!check_mark(cmd, user, NULL, 0, 0, NULL))
+        return 0;
+
+    if(!(target = GetChannel(argv[1])))
+    {
+        reply("MSG_INVALID_CHANNEL");
+        return 0;
+    }
+
+    if (trace_check_bans(user, target) == 1) {
+        reply("WBMSG_CHANNEL_BANNED", argv[1]);
+        return 0;
+    }
+
+    if (target->modes & MODE_INVITEONLY) {
+        reply("WBMSG_CHANNEL_INVITE", argv[1]);
+        return 0;
+    }
+
+
+    if (target->limit > 0) {
+        if (target->members.used >= target->limit) {
+             reply("WBMSG_CHANNEL_LIMIT", argv[1]);
+             return 0;
+        }
+    }
+
+
+    if (*target->key) {
+         if (argc > 2) {
+           if (strcmp(argv[2], target->key)) {
+               reply("WBMSG_CHANNEL_PASSWORD", argv[1]);
+               return 0;
+           }
+         } else {
+             reply("WBMSG_CHANNEL_PASSWORD", argv[1]);
+             return 0;
+         }
+    }
+
+    part_all_channels(user);
+    irc_svsjoin(webtv, user, target);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_part)
+{
+    struct mod_chanmode change;
+    struct chanNode *target;
+
+    if (!check_mark(cmd, user, NULL, 0, 0, NULL))
+        return 0;
+
+    if(!(target = GetChannel(argv[1])))
+    {
+        reply("MSG_INVALID_CHANNEL");
+        return 0;
+    }
+
+    mod_chanmode_init(&change);
+    change.argc = 1;
+    change.args[0].u.member = GetUserMode(target, user);
+    if(!change.args[0].u.member)
+    {
+        if(argc)
+            reply("MSG_CHANNEL_ABSENT", target->name);
+        return 0;
+    }
+
+    irc_svspart(webtv, user, target);
+    return 1;
+}
+
 static void
 webtv_conf_read(void)
 {
@@ -282,7 +378,9 @@ webtv_init(void)
 
     webtv_module = module_register("WebTV", WB_LOG, "mod-webtv.help", NULL);
     modcmd_register(webtv_module, "nick",  cmd_nick,  1, 0, NULL);
-    modcmd_register(webtv_module, "whois",  cmd_whois,  1, 0, NULL);
+    modcmd_register(webtv_module, "join",  cmd_join,  1, 0, NULL);
+    modcmd_register(webtv_module, "part",  cmd_part,  1, 0, NULL);
+    modcmd_register(webtv_module, "whois", cmd_whois, 1, 0, NULL);
 
     message_register_table(msgtab);
     return 1;
