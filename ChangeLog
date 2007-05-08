@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2007-06-08  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/mod-webtv.c: Allow opers to override required_mark. Also added
+	SJOIN (undocumented) so opers can join IRC into channels where its
+	needed as WebTV can only message clients in channels they are in.
+
+2007-06-08  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/mod-webtv.c: Added JOIN and PART.
 
 	* src/mod-webtv.help: Added JOIN and PART.

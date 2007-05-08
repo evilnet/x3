@@ -68,6 +68,9 @@ static const struct message_entry msgtab[] = {
     { "WBMSG_WHOIS_CONNECTED",  "[%s] %s" },
     { "WBMSG_WHOIS_END",        "[%s] End of WHOIS list." },
 
+    { "WBMSG_ALREADY_JOINED",   "I am already in $b%s$b." },
+    { "WBMSG_JOIN_DONE",        "I have joined $b%s$b." },
+
     { NULL, NULL }
 };
 
@@ -101,7 +104,7 @@ int check_mark(struct svccmd *cmd, struct userNode *user, UNUSED_ARG(struct hand
 {
     unsigned int y = 0;
 
-    if (webtv_conf.required_mark == 0)
+    if ((webtv_conf.required_mark == 0) || IsOper(user))
         return 1;
     else {
         if (!user->mark) {
@@ -256,6 +259,32 @@ part_all_channels(struct userNode *target)
     return;
 }
 
+static MODCMD_FUNC(cmd_sjoin)
+{
+    struct userNode *bot = cmd->parent->bot;
+
+    if (!IsChannelName(argv[1])) {
+        reply("MSG_NOT_CHANNEL_NAME");
+        return 0;
+    } else if (!(channel = GetChannel(argv[1]))) {
+        channel = AddChannel(argv[1], now, NULL, NULL, NULL);
+        AddChannelUser(bot, channel)->modes |= MODE_CHANOP;
+    } else if (GetUserMode(channel, bot)) {
+        reply("WBMSG_ALREADY_JOINED", channel->name);
+        return 0;
+    } else {
+        struct mod_chanmode change;
+        mod_chanmode_init(&change);
+        change.argc = 1;
+        change.args[0].mode = MODE_CHANOP;
+        change.args[0].u.member = AddChannelUser(bot, channel);
+        modcmd_chanmode_announce(&change);
+    }
+    irc_fetchtopic(bot, channel->name);
+    reply("WBMSG_JOIN_DONE", channel->name);
+    return 1;
+}
+
 static MODCMD_FUNC(cmd_join)
 {
     struct chanNode *target;
@@ -381,6 +410,8 @@ webtv_init(void)
     modcmd_register(webtv_module, "join",  cmd_join,  1, 0, NULL);
     modcmd_register(webtv_module, "part",  cmd_part,  1, 0, NULL);
     modcmd_register(webtv_module, "whois", cmd_whois, 1, 0, NULL);
+
+    modcmd_register(webtv_module, "sjoin",  cmd_sjoin,  1, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
 
     message_register_table(msgtab);
     return 1;
