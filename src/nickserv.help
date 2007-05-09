@@ -328,9 +328,8 @@
 
 "AUTH" {
         "/services/nickserv/email_enabled" (
-        "/msg $N@$s AUTH [account] <password>",
+        "/msg $N@$s AUTH <account> <password>",
         "Authenticates yourself with $b$N$b to the specified account. You must use $bauth$b before you have any access to network services, including channels that are registered with $b$C$b.",
-        "If you omit the account, it uses your current nick as your account name.",
         "$uSee Also:$u pass, resetpass, authcookie",
         );
         "!/services/nickserv/email_enabled" (
