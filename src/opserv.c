@@ -3183,6 +3183,8 @@ activate_routing(struct svccmd *cmd, struct userNode *user, char *plan_name)
     /* Delete the existing active route */
     wipe_route_list(opserv_route);
 
+    if(!rp || !rp->servers)
+       return 1;
     for(it = dict_first(rp->servers); it; it = iter_next(it)) {
             const char* servername = iter_key(it);
             struct routingPlanServer *rps = iter_data(it), 

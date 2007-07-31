@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2007-07-31  Alex Schumann  <rubin@afternet.org>
+
+        * src/proto-p10.c: ignore ALIST messages
+
 2007-05-08  Alex Schumann  <rubin@afternet.org>
 
         * src/nickserv.c: fix authentication bug with ldap by temporarily

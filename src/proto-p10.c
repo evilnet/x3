@@ -29,6 +29,7 @@
 /* Full commands. */
 #define CMD_ACCOUNT		"ACCOUNT"
 #define CMD_ADMIN               "ADMIN"
+#define CMD_ALIST               "ALIST"
 #define CMD_ASLL		"ASLL"
 #define CMD_AWAY                "AWAY"
 #define CMD_BURST               "BURST"
@@ -118,6 +119,7 @@
 /* Tokenized commands. */
 #define TOK_ACCOUNT		"AC"
 #define TOK_ADMIN               "AD"
+#define TOK_ALIST               "AL"
 #define TOK_ASLL		"LL"
 #define TOK_AWAY                "A"
 #define TOK_BURST               "B"
@@ -2452,6 +2454,9 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_EXEMPT, cmd_dummy);
     dict_insert(irc_func_dict, CMD_PRIVS, cmd_privs);
     dict_insert(irc_func_dict, TOK_PRIVS, cmd_privs);
+    /* ignore ALIST for now */
+    dict_insert(irc_func_dict, TOK_ALIST, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_ALIST, cmd_dummy);
     /* Ignore remote luser */
     dict_insert(irc_func_dict, TOK_LUSERS, cmd_dummy);
     /* We have reliable clock!  Always!  Wraaa! */
