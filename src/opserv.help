@@ -96,15 +96,16 @@
             );
 
 "CHANNEL"  (
-            "  $bOP$b      Op someone.",
-            "  $bDEOP$b    Deop someone.",
-            "  $bHOP$b     Half Op someone.",
-            "  $bDEHOP$b   DeHalfop someone.",
-            "  $bVOICE$b   Voice someone.",
-            "  $bDEVOICE$b Devoice someone.",
-            "  $bKICK$b    Kick someone.",
-            "  $bBAN$b     Ban someone.",
-            "  $bKICKBAN$b Kickban someone.",
+            "  $bOP$b        Op someone.",
+            "  $bDEOP$b      Deop someone.",
+            "  $bHOP$b       Half Op someone.",
+            "  $bDEHOP$b     DeHalfop someone.",
+            "  $bVOICE$b     Voice someone.",
+            "  $bDEVOICE$b   Devoice someone.",
+            "  $bFORCEKICK$b Force kick +k user.",
+            "  $bKICK$b      Kick someone.",
+            "  $bBAN$b       Ban someone.",
+            "  $bKICKBAN$b   Kickban someone.",
             "  $b$b",
             "  $bOPALL$b      Op everyone in a channel.",
             "  $bDEOPALL$b    Deop everyone in a channel.",
@@ -318,6 +319,8 @@
         "$bCLONES$b min               Ignore clients from hosts with fewer than this many connections.",
         "$bINFO_SPACE$b yes/no        Clients match only if their info starts with a space (' ') character.",
         "$bABUSE OPERS$b              Force adverse actions to affect opers as well.",
+        "$bABUSE TRUSTED$b            Force adverse actions to affect users on trusted hosts as well.",
+        "$bTARGET$b                   Send alert notice to this channel.",
         "$bLOG$b                      Record matching users in $O's log file (in addition to acting).",
         "$bREGEX$b yes/no             Specifies if NICK/IDENT/HOST/INFO should be treated as a regular expression.",
         "$bSILENT$b yes/no            If yes, AUTO is prepended to the gline message, making the gline silent in nefarious ircd.",
@@ -469,8 +472,13 @@
         "Kicks the specified user from the specified channel.",
         "If the channel is omitted, then $bkick$b will be done in the channel where the command was given.",
         "Access level: $b${level/kick}$b",
-        "$uSee Also:$u ban, kickall, kickban, kickbanall"
+        "$uSee Also:$u ban, kickall, kickban, kickbanall, forcekick"
         );
+
+"FORCEKICK" ("/msg $O FORCEKICK <#channel> <nick> [reason]",
+        "Kicks the specified user from the specified channel even if he is a channel service (+k).",
+        "If the channel is omitted, then $bforcekick$b will be done in the channel where the command was given.",
+        "$uSee Also:$u ban, kick, kickall, kickban, kickbanall");
 
 "KICKALL" ("/msg $O KICKALL <#channel> [reason]",
         "Kicks all users in the specified channel except for the user issuing the command.",
@@ -598,6 +606,7 @@
         "$bLIMIT$b count            Limits the number of matching glines.",
         "$bREASON$b reason          Looks for glines with the given reason.",
         "$bISSUER$b account         Looks for glines issued by the given account.",
+        "$bLASTMOD$b interval       Looks for glines last modified in the specified time.",
         "$bAFTER$b interval         Looks for glines that expire more than $binterval$b in the future.",
         "$uSee Also:$u gtrace action, gtrace"
         );
@@ -670,6 +679,7 @@
         "$bLIMIT$b count            Limits the number of matching shuns.",
         "$bREASON$b reason          Looks for shuns with the given reason.",
         "$bISSUER$b account         Looks for shuns issued by the given account.",
+        "$bLASTMOD$b interval       Looks for shuns last modified in the specified time.",
         "$bAFTER$b interval         Looks for shuns that expire more than $binterval$b in the future.",
         "$uSee Also:$u strace action, strace"
         );

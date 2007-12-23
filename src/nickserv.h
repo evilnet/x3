@@ -83,9 +83,12 @@ struct handle_cookie {
 };
 
 struct handle_note {
-    char            setter[NICKSERV_HANDLE_LEN+1];
-    time_t          date;
-    char            note[1];
+    struct handle_note *next;
+    time_t expires;
+    time_t set;
+    int id;
+    char setter[NICKSERV_HANDLE_LEN+1];
+    char note[1];
 };
 
 struct handle_info {
@@ -95,6 +98,7 @@ struct handle_info {
     struct userNode *users;
     struct userData *channels;
     struct handle_cookie *cookie;
+    struct handle_note *notes;
     struct handle_note *note;
     struct language *language;
     char *email_addr;
@@ -104,12 +108,12 @@ struct handle_info {
     char *fakehost;
     time_t registered;
     time_t lastseen;
+    int karma;
     unsigned short flags;
     unsigned short opserv_level;
     unsigned short screen_width;
     unsigned short table_width;
     unsigned char userlist_style;
-    unsigned char announcements;
     unsigned char maxlogins;
     char passwd[MD5_CRYPT_LENGTH+1];
     char last_quit_host[USERLEN+HOSTLEN+2];
@@ -178,6 +182,8 @@ struct nickserv_config {
     unsigned long auto_reclaim_delay;
     unsigned char default_maxlogins;
     unsigned char hard_maxlogins;
+    unsigned long ounregister_inactive;
+    unsigned long ounregister_flags;
     const char *auto_oper;
     const char *auto_admin;
     char default_style;

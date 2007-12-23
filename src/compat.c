@@ -33,7 +33,15 @@ extern gettimeofday(struct timeval * tv, struct timezone * tz);
         tz->tz_dsttime     = 0;
     }
 
-    return 0;
+    return 0; (void)tz;
+}
+#endif
+
+#ifndef HAVE_GETLOCALTIME_R
+extern struct tm *localtime_r(const time_t *timep, struct tm *result)
+{
+    memcpy(result, localtime(timep), sizeof(*result));
+    return result;
 }
 #endif
 
@@ -363,8 +371,14 @@ int getaddrinfo(const char *node, const char *service, const struct addrinfo *hi
 
     if (node) {
         if (hints && hints->ai_flags & AI_NUMERICHOST) {
+#if HAVE_INET_ATON
             if (!inet_aton(node, &sin.sin_addr))
                 return 2;
+#else
+            sin.sin_addr.s_addr = inet_addr(node);
+            if (sin.sin_addr.s_addr == INADDR_NONE)
+                return 2;
+#endif
         } else {
             struct hostent *he;
             he = gethostbyname(node);
@@ -408,3 +422,47 @@ void freeaddrinfo(struct addrinfo *res)
 
 #endif
 
+#ifndef HAVE_GAI_STRERROR
+const char *gai_strerror(int errcode)
+{
+    switch (errcode) {
+#if defined(EAI_ADDRFAMILY)
+    case EAI_ADDRFAMILY: return "Address family not supported.";
+#endif
+#if defined(EAI_AGAIN)
+    case EAI_AGAIN: return "A temporary failure occurred during name resolution.";
+#endif
+#if defined(EAI_BADFLAGS)
+    case EAI_BADFLAGS: return "Invalid flags hint.";
+#endif
+#if defined(EAI_FAIL)
+    case EAI_FAIL: return "An unrecoverable failure occurred during name resolution.";
+#endif
+#if defined(EAI_FAMILY)
+    case EAI_FAMILY: return "Address family not supported.";
+#endif
+#if defined(EAI_MEMORY)
+    case EAI_MEMORY: return "Not enough memory.";
+#endif
+#if defined(EAI_NODATA)
+    case EAI_NODATA: return "The name resolves to an empty record.";
+#endif
+#if defined(EAI_NONAME)
+    case EAI_NONAME: return "The name does not resolve.";
+#endif
+#if defined(EAI_OVERFLOW)
+    case EAI_OVERFLOW: return "Resolved name was too large for buffer.";
+#endif
+#if defined(EAI_SERVICE)
+    case EAI_SERVICE: return "The socket type does not support the requested service.";
+#endif
+#if defined(EAI_SOCKTYPE)
+    case EAI_SOCKTYPE: return "Unknown socket type.";
+#endif
+#if defined(EAI_SYSTEM)
+    case EAI_SYSTEM: return "A system error occurred during name resolution.";
+#endif
+    }
+    return "Unknown GAI_* error";
+}
+#endif

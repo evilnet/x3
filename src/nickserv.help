@@ -412,7 +412,6 @@
           "$bFLAGS$b: Changes account flags (SphHdscfn) for user (see $uaccount flags$u).",
           "$bLEVEL$b: Sets $O access level.",
           "$bEPITHET$b: The description shown for the user's access in /whois.",
-          "$bNOTE$b: Adds a note to the user's account.",
           "$bTITLE$b: The title the user will get (in there hostname) when +x.",
           "$bFAKEHOST$b: The fake hostname the user will get when +x.",
           "..or anything $bset$b can change.",
@@ -609,6 +608,8 @@
         "  HOSTMASK SUBSET - Account matches if this mask \"covers\" one in their userlist",
 	"  HOSTMASK LASTQUIT - Account matches if this mask \"covers\" user was last seen using",
         "  HOSTMASK   - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
+        "  FAKEHOST   - A glob that must match the account's fakehost",
+        "  KARMA      - Only match accounts with karma like this (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
         "  ACCESS     - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
         "$uSee Also:$u search, search action"
         );
@@ -673,3 +674,12 @@
         "Removes a hostmask from the specified account's ignore list.",
         "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u oaddignore");
+
+"ADDNOTE" ("/msg $N ADDNOTE <nick|*account> <duration> <text>",
+	"Add a note to an account.",
+        "This command is only accessible to helpers and IRC operators.",
+        "$uSee Also:$u delnote");
+"DELNOTE" ("/msg $N DELNOTE <nick|*account> <noteid>",
+	"Removes a note from an account.",
+        "This command is only accessible to helpers and IRC operators.",
+        "$uSee Also:$u delnote");

@@ -642,7 +642,7 @@ extern struct userNode *opserv;
 #define HELPSERV_SYNTAX() helpserv_help(hs, from_opserv, user, argv[0], 0)
 #define HELPSERV_FUNC(NAME) int NAME(struct userNode *user, UNUSED_ARG(struct helpserv_bot *hs), int from_opserv, UNUSED_ARG(unsigned int argc), UNUSED_ARG(char *argv[]))
 typedef HELPSERV_FUNC(helpserv_func_t);
-#define HELPSERV_USERCMD(NAME) int NAME(UNUSED_ARG(struct helpserv_request *req), UNUSED_ARG(struct userNode *likely_helper), UNUSED_ARG(char *args), UNUSED_ARG(int argc), UNUSED_ARG(char *argv[]), UNUSED_ARG(struct userNode *user), UNUSED_ARG(struct helpserv_bot *hs))
+#define HELPSERV_USERCMD(NAME) int NAME(UNUSED_ARG(struct helpserv_request *req), UNUSED_ARG(struct userNode *likely_helper), UNUSED_ARG(const char *args), UNUSED_ARG(int argc), UNUSED_ARG(char *argv[]), UNUSED_ARG(struct userNode *user), UNUSED_ARG(struct helpserv_bot *hs))
 typedef HELPSERV_USERCMD(helpserv_usercmd_t);
 #define HELPSERV_OPTION(NAME) HELPSERV_FUNC(NAME)
 typedef HELPSERV_OPTION(helpserv_option_func_t);
@@ -1017,7 +1017,7 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
 }
 
 /* Handle a message from a user to a HelpServ bot. */
-static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, char *text, char *argv[], int argc) {
+static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, const char *text, char *argv[], int argc) {
     const int from_opserv = 0; /* for helpserv_notice */
     struct helpserv_request *req=NULL, *newest=NULL;
     struct helpserv_reqlist *reqlist, *hand_reqlist;
@@ -1171,13 +1171,13 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
 }
 
 /* Handle messages direct to a HelpServ bot. */
-static void helpserv_botmsg(struct userNode *user, struct userNode *target, char *text, UNUSED_ARG(int server_qualified)) {
+static void helpserv_botmsg(struct userNode *user, struct userNode *target, const char *text, UNUSED_ARG(int server_qualified)) {
     struct helpserv_bot *hs;
     struct helpserv_cmd *cmd;
     struct helpserv_user *hs_user = NULL;
     char *argv[MAXNUMPARAMS];
-    char *stext = strdup(text);
     int argc, argv_shift;
+    char tmpline[MAXLEN];
     const int from_opserv = 0; /* for helpserv_notice */
 
     /* Ignore things consisting of empty lines or from ourselves */
@@ -1189,9 +1189,12 @@ static void helpserv_botmsg(struct userNode *user, struct userNode *target, char
     
     /* XXX: For some unknown reason we are shifting +1 on the array and ignoring argv[0]; to avoid someone rightly assuming argv[0] 
      * was the first argument later on and addressing random memory, were going to make argv[0] null. This whole thing is pretty unacceptable and needs fixed, though.*/
-    argv[0] = NULL;
+
+
     argv_shift = 1;
-    argc = split_line(stext, false, ArrayLength(argv)-argv_shift, argv+argv_shift);
+    safestrncpy(tmpline, text, sizeof(tmpline));
+    argc = split_line(tmpline, false, ArrayLength(argv)-argv_shift, argv+argv_shift);
+
     if (!argc)
         return;
 
@@ -1229,8 +1232,8 @@ static void helpserv_botmsg(struct userNode *user, struct userNode *target, char
     if (!cmd->func) {
         helpserv_notice(user, "HSMSG_INTERNAL_COMMAND", argv[argv_shift]);
     } else if (cmd->func(user, hs, 0, argc, argv+argv_shift)) {
-        char *buf = unsplit_string(argv+argv_shift, argc, NULL);
-        log_audit(HS_LOG, LOG_COMMAND, user, hs->helpserv, hs->helpchan->name, 0, buf);
+        unsplit_string(argv+argv_shift, argc, tmpline);
+        log_audit(HS_LOG, LOG_COMMAND, user, hs->helpserv, hs->helpchan->name, 0, tmpline);
     }
 }
 
@@ -2841,7 +2844,7 @@ static struct helpserv_bot *register_helpserv(const char *nick, const char *help
      * it's a harmless default */
     hs = calloc(1, sizeof(struct helpserv_bot));
 
-    if (!(hs->helpserv = AddService(nick, "+iok", helpserv_conf.description, NULL))) {
+    if (!(hs->helpserv = AddLocalUser(nick, nick, NULL, helpserv_conf.description, NULL))) {
         free(hs);
         return NULL;
     }

@@ -25,7 +25,7 @@
 #include "modcmd.h"
 #include "opserv.h" /* for gag_create(), opserv_bad_channel() */
 #include "saxdb.h"
-#include "sendmail.h"
+#include "mail.h"
 #include "timeq.h"
 #include "x3ldap.h"
 
@@ -78,6 +78,8 @@
 #define KEY_COOKIE_TIMEOUT "cookie_timeout"
 #define KEY_ACCOUNTS_PER_EMAIL "accounts_per_email"
 #define KEY_EMAIL_SEARCH_LEVEL "email_search_level"
+#define KEY_OUNREGISTER_INACTIVE "ounregister_inactive"
+#define KEY_OUNREGISTER_FLAGS "ounregister_flags"
 #define KEY_DEFAULT_STYLE "default_style"
 
 #define KEY_ID "id"
@@ -105,12 +107,14 @@
 #define KEY_ALLOWAUTH "allowauth"
 #define KEY_EPITHET "epithet"
 #define KEY_TABLE_WIDTH "table_width"
-#define KEY_ANNOUNCEMENTS "announcements"
 #define KEY_MAXLOGINS "maxlogins"
 #define KEY_FAKEHOST "fakehost"
-#define KEY_NOTE_NOTE "note"
+#define KEY_NOTES "notes"
+#define KEY_NOTE_EXPIRES "expires"
+#define KEY_NOTE_SET "set"
 #define KEY_NOTE_SETTER "setter"
-#define KEY_NOTE_DATE "date"
+#define KEY_NOTE_NOTE "note"
+#define KEY_KARMA "karma"
 #define KEY_FORCE_HANDLES_LOWERCASE "force_handles_lowercase"
 
 #define KEY_LDAP_ENABLE "ldap_enable"
@@ -231,6 +235,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_REGGED", "Registered on: %s" },
     { "NSMSG_HANDLEINFO_LASTSEEN", "Last seen: %s" },
     { "NSMSG_HANDLEINFO_LASTSEEN_NOW", "Last seen: Right now!" },
+    { "NSMSG_HANDLEINFO_KARMA", "  Karma: %d" },
     { "NSMSG_HANDLEINFO_VACATION", "On vacation." },
     { "NSMSG_HANDLEINFO_EMAIL_ADDR", "Email address: %s" },
     { "NSMSG_HANDLEINFO_COOKIE_ACTIVATION", "Cookie: There is currently an activation cookie issued for this account" },
@@ -241,10 +246,12 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_INFOLINE", "Infoline: %s" },
     { "NSMSG_HANDLEINFO_FLAGS", "Flags: %s" },
     { "NSMSG_HANDLEINFO_EPITHET", "Epithet: %s" },
-    { "NSMSG_HANDLEINFO_NOTE", "Note (by %s on %s): %s " },
     { "NSMSG_HANDLEINFO_FAKEHOST", "Fake host: %s" },
     { "NSMSG_HANDLEINFO_LAST_HOST", "Last quit hostmask: %s" },
     { "NSMSG_HANDLEINFO_LAST_HOST_UNKNOWN", "Last quit hostmask: Unknown" },
+    { "NSMSG_HANDLEINFO_NO_NOTES", "  Notes: None" },
+    { "NSMSG_HANDLEINFO_NOTE_EXPIRES", "  Note %d (%s ago by %s, expires %s): %s" },
+    { "NSMSG_HANDLEINFO_NOTE", "  Note %d (%s ago by %s): %s" },
     { "NSMSG_HANDLEINFO_NICKS", "Nickname(s): %s" },
     { "NSMSG_HANDLEINFO_MASKS", "Hostmask(s): %s" },
     { "NSMSG_HANDLEINFO_IGNORES", "Ignore(s): %s" },
@@ -254,6 +261,9 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_USERINFO_AUTHED_AS", "$b%s$b is authenticated to account $b%s$b." },
     { "NSMSG_USERINFO_NOT_AUTHED", "$b%s$b is not authenticated to any account." },
     { "NSMSG_NICKINFO_OWNER", "Nick $b%s$b is owned by account $b%s$b." },
+    { "NSMSG_NOTE_EXPIRES", "Note %d (%s ago by %s, expires %s): %s" },
+    { "NSMSG_NOTE", "Note %d (%s ago by %s): %s" },
+    { "NSMSG_NOTE_COUNT", "%u note(s) for %s." },
     { "NSMSG_PASSWORD_INVALID", "Incorrect password; please try again." },
     { "NSMSG_PLEASE_SET_EMAIL", "We now require email addresses for users.  Please use the $bset email$b command to set your email address!" },
     { "NSMSG_WEAK_PASSWORD", "WARNING: You are using a password that is considered weak (easy to guess).  It is STRONGLY recommended you change it (now, if not sooner) by typing \"/msg $S@$s PASS oldpass newpass\" (with your current password and a new password)." },
@@ -287,6 +297,9 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_UNREGNICK_SUCCESS", "Nick $b%s$b has been unregistered." },
     { "NSMSG_UNREGISTER_SUCCESS", "Account $b%s$b has been unregistered." },
     { "NSMSG_UNREGISTER_NICKS_SUCCESS", "Account $b%s$b and all its nicks have been unregistered." },
+    { "NSMSG_UNREGISTER_MUST_FORCE", "Account $b%s$b is not inactive or has special flags set; use FORCE to unregister it." },
+    { "NSMSG_UNREGISTER_CANNOT_FORCE", "Account $b%s$b is not inactive or has special flags set; have an IRCOp use FORCE to unregister it." },
+    { "NSMSG_UNREGISTER_NODELETE", "Account $b%s$b is protected from unregistration." },
     { "NSMSG_HANDLE_STATS", "There are %d nicks registered to your account." },
     { "NSMSG_HANDLE_NONE", "You are not authenticated against any account." },
     { "NSMSG_GLOBAL_STATS", "There are %d accounts and %d nicks registered globally." },
@@ -295,6 +308,10 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_CANNOT_GHOST_USER", "$b%s$b is not authed to your account; you may not ghost-kill them." },
     { "NSMSG_GHOST_KILLED", "$b%s$b has been killed as a ghost." },
     { "NSMSG_ON_VACATION", "You are now on vacation.  Your account will be preserved until you authenticate again." },
+    { "NSMSG_EXCESSIVE_DURATION", "$b%s$b is too long for this command." },
+    { "NSMSG_NOTE_ADDED", "Note $b%d$b added to $b%s$b." },
+    { "NSMSG_NOTE_REMOVED", "Note $b%d$b removed from $b%s$b." },
+    { "NSMSG_NO_SUCH_NOTE", "Account $b%s$b does not have a note with ID $b%d$b." },
     { "NSMSG_NO_ACCESS", "Access denied." },
     { "NSMSG_INVALID_FLAG", "$b%c$b is not a valid $N account flag." },
     { "NSMSG_SET_FLAG", "Applied flags $b%s$b to %s's $N account." },
@@ -322,14 +339,12 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SETTING_LIST_HEADER", "----------------------------------------" },
     { "NSMSG_SETTING_LIST_END",    "-------------End Of Settings------------" },
     { "NSMSG_INVALID_OPTION", "$b%s$b is an invalid account setting." },
-    { "NSMSG_INVALID_ANNOUNCE", "$b%s$b is an invalid announcements value." },
     { "NSMSG_SET_INFO", "$bINFO:         $b%s" },
     { "NSMSG_SET_WIDTH", "$bWIDTH:        $b%d" },
     { "NSMSG_SET_TABLEWIDTH", "$bTABLEWIDTH:   $b%d" },
     { "NSMSG_SET_COLOR", "$bCOLOR:        $b%s" },
     { "NSMSG_SET_PRIVMSG", "$bPRIVMSG:      $b%s" },
     { "NSMSG_SET_STYLE", "$bSTYLE:        $b%s" },
-    { "NSMSG_SET_ANNOUNCEMENTS", "$bANNOUNCEMENTS: $b%s" },
     { "NSMSG_SET_AUTOHIDE", "$bAUTOHIDE:     $b%s" },
     { "NSMSG_SET_PASSWORD", "$bPASSWORD:     $b%s" },
     { "NSMSG_SET_FLAGS", "$bFLAGS:        $b%s" },
@@ -339,9 +354,11 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SET_LANGUAGE", "$bLANGUAGE:     $b%s" },
     { "NSMSG_SET_LEVEL", "$bLEVEL:        $b%d" },
     { "NSMSG_SET_EPITHET", "$bEPITHET:      $b%s" },
-    { "NSMSG_SET_NOTE", "$bNOTE:         $b%s"},
     { "NSMSG_SET_TITLE", "$bTITLE:        $b%s" },
     { "NSMSG_SET_FAKEHOST", "$bFAKEHOST:    $b%s" },
+    { "NSMSG_SET_KARMA", "$bKARMA:       $b%d$b" },
+
+    { "NSMSG_INVALID_KARMA", "$b%s$b is not a valid karma modifier." },
 
     { "NSMSG_AUTO_OPER", "You have been auto-opered" },
     { "NSMSG_AUTO_OPER_ADMIN", "You have been auto-admined" },
@@ -403,11 +420,20 @@ static const struct message_entry msgtab[] = {
 
 static void nickserv_reclaim(struct userNode *user, struct nick_info *ni, enum reclaim_action action);
 static void nickserv_reclaim_p(void *data);
+static int nickserv_addmask(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, const char *mask);
 
 struct nickserv_config nickserv_conf;
 
 /* We have 2^32 unique account IDs to use. */
 unsigned long int highest_id = 0;
+
+#define WALK_NOTES(HANDLE, PREV, NOTE) \
+    for (PREV = NULL, NOTE = (HANDLE)->notes; NOTE != NULL; PREV = NOTE, NOTE = NOTE->next) \
+        if (NOTE->expires && NOTE->expires < now) { \
+            if (PREV) PREV->next = NOTE->next; else (HANDLE)->notes = NOTE->next; \
+            free(NOTE); \
+            if (!(NOTE = PREV ? PREV : (HANDLE)->notes)) break; \
+        } else
 
 static char *
 canonicalize_hostmask(char *mask)
@@ -421,17 +447,6 @@ canonicalize_hostmask(char *mask)
     return mask;
 }
 
-static struct handle_note *
-nickserv_add_note(const char *setter, time_t date, const char *text)
-{
-    struct handle_note *note = calloc(1, sizeof(*note) + strlen(text));
-
-    strncpy(note->setter, setter, sizeof(note->setter)-1);
-    note->date = date;
-    memcpy(note->note, text, strlen(text));
-    return note;
-}
-
 static struct handle_info *
 register_handle(const char *handle, const char *passwd, UNUSED_ARG(unsigned long id))
 {
@@ -439,7 +454,6 @@ register_handle(const char *handle, const char *passwd, UNUSED_ARG(unsigned long
 
     hi = calloc(1, sizeof(*hi));
     hi->userlist_style = nickserv_conf.default_style ? nickserv_conf.default_style : HI_DEFAULT_STYLE;
-    hi->announcements = '?';
     hi->handle = strdup(handle);
     safestrncpy(hi->passwd, passwd, sizeof(hi->passwd));
     hi->infoline = NULL;
@@ -525,11 +539,15 @@ free_handle_info(void *vhi)
         delete_nick(hi->nicks);
     free(hi->infoline);
     free(hi->epithet);
-    free(hi->note);
     free(hi->fakehost);
     if (hi->cookie) {
         timeq_del(hi->cookie->expires, nickserv_free_cookie, hi->cookie, 0);
         nickserv_free_cookie(hi->cookie);
+    }
+    while (hi->notes) {
+        struct handle_note *note = hi->notes;
+        hi->notes = note->next;
+        free(note);
     }
     if (hi->email_addr) {
         struct handle_info_list *hil = dict_find(nickserv_email_dict, hi->email_addr, NULL);
@@ -1215,7 +1233,7 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
             snprintf(subject, sizeof(subject), fmt, netname);
             fmt = handle_find_message(hi, "NSEMAIL_EMAIL_CHANGE_BODY_NEW");
             snprintf(body, sizeof(body), fmt, netname, cookie->cookie+COOKIELEN/2, nickserv->nick, self->name, hi->handle, COOKIELEN/2);
-            sendmail(nickserv, hi, subject, body, 1);
+            mail_send(nickserv, hi, subject, body, 1);
             fmt = handle_find_message(hi, "NSEMAIL_EMAIL_CHANGE_BODY_OLD");
             snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle, COOKIELEN/2, hi->email_addr);
         } else {
@@ -1225,7 +1243,7 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
             snprintf(subject, sizeof(subject), fmt, netname);
             fmt = handle_find_message(hi, "NSEMAIL_EMAIL_VERIFY_BODY");
             snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle);
-            sendmail(nickserv, hi, subject, body, 1);
+            mail_send(nickserv, hi, subject, body, 1);
             subject[0] = 0;
 #ifdef stupid_verify_old_email
         }
@@ -1244,7 +1262,7 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
         break;
     }
     if (subject[0])
-        sendmail(nickserv, hi, subject, body, first_time);
+        mail_send(nickserv, hi, subject, body, first_time);
     nickserv_bake_cookie(cookie);
 }
 
@@ -1347,7 +1365,7 @@ static NICKSERV_FUNC(cmd_register)
         }
 
         /* .. and that we are allowed to send to it. */
-        if ((str = sendmail_prohibited_address(email_addr))) {
+        if ((str = mail_prohibited_address(email_addr))) {
             reply("NSMSG_EMAIL_PROHIBITED", email_addr, str);
             return 0;
         }
@@ -1653,12 +1671,15 @@ static NICKSERV_FUNC(cmd_handleinfo)
         struct do_not_register *dnr;
         if ((dnr = chanserv_is_dnr(NULL, hi)))
             reply("NSMSG_HANDLEINFO_DNR", dnr->setter, dnr->reason);
-        if (!oper_outranks(cmd, user, hi))
+        if ((user->handle_info->opserv_level < 900) && !oper_outranks(cmd, user, hi))
             return 1;
     } else if (hi != user->handle_info) {
         reply("NSMSG_HANDLEINFO_END");
         return 1;
     }
+
+    if (IsOper(user))
+        reply("NSMSG_HANDLEINFO_KARMA", hi->karma);
 
     if (nickserv_conf.email_enabled)
         reply("NSMSG_HANDLEINFO_EMAIL_ADDR", visible_email_addr(user, hi));
@@ -1673,6 +1694,26 @@ static NICKSERV_FUNC(cmd_handleinfo)
         default: type = "NSMSG_HANDLEINFO_COOKIE_UNKNOWN"; break;
         }
         reply(type);
+    }
+
+    if (oper_has_access(user, cmd->parent->bot, 0, 1) || IsStaff(user)) {
+        if (!hi->notes) {
+            reply("NSMSG_HANDLEINFO_NO_NOTES");
+        } else {
+            struct handle_note *prev, *note;
+
+            WALK_NOTES(hi, prev, note) {
+                char set_time[INTERVALLEN];
+                intervalString(set_time, now - note->set, user->handle_info);
+                if (note->expires) {
+                    char exp_time[INTERVALLEN];
+                    intervalString(exp_time, note->expires - now, user->handle_info);
+                    reply("NSMSG_HANDLEINFO_NOTE_EXPIRES", note->id, set_time, note->setter, exp_time, note->note);
+                } else {
+                    reply("NSMSG_HANDLEINFO_NOTE", note->id, set_time, note->setter, note->note);
+                }
+            }
+        }
     }
 
     if (hi->flags) {
@@ -1692,16 +1733,6 @@ static NICKSERV_FUNC(cmd_handleinfo)
         || HANDLE_FLAGGED(hi, NETWORK_HELPER)
         || (hi->opserv_level > 0)) {
         reply("NSMSG_HANDLEINFO_EPITHET", (hi->epithet ? hi->epithet : nsmsg_none));
-    }
-
-    if (IsHelping(user) || IsOper(user))
-    {
-        if (hi->note)
-        {
-            char date[64];
-            strftime(date, 64, "%b %d %Y", localtime(&hi->note->date));
-            reply("NSMSG_HANDLEINFO_NOTE", hi->note->setter, date, hi->note->note);
-        }
     }
 
     if (hi->fakehost)
@@ -1851,6 +1882,32 @@ static NICKSERV_FUNC(cmd_nickinfo)
 	return 0;
     }
     reply("NSMSG_NICKINFO_OWNER", ni->nick, ni->owner->handle);
+    return 1;
+}
+
+static NICKSERV_FUNC(cmd_notes)
+{
+    struct handle_info *hi;
+    struct handle_note *prev, *note;
+    unsigned int hits;
+
+    NICKSERV_MIN_PARMS(2);
+    if (!(hi = get_victim_oper(cmd, user, argv[1])))
+       return 0;
+    hits = 0;
+    WALK_NOTES(hi, prev, note) {
+        char set_time[INTERVALLEN];
+        intervalString(set_time, now - note->set, user->handle_info);
+        if (note->expires) {
+            char exp_time[INTERVALLEN];
+            intervalString(exp_time, note->expires - now, user->handle_info);
+            reply("NSMSG_NOTE_EXPIRES", note->id, set_time, note->setter, exp_time, note->note);
+        } else {
+            reply("NSMSG_NOTE", note->id, set_time, note->setter, note->note);
+        }
+        ++hits;
+    }
+    reply("NSMSG_NOTE_COUNT", hits, argv[1]);
     return 1;
 }
 
@@ -2220,9 +2277,6 @@ static NICKSERV_FUNC(cmd_auth)
     * finish adding them */
     process_adduser_pending(user);
 
-    reply("NSMSG_AUTH_SUCCESS");
-
-    
     /* Set +x if autohide is on */
     if(HANDLE_FLAGGED(hi, AUTOHIDE))
         irc_umode(user, "+x");
@@ -2242,8 +2296,18 @@ static NICKSERV_FUNC(cmd_auth)
         }
     }
 
+    if (!hi->masks->used) {
+        irc_in_addr_t ip;
+        string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
+        if (irc_in_addr_is_valid(user->ip) && irc_pton(&ip, NULL, user->hostname))
+            string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_BYIP|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
+    }
+
    /* Wipe out the pass for the logs */
     argv[pw_arg] = "****";
+
+    reply("NSMSG_AUTH_SUCCESS");
+    
     return 1;
 }
 
@@ -2571,10 +2635,14 @@ static NICKSERV_FUNC(cmd_cookie)
         if (nickserv_conf.sync_log)
           SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
         break;
-    case ALLOWAUTH:
+    case ALLOWAUTH: {
+        char *mask = generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);	
         set_user_handle_info(user, hi, 1);
+        nickserv_addmask(cmd, user, hi, mask);
         reply("NSMSG_AUTH_SUCCESS");
+        free(mask);
         break;
+    }
     default:
         reply("NSMSG_BAD_COOKIE_TYPE", hi->cookie->type);
         log_module(NS_LOG, LOG_ERROR, "Bad cookie type %d for account %s.", hi->cookie->type, hi->handle);
@@ -2731,13 +2799,13 @@ static NICKSERV_FUNC(cmd_oaddmask)
 }
 
 static int
-nickserv_delmask(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, const char *del_mask)
+nickserv_delmask(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, const char *del_mask, int force)
 {
     unsigned int i;
     for (i=0; i<hi->masks->used; i++) {
 	if (!strcmp(del_mask, hi->masks->list[i])) {
 	    char *old_mask = hi->masks->list[i];
-	    if (hi->masks->used == 1) {
+	    if (hi->masks->used == 1 && !force) {
 		reply("NSMSG_DELMASK_NOTLAST");
 		return 0;
 	    }
@@ -2754,7 +2822,7 @@ nickserv_delmask(struct svccmd *cmd, struct userNode *user, struct handle_info *
 static NICKSERV_FUNC(cmd_delmask)
 {
     NICKSERV_MIN_PARMS(2);
-    return nickserv_delmask(cmd, user, user->handle_info, argv[1]);
+    return nickserv_delmask(cmd, user, user->handle_info, argv[1], 0);
 }
 
 static NICKSERV_FUNC(cmd_odelmask)
@@ -2763,7 +2831,7 @@ static NICKSERV_FUNC(cmd_odelmask)
     NICKSERV_MIN_PARMS(3);
     if (!(hi = get_victim_oper(cmd, user, argv[1])))
         return 0;
-    return nickserv_delmask(cmd, user, hi, argv[2]);
+    return nickserv_delmask(cmd, user, hi, argv[2], 1);
 }
 
 int
@@ -2847,7 +2915,7 @@ set_list(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, int 
     unsigned int i;
     char *set_display[] = {
         "INFO", "WIDTH", "TABLEWIDTH", "COLOR", "PRIVMSG", "STYLE",
-        "EMAIL", "ANNOUNCEMENTS", "AUTOHIDE", "MAXLOGINS", "LANGUAGE",
+        "EMAIL", "AUTOHIDE", "MAXLOGINS", "LANGUAGE",
         "FAKEHOST", "TITLE", "EPITHET", "ADVANCED"
     };
 
@@ -2880,8 +2948,10 @@ static NICKSERV_FUNC(cmd_set)
 
 static NICKSERV_FUNC(cmd_oset)
 {
+    struct svccmd *subcmd;
     struct handle_info *hi;
     option_func_t *opt;
+    char cmdname[MAXLEN];
 
     NICKSERV_MIN_PARMS(2);
 
@@ -2897,6 +2967,11 @@ static NICKSERV_FUNC(cmd_oset)
 	reply("NSMSG_INVALID_OPTION", argv[2]);
         return 0;
     }
+
+    sprintf(cmdname, "%s %s", cmd->name, argv[2]);
+    subcmd = dict_find(cmd->parent->commands, cmdname, NULL);
+    if (subcmd && !svccmd_can_invoke(user, cmd->parent->bot, subcmd, NULL, SVCCMD_NOISY))
+        return 0;
 
     return opt(cmd, user, hi, 1, argc-2, argv+2);
 }
@@ -3031,33 +3106,6 @@ static OPTION_FUNC(opt_style)
     return 1;
 }
 
-static OPTION_FUNC(opt_announcements)
-{
-    const char *choice;
-
-    if (argc > 1) {
-        if (enabled_string(argv[1]))
-            hi->announcements = 'y';
-        else if (disabled_string(argv[1]))
-            hi->announcements = 'n';
-        else if (!strcmp(argv[1], "?") || !irccasecmp(argv[1], "default"))
-            hi->announcements = '?';
-        else {
-            reply("NSMSG_INVALID_ANNOUNCE", argv[1]);
-            return 0;
-        }
-    }
-
-    switch (hi->announcements) {
-    case 'y': choice = user_find_message(user, "MSG_ON"); break;
-    case 'n': choice = user_find_message(user, "MSG_OFF"); break;
-    case '?': choice = "default"; break;
-    default: choice = "unknown"; break;
-    }
-    reply("NSMSG_SET_ANNOUNCEMENTS", choice);
-    return 1;
-}
-
 static OPTION_FUNC(opt_password)
 {
     char crypted[MD5_CRYPT_LENGTH+1];
@@ -3119,7 +3167,7 @@ static OPTION_FUNC(opt_email)
             reply("NSMSG_BAD_EMAIL_ADDR");
             return 0;
         }
-        if ((str = sendmail_prohibited_address(argv[1]))) {
+        if ((str = mail_prohibited_address(argv[1]))) {
             reply("NSMSG_EMAIL_PROHIBITED", argv[1], str);
             return 0;
         }
@@ -3190,6 +3238,27 @@ static OPTION_FUNC(opt_language)
         hi->language = lang;
     }
     reply("NSMSG_SET_LANGUAGE", hi->language->name);
+    return 1;
+}
+
+static OPTION_FUNC(opt_karma)
+{
+    if (!override) {
+        send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
+        return 0;
+    }
+
+    if (argc > 1) {
+        if (argv[1][0] == '+' && isdigit(argv[1][1])) {
+            hi->karma += strtoul(argv[1] + 1, NULL, 10);
+        } else if (argv[1][0] == '-' && isdigit(argv[1][1])) {
+            hi->karma -= strtoul(argv[1] + 1, NULL, 10);
+        } else {
+            send_message(user, nickserv, "NSMSG_INVALID_KARMA", argv[1]);
+        }
+    }
+
+    reply("NSMSG_SET_KARMA", hi->karma);
     return 1;
 }
 
@@ -3462,31 +3531,6 @@ static OPTION_FUNC(opt_fakehost)
     return 1;
 }
 
-static OPTION_FUNC(opt_note)
-{
-    if (!override) {
-        reply("MSG_SETTING_PRIVILEGED", argv[0]);
-        return 0;
-    }
-
-    if (argc > 1) {
-        char *text = unsplit_string(argv + 1, argc - 1, NULL);
-
-        if (hi->note)
-            free(hi->note);
-
-        if ((text[0] == '*') && !text[1])
-            hi->note = NULL;
-        else {
-            if (!(hi->note = nickserv_add_note(user->handle_info->handle, now, text)))
-                hi->note = NULL;
-        }
-    }
-
-    reply("NSMSG_SET_NOTE", hi->note ? hi->note->note : user_find_message(user, "MSG_NONE"));
-    return 1;
-}
-
 static NICKSERV_FUNC(cmd_reclaim)
 {
     struct handle_info *hi;
@@ -3554,10 +3598,8 @@ static NICKSERV_FUNC(cmd_ounregnick)
 	reply("NSMSG_NICK_NOT_REGISTERED", argv[1]);
 	return 0;
     }
-    if (ni->owner->opserv_level >= user->handle_info->opserv_level) {
-	reply("MSG_USER_OUTRANKED", ni->nick);
+    if (!oper_outranks(cmd, user, ni->owner))
 	return 0;
-    }
     reply("NSMSG_UNREGNICK_SUCCESS", ni->nick);
     delete_nick(ni);
     return 1;
@@ -3586,11 +3628,31 @@ static NICKSERV_FUNC(cmd_unregister)
 
 static NICKSERV_FUNC(cmd_ounregister)
 {
+    char reason[MAXLEN];
+    int force;
     struct handle_info *hi;
 
     NICKSERV_MIN_PARMS(2);
     if (!(hi = get_victim_oper(cmd, user, argv[1])))
         return 0;
+
+    if (HANDLE_FLAGGED(hi, NODELETE)) {
+        reply("NSMSG_UNREGISTER_NODELETE", hi->handle);
+        return 0;
+    }
+
+    force = IsOper(user) && (argc > 2) && !irccasecmp(argv[2], "force");
+    if (!force &&
+        ((hi->flags & nickserv_conf.ounregister_flags)
+         || hi->users
+         || (hi->last_quit_host[0] && ((unsigned)(now - hi->lastseen) < nickserv_conf.ounregister_inactive)))) {
+        reply((IsOper(user) ? "NSMSG_UNREGISTER_MUST_FORCE" : "NSMSG_UNREGISTER_CANNOT_FORCE"), hi->handle);
+        return 0;
+    }
+
+    snprintf(reason, sizeof(reason), "%s unregistered account %s.", user->handle_info->handle, hi->handle);
+    global_message(MESSAGE_RECIPIENT_STAFF, reason);
+
     if(nickserv_unregister_handle(hi, user, cmd->parent->bot))
         return 1;
     else
@@ -3649,6 +3711,78 @@ static NICKSERV_FUNC(cmd_vacation)
     return 1;
 }
 
+static NICKSERV_FUNC(cmd_addnote)
+{
+    struct handle_info *hi;
+    unsigned long duration;
+    char text[MAXLEN];
+    unsigned int id;
+    struct handle_note *prev;
+    struct handle_note *note;
+
+    /* Parse parameters and figure out values for note's fields. */
+    NICKSERV_MIN_PARMS(4);
+    hi = get_victim_oper(cmd, user, argv[1]);
+    if (!hi)
+        return 0;
+    if(!strcmp(argv[2], "0"))
+        duration = 0;
+    else if(!(duration = ParseInterval(argv[2])))
+    {
+        reply("MSG_INVALID_DURATION", argv[2]);
+        return 0;
+    }
+    if (duration > 2*365*86400) {
+        reply("NSMSG_EXCESSIVE_DURATION", argv[2]);
+        return 0;
+    }
+    unsplit_string(argv + 3, argc - 3, text);
+    WALK_NOTES(hi, prev, note) {}
+    id = prev ? (prev->id + 1) : 1;
+
+    /* Create the new note structure. */
+    note = calloc(1, sizeof(*note) + strlen(text));
+    note->next = NULL;
+    note->expires = duration ? (now + duration) : 0;
+    note->set = now;
+    note->id = id;
+    safestrncpy(note->setter, user->handle_info->handle, sizeof(note->setter));
+    strcpy(note->note, text);
+    if (prev)
+        prev->next = note;
+    else
+        hi->notes = note;
+    reply("NSMSG_NOTE_ADDED", id, hi->handle);
+    return 1;
+}
+
+static NICKSERV_FUNC(cmd_delnote)
+{
+    struct handle_info *hi;
+    struct handle_note *prev;
+    struct handle_note *note;
+    int id;
+
+    NICKSERV_MIN_PARMS(3);
+    hi = get_victim_oper(cmd, user, argv[1]);
+    if (!hi)
+        return 0;
+    id = strtoul(argv[2], NULL, 10);
+    WALK_NOTES(hi, prev, note) {
+        if (id == note->id) {
+            if (prev)
+                prev->next = note->next;
+            else
+                hi->notes = note->next;
+            free(note);
+            reply("NSMSG_NOTE_REMOVED", id, hi->handle);
+            return 1;
+        }
+    }
+    reply("NSMSG_NO_SUCH_NOTE", hi->handle, id);
+    return 0;
+}
+
 static int
 nickserv_saxdb_write(struct saxdb_context *ctx) {
     dict_iterator_t it;
@@ -3658,11 +3792,6 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
     for (it = dict_first(nickserv_handle_dict); it; it = iter_next(it)) {
         hi = iter_data(it);
         saxdb_start_record(ctx, iter_key(it), 0);
-        if (hi->announcements != '?') {
-            flags[0] = hi->announcements;
-            flags[1] = 0;
-            saxdb_write_string(ctx, KEY_ANNOUNCEMENTS, flags);
-        }
         if (hi->cookie) {
             struct handle_cookie *cookie = hi->cookie;
             char *type;
@@ -3684,17 +3813,25 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
                 saxdb_end_record(ctx);
             }
         }
+        if (hi->notes) {
+            struct handle_note *prev, *note;
+            saxdb_start_record(ctx, KEY_NOTES, 0);
+            WALK_NOTES(hi, prev, note) {
+                snprintf(flags, sizeof(flags), "%d", note->id);
+                saxdb_start_record(ctx, flags, 0);
+                if (note->expires)
+                    saxdb_write_int(ctx, KEY_NOTE_EXPIRES, note->expires);
+                saxdb_write_int(ctx, KEY_NOTE_SET, note->set);
+                saxdb_write_string(ctx, KEY_NOTE_SETTER, note->setter);
+                saxdb_write_string(ctx, KEY_NOTE_NOTE, note->note);
+                saxdb_end_record(ctx);
+            }
+            saxdb_end_record(ctx);
+        }
         if (hi->email_addr)
             saxdb_write_string(ctx, KEY_EMAIL_ADDR, hi->email_addr);
         if (hi->epithet)
             saxdb_write_string(ctx, KEY_EPITHET, hi->epithet);
-        if (hi->note) {
-            saxdb_start_record(ctx, KEY_NOTE_NOTE, 0);
-            saxdb_write_string(ctx, KEY_NOTE_SETTER, hi->note->setter);
-            saxdb_write_int(ctx, KEY_NOTE_DATE, hi->note->date);
-            saxdb_write_string(ctx, KEY_NOTE_NOTE, hi->note->note);
-            saxdb_end_record(ctx);
-        }
 
         if (hi->fakehost)
             saxdb_write_string(ctx, KEY_FAKEHOST, hi->fakehost);
@@ -3712,6 +3849,8 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
         if (hi->last_quit_host[0])
             saxdb_write_string(ctx, KEY_LAST_QUIT_HOST, hi->last_quit_host);
         saxdb_write_int(ctx, KEY_LAST_SEEN, hi->lastseen);
+        if (hi->karma != 0)
+            saxdb_write_sint(ctx, KEY_KARMA, hi->karma);
         if (hi->masks->used)
             saxdb_write_string_list(ctx, KEY_MASKS, hi->masks);
         if (hi->ignores->used)
@@ -3873,6 +4012,9 @@ static NICKSERV_FUNC(cmd_merge)
     if (hi_from->lastseen > hi_to->lastseen)
         hi_to->lastseen = hi_from->lastseen;
 
+    /* New karma is the sum of the two original karmas. */
+    hi_to->karma += hi_from->karma;
+
     /* Does a fakehost carry over?  (This intentionally doesn't set it
      * for users previously attached to hi_to.  They'll just have to
      * reconnect.)
@@ -3895,13 +4037,16 @@ static NICKSERV_FUNC(cmd_merge)
 }
 
 struct nickserv_discrim {
-    unsigned int limit, min_level, max_level;
     unsigned long flags_on, flags_off;
     time_t min_registered, max_registered;
     time_t lastseen;
+    unsigned int limit;
+    int min_level, max_level;
+    int min_karma, max_karma;
     enum { SUBSET, EXACT, SUPERSET, LASTQUIT } hostmask_type;
     const char *nickmask;
     const char *hostmask;
+    const char *fakehostmask;
     const char *handlemask;
     const char *emailmask;
 #ifdef WITH_LDAP
@@ -3927,11 +4072,13 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
     discrim = malloc(sizeof(*discrim));
     memset(discrim, 0, sizeof(*discrim));
     discrim->min_level = 0;
-    discrim->max_level = ~0;
+    discrim->max_level = INT_MAX;
     discrim->limit = 50;
     discrim->min_registered = 0;
     discrim->max_registered = INT_MAX;
-    discrim->lastseen = now;
+    discrim->lastseen = LONG_MAX;
+    discrim->min_karma = INT_MIN;
+    discrim->max_karma = INT_MAX;
 #ifdef WITH_LDAP
     discrim->inldap = 2;
 #endif
@@ -3999,6 +4146,12 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
                 discrim->hostmask_type = SUPERSET;
             }
             discrim->hostmask = argv[++i];
+        } else if (!irccasecmp(argv[i], "fakehost")) {
+            if (!irccasecmp(argv[++i], "*")) {
+                discrim->fakehostmask = 0;
+            } else {
+                discrim->fakehostmask = argv[i];
+            }
         } else if (!irccasecmp(argv[i], "handlemask") || !irccasecmp(argv[i], "accountmask") || !irccasecmp(argv[i], "account")) {
             if (!irccasecmp(argv[++i], "*")) {
                 discrim->handlemask = 0;
@@ -4047,6 +4200,25 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
             reply("MSG_INVALID_BINARY", argv[i]);
           }
 #endif
+        } else if (!irccasecmp(argv[i], "karma")) {
+            const char *cmp = argv[++i];
+            if (cmp[0] == '<') {
+                if (cmp[1] == '=') {
+                    discrim->max_karma = strtoul(cmp+2, NULL, 0);
+                } else {
+                    discrim->max_karma = strtoul(cmp+1, NULL, 0) - 1;
+                }
+            } else if (cmp[0] == '=') {
+                discrim->min_karma = discrim->max_karma = strtoul(cmp+1, NULL, 0);
+            } else if (cmp[0] == '>') {
+                if (cmp[1] == '=') {
+                    discrim->min_karma = strtoul(cmp+2, NULL, 0);
+                } else {
+                    discrim->min_karma = strtoul(cmp+1, NULL, 0) + 1;
+                }
+            } else {
+                reply("MSG_INVALID_CRITERIA", cmp);
+            }
         } else { 
             reply("MSG_INVALID_CRITERIA", argv[i]);
             goto fail;
@@ -4067,9 +4239,13 @@ nickserv_discrim_match(struct nickserv_discrim *discrim, struct handle_info *hi)
         || (discrim->max_registered < hi->registered)
         || (discrim->lastseen < (hi->users?now:hi->lastseen))
         || (discrim->handlemask && !match_ircglob(hi->handle, discrim->handlemask))
+        || (discrim->fakehostmask && (!hi->fakehost || !match_ircglob(hi->fakehost, discrim->fakehostmask)))
         || (discrim->emailmask && (!hi->email_addr || !match_ircglob(hi->email_addr, discrim->emailmask)))
         || (discrim->min_level > hi->opserv_level)
-        || (discrim->max_level < hi->opserv_level)) {
+        || (discrim->max_level < hi->opserv_level)
+        || (discrim->min_karma > hi->karma)
+        || (discrim->max_karma < hi->karma)
+        ) {
         return 0;
     }
     if (discrim->hostmask) {
@@ -4283,8 +4459,6 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     unsigned long int id;
     unsigned int ii;
     dict_t subdb;
-    char *setter, *note;
-    time_t date;
 
     str = database_get_data(obj, KEY_ID, RECDB_QSTRING);
     id = str ? strtoul(str, NULL, 0) : 0;
@@ -4331,6 +4505,8 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     hi->registered = str ? (time_t)strtoul(str, NULL, 0) : now;
     str = database_get_data(obj, KEY_LAST_SEEN, RECDB_QSTRING);
     hi->lastseen = str ? (time_t)strtoul(str, NULL, 0) : hi->registered;
+    str = database_get_data(obj, KEY_KARMA, RECDB_QSTRING);
+    hi->karma = str ? strtoul(str, NULL, 0) : 0;
     /* We want to read the nicks even if disable_nicks is set.  This is so
      * that we don't lose the nick data entirely. */
     slist = database_get_data(obj, KEY_NICKS, RECDB_STRING_LIST);
@@ -4345,8 +4521,6 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     }
     str = database_get_data(obj, KEY_USERLIST_STYLE, RECDB_QSTRING);
     hi->userlist_style = str ? str[0] : HI_DEFAULT_STYLE;
-    str = database_get_data(obj, KEY_ANNOUNCEMENTS, RECDB_QSTRING);
-    hi->announcements = str ? str[0] : '?';
     str = database_get_data(obj, KEY_SCREEN_WIDTH, RECDB_QSTRING);
     hi->screen_width = str ? strtoul(str, NULL, 0) : 0;
     str = database_get_data(obj, KEY_TABLE_WIDTH, RECDB_QSTRING);
@@ -4362,18 +4536,6 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     str = database_get_data(obj, KEY_EPITHET, RECDB_QSTRING);
     if (str)
         hi->epithet = strdup(str);
-    subdb = database_get_data(obj, KEY_NOTE_NOTE, RECDB_OBJECT);
-    if (subdb) {
-        setter = database_get_data(subdb, KEY_NOTE_SETTER, RECDB_QSTRING);
-        str = database_get_data(subdb, KEY_NOTE_DATE, RECDB_QSTRING);
-        date = str ? (time_t)strtoul(str, NULL, 0) : now;
-        note = database_get_data(subdb, KEY_NOTE_NOTE, RECDB_QSTRING);
-        if (setter && date && note)
-        {
-            if (!(hi->note = nickserv_add_note(setter, date, note)))
-                hi->note = NULL;
-        }
-    }
 
     str = database_get_data(obj, KEY_FAKEHOST, RECDB_QSTRING);
     if (str)
@@ -4417,6 +4579,50 @@ nickserv_db_read_handle(char *handle, dict_t obj)
             nickserv_bake_cookie(cookie);
         else
             nickserv_free_cookie(cookie);
+    }
+    /* Read the "notes" sub-database (if it exists). */
+    subdb = database_get_data(obj, KEY_NOTES, RECDB_OBJECT);
+    if (subdb) {
+        dict_iterator_t it;
+        struct handle_note *last_note;
+        struct handle_note *note;
+
+        last_note = NULL;
+        for (it = dict_first(subdb); it; it = iter_next(it)) {
+            const char *expires;
+            const char *setter;
+            const char *text;
+            const char *set;
+            const char *id;
+            dict_t notedb;
+
+            id = iter_key(it);
+            notedb = GET_RECORD_OBJECT((struct record_data*)iter_data(it));
+            if (!notedb) {
+                log_module(NS_LOG, LOG_ERROR, "Malformed note %s for account %s; ignoring note.", id, hi->handle);
+                continue;
+            }
+            expires = database_get_data(notedb, KEY_NOTE_EXPIRES, RECDB_QSTRING);
+            setter = database_get_data(notedb, KEY_NOTE_SETTER, RECDB_QSTRING);
+            text = database_get_data(notedb, KEY_NOTE_NOTE, RECDB_QSTRING);
+            set = database_get_data(notedb, KEY_NOTE_SET, RECDB_QSTRING);
+            if (!setter || !text || !set) {
+                log_module(NS_LOG, LOG_ERROR, "Missing field(s) from note %s for account %s; ignoring note.", id, hi->handle);
+                continue;
+            }
+            note = calloc(1, sizeof(*note) + strlen(text));
+            note->next = NULL;
+            note->expires = expires ? strtoul(expires, NULL, 10) : 0;
+            note->set = strtoul(set, NULL, 10);
+            note->id = strtoul(id, NULL, 10);
+            safestrncpy(note->setter, setter, sizeof(note->setter));
+            strcpy(note->note, text);
+            if (last_note)
+                last_note->next = note;
+            else
+                hi->notes = note;
+            last_note = note;
+        }
     }
 }
 
@@ -4609,6 +4815,18 @@ nickserv_conf_read(void)
     nickserv_conf.default_maxlogins = str ? strtoul(str, NULL, 0) : 2;
     str = database_get_data(conf_node, "hard_maxlogins", RECDB_QSTRING);
     nickserv_conf.hard_maxlogins = str ? strtoul(str, NULL, 0) : 10;
+    str = database_get_data(conf_node, KEY_OUNREGISTER_INACTIVE, RECDB_QSTRING);
+    nickserv_conf.ounregister_inactive = str ? ParseInterval(str) : 86400*28;
+    str = database_get_data(conf_node, KEY_OUNREGISTER_FLAGS, RECDB_QSTRING);
+    if (!str)
+        str = "ShgsfnHbu";
+    nickserv_conf.ounregister_flags = 0;
+    while(*str) {
+        unsigned int pos = handle_inverse_flags[(unsigned char)*str];
+        str++;
+        if(pos)
+            nickserv_conf.ounregister_flags |= 1 << (pos - 1);
+    }
     if (!nickserv_conf.disable_nicks) {
         str = database_get_data(conf_node, "reclaim_action", RECDB_QSTRING);
         nickserv_conf.reclaim_action = str ? reclaim_action_from_string(str) : RECLAIM_NONE;
@@ -4792,7 +5010,7 @@ nickserv_reclaim(struct userNode *user, struct nick_info *ni, enum reclaim_actio
         break;
     case RECLAIM_KILL:
         msg = user_find_message(user, "NSMSG_RECLAIM_KILL");
-        irc_kill(nickserv, user, msg);
+        DelUser(user, nickserv, 1, msg);
         break;
     }
 }
@@ -4988,7 +5206,10 @@ init_nickserv(const char *nick)
     nickserv_define_func("USERINFO", cmd_userinfo, -1, 1, 0);
     nickserv_define_func("RENAME", cmd_rename_handle, -1, 1, 0);
     nickserv_define_func("VACATION", cmd_vacation, -1, 1, 0);
-    nickserv_define_func("MERGE", cmd_merge, 0, 1, 0);
+    nickserv_define_func("MERGE", cmd_merge, 750, 1, 0);
+    nickserv_define_func("ADDNOTE", cmd_addnote, 0, 1, 0);
+    nickserv_define_func("DELNOTE", cmd_delnote, 0, 1, 0);
+    nickserv_define_func("NOTES", cmd_notes, 0, 1, 0);
     if (!nickserv_conf.disable_nicks) {
 	/* nick management commands */
 	nickserv_define_func("REGNICK", cmd_regnick, -1, 1, 0);
@@ -5032,15 +5253,15 @@ init_nickserv(const char *nick)
     dict_insert(nickserv_opt_dict, "ACCESS", opt_level);
     dict_insert(nickserv_opt_dict, "LEVEL", opt_level);
     dict_insert(nickserv_opt_dict, "EPITHET", opt_epithet);
-    dict_insert(nickserv_opt_dict, "NOTE", opt_note);
     if (nickserv_conf.titlehost_suffix) {
         dict_insert(nickserv_opt_dict, "TITLE", opt_title);
         dict_insert(nickserv_opt_dict, "FAKEHOST", opt_fakehost);
     }
-    dict_insert(nickserv_opt_dict, "ANNOUNCEMENTS", opt_announcements);
     dict_insert(nickserv_opt_dict, "MAXLOGINS", opt_maxlogins);
     dict_insert(nickserv_opt_dict, "ADVANCED", opt_advanced);
     dict_insert(nickserv_opt_dict, "LANGUAGE", opt_language);
+    dict_insert(nickserv_opt_dict, "KARMA", opt_karma);
+    nickserv_define_func("OSET KARMA", NULL, 0, 1, 0);
 
     nickserv_handle_dict = dict_new();
     dict_set_free_keys(nickserv_handle_dict, free);
@@ -5058,7 +5279,7 @@ init_nickserv(const char *nick)
 
     if (nick) {
         const char *modes = conf_get_data("services/nickserv/modes", RECDB_QSTRING);
-        nickserv = AddService(nick, modes ? modes : NULL, "Nick Services", NULL);
+        nickserv = AddLocalUser(nick, nick, NULL, "Nick Services", modes);
         nickserv_service = service_register(nickserv);
     }
     saxdb_register("NickServ", nickserv_saxdb_read, nickserv_saxdb_write);

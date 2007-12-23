@@ -3,7 +3,7 @@ dnl Process this file with autoconf to create a configure script.
 dnl General initialization.
 AC_REVISION([$Id$])
 AC_PREREQ(2.60)
-AC_INIT([X3],[1.5],[evilnet-devel@lists.sourceforge.net])
+AC_INIT([X3],[2.0-rc1],[evilnet-devel@lists.sourceforge.net])
 CODENAME=X3
 AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_SRCDIR(src/opserv.c)
@@ -15,15 +15,13 @@ AM_MAINTAINER_MODE
 dnl Compiler/runtime feature checks.
 AC_TYPE_SIGNAL
 AC_C_CONST
-AC_C_INLINE
 
 dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_INSTALL
-
 AC_PROG_RANLIB
-dnl AC_PROG_LIBTOOL
+AC_PROG_LIBTOOL
 
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
@@ -70,7 +68,8 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 
 dnl Would rather not bail on headers, BSD has alot of the functions elsewhere. -Jedi
-AC_CHECK_HEADERS(GeoIP.h GeoIPCity.h fcntl.h tgmath.h malloc.h netdb.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h arpa/inet.h sys/mman.h sys/stat.h dirent.h ,,)
+AC_CHECK_HEADERS(GeoIP.h GeoIPCity.h tgmath.h netdb.h  fcntl.h malloc.h netdb.h arpa/inet.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h regex.h arpa/inet.h sys/mman.h sys/stat.h dirent.h sys/epoll.h,,)
+
 
 dnl portability stuff, hurray! -Jedi
 AC_CHECK_MEMBER([struct sockaddr.sa_len],
@@ -83,16 +82,16 @@ AC_CHECK_MEMBER([struct addrinfo.ai_flags],
 #include <sys/socket.h>
 #include <netdb.h>])
 
-AC_CHECK_FUNCS(gettimeofday)
+dnl We have fallbacks in case these are missing, so just check for them.
+AC_CHECK_FUNCS(freeaddrinfo getaddrinfo gai_strerror getnameinfo getpagesize memcpy memset strdup strerror strsignal localtime_r setrlimit getopt getopt_long regcomp regexec regfree sysconf inet_aton epoll_create select gettimeofday times GetProcessTimes,,)
+
+dnl Check for the fallbacks for functions missing above.
 if test $ac_cv_func_gettimeofday = no; then
   AC_CHECK_FUNCS(ftime,,AC_MSG_ERROR([ftime or gettimeofday required. X3 build will fail.]))
 fi
 
-dnl We have fallbacks in case these are missing, so just check for them.
-AC_CHECK_FUNCS(freeaddrinfo getaddrinfo getnameinfo getpagesize memcpy memset strdup strerror strsignal localtime_r setrlimit getopt getopt_long sysconf,,)
-
 dnl Check for absolutely required library functions.
-AC_CHECK_FUNCS(select socket strcspn strspn strtod strtoul,,AC_MSG_ERROR([a required function was not found. X3 build will fail.]))
+AC_CHECK_FUNCS(socket strcspn strspn strtod strtoul,,AC_MSG_ERROR([a required function was not found. X3 build will fail.]))
 
 dnl Check for functions (and how to get them).
 AC_FUNC_ALLOCA
@@ -135,6 +134,12 @@ int getpeername (int $arg2 *, $t *);]], [[$t len;
 dnl Can only check with -Werror, but the rest of configure doesn't like -Werror
 OLD_CFLAGS=$CFLAGS
 CFLAGS="$CFLAGS -W -Wall -Werror"
+if test "z$USE_MAINTAINER_MODE" = zyes ; then
+  CFLAGS="$CFLAGS -ansi"
+fi
+
+dnl Check for post-C89 keywords
+AC_C_INLINE
 
 dnl Now figure out how to printf() a time_t
 AC_MSG_CHECKING(for time_t format)
@@ -237,13 +242,54 @@ AC_ARG_WITH(protocol,
 [],
 [withval="p10"])
 if test "x$withval" = "xp10" ; then
-  AC_MSG_RESULT(P10)
+  AC_MSG_RESULT([P10])
   AC_DEFINE(WITH_PROTOCOL_P10, 1, [Define if using the P10 dialect of IRC])
   MODULE_OBJS="$MODULE_OBJS proto-p10.\$(OBJEXT)"
-  PROTO_FILES=proto-p10.c
   x3_ircd="P10"
+elif test -r "${srcdir}/src/proto-${withval}.c" ; then
+  AC_MSG_RESULT([$withval])
+  MODULE_OBJS="$MODULE_OBJS proto-${withval}.\$(OBJEXT)"
 else
   AC_MSG_ERROR([Unknown IRC dialect $withval])
+fi
+
+AC_MSG_CHECKING(how to send mail)
+AC_ARG_WITH(mail,
+[  --with-mail=name        How to send mail; one of:
+                          sendmail (the default)],
+[],
+[withval="sendmail"])
+if test -r "${srcdir}/src/mail-${withval}.c" ; then
+  AC_MSG_RESULT([$withval])
+  MODULE_OBJS="$MODULE_OBJS mail-${withval}.\$(OBJEXT)"
+else
+  AC_MSG_ERROR([Unknown mail method $withval])
+fi
+
+AC_MSG_CHECKING([I/O multiplexing backends])
+IOMUXES=""
+
+if test "x$ac_cv_func_select" = xyes ; then
+  AC_DEFINE(WITH_IOSET_SELECT, 1, [Define if using the select() I/O backend])
+  MODULE_OBJS="$MODULE_OBJS ioset-select.\$(OBJEXT)"
+  IOMUXES="$IOMUXES select"
+fi
+
+AC_ARG_WITH([epoll],
+[  --without-epoll         Disables the epoll_*() I/O backend],
+[],
+[withval="$ac_cv_func_epoll_create"])
+if test "x$withval" = xyes ; then
+  AC_DEFINE(WITH_IOSET_EPOLL, 1, [Define if using the epoll I/O backend])
+  MODULE_OBJS="$MODULE_OBJS ioset-epoll.\$(OBJEXT)"
+  IOMUXES="$IOMUXES epoll"
+fi
+
+IOMUXES=`echo $IOMUXES | sed 's/^ +//'`
+if test "x$IOMUXES" = "x" ; then
+  AC_MSG_ERROR([No supported I/O multiplexing backend found])
+else
+  AC_MSG_RESULT($IOMUXES)
 fi
 
 AC_ARG_WITH(getopt,
@@ -330,7 +376,7 @@ fi
 MY_SUBDIRS="$MY_SUBDIRS src"
 CFLAGS="$CFLAGS $ANSI_SRC -W -Wall"
 if test "z$USE_MAINTAINER_MODE" = zyes ; then
-  CFLAGS="$CFLAGS -Werror"
+  CFLAGS="$CFLAGS -Werror -ansi"
 fi
 
 dnl I am not comfortable running make install from ./configure. This has to be done correctly or not at all.  -Rubin

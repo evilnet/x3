@@ -56,6 +56,7 @@
 #define KEY_RECIPIENT "to"
 #define KEY_FROM "from"
 #define KEY_MESSAGE "msg"
+#undef KEY_READ /* thanks microsoft! */
 #define KEY_READ "read"
 #define KEY_RECIEPT "reciept"
 #define KEY_ID "id"
@@ -1356,7 +1357,7 @@ memoserv_finalize(void) {
     if (str) {
         memoserv = memoserv_conf.bot;
         const char *modes = conf_get_data("modules/memoserv/modes", RECDB_QSTRING);
-        memoserv = AddService(str, modes ? modes : NULL, "User-User Memorandum Services", NULL);
+        memoserv = AddLocalUser(str, str, NULL, "User-User Memorandum Services", modes ? modes : NULL);
 
     } else {
         log_module(MS_LOG, LOG_ERROR, "database_get_data for memoserv_conf.bot failed!");

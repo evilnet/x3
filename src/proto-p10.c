@@ -556,7 +556,7 @@ void
 irc_user(struct userNode *user)
 {
     char b64ip[25];
-    if (!user)
+    if (!user || IsDummy(user))
         return;
     irc_p10_ntop(b64ip, &user->ip);
     if (user->modes) {
@@ -578,14 +578,16 @@ irc_user(struct userNode *user)
             modes[modelen++] = 'd';
         if (IsGlobal(user))
             modes[modelen++] = 'g';
-        // sethost - reed/apples
-        // if (IsHelperIrcu(user))
         if (IsSetHost(user))
             modes[modelen++] = 'h';
         if (IsFakeHost(user))
             modes[modelen++] = 'f';
         if (IsHiddenHost(user))
             modes[modelen++] = 'x';
+        if (IsNoChan(user))
+            modes[modelen++] = 'n';
+        if (IsNoIdle(user))
+            modes[modelen++] = 'I';
         modes[modelen] = 0;
 
         /* we don't need to put the + in modes because it's in the format string. */
@@ -691,22 +693,47 @@ irc_wallops(const char *format, ...)
     putsock("%s " P10_WALLOPS " :%s", self->numeric, buffer);
 }
 
+static int
+deliver_to_dummy(struct userNode *source, struct userNode *dest, const char *message, int type)
+{
+    unsigned int num;
+
+    if (!dest || !IsDummy(dest) || !IsLocal(dest))
+        return 0;
+    num = dest->num_local;
+    switch (type) {
+    default:
+        if ((num < num_notice_funcs) && notice_funcs[num])
+            notice_funcs[num](source, dest, message, 0);
+        break;
+    case 1:
+        if ((num < num_privmsg_funcs) && privmsg_funcs[num])
+            privmsg_funcs[num](source, dest, message, 0);
+        break;
+    }
+    return 1;
+}
 
 void
 irc_notice(struct userNode *from, const char *to, const char *message)
 {
+    if (to[0] == '#' || to[0] == '$'
+        || !deliver_to_dummy(from, GetUserN(to), message, 0))
     putsock("%s " P10_NOTICE " %s :%s", from->numeric, to, message);
 }
 
 void
 irc_notice_user(struct userNode *from, struct userNode *to, const char *message)
 {
+    if (!deliver_to_dummy(from, to, message, 0))
     putsock("%s " P10_NOTICE " %s :%s", from->numeric, to->numeric, message);
 }
 
 void
 irc_privmsg(struct userNode *from, const char *to, const char *message)
 {
+    if (to[0] == '#' || to[0] == '$'
+        || !deliver_to_dummy(from, GetUserN(to), message, 1))
     putsock("%s " P10_PRIVMSG " %s :%s", from->numeric, to, message);
 }
 
@@ -800,6 +827,10 @@ irc_introduce(const char *passwd)
 void
 irc_gline(struct server *srv, struct gline *gline, int silent)
 {
+    if (gline->lastmod)
+        putsock("%s " P10_GLINE " %s +%s %ld %ld :%s",
+                self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, gline->lastmod, gline->reason);
+    else
     putsock("%s " P10_GLINE " %s +%s %ld :%s<%s> %s",
             self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, silent ? "AUTO " : "", gline->issuer, gline->reason);
 }
@@ -807,6 +838,10 @@ irc_gline(struct server *srv, struct gline *gline, int silent)
 void
 irc_shun(struct server *srv, struct shun *shun)
 {
+    if (shun->lastmod)
+        putsock("%s " P10_SHUN " %s +%s %ld %ld :%s",
+                self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->lastmod, shun->reason);
+    else
     putsock("%s " P10_SHUN " %s +%s %ld :<%s> %s",
             self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->issuer, shun->reason);
 }
@@ -1186,6 +1221,8 @@ static CMD_FUNC(cmd_whois)
 {
     struct userNode *from;
     struct userNode *who;
+    char buf[MAXLEN];
+    unsigned int i, mlen, len;
 
     if (argc < 3)
         return 0;
@@ -1197,17 +1234,70 @@ static CMD_FUNC(cmd_whois)
         irc_numeric(from, ERR_NOSUCHNICK, "%s@%s :No such nick", argv[2], self->name);
         return 1;
     }
-    if (IsHiddenHost(who) && !IsOper(from)) {
-        /* Just stay quiet. */
-        return 1;
+
+    if (IsFakeHost(who) && IsHiddenHost(who))
+        irc_numeric(from, RPL_WHOISUSER, "%s %s %s * :%s", who->nick, who->ident, who->fakehost, who->info);
+    else if (IsHiddenHost(who) && who->handle_info && hidden_host_suffix)
+        irc_numeric(from, RPL_WHOISUSER, "%s %s %s.%s * :%s", who->nick, who->ident, who->handle_info->handle, hidden_host_suffix, who->info);
+    else
+        irc_numeric(from, RPL_WHOISUSER, "%s %s %s * :%s", who->nick, who->ident, who->hostname, who->info);
+
+    if ((!IsService(who) && !IsNoChan(who)) || (from == who)) {
+        struct modeNode *mn;
+        mlen = strlen(self->name) + strlen(from->nick) + 12 + strlen(who->nick);
+        len = 0;
+        *buf = '\0';
+        for (i = who->channels.used; i > 0; )
+        {
+            mn = who->channels.list[--i];
+
+            if (!IsOper(from) && (mn->channel->modes & (MODE_PRIVATE | MODE_SECRET)) && !GetUserMode(mn->channel, from))
+                continue;
+
+            if (len + strlen(mn->channel->name) + mlen > MAXLEN - 5)
+            {
+                irc_numeric(from, RPL_WHOISCHANNELS, "%s :%s", who->nick, buf);
+                *buf = '\0';
+                len = 0;
+            }
+
+            if (IsDeaf(who))
+                *(buf + len++) = '-';
+            if ((mn->channel->modes & (MODE_PRIVATE | MODE_SECRET)) && !GetUserMode(mn->channel, from))
+                *(buf + len++) = '*';
+            if (mn->modes & MODE_CHANOP)
+                *(buf + len++) = '@';
+            else if (mn->modes & MODE_VOICE)
+                *(buf + len++) = '+';
+
+            if (len)
+                *(buf + len) = '\0';
+            strcpy(buf + len, mn->channel->name);
+            len += strlen(mn->channel->name);
+            strcat(buf + len, " ");
+            len++;
+        }
+        if (buf[0] != '\0')
+            irc_numeric(from, RPL_WHOISCHANNELS, "%s :%s", who->nick, buf);
     }
-    irc_numeric(from, RPL_WHOISUSER, "%s %s %s * :%s", who->nick, who->ident, who->hostname, who->info);
-    if (his_servername && his_servercomment)
+
+    if (his_servername && his_servercomment && !IsOper(from) && from != who)
         irc_numeric(from, RPL_WHOISSERVER, "%s %s :%s", who->nick, his_servername, his_servercomment);
     else
         irc_numeric(from, RPL_WHOISSERVER, "%s %s :%s", who->nick, who->uplink->name, who->uplink->description);
+
+    if (IsAway(who))
+        irc_numeric(from, RPL_AWAY, "%s :Away", who->nick);
+
     if (IsOper(who))
-        irc_numeric(from, RPL_WHOISOPERATOR, "%s :is a megalomaniacal power hungry tyrant", who->nick);
+        irc_numeric(from, RPL_WHOISOPERATOR, "%s :%s", who->nick, IsLocal(who) ? "is a megalomaniacal power hungry tyrant" : "is an IRC Operator");
+    if (who->handle_info)
+        irc_numeric(from, RPL_WHOISACCOUNT, "%s %s :is logged in as", who->nick, who->handle_info->handle);
+    if (IsHiddenHost(who) && who->handle_info && (IsOper(from) || from == who))
+        irc_numeric(from, RPL_WHOISACTUALLY, "%s %s@%s %s :Actual user@host, Actual IP", who->nick, who->ident, who->hostname, irc_ntoa(&who->ip));
+    if (IsLocal(who) && !IsService(who) && (!IsNoIdle(who) || IsOper(from) || from == who))
+        irc_numeric(from, RPL_WHOISIDLE, "%s %ld %ld :seconds idle, signon time", who->nick, now - who->idle_since, who->timestamp);
+
     irc_numeric(from, RPL_ENDOFWHOIS, "%s :End of /WHOIS list", who->nick);
     return 1;
 }
@@ -1658,6 +1748,8 @@ static CMD_FUNC(cmd_burst)
                 if ((*pos == 'k') || (*pos == 'l') || (*pos == 'A')
                     || (*pos == 'U'))
                     n_modes++;
+            if (next + n_modes > argc)
+                n_modes = argc - next;
             unsplit_string(argv+next, n_modes, modes);
             next += n_modes;
             break;
@@ -1976,17 +2068,21 @@ static CMD_FUNC(cmd_num_topic)
 
 static CMD_FUNC(cmd_num_gline)
 {
+    time_t lastmod;
     if (argc < 6)
         return 0;
-    gline_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0, 0);
+    lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
+    gline_add(origin, argv[3], atoi(argv[4])-now, argv[argc - 1], now, lastmod, 0, 0);
     return 1;
 }
 
 static CMD_FUNC(cmd_num_shun)
 {
+    time_t lastmod;
     if (argc < 6)
         return 0;
-    shun_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0);
+    lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
+    shun_add(origin, argv[3], atoi(argv[4])-now, argv[argc - 1], now, lastmod, 0);
     return 1;
 }
 
@@ -2025,19 +2121,6 @@ static CMD_FUNC(cmd_kill)
     }
 
     DelUser(user, NULL, false, argv[2]);
-    return 1;
-}
-
-static CMD_FUNC(cmd_part)
-{
-    struct userNode *user;
-
-    if (argc < 2)
-        return 0;
-    user = GetUserH(origin);
-    if (!user)
-        return 0;
-    parse_foreach(argv[1], part_helper, NULL, NULL, NULL, user);
     return 1;
 }
 
@@ -2136,7 +2219,7 @@ static CMD_FUNC(cmd_squit)
 static CMD_FUNC(cmd_privmsg)
 {
     struct privmsg_desc pd;
-    if (argc != 3)
+    if (argc < 3)
         return 0;
     pd.user = GetUserH(origin);
     if (!pd.user || (IsGagged(pd.user) && !IsOper(pd.user)))
@@ -2154,7 +2237,7 @@ static CMD_FUNC(cmd_privmsg)
         return 1; /* Silently Ignore */
 
     pd.is_notice = 0;
-    pd.text = argv[2];
+    pd.text = argv[argc - 1];
     parse_foreach(argv[1], privmsg_chan_helper, NULL, privmsg_user_helper, privmsg_invalid, &pd);
 
     return 1;
@@ -2166,7 +2249,7 @@ static CMD_FUNC(cmd_notice)
     struct server *srv;
     int nuser = 0;
 
-    if (argc != 3)
+    if (argc < 3)
         return 0;
 
     pd.user = GetUserH(origin);
@@ -2176,7 +2259,7 @@ static CMD_FUNC(cmd_notice)
     }
     else {
         pd.is_notice = 1;
-        pd.text = argv[2];
+        pd.text = argv[argc - 1];
         parse_foreach(argv[1], privmsg_chan_helper, NULL, privmsg_user_helper, privmsg_invalid, &pd);
     }
 
@@ -2222,12 +2305,15 @@ static CMD_FUNC(cmd_away)
 
 static CMD_FUNC(cmd_gline)
 {
+    time_t lastmod;
+
     if (argc < 3)
         return 0;
     if (argv[2][0] == '+') {
         if (argc < 5)
             return 0;
-        gline_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, 0, 0);
+        lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
+        gline_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, lastmod, 0, 0);
         return 1;
     } else if (argv[2][0] == '-') {
         gline_remove(argv[2]+1, 0);
@@ -2238,12 +2324,14 @@ static CMD_FUNC(cmd_gline)
 
 static CMD_FUNC(cmd_shun)
 {
+    time_t lastmod;
     if (argc < 3)
         return 0;
     if (argv[2][0] == '+') {
         if (argc < 5)
             return 0;
-        shun_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, 0);
+        lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
+        shun_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, lastmod, 0);
         return 1;
     } else if (argv[2][0] == '-') {
         shun_remove(argv[2]+1, 0);
@@ -2280,12 +2368,16 @@ parse_cleanup(void)
     unsigned int nn;
     free(of_list);
     free(privmsg_funcs);
+    num_privmsg_funcs = 0;
     free(notice_funcs);
+    num_notice_funcs = 0;
     free(mcf_list);
     dict_delete(irc_func_dict);
     for (nn=0; nn<dead_users.used; nn++)
         free_user(dead_users.list[nn]);
     userList_clean(&dead_users);
+    free(his_servername);
+    free(his_servercomment);
 }
 
 static void
@@ -2710,13 +2802,15 @@ void DelServer(struct server* serv, int announce, const char *message)
 }
 
 struct userNode *
-AddService(const char *nick, const char *modes, const char *desc, const char *hostname)
+AddLocalUser(const char *nick, const char *ident, const char *hostname, const char *desc, const char *modes)
 {
     char numeric[COMBO_NUMERIC_LEN+1];
     int local_num = get_local_numeric();
     time_t timestamp = now;
     struct userNode *old_user = GetUserH(nick);
 
+    if (!modes)
+        modes = "+oik";
     if (old_user) {
         if (IsLocal(old_user))
             return old_user;
@@ -2729,8 +2823,7 @@ AddService(const char *nick, const char *modes, const char *desc, const char *ho
     if (!hostname)
         hostname = self->name;
     make_numeric(self, local_num, numeric);
-    /* TODO: Make these modes part of the conf file */
-    return AddUser(self, nick, nick, hostname, modes ? modes : "+oik", numeric, desc, now, "AAAAAA");
+    return AddUser(self, nick, ident, hostname, modes, numeric, desc, now, "AAAAAA");
 }
 
 struct userNode *
@@ -2773,7 +2866,7 @@ static struct userNode*
 AddUser(struct server* uplink, const char *nick, const char *ident, const char *hostname, const char *modes, const char *numeric, const char *userinfo, time_t timestamp, const char *realip)
 {
     struct userNode *oldUser, *uNode;
-    unsigned int n, ignore_user;
+    unsigned int n, ignore_user, dummy;
 
     if ((strlen(numeric) < 3) || (strlen(numeric) > 5)) {
         log_module(MAIN_LOG, LOG_WARNING, "AddUser(%p, %s, ...): numeric %s wrong length!", uplink, nick, numeric);
@@ -2790,7 +2883,10 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
         return NULL;
     }
 
-    if (!is_valid_nick(nick)) {
+    dummy = modes && modes[0] == '*';
+    if (dummy) {
+        ++modes;
+    } else if (!is_valid_nick(nick)) {
         log_module(MAIN_LOG, LOG_WARNING, "AddUser(%p, %s, ...): invalid nickname detected.", uplink, nick);
         return NULL;
     }
@@ -2833,6 +2929,7 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
         snprintf(uNode->crypthost, sizeof(uNode->crypthost), "%s", strdup(uNode->cryptip));
 
     uNode->timestamp = timestamp;
+    uNode->idle_since = timestamp;
     modeList_init(&uNode->channels);
     uNode->uplink = uplink;
     if (++uNode->uplink->clients > uNode->uplink->max_clients) {
@@ -2841,6 +2938,8 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     uNode->num_local = base64toint(numeric+strlen(uNode->uplink->numeric), 3) & uNode->uplink->num_mask;
     uNode->uplink->users[uNode->num_local] = uNode;
     mod_usermode(uNode, modes);
+    if (dummy)
+        uNode->modes |= FLAGS_DUMMY;
 
     set_geoip_info(uNode);
 
@@ -2880,7 +2979,7 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
 
     /* remove user from all channels */
     while (user->channels.used > 0)
-        DelChannelUser(user, user->channels.list[user->channels.used-1]->channel, false, 0);
+        DelChannelUser(user, user->channels.list[user->channels.used-1]->channel, NULL, false);
 
     /* Call these in reverse order so ChanServ can update presence
        information before NickServ nukes the handle_info. */
@@ -2924,6 +3023,14 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
     if(user->city) free(user->city);
     if(user->region) free(user->region);
     if(user->postal_code) free(user->postal_code);
+
+    if (IsLocal(user)) {
+        unsigned int num = user->num_local;
+        if (num < num_privmsg_funcs)
+            privmsg_funcs[num] = NULL;
+        if (num < num_notice_funcs)
+            notice_funcs[num] = NULL;
+    }
 
     /* We don't free them, in case we try to privmsg them or something
      * (like when a stupid oper kills themself).  We just put them onto
@@ -2977,10 +3084,6 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	case 'd': do_user_mode(FLAGS_DEAF); break;
 	case 'k': do_user_mode(FLAGS_SERVICE); break;
 	case 'g': do_user_mode(FLAGS_GLOBAL); break;
-	// sethost - reed/apples
-	// case 'h': do_user_mode(FLAGS_HELPER); break;
-	// I check if there's an 'h' in the first part, and if there, 
-	// then everything after the space becomes their new host.
 	case 'h': do_user_mode(FLAGS_SETHOST);
 	    if (*word) {
 		char sethost[MAXLEN];
@@ -2993,6 +3096,8 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 		safestrncpy(user->sethost, sethost, sizeof(user->sethost));
 	    }
 	    break;
+        case 'n': do_user_mode(FLAGS_NOCHAN); break;
+        case 'I': do_user_mode(FLAGS_NOIDLE); break;
         case 'x': do_user_mode(FLAGS_HIDDEN_HOST); break;
         case 'r':
             if (*word) {
@@ -3303,7 +3408,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
             mod_chanmode_append(&chbuf, 'k', channel->key);
         if (change->modes_clear & channel->modes & MODE_UPASS)
             mod_chanmode_append(&chbuf, 'U', channel->upass);
-        if (change->modes_clear * channel->modes & MODE_APASS)
+        if (change->modes_clear & channel->modes & MODE_APASS)
             mod_chanmode_append(&chbuf, 'A', channel->apass);
     }
     for (arg = 0; arg < change->argc; ++arg) {
@@ -3600,9 +3705,10 @@ reg_privmsg_func(struct userNode *user, privmsg_func_t handler)
 {
     unsigned int numeric = user->num_local;
     if (numeric >= num_privmsg_funcs) {
-        int newnum = numeric + 8;
+        int newnum = numeric + 8, ii;
         privmsg_funcs = realloc(privmsg_funcs, newnum*sizeof(privmsg_func_t));
-        memset(privmsg_funcs+num_privmsg_funcs, 0, (newnum-num_privmsg_funcs)*sizeof(privmsg_func_t));
+        for (ii = num_privmsg_funcs; ii < newnum; ++ii)
+            privmsg_funcs[ii] = NULL;
         num_privmsg_funcs = newnum;
     }
     if (privmsg_funcs[numeric])
@@ -3611,20 +3717,12 @@ reg_privmsg_func(struct userNode *user, privmsg_func_t handler)
 }
 
 void
-unreg_privmsg_func(struct userNode *user, privmsg_func_t handler)
+unreg_privmsg_func(struct userNode *user)
 {
-    unsigned int x;
-
-    if (!user || handler)
+    if (!IsLocal(user) || user->num_local >= num_privmsg_funcs)
       return; /* this really only works with users */
 
-    memset(privmsg_funcs+user->num_local, 0, sizeof(privmsg_func_t));
-
-    for (x = user->num_local+1; x < num_privmsg_funcs; x++) 
-       memmove(privmsg_funcs+x-1, privmsg_funcs+x, sizeof(privmsg_func_t));
-    
-    privmsg_funcs = realloc(privmsg_funcs, num_privmsg_funcs*sizeof(privmsg_func_t)); 
-    num_privmsg_funcs--;
+    privmsg_funcs[user->num_local] = NULL;
 }
 
 
@@ -3633,9 +3731,10 @@ reg_notice_func(struct userNode *user, privmsg_func_t handler)
 {
     unsigned int numeric = user->num_local;
     if (numeric >= num_notice_funcs) {
-        int newnum = numeric + 8;
+        int newnum = numeric + 8, ii;
         notice_funcs = realloc(notice_funcs, newnum*sizeof(privmsg_func_t));
-        memset(notice_funcs+num_notice_funcs, 0, (newnum-num_notice_funcs)*sizeof(privmsg_func_t));
+        for (ii = num_privmsg_funcs; ii < newnum; ++ii)
+            privmsg_funcs[ii] = NULL;
         num_notice_funcs = newnum;
     }
     if (notice_funcs[numeric])
@@ -3644,21 +3743,12 @@ reg_notice_func(struct userNode *user, privmsg_func_t handler)
 }
 
 void
-unreg_notice_func(struct userNode *user, privmsg_func_t handler)
+unreg_notice_func(struct userNode *user)
 {
-    unsigned int x;
-
-    if (!user || handler)
+    if (!IsLocal(user) || user->num_local >= num_privmsg_funcs)
           return; /* this really only works with users */
 
-    memset(notice_funcs+user->num_local, 0, sizeof(privmsg_func_t));
-
-    for (x = user->num_local+1; x < num_notice_funcs; x++)
-       memmove(notice_funcs+x-1, notice_funcs+x, sizeof(privmsg_func_t));
-
-    memset(notice_funcs+user->num_local, 0, sizeof(privmsg_func_t));
-    notice_funcs = realloc(notice_funcs, num_notice_funcs*sizeof(privmsg_func_t));
-    num_notice_funcs--;
+    notice_funcs[user->num_local] = NULL;
 }
 
 void

@@ -61,6 +61,16 @@ char *alloca();
 #include <netdb.h>
 #endif
 
+#ifdef HAVE_WINSOCK2_H
+/* Windows XP+ only -- older versions lack getaddrinfo() etc. */
+# define _WIN32_WINNT 0x0501
+# include <winsock2.h>
+#endif
+
+#ifdef HAVE_WS2TCPIP_H
+# include <ws2tcpip.h>
+#endif
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -74,7 +84,12 @@ char *alloca();
 #endif
 
 #ifndef HAVE_GETTIMEOFDAY
+struct timezone;
 extern int gettimeofday(struct timeval * tv, struct timezone * tz);
+#endif
+
+#ifndef HAVE_GETLOCALTIME_R
+extern struct tm *localtime_r(const time_t *timep, struct tm *result);
 #endif
 
 #ifndef HAVE_MEMCPY
@@ -110,6 +125,7 @@ struct addrinfo {
 
 #define AI_PASSIVE 1
 #define AI_CANONNAME 2
+#define AI_NUMERICHOST 4
 
 #endif /* !defined(HAVE_STRUCT_ADDRINFO) */
 
@@ -119,6 +135,20 @@ int getaddrinfo(const char *node, const char *service, const struct addrinfo *hi
 int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
 void freeaddrinfo(struct addrinfo *res);
 
+#endif
+
+#ifndef HAVE_GAI_STRERROR
+const char *gai_strerror(int errcode);
+#endif
+
+#ifndef EINPROGRESS
+# ifdef WSAEINPROGRESS
+#  define EINPROGRESS WSAEINPROGRESS
+#  define EHOSTUNREACH WSAEHOSTUNREACH
+#  define ECONNREFUSED WSAECONNREFUSED
+#  define ECONNRESET WSAECONNRESET
+#  define ETIMEDOUT WSAETIMEDOUT
+# endif
 #endif
 
 #endif /* COMPAT_H */

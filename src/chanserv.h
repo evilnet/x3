@@ -69,6 +69,7 @@ enum charOption {
 #define CHANNEL_PEON_INVITE     0x00000080 /* (1 << 7) - DEPRECATED */
 #define CHANNEL_OFFCHANNEL      0x00000100 /* (1 << 8) */
 #define CHANNEL_HOP_ALL         0x00000200 /* (1 << 9) */
+#define CHANNEL_UNREVIEWED      0x00000400 /* (1 << 9) */
 /* Flags with values over 0x20000000 or (1 << 29) will not work
  * because chanData.flags is a 30-bit field.
  */
@@ -204,7 +205,7 @@ struct do_not_register
 {
     char   chan_name[CHANNELLEN+1];
     char   setter[NICKSERV_HANDLE_LEN+1];
-    time_t set; 
+    time_t set, expires;
     char   reason[1];
 };
 

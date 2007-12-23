@@ -35,9 +35,10 @@ timeq_cleanup(void)
 {
     timeq_del(0, 0, 0, TIMEQ_IGNORE_WHEN|TIMEQ_IGNORE_FUNC|TIMEQ_IGNORE_DATA);
     heap_delete(timeq);
+    timeq = NULL;
 }
 
-void
+static void
 timeq_init(void)
 {
     timeq = heap_new(int_comparator);
@@ -48,6 +49,8 @@ time_t
 timeq_next(void)
 {
     void *time;
+    if (!timeq)
+        return ~0;
     heap_peek(timeq, &time, 0);
     return (time_t)time;
 }
@@ -62,6 +65,8 @@ timeq_add_real(time_t when, timeq_func func, void *data, UNUSED_ARG(const char *
     ent->func = func;
     ent->data = data;
     w = (void*)when;
+    if (!timeq)
+        timeq_init();
     heap_insert(timeq, w, ent);
 }
 
@@ -97,6 +102,7 @@ timeq_del_real(time_t when, timeq_func func, void *data, int mask, UNUSED_ARG(co
     extra.func = func;
     extra.data = data;
     extra.mask = mask;
+    if (timeq)
     heap_remove_pred(timeq, timeq_del_matching, &extra);
 }
 

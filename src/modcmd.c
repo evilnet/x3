@@ -652,7 +652,7 @@ int
 svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNode *channel, unsigned int argc, char *argv[], unsigned int server_qualified) {
     extern struct userNode *chanserv;
     struct svccmd *cmd;
-    unsigned int cmd_arg, perms, flags, options;
+    unsigned int cmd_arg, perms, flags, options, result;
     char channel_name[CHANNELLEN+1];
 
     options = (server_qualified ? SVCCMD_QUALIFIED : 0) | SVCCMD_DEBIT | SVCCMD_NOISY;
@@ -765,11 +765,13 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
         safestrncpy(channel_name, channel->name, sizeof(channel_name));
     else
         channel_name[0] = 0;
-    if (!cmd->command->func(user, channel, argc, argv, cmd))
+    if (!(result = cmd->command->func(user, channel, argc, argv, cmd)))
         return 0;
     if (!(flags & MODCMD_NO_LOG)) {
         enum log_severity slvl;
-        if (perms & ACTION_STAFF)
+        if (result & CMD_LOG_OVERRIDE)
+            slvl = LOG_OVERRIDE;
+        else if ((perms & ACTION_STAFF) || (result & CMD_LOG_STAFF))
             slvl = LOG_STAFF;
         else if (perms & ACTION_OVERRIDE)
             slvl = LOG_OVERRIDE;
@@ -905,9 +907,10 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
 }
 
 static int
-svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *channel, char *text, int server_qualified) {
+svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *channel, const char *text, int server_qualified) {
     unsigned int argc;
     char *argv[MAXNUMPARAMS];
+    char tmpline[MAXLEN];
 
     if (!*text)
         return 0;
@@ -925,12 +928,13 @@ svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *c
             return 0;
         }
     }
-    argc = split_line(text, false, ArrayLength(argv), argv);
+    safestrncpy(tmpline, text, sizeof(tmpline));
+    argc = split_line(tmpline, false, ArrayLength(argv), argv);
     return argc ? svccmd_invoke_argv(user, service, channel, argc, argv, server_qualified) : 0;
 }
 
 void
-modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int server_qualified) {
+modcmd_privmsg(struct userNode *user, struct userNode *bot, const char *text, int server_qualified) {
     struct service *service;
 
     if (!(service = dict_find(services, bot->nick, NULL))) {
@@ -998,7 +1002,7 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int serv
 }
 
 void
-modcmd_chanmsg(struct userNode *user, struct chanNode *chan, char *text, struct userNode *bot) {
+modcmd_chanmsg(struct userNode *user, struct chanNode *chan, const char *text, struct userNode *bot) {
     struct service *service;
     if (!(service = dict_find(services, bot->nick, NULL))) return;
     svccmd_invoke(user, service, chan, text, 0);
@@ -1866,7 +1870,7 @@ static MODCMD_FUNC(cmd_service_add) {
         reply("MCMSG_ALREADY_SERVICE", bot->nick);
         return 0;
     }
-    bot = AddService(nick, NULL, desc, hostname);
+    bot = AddLocalUser(nick, nick, hostname, desc, NULL);
     service_register(bot);
     reply("MCMSG_NEW_SERVICE", bot->nick);
     return 1;
@@ -2025,6 +2029,19 @@ static MODCMD_FUNC(cmd_rebindall) {
     return 1;
 }
 
+static MODCMD_FUNC(cmd_tell) {
+    struct userNode *target;
+    char *msg;
+
+    target = GetUserH(argv[1]);
+    msg = unsplit_string(argv + 2, argc - 2, NULL);
+    if (!target) {
+        reply("MSG_NOT_TARGET_NAME");
+        return 0;
+    }
+    send_message_type(MSG_TYPE_NOXLATE, target, cmd->parent->bot, "%s", msg);
+    return 1;
+}
 
 void
 modcmd_nick_change(struct userNode *user, const char *old_nick) {
@@ -2218,7 +2235,7 @@ modcmd_load_bots(struct dict *db, int default_nick) {
         hostname = database_get_data(rd->d.object, "hostname", RECDB_QSTRING);
         if (desc) {
             if (!svc)
-                svc = service_register(AddService(nick, NULL, desc, hostname));
+                svc = service_register(AddLocalUser(nick, nick, hostname, desc, NULL));
             else if (hostname)
                 strcpy(svc->bot->hostname, hostname);
             desc = database_get_data(rd->d.object, "trigger", RECDB_QSTRING);
@@ -2267,6 +2284,7 @@ modcmd_init(void) {
     modcmd_register(modcmd_module, "service privileged", cmd_service_privileged, 2, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "service remove", cmd_service_remove, 2, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "dumpmessages", cmd_dump_messages, 1, 0, "oper_level", "1000", NULL);
+    modcmd_register(modcmd_module, "tell", cmd_tell, 3, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "rebindall", cmd_rebindall, 0, MODCMD_KEEP_BOUND, "oper_level", "800", NULL);
     version_command = modcmd_register(modcmd_module, "version", cmd_version, 1, 0, NULL);
     message_register_table(msgtab);

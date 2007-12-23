@@ -434,7 +434,7 @@ webtv_finalize(void) {
     if (str) {
         webtv = webtv_conf.bot;
         const char *modes = conf_get_data("modules/webtv/modes", RECDB_QSTRING);
-        webtv = AddService(str, modes ? modes : NULL, "WebTV IRC Service", NULL);
+        webtv = AddLocalUser(str, str, NULL, "WebTV IRC Service", modes ? modes : NULL);
     } else {
         log_module(WB_LOG, LOG_ERROR, "database_get_data for webtv_conf.bot failed!");
         exit(1);
