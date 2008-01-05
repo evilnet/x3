@@ -2016,6 +2016,10 @@ struct handle_info *loc_auth(char *handle, char *password)
     }
 //    else           
 #else
+    if (!hi) {
+        return NULL;
+    }
+
     if (!checkpass(password, hi->passwd)) {
         return NULL;
     }
