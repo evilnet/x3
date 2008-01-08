@@ -5503,7 +5503,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
     {
         if(discrim->mask_nick)
         {
-            int err = regcomp(&discrim->regex_nick, discrim->mask_nick, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            int err = regcomp(&discrim->regex_nick, discrim->mask_nick, REG_EXTENDED|REG_NOSUB);
             discrim->has_regex_nick = !err;
             if(err)
             {
@@ -5517,7 +5517,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
 
         if(discrim->mask_ident)
         {
-            int err = regcomp(&discrim->regex_ident, discrim->mask_ident, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            int err = regcomp(&discrim->regex_ident, discrim->mask_ident, REG_EXTENDED|REG_NOSUB);
             discrim->has_regex_ident = !err;
             if(err)
             {
@@ -5531,7 +5531,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
 
         if(discrim->mask_host)
         {
-            int err = regcomp(&discrim->regex_host, discrim->mask_host, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            int err = regcomp(&discrim->regex_host, discrim->mask_host, REG_EXTENDED|REG_NOSUB);
             discrim->has_regex_host = !err;
             if(err)
             {
@@ -5545,7 +5545,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
 
         if(discrim->mask_info)
         {
-            int err = regcomp(&discrim->regex_info, discrim->mask_info, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            int err = regcomp(&discrim->regex_info, discrim->mask_info, REG_EXTENDED|REG_NOSUB);
             discrim->has_regex_info = !err;
             if(err)
             {
@@ -5559,7 +5559,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
 
         if(discrim->mask_version)
         {
-            int err = regcomp(&discrim->regex_version, discrim->mask_version, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+            int err = regcomp(&discrim->regex_version, discrim->mask_version, REG_EXTENDED|REG_NOSUB);
             discrim->has_regex_version = !err;
             if(err)
             {

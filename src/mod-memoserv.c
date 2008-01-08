@@ -548,11 +548,6 @@ static MODCMD_FUNC(cmd_read)
     char posted[24];
     struct tm tm;
 
-    if (!(ma = memoserv_get_account(user->handle_info)))
-        return 0;
-    if (!(memo = find_memo(user, cmd, ma, argv[1], &memoid)))
-        return 0;
-
     if (argc > 2) {
         char *argtwo = argv[2];
         while (*argtwo) {
@@ -578,6 +573,12 @@ static MODCMD_FUNC(cmd_read)
             }
         }
     }
+
+    if (!(ma = memoserv_get_account(user->handle_info)))
+        return 0;
+    
+    if (!(memo = find_memo(user, cmd, ma, argv[1], &memoid)))
+        return 0;
 
     localtime_r(&memo->sent, &tm);
     strftime(posted, sizeof(posted), "%I:%M %p, %m/%d/%Y", &tm);
