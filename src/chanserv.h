@@ -98,6 +98,7 @@ struct chanData
     char		*registrar;
     char                *topic_mask;
 
+    unsigned int        maxsetinfo;
     unsigned int	flags : 30;
     unsigned int        may_opchan : 1;
     unsigned int        max;

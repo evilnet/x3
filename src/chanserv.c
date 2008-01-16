@@ -111,6 +111,7 @@
 #define KEY_NOTES               "notes"
 #define KEY_TOPIC_MASK          "topic_mask"
 #define KEY_OWNER_TRANSFER      "owner_transfer"
+#define KEY_MAXSETINFO          "maxsetinfo"
 
 /* User data */
 #define KEY_LEVEL		"level"
@@ -299,6 +300,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SET_TOPICREFRESH",  "$bTopicRefresh$b %d - %s" },
     { "CSMSG_SET_RESYNC",        "$bResync      $b %d - %s" },
     { "CSMSG_SET_BANTIMEOUT",    "$bBanTimeout  $b %d - %s" },
+    { "CSMSG_SET_MAXSETINFO",    "$bMaxSetInfo  $b %d - maximum characters in a setinfo line." },
 
     { "CSMSG_USET_AUTOOP",       "$bAutoOp      $b %s" },
     { "CSMSG_USET_AUTOVOICE",    "$bAutoVoice   $b %s" },
@@ -2239,6 +2241,7 @@ static CHANSERV_FUNC(cmd_register)
 
     /* Initialize the channel's max user record. */
     cData->max = channel->members.used;
+    cData->maxsetinfo = chanserv_conf.max_userinfo_length;
 
     if(handle != user->handle_info)
         reply("CSMSG_PROXY_SUCCESS", handle->handle, channel->name);
@@ -6019,6 +6022,20 @@ static MODCMD_FUNC(chan_opt_usergreeting)
     return opt_greeting_common(user, cmd, argc, argv, "CSMSG_SET_USERGREETING", &channel->channel_info->user_greeting);
 }
 
+static MODCMD_FUNC(chan_opt_maxsetinfo)
+{
+   unsigned int charmax;
+
+   if(argc > 1) {
+     charmax = atoi(argv[1]);
+     if ((charmax > 0) && (charmax < chanserv_conf.max_userinfo_length))
+       channel->channel_info->maxsetinfo = charmax;
+   }
+
+   reply("CSMSG_SET_MAXSETINFO", channel->channel_info->maxsetinfo);
+   return 1;
+}
+
 static MODCMD_FUNC(chan_opt_modes)
 {
     struct mod_chanmode *new_modes;
@@ -6529,9 +6546,9 @@ static MODCMD_FUNC(user_opt_info)
     {
         size_t bp;
         infoline = unsplit_string(argv + 1, argc - 1, NULL);
-        if(strlen(infoline) > chanserv_conf.max_userinfo_length)
+        if(strlen(infoline) > channel->channel_info->maxsetinfo)
         {
-            reply("CSMSG_INFOLINE_TOO_LONG", chanserv_conf.max_userinfo_length);
+            reply("CSMSG_INFOLINE_TOO_LONG", channel->channel_info->maxsetinfo);
             return 0;
         }
         bp = strcspn(infoline, "\001");
@@ -8506,6 +8523,9 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     str = database_get_data(channel, KEY_TOPIC, RECDB_QSTRING);
     cData->topic = str ? strdup(str) : NULL;
 
+    str = database_get_data(channel, KEY_MAXSETINFO, RECDB_QSTRING);
+    cData->maxsetinfo = str ? strtoul(str, NULL, 0) : chanserv_conf.max_userinfo_length;
+
     if(!IsSuspended(cData)
        && (str = database_get_data(channel, KEY_MODES, RECDB_QSTRING))
        && (argc = split_line(str, 0, ArrayLength(argv), argv))
@@ -8753,6 +8773,9 @@ chanserv_write_channel(struct saxdb_context *ctx, struct chanData *channel)
         saxdb_write_string(ctx, charOptions[chOpt].db_name, buf);
     }
     saxdb_end_record(ctx);
+
+    if (channel->maxsetinfo)
+        saxdb_write_int(ctx, KEY_MAXSETINFO, channel->maxsetinfo);
 
     if(channel->modes.modes_set || channel->modes.modes_clear)
     {
@@ -9061,6 +9084,7 @@ init_chanserv(const char *nick)
     DEFINE_CHANNEL_OPTION(ctcpreaction);
     DEFINE_CHANNEL_OPTION(bantimeout);
     DEFINE_CHANNEL_OPTION(inviteme);
+    DEFINE_CHANNEL_OPTION(maxsetinfo);
     if(off_channel > 1)
         DEFINE_CHANNEL_OPTION(offchannel);
     modcmd_register(chanserv_module, "set defaults", chan_opt_defaults, 1, 0, "access", "owner", NULL);
