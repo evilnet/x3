@@ -1062,10 +1062,10 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
 	return 0;
     }
 
-    if(strlen(handle) > 15)
+    if(strlen(handle) > 30)
     {  
         if(user)
-          send_message(user, nickserv, "NSMSG_HANDLE_TOLONG", handle, 15);
+          send_message(user, nickserv, "NSMSG_HANDLE_TOLONG", handle, 30);
         return 0;
     }
 
@@ -1874,9 +1874,9 @@ static NICKSERV_FUNC(cmd_rename_handle)
         reply("NSMSG_HANDLE_EXISTS", argv[2]);
         return 0;
     }
-    if(strlen(argv[2]) > 15)
+    if(strlen(argv[2]) > 30)
     {
-        reply("NMSG_HANDLE_TOLONG", argv[2], 15);
+        reply("NMSG_HANDLE_TOLONG", argv[2], 30);
         return 0;
     }
 #ifdef WITH_LDAP
