@@ -1,7 +1,6 @@
 #! /bin/sh
 
-libtoolize --automake -c -f
-aclocal -Wall
+aclocal
 autoheader -Wall
-automake --gnu -a -c
+automake -a --gnu Makefile rx/Makefile src/Makefile
 autoconf -Wall

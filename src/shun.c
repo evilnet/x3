@@ -40,7 +40,6 @@
 
 #define KEY_REASON "reason"
 #define KEY_EXPIRES "expires"
-#define KEY_LASTMOD "lastmod"
 #define KEY_ISSUER "issuer"
 #define KEY_ISSUED "issued"
 
@@ -129,7 +128,7 @@ shun_remove(const char *target, int announce)
 }
 
 struct shun *
-shun_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, time_t lastmod, int announce)
+shun_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, int announce)
 {
     struct shun *ent;
     struct shun *prev_first;
@@ -142,12 +141,9 @@ shun_add(const char *issuer, const char *target, unsigned long duration, const c
         heap_remove_pred(shun_heap, shun_for_p, (char*)target);
         if (ent->expires < (time_t)(now + duration))
             ent->expires = now + duration;
-        if (ent->lastmod < lastmod)
-            ent->lastmod = lastmod;
     } else {
         ent = malloc(sizeof(*ent));
         ent->issued = issued;
-        ent->lastmod = lastmod;
         ent->issuer = strdup(issuer);
         ent->target = strdup(target);
         ent->expires = now + duration;
@@ -249,7 +245,7 @@ shun_add_record(const char *key, void *data, UNUSED_ARG(void *extra))
 {
     struct record_data *rd = data;
     const char *issuer, *reason, *dstr;
-    time_t issued, expiration, lastmod;
+    time_t issued, expiration;
 
     if (!(reason = database_get_data(rd->d.object, KEY_REASON, RECDB_QSTRING))) {
 	log_module(MAIN_LOG, LOG_ERROR, "Missing reason for shun %s", key);
@@ -260,8 +256,6 @@ shun_add_record(const char *key, void *data, UNUSED_ARG(void *extra))
 	return 0;
     }
     expiration = strtoul(dstr, NULL, 0);
-    dstr = database_get_data(rd->d.object, KEY_LASTMOD, RECDB_QSTRING);
-    lastmod = dstr ? strtoul(dstr, NULL, 0) : 0;
     if ((dstr = database_get_data(rd->d.object, KEY_ISSUED, RECDB_QSTRING))) {
         issued = strtoul(dstr, NULL, 0);
     } else {
@@ -271,7 +265,7 @@ shun_add_record(const char *key, void *data, UNUSED_ARG(void *extra))
         issuer = "<unknown>";
     }
     if (expiration > now)
-        shun_add(issuer, key, expiration - now, reason, issued, lastmod, 0);
+        shun_add(issuer, key, expiration - now, reason, issued, 0);
     return 0;
 }
 
@@ -290,8 +284,6 @@ shun_write_entry(UNUSED_ARG(void *key), void *data, void *extra)
     saxdb_start_record(ctx, ent->target, 0);
     saxdb_write_int(ctx, KEY_EXPIRES, ent->expires);
     saxdb_write_int(ctx, KEY_ISSUED, ent->issued);
-    if (ent->lastmod)
-        saxdb_write_int(ctx, KEY_LASTMOD, ent->lastmod);
     saxdb_write_string(ctx, KEY_REASON, ent->reason);
     saxdb_write_string(ctx, KEY_ISSUER, ent->issuer);
     saxdb_end_record(ctx);
@@ -329,9 +321,8 @@ shun_discrim_create(struct userNode *user, struct userNode *src, unsigned int ar
     struct shun_discrim *discrim;
 
     discrim = calloc(1, sizeof(*discrim));
+    discrim->max_issued = now;
     discrim->limit = 50;
-    discrim->max_issued = INT_MAX;
-    discrim->max_lastmod = INT_MAX;
 
     for (i=0; i<argc; i++) {
         if (i + 2 > argc) {
@@ -366,24 +357,7 @@ shun_discrim_create(struct userNode *user, struct userNode *src, unsigned int ar
             discrim->min_expire = now + ParseInterval(argv[++i]);
         else if (!irccasecmp(argv[i], "before"))
             discrim->max_issued = now - ParseInterval(argv[++i]);
-        else if (!irccasecmp(argv[i], "lastmod")) {
-            const char *cmp = argv[++i];
-            if (cmp[0] == '<') {
-                if (cmp[1] == '=') {
-                    discrim->min_lastmod = now - ParseInterval(cmp + 2);
-                } else {
-                    discrim->min_lastmod = now - (ParseInterval(cmp + 1) - 1);
-                }
-            } else if (cmp[0] == '>') {
-                if (cmp[1] == '=') {
-                    discrim->max_lastmod = now - ParseInterval(cmp + 2);
-                } else {
-                    discrim->max_lastmod = now - (ParseInterval(cmp + 1) - 1);
-                }
-            } else {
-                discrim->min_lastmod = now - ParseInterval(cmp + 2);
-            }
-        } else {
+        else {
             send_message(user, src, "MSG_INVALID_CRITERIA", argv[i]);
             goto fail;
         }
@@ -421,9 +395,7 @@ shun_discrim_match(struct shun *shun, struct shun_discrim *discrim)
                     && (!discrim->alt_target_mask
                         || !match_ircglobs(discrim->alt_target_mask, shun->target)))))
         || (discrim->max_issued < shun->issued)
-        || (discrim->min_expire > shun->expires)
-        || (discrim->min_lastmod > shun->lastmod)
-        || (discrim->max_lastmod < shun->lastmod)) {
+        || (discrim->min_expire > shun->expires)) {
         return 0;
     }
     return 1;

@@ -206,7 +206,7 @@ static struct language *language_read(const char *name)
     /* Read all the translations from the directory. */
     while ((dirent = readdir(dir))) {
         snprintf(filename, sizeof(filename), "languages/%s/%s", name, dirent->d_name);
-        if (!strcmp(dirent->d_name, "parent")) {
+        if (!strcmp(dirent->d_name,"parent")) {
             continue;
         } else if (!strcmp(dirent->d_name, "strings.db")) {
             dict = parse_database(filename);
@@ -236,9 +236,6 @@ static void language_read_list(void)
         if (dirent->d_name[0] == '.')
             continue;
         snprintf(namebuf, sizeof(namebuf), "languages/%s", dirent->d_name);
-        if (!strcmp(dirent->d_name, "strings.db")) {
-            continue;
-        }
         if (stat(namebuf, &sbuf) < 0) {
             log_module(MAIN_LOG, LOG_INFO, "Skipping language entry '%s' (unable to stat).", dirent->d_name);
             continue;
@@ -247,7 +244,6 @@ static void language_read_list(void)
             log_module(MAIN_LOG, LOG_INFO, "Skipping language entry '%s' (not directory).", dirent->d_name);
             continue;
         }
-        if (!dict_find(languages, dirent->d_name, NULL))
         language_alloc(dirent->d_name);
     }
     closedir(dir);
@@ -749,7 +745,7 @@ send_message(struct userNode *dest, struct userNode *src, const char *format, ..
     int res;
     va_list ap;
 
-    if (IsLocal(dest) && !IsDummy(dest)) return 0;
+    if (IsLocal(dest)) return 0;
     va_start(ap, format);
     res = vsend_message(dest->nick, src, dest->handle_info, 0, NULL, format, ap);
     va_end(ap);
@@ -761,7 +757,7 @@ send_message_type(int msg_type, struct userNode *dest, struct userNode *src, con
     int res;
     va_list ap;
 
-    if (IsLocal(dest) && !IsDummy(dest)) return 0;
+    if (IsLocal(dest)) return 0;
     va_start(ap, format);
     res = vsend_message(dest->nick, src, dest->handle_info, msg_type, NULL, format, ap);
     va_end(ap);
@@ -1170,27 +1166,10 @@ void helpfile_init(void)
     language_read_list();
 }
 
-static void helpfile_read_languages(void)
-{
-    dict_iterator_t it;
-    dict_t dict;
-
-    language_read_list();
-    for (it = dict_first(languages); it; it = iter_next(it))
-        language_read(iter_key(it));
-
-    /* If the user has a strings.db in their languages directory,
-     * allow that to override C language strings.
-     */
-    dict = parse_database("languages/strings.db");
-    if (dict) {
-        language_set_messages(lang_C, dict);
-        free_database(dict);
-    }
-}
-
 void helpfile_finalize(void)
 {
-    conf_register_reload(helpfile_read_languages);
+    dict_iterator_t it;
+    for (it = dict_first(languages); it; it = iter_next(it))
+        language_read(iter_key(it));
     reg_exit_func(language_cleanup);
 }

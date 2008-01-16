@@ -95,7 +95,7 @@ uplink_readable(struct io_fd *fd) {
 void
 socket_destroyed(struct io_fd *fd)
 {
-    if (fd && fd->state != IO_CONNECTED)
+    if (fd && fd->eof)
         log_module(MAIN_LOG, LOG_ERROR, "Connection to server lost.");
     socket_io_fd = NULL;
     cManager.uplink->state = DISCONNECTED;
@@ -147,6 +147,7 @@ create_socket_client(struct uplinkNode *target)
     socket_io_fd->readable_cb = uplink_readable;
     socket_io_fd->destroy_cb = socket_destroyed;
     socket_io_fd->line_reads = 1;
+    socket_io_fd->wants_reads = 1;
     log_module(MAIN_LOG, LOG_INFO, "Connection to server established.");
     cManager.uplink = target;
     target->state = AUTHENTICATING;
@@ -277,8 +278,7 @@ close_socket(void)
         replay_connected = 0;
         socket_destroyed(socket_io_fd);
     } else {
-        ioset_close(socket_io_fd, 3);
-        socket_io_fd = NULL;
+        ioset_close(socket_io_fd->fd, 1);
     }
 }
 
@@ -333,7 +333,7 @@ static CMD_FUNC(cmd_dummy)
 
 static CMD_FUNC(cmd_error)
 {
-    if (argv[1]) log_module(MAIN_LOG, LOG_ERROR, "Error from ircd: %s", argv[1]);
+    if (argv[1]) log_module(MAIN_LOG, LOG_ERROR, "Error: %s", argv[1]);
     log_module(MAIN_LOG, LOG_ERROR, "Error received from uplink, squitting.");
 
     if (cManager.uplink->state != CONNECTED) {
@@ -443,8 +443,9 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
         mn->idle_since = now;
 
     /* Never send a NOTICE to a channel to one of the services */
-    if (!pd->is_notice && cf->func && ((cn->modes & MODE_REGISTERED) || GetUserMode(cn, cf->service)))
-        cf->func(pd->user, cn, pd->text+1, cf->service); /* XXX- taken out in 1.4rc1 patchset but causes errors */
+    if (!pd->is_notice && cf->func
+        && ((cn->modes & MODE_REGISTERED) || GetUserMode(cn, cf->service)))
+         cf->func(pd->user, cn, pd->text+1, cf->service);
     else
         spamserv_channel_message(cn, pd->user, pd->text);
 
@@ -468,30 +469,10 @@ privmsg_invalid(char *name, void *data)
     irc_numeric(pd->user, ERR_NOSUCHNICK, "%s@%s :No such nick", name, self->name);
 }
 
-struct part_desc {
-    struct userNode *user;
-    const char *text;
-};
-
 static void
 part_helper(struct chanNode *cn, void *data)
 {
-    struct part_desc *desc = data;
-    DelChannelUser(desc->user, cn, desc->text, false);
-}
-
-static CMD_FUNC(cmd_part)
-{
-    struct part_desc desc;
-
-    if (argc < 2)
-        return 0;
-    desc.user = GetUserH(origin);
-    if (!desc.user)
-        return 0;
-    desc.text = (argc > 2) ? argv[argc - 1] : NULL;
-    parse_foreach(argv[1], part_helper, NULL, NULL, NULL, &desc);
-    return 1;
+    DelChannelUser(data, cn, false, 0);
 }
 
 void
@@ -890,8 +871,8 @@ generate_hostmask(struct userNode *user, int options)
         for (ii=cnt=0; hostname[ii]; ii++)
             if (hostname[ii] == '.')
                 cnt++;
-        if (cnt == 0 || cnt == 1) {
-            /* only a one- or two-level domain name; leave hostname */
+        if (cnt == 1) {
+            /* only a two-level domain name; leave hostname */
         } else if (cnt == 2) {
             for (ii=0; user->hostname[ii] != '.'; ii++) ;
             /* Add 3 to account for the *. and \0. */

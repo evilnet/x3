@@ -1,4 +1,4 @@
-EXTRA_DIST = FAQ UPGRADE x3.conf.example sockcheck.conf.example autogen.sh Makefile.win32
+EXTRA_DIST = FAQ x3.conf.example sockcheck.conf.example
 SUBDIRS = @MY_SUBDIRS@
 DIST_SUBDIRS = src rx
 

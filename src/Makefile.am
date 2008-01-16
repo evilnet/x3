@@ -4,42 +4,10 @@ TRACK = @TRACK@
 
 noinst_PROGRAMS = x3
 EXTRA_PROGRAMS = checkdb globtest
-noinst_DATA = \
-	chanserv.help \
-	global.help \
-	modcmd.help \
-	nickserv.help \
-	opserv.help \
-	mail.help \
-	saxdb.help \
-	spamserv.help \
-	mod-sockcheck.help \
-	mod-helpserv.help \
-	mod-memoserv.help \
-	mod-webtv.help
-
+noinst_DATA = chanserv.help global.help modcmd.help nickserv.help opserv.help saxdb.help sendmail.help spamserv.help mod-sockcheck.help mod-helpserv.help mod-memoserv.help mod-webtv.help
 EXTRA_DIST = $(noinst_DATA)
 
-EXTRA_x3_SOURCES = \
-	alloc-slab.c \
-	alloc-x3.c \
-        config.h.win32 \
-	ioset-epoll.c \
-	ioset-select.c \
-	ioset-win32.c \
-	mail-common.c \
-	mail-sendmail.c \
-	main-common.c \
-	main-win32.c \
-	proto-common.c \
-	proto-p10.c \
-	mod-snoop.c \
-	mod-track.c \
-	mod-memoserv.c \
-	mod-helpserv.c \
-	mod-qserver.c \
-	mod-sockcheck.c \
-	mod-webtv.c
+EXTRA_x3_SOURCES = alloc-slab.c alloc-x3.c proto-common.c proto-p10.c mod-snoop.c mod-track.c mod-memoserv.c mod-helpserv.c mod-sockcheck.c mod-webtv.c
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
 x3_SOURCES = \
@@ -55,9 +23,8 @@ x3_SOURCES = \
 	heap.c heap.h \
 	helpfile.c helpfile.h \
 	hosthiding.c hosthiding.h \
-	ioset.c ioset.h ioset-impl.h \
+	ioset.c ioset.h \
 	log.c log.h \
-	mail.h \
 	main.c common.h \
 	math.c \
 	md5.c md5.h \
@@ -68,8 +35,8 @@ x3_SOURCES = \
 	policer.c policer.h \
 	proto.h \
 	recdb.c recdb.h \
-	sar.c sar.h \
 	saxdb.c saxdb.h \
+	sendmail.c sendmail.h \
 	spamserv.c spamserv.h \
 	shun.c shun.h \
 	timeq.c timeq.h \

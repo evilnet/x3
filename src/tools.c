@@ -313,7 +313,7 @@ irc_pton(irc_in_addr_t *addr, unsigned char *bits, const char *input)
                 addr->in6[cpos + jj] = 0;
         }
     } else if (dot) {
-        uint32_t ip4;
+        unsigned int ip4;
         pos = irc_pton_ip4(input, bits, &ip4);
         if (pos) {
             addr->in6[5] = htons(65535);
@@ -541,8 +541,6 @@ match_ircglob(const char *text, const char *glob)
             return 0;
         m = m_tmp;
         n = ++n_tmp;
-        if (!*n)
-            return 0;
         break;
     case '\\':
         m++;
@@ -846,12 +844,10 @@ ParseInterval(const char *interval)
     while ((c = *interval++)) {
 	if (isdigit((int)c)) {
 	    partial = partial*10 + c - '0';
-        } else if (strchr("yMwdhms", c)) {
+	} else {
 	    seconds += TypeLength(c) * partial;
 	    partial = 0;
-        } else {
-            return 0;
-        }
+	}
     }
     /* assume the last chunk is seconds (the normal case) */
     return seconds + partial;

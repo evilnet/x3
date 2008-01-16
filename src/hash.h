@@ -55,7 +55,7 @@
 #define MODE_UPASS		0x08000000 /* +U userpass */
 #define MODE_REMOVE             0x80000000
 
-#define FLAGS_OPER		0x0001 /* global operator +o */
+#define FLAGS_OPER		0x0001 /* Operator +O */
 #define FLAGS_LOCOP		0x0002 /* Local operator +o */
 #define FLAGS_INVISIBLE		0x0004 /* invisible +i */
 #define FLAGS_WALLOP		0x0008 /* receives wallops +w */
@@ -63,7 +63,11 @@
 #define FLAGS_DEAF		0x0020 /* deaf +d */
 #define FLAGS_SERVICE		0x0040 /* cannot be kicked, killed or deoped +k */
 #define FLAGS_GLOBAL		0x0080 /* receives global messages +g */
+
+// sethost - reed/apples
+// #define FLAGS_HELPER		0x0100 /* (network?) helper +h */
 #define FLAGS_SETHOST		0x0100 /* sethost +h */
+
 #define FLAGS_PERSISTENT	0x0200 /* for reserved nicks, this isn't just one-shot */
 #define FLAGS_GAGGED		0x0400 /* for gagged users */
 #define FLAGS_AWAY		0x0800 /* for away users */
@@ -71,19 +75,19 @@
 #define FLAGS_HIDDEN_HOST       0x2000 /* user's host is masked by their account */
 #define FLAGS_REGNICK           0x4000 /* user owns their current nick */
 #define FLAGS_REGISTERING	0x8000 /* user has issued account register command, is waiting for email cookie */
-#define FLAGS_DUMMY             0x10000 /* user is not announced to other servers */
-#define FLAGS_NOIDLE            0x20000 /* hide idle time in whois +I */
-#define FLAGS_NOCHAN            0x40000 /* hide the users channels +n */
 
 #define IsOper(x)               ((x)->modes & FLAGS_OPER)
 #define IsService(x)            ((x)->modes & FLAGS_SERVICE)
 #define IsDeaf(x)               ((x)->modes & FLAGS_DEAF)
 #define IsInvisible(x)          ((x)->modes & FLAGS_INVISIBLE)
 #define IsGlobal(x)             ((x)->modes & FLAGS_GLOBAL)
-#define IsNoChan(x)             ((x)->modes & FLAGS_NOCHAN)
 #define IsWallOp(x)             ((x)->modes & FLAGS_WALLOP)
 #define IsServNotice(x)         ((x)->modes & FLAGS_SERVNOTICE)
+
+// sethost - reed/apples
+// #define IsHelperIrcu(x)         ((x)->modes & FLAGS_HELPER)
 #define IsSetHost(x)		((x)->modes & FLAGS_SETHOST)
+
 #define IsGagged(x)             ((x)->modes & FLAGS_GAGGED)
 #define IsPersistent(x)         ((x)->modes & FLAGS_PERSISTENT) 
 #define IsAway(x)               ((x)->modes & FLAGS_AWAY)
@@ -91,8 +95,6 @@
 #define IsHiddenHost(x)         ((x)->modes & FLAGS_HIDDEN_HOST)
 #define IsReggedNick(x)         ((x)->modes & FLAGS_REGNICK)
 #define IsRegistering(x)	((x)->modes & FLAGS_REGISTERING)
-#define IsDummy(x)              ((x)->modes & FLAGS_DUMMY)
-#define IsNoIdle(x)             ((x)->modes & FLAGS_NOIDLE)
 #define IsFakeHost(x)           ((x)->fakehost[0] != '\0')
 #define IsLocal(x)              ((x)->uplink == self)
 
@@ -213,7 +215,6 @@ struct userNode {
 
     time_t timestamp;             /* Time of last nick change */
     struct server *uplink;        /* Server that user is connected to */
-    time_t idle_since;
     struct modeList channels;     /* Vector of channels user is in */
     struct Privs   privs;
 

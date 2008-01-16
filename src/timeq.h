@@ -27,6 +27,7 @@ typedef void (*timeq_func)(void *data);
 #define TIMEQ_IGNORE_FUNC    0x02
 #define TIMEQ_IGNORE_DATA    0x04
 
+void timeq_init(void);
 #define timeq_add(x, y, z)   timeq_add_real(x, y, z, __func__)
 void timeq_add_real(time_t when, timeq_func func, void *data, const char *calling_func);
 #define timeq_del(x, y, z, m) timeq_del_real(x, y, z, m, __func__)
