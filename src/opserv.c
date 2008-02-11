@@ -3038,7 +3038,7 @@ rank_outside_rec(struct route *route, char *server, int count)
         return(max + 1);
     }
     else {
-        log_module(MAIN_LOG, LOG_ERROR, "routing struct rank_outsideness() couldnt find %s", server);
+        log_module(MAIN_LOG, LOG_WARNING, "routing struct rank_outsideness() couldnt find %s", server);
         return 0;
     }
 }
@@ -3111,7 +3111,7 @@ change_route_uplinks(struct route *route)
     strcpy(lastserver, servicename);
     rptr = find_routeList_server(route, self->uplink->name);
     if(!rptr) {
-        log_module(MAIN_LOG, LOG_ERROR, "Cannot convert routing map to center: My uplink is not on the map! Marking map as uncentered.");
+        log_module(MAIN_LOG, LOG_WARNING, "Cannot convert routing map to center: My uplink is not on the map! Marking map as uncentered.");
         route->centered = false;
         return false;
     }
@@ -3158,7 +3158,7 @@ activate_routing(struct svccmd *cmd, struct userNode *user, char *plan_name)
                     /* since it doesnt exist, remove the active setting */
                     dict_remove(opserv_routing_plan_options, plan_name);
                 }
-                log_module(MAIN_LOG, LOG_ERROR, "activate_routing() couldnt find active routing plan!");
+                log_module(MAIN_LOG, LOG_WARNING, "activate_routing() couldnt find active routing plan!");
                 return 0;
             }
         }
@@ -3657,7 +3657,7 @@ routing_handle_connect_failure(struct server *source, char *server, char *messag
     char *active;
     struct routingPlan *rp;
     struct routingPlanServer *rps;
-    log_module(MAIN_LOG, LOG_ERROR, "Failed to connect %s to %s: %s", server, source->name, message);
+    log_module(MAIN_LOG, LOG_WARNING, "Failed to connect %s to %s: %s", server, source->name, message);
     /* remove the waiting connection n timeq */
     routing_delete_connect_timer(server);
     /* check if routing is active.. */
