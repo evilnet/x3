@@ -2774,6 +2774,8 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
 {
     struct userNode *oldUser, *uNode;
     unsigned int n, ignore_user;
+    char *tstr;
+    int type;
 
     if ((strlen(numeric) < 3) || (strlen(numeric) > 5)) {
         log_module(MAIN_LOG, LOG_WARNING, "AddUser(%p, %s, ...): numeric %s wrong length!", uplink, nick, numeric);
@@ -2822,11 +2824,15 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     safestrncpy(uNode->numeric, numeric, sizeof(uNode->numeric));
     irc_p10_pton(&uNode->ip, realip);
 
-    if (irc_in_addr_is_ipv4(uNode->ip)) {
-      make_virtip((char*)irc_ntoa(&uNode->ip), (char*)irc_ntoa(&uNode->ip), uNode->cryptip);
-      make_virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
-    } else if (irc_in_addr_is_ipv6(uNode->ip)) {
-      make_ipv6virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
+    tstr = conf_get_data("server/type", RECDB_QSTRING);
+    type = atoi(tstr);
+    if (type > 6) {
+      if (irc_in_addr_is_ipv4(uNode->ip)) {
+        make_virtip((char*)irc_ntoa(&uNode->ip), (char*)irc_ntoa(&uNode->ip), uNode->cryptip);
+        make_virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
+      } else if (irc_in_addr_is_ipv6(uNode->ip)) {
+        make_ipv6virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
+      }
     }
 
     if (!uNode->crypthost && uNode->cryptip)
@@ -2981,6 +2987,30 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	// case 'h': do_user_mode(FLAGS_HELPER); break;
 	// I check if there's an 'h' in the first part, and if there, 
 	// then everything after the space becomes their new host.
+	case 'C': do_user_mode(FLAGS_CLOAKHOST);
+	    if (*word) {
+		char cloakhost[MAXLEN];
+		unsigned int ii;
+		for (ii=0; (*word != ' ') && (*word != '\0'); )
+		    cloakhost[ii++] = *word++;
+		cloakhost[ii] = 0;
+		while (*word == ' ')
+		    word++;
+		safestrncpy(user->crypthost, cloakhost, sizeof(user->crypthost));
+	    }
+	    break;
+	case 'c': do_user_mode(FLAGS_CLOAKIP);
+	    if (*word) {
+		char cloakip[MAXLEN];
+		unsigned int ii;
+		for (ii=0; (*word != ' ') && (*word != '\0'); )
+		    cloakip[ii++] = *word++;
+		cloakip[ii] = 0;
+		while (*word == ' ')
+		    word++;
+		safestrncpy(user->cryptip, cloakip, sizeof(user->cryptip));
+	    }
+	    break;
 	case 'h': do_user_mode(FLAGS_SETHOST);
 	    if (*word) {
 		char sethost[MAXLEN];

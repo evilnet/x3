@@ -51,13 +51,15 @@
     "key1" "45432"; // Set these key values to the network KEY values you use
     "key2" "76934"; // for host hiding style 2.
     "key3" "98336";
+    "prefix" "AfterNET"; // If you use style 2 then this is the name that is prefixed to hosts.
     "numeric" "51"; // hint: If you get collisions on link, CHANGE THIS.
     /* Type handles some changes in nefarious 1.0 (was 0.5.0)
      * 4 - nefarious 0.4.x and other ircds
-     * 5 - nefarious 1.0.x and higher (Branch Revision)
-     * 6 - nefarious 1.0.x and higher (Trunk Revision)
+     * 5 - nefarious 1.0.x and higher (Obselete)
+     * 6 - nefarious 1.1.0 and higher (Branch Revision)
+     * 7 - nefarious 1.2.0 and higher (Trunk Revsions)
      */
-    "type" "5";
+    "type" "6";
     "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.
     "max_users" "256"; // You can save a little memory by setting this to a lower value.
     "force_n2k" "1"; // Use extended (5-digit) numnick for self, even if 3 are possible.
