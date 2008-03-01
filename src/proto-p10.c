@@ -1633,6 +1633,7 @@ static CMD_FUNC(cmd_burst)
     static char exemptlist[MAXLEN], banlist[MAXLEN];
     unsigned int next = 3, res = 1;
     int ctype = 0, echeck = 0, bcheck = 0;
+    struct chanData *cData;
     struct chanNode *cNode;
     struct userNode *un;
     struct modeNode *mNode;
@@ -1716,6 +1717,15 @@ static CMD_FUNC(cmd_burst)
         irc_burst(cNode);
     }
     cNode = AddChannel(argv[1], in_timestamp, modes, banlist, exemptlist);
+    cData = cNode->channel_info;
+
+    if (!cData) {
+        if (cNode->modes & MODE_REGISTERED) {
+            irc_join(opserv, cNode);
+            irc_mode(opserv, cNode, "-z");
+            irc_part(opserv, cNode, "");
+        }
+    }
 
     /* Burst channel members in now. */
     for (user = members, sep = *members, mode = 0; sep; user = end) {
