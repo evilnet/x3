@@ -410,8 +410,9 @@
         //   1 = use a registered channel mode, have services op themselves
         //   2 = all of the above, and a channel setting to have ChanServ not
         //       idle in the channel
-        // NOTE: +z mode, needed for this to work,  is inharently flawed and 
-        //       will cause desynch, so don't use it IMO -Rubin.
+        // NOTE: +z mode, needed for this to work. X3 contains modifications to
+	// try and prevent desynchs. If you use this mode do not use any other service
+	// that uses this mode.
         "off_channel" "no";
 
         // Infolines are sent when channel users join the channel. Users set them with USET INFO in X3.
