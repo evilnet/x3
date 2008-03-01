@@ -1780,12 +1780,23 @@ static CMD_FUNC(cmd_mark)
         /* DNSBL_DATA name */
         target = GetUserH(argv[1]);
         if(!target) {
-            log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose mark is changing.", argv[1]);
+            log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose dnsbl mark is changing.", argv[1]);
             return 0;
         }
         target->mark = strdup(argv[3]);
         return 1;
         
+    }
+    else if(!strcasecmp(argv[2], "CVERSION")) {
+        /* DNSBL_DATA name */
+        target = GetUserH(argv[1]);
+        if(!target) {
+            log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose version mark is changing.", argv[1]);
+            return 0;
+        }
+
+        target->version_reply = strdup(unsplit_string(argv + 3, argc - 3, NULL));
+        return 1;
     }
     /* unknown type of mark */
     return 1;

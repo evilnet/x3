@@ -108,7 +108,7 @@
 #define REALLEN         50
 #define TOPICLEN        250
 #define CHANNELLEN      200
-#define MARKLEN         20
+#define MARKLEN         200
 #define MAXOPLEVEL      999
 
 #define MAXMODEPARAMS	6
