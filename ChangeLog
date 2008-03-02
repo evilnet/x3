@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-03-02  Alex Schumann  <rubin@afternet.org>
+
+	* src/spamserv.c: Possible fix for sf bug 1905760 (spamserv
+	kill/reconnect segfault)
+
 2007-07-31  Alex Schumann  <rubin@afternet.org>
 
         * src/proto-p10.c: ignore ALIST messages

@@ -596,7 +596,7 @@ spamserv_create_user(struct userNode *user)
 
 	if(kNode)
 	{
-		free(kNode);
+		/* free(kNode); dict_remove does this */
 		dict_remove(killed_users_dict, irc_ntoa(&user->ip));
 	}
 }
