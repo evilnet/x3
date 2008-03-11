@@ -1805,7 +1805,15 @@ static CMD_FUNC(cmd_mark)
             return 0;
         }
 
-        target->version_reply = strdup(unsplit_string(argv + 3, argc - 3, NULL));
+        char *version = unsplit_string(argv + 3, argc - 3, NULL);
+        if(!version)
+            version = "";
+
+        target->version_reply = strdup(version);
+
+        if(match_ircglob(version, "WebTV;*"))
+            target->no_notice = true; /* webbies cant see notices */
+
         return 1;
     }
     /* unknown type of mark */
