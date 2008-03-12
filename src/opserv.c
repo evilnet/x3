@@ -179,6 +179,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_OPALL_DONE", "Opped everyone on $b%s$b." },
     { "OSMSG_HOP_DONE", "Halfopped the requested lusers." },
     { "OSMSG_HOPALL_DONE", "Halfopped everyone on $b%s$b." },
+    { "OMSG_BAD_SVSNICK", "$b%s$b is an invalid nickname." },
+
     { "OSMSG_WHOIS_IDENT",      "%s (%s@%s) from %d.%d.%d.%d" },
     { "OSMSG_WHOIS_NICK",       "Nick         : %s" },
     { "OSMSG_WHOIS_HOST",       "Host         : %s@%s" },
@@ -1627,6 +1629,23 @@ static MODCMD_FUNC(cmd_svsjoin)
     }
     irc_svsjoin(opserv, target, channel);
     reply("OSMSG_SVSJOIN_SENT");
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_svsnick)
+{
+    struct userNode *target;
+    
+    target = GetUserH(argv[1]);
+    if (!target) {
+       reply("MSG_NICK_UNKNOWN", argv[1]);
+       return 0;
+    }
+    if(!is_valid_nick(argv[2])) {
+       reply("OMSG_BAD_SVSNICK", argv[2]);
+       return 0;
+    }
+    irc_svsnick(opserv, target, argv[2]);
     return 1;
 }
 
@@ -6944,6 +6963,7 @@ init_opserv(const char *nick)
     opserv_define_func("INVITE", cmd_invite, 100, 2, 0);
     opserv_define_func("INVITEME", cmd_inviteme, 100, 0, 0);
     opserv_define_func("JOIN", cmd_join, 601, 0, 2);
+    opserv_define_func("SVSNICK", cmd_svsnick, 999, 0, 3);
     opserv_define_func("SVSJOIN", cmd_svsjoin, 999, 0, 3);
     opserv_define_func("SVSPART", cmd_svspart, 999, 0, 3);
     opserv_define_func("JUMP", cmd_jump, 900, 0, 2);

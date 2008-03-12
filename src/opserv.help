@@ -1,16 +1,17 @@
 "<INDEX>"  (
             " $O provides Oper Services for the Network.    ",
             " Please choose from the following categories:  ",
-            "  $bGOD$b         Enabling channel override.   ",
-            "  $bPUNISH$b      Commands to discipline users.",
             "  $bINFORMATION$b Get information about users. ",
             "              or $O, $C, and $N.           ",
+            "  $bPUNISH$b      Commands to discipline users.",
+            "  $bCHANNEL$b     Channel commands.            ",
+            "  $bUSER$b        User commands.               ",
             "  $bTRACES$b      Powerful commands for       ",
             "              viewing or acting on lists of",
             "              IRC objects.                 ",
             "  $bALERTS$b      Automated responses.         ",
+            "  $bGOD$b         Enabling channel override.   ",
             "  $bTRACKING$b    Tracking commands. (if enabled)",
-            "  $bCHANNEL$b     Channel commands.            ",
             "  $bCLONES$b      Manage trusts and limits.    ",
             "  $bROUTING$b     Manage the Auto Routing System.",
             "  $bSETTINGS$b    View and temporarily change  ",
@@ -41,6 +42,13 @@
             "  $bGAG$b         Cause the services to ignore... ",
             "  $bUNGAG$b       ...or unignore by mask."
             );
+
+"USER"     (
+            " $bSVSJOIN$b      Force a user to join a channel.",
+            " $bSVSPART$b      Force a user to part a channel.",
+            " $bSVSNICK$b      Force a user to change nicks.",
+            " $bACCESS$b       Show/modify $O access level of a user."
+           );
 
 "INFORMATION"  (
                 "  $bACCESS$b  Shows a users $O access level.",
@@ -508,6 +516,11 @@
 "SVSPART" ("/msg $O SVSPART <nick> <#channel>",
         "Forces nick to part #channel",
         "$uSee Also:$u svsjoin, part, trace action"
+        );
+
+"SVSNICK" ("/msg $O SVSNICK <nick> <newnick>",
+        "Forces nick to change nick to newnick",
+        "$uSee Also:$u svspart, svsjoin"
         );
 
 "MODE" ("/msg $O MODE <#channel> <+/- mode>",

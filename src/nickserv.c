@@ -2093,8 +2093,8 @@ static NICKSERV_FUNC(cmd_auth)
 #endif
         hi = dict_find(nickserv_handle_dict, argv[1], NULL);
         pw_arg = 2;
-#ifdef notdef
-    } else if (argc == 2) {
+#ifndef WITH_LDAP
+    } else if (argc == 2 && !nickserv_conf.ldap_enable) {
         if (nickserv_conf.disable_nicks) {
             if (!(hi = get_handle_info(user->nick))) {
                 reply("NSMSG_HANDLE_NOT_FOUND");

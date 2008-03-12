@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-03-11  Alex Schumann  <rubin@afternet.org>
+
+	* src/opserv.c: Add svsnick command
+
+	* src/opserv.help: add help for svsnick and improve menu a bit
+
+	* src/nickserv.c: re-enable 1 param auth if not using ldap.
+
 2008-03-02  Alex Schumann  <rubin@afternet.org>
 
 	* src/spamserv.c: Possible fix for sf bug 1905760 (spamserv
