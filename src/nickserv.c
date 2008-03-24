@@ -2093,7 +2093,6 @@ static NICKSERV_FUNC(cmd_auth)
 #endif
         hi = dict_find(nickserv_handle_dict, argv[1], NULL);
         pw_arg = 2;
-#ifndef WITH_LDAP
     } else if (argc == 2 && !nickserv_conf.ldap_enable) {
         if (nickserv_conf.disable_nicks) {
             if (!(hi = get_handle_info(user->nick))) {
@@ -2112,7 +2111,6 @@ static NICKSERV_FUNC(cmd_auth)
             hi = ni->owner;
         }
         pw_arg = 1;
-#endif
     } else {
         reply("MSG_MISSING_PARAMS", argv[0]);
         svccmd_send_help_brief(user, nickserv, cmd);
