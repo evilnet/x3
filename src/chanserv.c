@@ -520,6 +520,11 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_DIE_ROLL", "A $b%lu$b shows on the %lu-sided die." },
     { "CSMSG_HUGGLES_HIM", "\001ACTION huggles %s\001" },
     { "CSMSG_HUGGLES_YOU", "\001ACTION huggles you\001" },
+    { "CSMSG_ROULETTE_LOADS",  "\001ACTION loads the gun and sets it on the table\001" },
+    { "CSMSG_ROULETTE_NEW", "Please type !roulette to start a new round" } ,
+    { "CSMSG_ROULETTE_BETTER_LUCK", "Better luck next time, %s" },
+    { "CSMSG_ROULETTE_BANG", "Bang!!!" } ,
+    { "CSMSG_ROULETTE_CLICK", "Click" } ,
 
 /* Other things */
     { "CSMSG_EVENT_SEARCH_RESULTS", "$bChannel Events for %s$b" },
@@ -6952,6 +6957,42 @@ static CHANSERV_FUNC(cmd_wut)
     return 1;
 }
 
+static CHANSERV_FUNC(cmd_roulette)
+{
+    struct chanData *cData = channel->channel_info;
+
+    if (cData) {
+        if (cData->roulette_chamber) {
+            irc_kill(chanserv, user, "BANG - Don't stuff bullets into a loaded gun");
+            return 1;
+        }
+
+        send_target_message(1, channel->name, cmd->parent->bot, "CSMSG_ROULETTE_LOADS");
+        cData->roulette_chamber = 1 + rand() % 6;
+    }
+    return 1;
+}
+static CHANSERV_FUNC(cmd_shoot)
+{
+    struct chanData *cData = channel->channel_info;
+
+    if (cData->roulette_chamber <= 0) {
+        reply("CSMSG_ROULETTE_NEW");
+        return 1;
+    }
+
+    cData->roulette_chamber--;
+
+    if (cData->roulette_chamber == 0) {
+        reply("CSMSG_ROULETTE_BANG");
+        reply("CSMSG_ROULETTE_BETTER_LUCK", user->nick);
+        irc_kill(chanserv, user, "BANG!!!!");
+    } else
+        reply("CSMSG_ROULETTE_CLICK");
+
+    return 1;
+}
+
 #ifdef lame8ball
 static CHANSERV_FUNC(cmd_8ball)
 {
@@ -8924,6 +8965,7 @@ init_chanserv(const char *nick)
 {
     struct chanNode *chan;
     unsigned int i;
+
     CS_LOG = log_register_type("ChanServ", "file:chanserv.log");
     conf_register_reload(chanserv_conf_read);
 
@@ -9059,6 +9101,8 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(huggle, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(calc, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(reply, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
+    DEFINE_COMMAND(roulette, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
+    DEFINE_COMMAND(shoot, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
 
     /* Channel options */
     DEFINE_CHANNEL_OPTION(defaulttopic);

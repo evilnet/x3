@@ -1,6 +1,15 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-03-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Added roulette command.
+
+	* src/chanserv.h: Added roulette command.
+
+	* src/mod-memoserv.c: Added email sending functionality when
+	new memos are sent.
+
 2008-03-24  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: fix 1 param auth for ldap libs available but not

@@ -44,6 +44,7 @@
 #include "nickserv.h"
 #include "opserv.h"
 #include "saxdb.h"
+#include "sendmail.h"
 #include "timeq.h"
 
 #define KEY_MAIN_ACCOUNTS "accounts"
@@ -110,6 +111,9 @@ static const struct message_entry msgtab[] = {
 
     { "MSMSG_LIST_END",        "--------------End of Memos--------------" },
     { "MSMSG_BAR",             "----------------------------------------"},
+
+    { "MSEMAIL_NEWMEMO_SUBJECT", "New %s %s message from %s" },
+    { "MSEMAIL_NEWMEMO_BODY", "This email has been sent to let you know that %s has sent you a message via %s.\n\n  The message is: %s.\n\nTo delete this message just type in /msg %s delete %d when on %s next." },
 
     { "MSMSG_DEFCON_NO_NEW_MEMOS", "You cannot send new memos at this time, please try again soon." },
 
@@ -400,10 +404,13 @@ static struct memo *find_memo(struct userNode *user, struct svccmd *cmd, struct 
 static MODCMD_FUNC(cmd_send)
 {
     char *message;
-    int reciept = 0, inc = 2;
+    int reciept = 0, inc = 2, email = 0;
     struct handle_info *hi;
     struct memo_account *ma, *sender;
     struct memo *memo;
+    char subject[128], body[4096];
+    char *estr;
+    const char *netname, *fmt;
 
     MEMOSERV_MIN_PARAMS(3);
 
@@ -454,6 +461,19 @@ static MODCMD_FUNC(cmd_send)
 
         for (other = ma->handle->users; other; other = other->next_authed)
             send_message_type((ma->flags & MEMO_USE_PRIVMSG)? MSG_TYPE_PRIVMSG : MSG_TYPE_NOTICE, other, memoserv ? memoserv : cmd->parent->bot, "MSMSG_NEW_MESSAGE", user->nick);
+    }
+
+    estr = conf_get_data("services/nickserv/email_enabled", RECDB_QSTRING);
+    netname = conf_get_data("server/network", RECDB_QSTRING);
+    email = atoi(estr);
+    if (email && (ma->flags & MEMO_NOTIFY_NEW)) {
+        fmt = handle_find_message(hi, "MSEMAIL_NEWMEMO_SUBJECT");
+        snprintf(subject, sizeof(subject), fmt, netname, memoserv->nick, user->nick);
+
+        fmt = handle_find_message(hi, "MSEMAIL_NEWMEMO_BODY");
+        snprintf(body, sizeof(body), fmt, user->nick, memoserv->nick, message, memoserv->nick, memo_id, netname);
+
+        sendmail(memoserv, hi, subject, body, 0);
     }
 
     reply("MSMSG_MEMO_SENT", ma->handle->handle, memo_id);

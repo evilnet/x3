@@ -104,6 +104,7 @@ struct chanData
     unsigned int        max;
     unsigned int        last_refresh;
     unsigned int        last_resync;
+    unsigned int        roulette_chamber;
     unsigned short      banCount; /* Lamers, really */
     unsigned short      userCount;
     unsigned short      lvlOpts[NUM_LEVEL_OPTIONS];
