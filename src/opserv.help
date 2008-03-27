@@ -70,7 +70,7 @@
             "  $bADDALERT$b  Make $O automatically do something",
             "            when users match a criteria.",
             "  $bDELALERT$b  Remove an alert.",
-            "  $bSTATS ALERT$b See a listing of alerts. "
+            "  $bSTATS ALERTS$b See a listing of alerts. "
            );
 
 "TRACKING"   (
