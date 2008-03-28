@@ -369,6 +369,7 @@ void ReintroduceUser(struct userNode* user);
 typedef void (*nick_change_func_t)(struct userNode *user, const char *old_nick);
 void reg_nick_change_func(nick_change_func_t handler);
 void NickChange(struct userNode* user, const char *new_nick, int no_announce);
+void SVSNickChange(struct userNode* bot, struct userNode* user, const char *new_nick);
 
 typedef void (*account_func_t) (struct userNode *user, const char *stamp);
 void reg_account_func(account_func_t handler);

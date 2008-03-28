@@ -197,6 +197,40 @@ NickChange(struct userNode* user, const char *new_nick, int no_announce)
     free(old_nick);
 }
 
+void
+SVSNickChange(struct userNode* bot, struct userNode* user, const char *new_nick)
+{
+    char *old_nick;
+    unsigned int nn;
+
+    /* don't do anything if there's no change */
+    old_nick = user->nick;
+    if (!strncmp(new_nick, old_nick, NICKLEN))
+        return;
+
+    /* remove old entry from clients dictionary */
+    dict_remove(clients, old_nick);
+#if !defined(WITH_PROTOCOL_P10)
+    /* Remove from uplink's clients dict */
+    dict_remove(user->uplink->users, old_nick);
+#endif
+    /* and reinsert */
+    user->nick = strdup(new_nick);
+    dict_insert(clients, user->nick, user);
+#if !defined(WITH_PROTOCOL_P10)
+    dict_insert(user->uplink->users, user->nick, user);
+#endif
+
+    /* Make callbacks for nick changes.  Do this with new nick in
+     * place because that is slightly more useful.
+     */
+    for (nn=0; nn<ncf2_used; nn++)
+        ncf2_list[nn](user, old_nick);
+    user->timestamp = now;
+
+    free(old_nick);
+}
+
 struct userNode *
 GetUserH(const char *nick)
 {

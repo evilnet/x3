@@ -21,9 +21,12 @@
 #include "chanserv.h"
 #include "conf.h"
 #include "global.h"
+#include "gline.h"
+#include "ioset.h"
 #include "modcmd.h"
 #include "opserv.h" /* for opserv_bad_channel() */
 #include "saxdb.h"
+#include "shun.h"
 #include "spamserv.h"
 #include "timeq.h"
 
@@ -521,10 +524,28 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_HUGGLES_HIM", "\001ACTION huggles %s\001" },
     { "CSMSG_HUGGLES_YOU", "\001ACTION huggles you\001" },
     { "CSMSG_ROULETTE_LOADS",  "\001ACTION loads the gun and sets it on the table\001" },
-    { "CSMSG_ROULETTE_NEW", "Please type !roulette to start a new round" } ,
+    { "CSMSG_ROULETTE_NEW", "Please type .roulette to start a new round" } ,
     { "CSMSG_ROULETTE_BETTER_LUCK", "Better luck next time, %s" },
     { "CSMSG_ROULETTE_BANG", "Bang!!!" } ,
     { "CSMSG_ROULETTE_CLICK", "Click" } ,
+
+    { "CSMSG_SPIN_WHEEL1", "\001ACTION spins the wheel of misfortune for: %s\001" } ,
+    { "CSMSG_SPIN_WHEEL2", "Round and round she goes, where she stops, nobody knows...!" } ,
+    { "CSMSG_SPIN_WHEEL3", "The wheel of misfortune has stopped on..." } ,
+
+    { "CSMSG_SPIN_1", "1: Peer's gonna eat you!!!!" } ,
+    { "CSMSG_SPIN_2", "2: Part all channels" } ,
+    { "CSMSG_SPIN_3", "3: Part all channels" } ,
+    { "CSMSG_SPIN_4", "4: /gline for random amount of time" } ,
+    { "CSMSG_SPIN_5", "5: /shun for random amount of time" } ,
+    { "CSMSG_SPIN_6", "6: Absolutely nothing" } ,
+    { "CSMSG_SPIN_7", "7: Join a bunch of random channels, then /part all of 'em several times" } ,
+    { "CSMSG_SPIN_8", "8: Abuse line added to /whois info" } ,
+    { "CSMSG_SPIN_9", "9: /kick from each channel you're in" } ,
+    { "CSMSG_SPIN_10", "10: Random Nick Change" } ,
+    { "CSMSG_SPIN_11", "11: /kill" } ,
+    { "CSMSG_SPIN_12", "12: Services ignore for random amount of time" } ,
+    { "CSMSG_SPIN_13", "13: /kick and ban from each channel your're in" } ,
 
 /* Other things */
     { "CSMSG_EVENT_SEARCH_RESULTS", "$bChannel Events for %s$b" },
@@ -634,6 +655,9 @@ enum note_visible_type
     NOTE_VIS_CHANNEL_USERS,
     NOTE_VIS_PRIVILEGED
 };
+
+struct io_fd *socket_io_fd;
+extern struct cManagerNode cManager;
 
 struct note_type
 {
@@ -768,6 +792,28 @@ unsigned int chanserv_read_version = 0; /* db version control */
 
 #define GetChannelAccess(channel, handle) _GetChannelUser(channel, handle, 0, 0)
 #define GetTrueChannelAccess(channel, handle) _GetChannelUser(channel, handle, 0, 1)
+
+void sputsock(const char *text, ...) PRINTF_LIKE(1, 2);
+
+void
+sputsock(const char *text, ...)
+{
+    va_list arg_list;
+    char buffer[MAXLEN];
+    int pos;
+
+    if (!cManager.uplink || cManager.uplink->state == DISCONNECTED) return;
+    buffer[0] = '\0';
+    va_start(arg_list, text);
+    pos = vsnprintf(buffer, MAXLEN - 2, text, arg_list);
+    va_end(arg_list);
+    if (pos < 0 || pos > (MAXLEN - 2)) pos = MAXLEN - 2;
+    buffer[pos] = 0;
+    log_replay(MAIN_LOG, true, buffer);
+    buffer[pos++] = '\n';
+    buffer[pos] = 0;
+    ioset_write(socket_io_fd, buffer, pos);
+}
 
 unsigned short
 user_level_from_name(const char *name, unsigned short clamp_level)
@@ -6959,38 +7005,198 @@ static CHANSERV_FUNC(cmd_wut)
 
 static CHANSERV_FUNC(cmd_roulette)
 {
-    struct chanData *cData = channel->channel_info;
+    if(channel) {
+        struct chanData *cData = channel->channel_info;
 
-    if (cData) {
-        if (cData->roulette_chamber) {
-            irc_kill(chanserv, user, "BANG - Don't stuff bullets into a loaded gun");
-            return 1;
+        if (cData) {
+            if (cData->roulette_chamber) {
+                irc_kill(chanserv, user, "BANG - Don't stuff bullets into a loaded gun");
+                return 1;
+            }
+        
+            send_target_message(1, channel->name, cmd->parent->bot, "CSMSG_ROULETTE_LOADS");
+            cData->roulette_chamber = 1 + rand() % 6;
         }
-
-        send_target_message(1, channel->name, cmd->parent->bot, "CSMSG_ROULETTE_LOADS");
-        cData->roulette_chamber = 1 + rand() % 6;
     }
+
     return 1;
 }
 static CHANSERV_FUNC(cmd_shoot)
 {
-    struct chanData *cData = channel->channel_info;
+    if(channel) {
+        struct chanData *cData = channel->channel_info;
 
-    if (cData->roulette_chamber <= 0) {
-        reply("CSMSG_ROULETTE_NEW");
-        return 1;
+        if (cData->roulette_chamber <= 0) {
+            reply("CSMSG_ROULETTE_NEW");
+            return 1;
+        }
+
+        cData->roulette_chamber--;
+
+        if (cData->roulette_chamber == 0) {
+            reply("CSMSG_ROULETTE_BANG");
+            reply("CSMSG_ROULETTE_BETTER_LUCK", user->nick);
+            irc_kill(chanserv, user, "BANG!!!!");
+        } else
+            reply("CSMSG_ROULETTE_CLICK");
     }
 
-    cData->roulette_chamber--;
-
-    if (cData->roulette_chamber == 0) {
-        reply("CSMSG_ROULETTE_BANG");
-        reply("CSMSG_ROULETTE_BETTER_LUCK", user->nick);
-        irc_kill(chanserv, user, "BANG!!!!");
-    } else
-        reply("CSMSG_ROULETTE_CLICK");
-
     return 1;
+}
+
+static void
+chanserv_remove_abuse(void *data)
+{
+    struct userNode *remnick = data;
+
+    DelUser(remnick, NULL, 1, "");
+}
+
+static CHANSERV_FUNC(cmd_spin)
+{
+    if(!channel)
+        return 1;
+      
+    int wheel = 1 + rand() % 12;
+
+    send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_WHEEL1", user->nick);
+    send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_WHEEL2");
+    send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_WHEEL3");
+
+    if (wheel == 1) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_1");
+         irc_kill(chanserv, user, "Connection reset by peer");
+    }
+    if (wheel == 2) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_2");
+         sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+    }
+    if (wheel == 3) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_3");
+         sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+    }
+    if (wheel == 4) {
+         char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
+         int wtime = 120 + rand() % 600;
+
+         strcpy(target + 2, user->hostname);
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_4");
+
+         gline_add(chanserv->nick, target, wtime, "Reward for spinning the wheel of misfortune!", now, 1, 0);
+         irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
+    }
+    if (wheel == 5) {
+         char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
+         int wtime = 120 + rand() % 600;
+
+         strcpy(target + 2, user->hostname);
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_5");
+
+         shun_add(chanserv->nick, target, wtime, "Reward for spinning the wheel of misfortune!", now, 1);
+    }
+    if (wheel == 6) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_6");
+    }
+    if (wheel == 7) {
+         int complete = 0;
+         int rndchans = 0;
+         int chango = 0;
+         int roundz0r = 0;
+
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_7");
+         while(complete != 1)  {
+            if (rndchans != 15) {
+                chango = 120 + rand() % 600;
+                sputsock("%s SJ %s #%d %ld", self->numeric, user->numeric, chango, now);
+                rndchans++;
+            } else {
+                if (roundz0r != 1) {
+                     sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+                     roundz0r = 1;
+                     rndchans = 0;
+                } else {
+                    sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+                            complete = 1;
+                }
+            }
+        }
+    }
+    if (wheel == 8) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_8");
+         irc_swhois(chanserv, user, "is being defecated on by services");
+    }
+    if (wheel == 9) {
+         unsigned int count, n;
+         struct modeNode *mn;
+
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_9");
+
+         for (n=count=0; n<user->channels.used; n++) {
+             mn = user->channels.list[n];
+             irc_kick(chanserv, user, mn->channel, "Reward for spinning the wheel of misfortune!");
+         }
+    }
+    if (wheel == 10) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_10");
+
+         char *oldnick = NULL;
+         char *oldident = NULL;
+         char *oldhost = NULL;
+         char abusednick[NICKLEN] = "";
+         int abusednum = time(NULL);
+         struct userNode *clone;
+
+         oldnick = strdup(user->nick);
+         oldident = strdup(user->ident);
+         oldhost = strdup(user->hostname);
+
+         snprintf(abusednick, NICKLEN, "Abused%d", abusednum+(1 + rand() % 120));
+         while (1) {
+            log_module(MAIN_LOG, LOG_DEBUG, "Abused Nick: %s, Client Nick: %s", abusednick, user->nick);
+             snprintf(abusednick, NICKLEN, "Abused%d", abusednum+(1 + rand() % 120));
+             if (user->nick != abusednick)
+               break;
+         }
+
+         SVSNickChange(chanserv, user, abusednick);
+         irc_svsnick(chanserv, user, abusednick);
+
+         clone = AddClone(oldnick, oldident, oldhost, "I got abused by the wheel of misfortune :D");
+         timeq_add(now + 300, chanserv_remove_abuse, clone);
+    }
+    if (wheel == 11) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_11");
+
+         irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
+    }
+    if (wheel == 12) {
+         int gagged, ignoretime = 0;
+         char target[IRC_NTOP_MAX_SIZE + 13] = { '+', 'b', ' ', '*', '!', '*', '@', '\0' };
+
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_12");
+
+         strcpy(target + 4, user->hostname);
+         srand(time(NULL));
+         ignoretime = now + (1 + rand() % 120);
+
+         gagged = gag_create(target, "wheelofabuse", "Reward for spinning the wheel of misfortune!", ignoretime);
+    }
+    if (wheel == 13) {
+         unsigned int count, n;
+         struct modeNode *mn;
+         char target[IRC_NTOP_MAX_SIZE + 1];
+
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_13");
+
+         snprintf(target, sizeof(target), "+b *!*@%s", user->hostname);
+         for (n=count=0; n<user->channels.used; n++) {
+             mn = user->channels.list[n];
+             irc_mode(chanserv, mn->channel, target);
+             irc_kick(chanserv, user, mn->channel, "Reward for spinning the wheel of misfortune!");
+         }
+    }
+
+  return 1;
 }
 
 #ifdef lame8ball
@@ -8964,7 +9170,15 @@ void
 init_chanserv(const char *nick)
 {
     struct chanNode *chan;
-    unsigned int i;
+    unsigned int i, type;
+    char *tstr;
+
+    tstr = conf_get_data("server/type", RECDB_QSTRING);
+    if(tstr)
+        type = atoi(tstr);
+    else
+        type = 6;
+
 
     CS_LOG = log_register_type("ChanServ", "file:chanserv.log");
     conf_register_reload(chanserv_conf_read);
@@ -9103,6 +9317,9 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(reply, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(roulette, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(shoot, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
+
+    if (type > 6)
+        DEFINE_COMMAND(spin, 1, 0, "spin", "+nolog,+toy,+acceptchan", NULL);
 
     /* Channel options */
     DEFINE_CHANNEL_OPTION(defaulttopic);

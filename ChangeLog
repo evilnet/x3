@@ -1,6 +1,16 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-03-26  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* ircd/chanserv.c: Added the wheel of misfortune. This will only
+	work with Nefarious 1.2.0. You can upgrade X3 now even if you are
+	running 1.1. Also fixed up some roulette/shoot bugs.
+
+	* ircd/hash.h: Function to change nicknames in X3 when using SVSNICK.
+
+	* ircd/hash.c: Function to change nicknames in X3 when using SVSNICK.
+
 2008-03-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/chanserv.c: Added roulette command.
