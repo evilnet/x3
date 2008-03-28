@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2008-03-28  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* configure: Regenerated.
+
+	* configure.in: Fixed up a typo spotted by Sakkath.
+
+	* x3.conf.example: Fixed up a typo spotted by Sakkath.
+
+2008-03-28  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/chanserv.c: If Nefarious 1.2.0 is in use then use SVSQUIT to
 	fake a connection reset by peer quit if spin 1 comes up.
 

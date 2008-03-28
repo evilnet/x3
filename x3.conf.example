@@ -15,7 +15,7 @@
  */
 "uplinks" {
     // This first entry connects to an ircd on teh same server an X3..
-    "Hub" {  // This can be any string, just used here for your conveniance
+    "Hub" {  // This can be any string, just used here for your convenience
         "address"        "127.0.0.1";  // The IP address of the server
         "port"           "8888";       // What TCP port to connect to
         "password"       "laoo,rpe";  // Both of these passwords must match 
