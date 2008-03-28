@@ -7087,7 +7087,10 @@ static CHANSERV_FUNC(cmd_spin)
 
     if (wheel == 1) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_1");
-         irc_kill(chanserv, user, "Connection reset by peer");
+         if (type < 7)
+              irc_kill(chanserv, user, "Connection reset by peer");
+         else
+              sputsock("%s SQ %s :Connection reset by peer", self->numeric, user->numeric);
     }
     if (wheel == 2) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_2");
