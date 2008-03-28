@@ -7052,11 +7052,33 @@ chanserv_remove_abuse(void *data)
     DelUser(remnick, NULL, 1, "");
 }
 
+int lamepart(struct userNode *nick) {
+    struct modeNode *mn;
+    unsigned int count, n;
+
+    for (n=count=0; n<nick->channels.used; n++) {
+        mn = nick->channels.list[n];
+        irc_svspart(chanserv, nick, mn->channel);
+    }
+
+    return 0;
+}
+
 static CHANSERV_FUNC(cmd_spin)
 {
     if(!channel)
         return 1;
       
+    int type, lamep = 1;
+    char *tstr;
+
+    tstr = conf_get_data("server/type", RECDB_QSTRING);
+    if(tstr) {
+        type = atoi(tstr);
+        if (type > 6)
+            lamep = 0;
+    }
+
     int wheel = 1 + rand() % 12;
 
     send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_WHEEL1", user->nick);
@@ -7069,11 +7091,17 @@ static CHANSERV_FUNC(cmd_spin)
     }
     if (wheel == 2) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_2");
-         sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+         if (lamep)
+             lamepart(user);
+         else
+             sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
     }
     if (wheel == 3) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_3");
-         sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+         if (lamep)
+             lamepart(user);
+         else
+             sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
     }
     if (wheel == 4) {
          char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
@@ -7111,12 +7139,18 @@ static CHANSERV_FUNC(cmd_spin)
                 rndchans++;
             } else {
                 if (roundz0r != 1) {
-                     sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+                     if (lamep)
+                         lamepart(user);
+                     else
+                         sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
                      roundz0r = 1;
                      rndchans = 0;
                 } else {
-                    sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
-                            complete = 1;
+                     if (lamep)
+                         lamepart(user);
+                     else
+                         sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
+                     complete = 1;
                 }
             }
         }
@@ -9170,15 +9204,7 @@ void
 init_chanserv(const char *nick)
 {
     struct chanNode *chan;
-    unsigned int i, type;
-    char *tstr;
-
-    tstr = conf_get_data("server/type", RECDB_QSTRING);
-    if(tstr)
-        type = atoi(tstr);
-    else
-        type = 6;
-
+    unsigned int i;
 
     CS_LOG = log_register_type("ChanServ", "file:chanserv.log");
     conf_register_reload(chanserv_conf_read);
@@ -9317,9 +9343,7 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(reply, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(roulette, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(shoot, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
-
-    if (type > 6)
-        DEFINE_COMMAND(spin, 1, 0, "spin", "+nolog,+toy,+acceptchan", NULL);
+    DEFINE_COMMAND(spin, 1, 0, "spin", "+nolog,+toy,+acceptchan", NULL);
 
     /* Channel options */
     DEFINE_CHANNEL_OPTION(defaulttopic);
