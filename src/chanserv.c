@@ -9343,7 +9343,7 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(reply, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(roulette, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
     DEFINE_COMMAND(shoot, 1, 0, "flags", "+nolog,+toy,+acceptchan", NULL);
-    DEFINE_COMMAND(spin, 1, 0, "spin", "+nolog,+toy,+acceptchan", NULL);
+    DEFINE_COMMAND(spin, 1, MODCMD_REQUIRE_AUTHED, "spin", "+nolog,+toy,+acceptchan", NULL);
 
     /* Channel options */
     DEFINE_CHANNEL_OPTION(defaulttopic);

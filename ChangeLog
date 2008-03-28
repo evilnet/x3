@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2008-03-26  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: Only allow logged in people to use spin.
+
+2008-03-26  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/chanserv.c: Added lamepart function so that spin can be used
 	on Nefarious 1.1.
 
