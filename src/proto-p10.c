@@ -91,6 +91,7 @@
 #define CMD_SETTIME             "SETTIME"
 #define CMD_SHUN		"SHUN"
 #define CMD_SILENCE             "SILENCE"
+#define CMD_SNO                 "SNO"
 #define CMD_SQUERY              "SQUERY"
 #define CMD_SQUIT               "SQUIT"
 #define CMD_STATS               "STATS"
@@ -182,6 +183,7 @@
 #define TOK_SETTIME             "SE"
 #define TOK_SHUN		"SU"
 #define TOK_SILENCE             "U"
+#define TOK_SNO                 "SNO"
 #define TOK_SQUERY              "SQUERY"
 #define TOK_SQUIT               "SQ"
 #define TOK_STATS               "R"
@@ -282,6 +284,7 @@
 #define P10_SETTIME             TYPE(SETTIME)
 #define P10_SHUN		TYPE(SHUN)
 #define P10_SILENCE             TYPE(SILENCE)
+#define P10_SNO                 TYPE(SNO)
 #define P10_SQUERY              TYPE(SQUERY)
 #define P10_SQUIT               TYPE(SQUIT)
 #define P10_STATS               TYPE(STATS)
@@ -2448,6 +2451,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_VERSION, cmd_version);
     dict_insert(irc_func_dict, CMD_ADMIN, cmd_admin);
     dict_insert(irc_func_dict, TOK_ADMIN, cmd_admin);
+    dict_insert(irc_func_dict, CMD_SNO, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_SNO, cmd_dummy);
 
     dict_insert(irc_func_dict, CMD_RPING, cmd_rping);
     dict_insert(irc_func_dict, TOK_RPING, cmd_rping);
