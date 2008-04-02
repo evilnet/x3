@@ -1934,7 +1934,7 @@ reg_failpw_func(failpw_func_t func)
  * called by nefariouses enhanced AC login-on-connect code
  *
  */
-struct handle_info *loc_auth(char *handle, char *password)
+struct handle_info *loc_auth(char *handle, char *password, char *userhost)
 {
     int pw_arg, used, maxlogins;
     unsigned int ii;
@@ -1976,6 +1976,7 @@ struct handle_info *loc_auth(char *handle, char *password)
          int rc;
 
          /* Add a *@* mask */
+         /* TODO if userhost is not null, build mask based on that. */
          if(nickserv_conf.default_hostmask)
             mask = "*@*";
          else
@@ -2012,14 +2013,52 @@ struct handle_info *loc_auth(char *handle, char *password)
     /* We don't know the users hostname, or anything because they
      * havn't registered yet. So we can only allow LOC if your
      * account has *@* as a hostmask.
+     *
+     * UPDATE: New nefarious LOC supports u@h
      */
-    for (ii=0; ii<hi->masks->used; ii++)
-    {
-       if (!strcmp(hi->masks->list[ii], "*@*"))
-       {
-           wildmask++;
-           break;
-       }
+    if(userhost) {
+        char *buf;
+        char *ident;
+        char *realhost;
+        char *ip;
+        char *uh;
+        char *ui;
+
+        buf = strdup(userhost);
+        ident = mysep(&buf, "@");
+        realhost = mysep(&buf, ":");
+        ip = mysep(&buf, ":");
+        if(!ip || !realhost || !ident) {
+            free(buf);
+            return NULL; /* Invalid AC request, just quit */
+        }
+        uh = malloc(strlen(userhost));
+        ui = malloc(strlen(userhost));
+        sprintf(uh, "%s@%s", ident, realhost);
+        sprintf(ui, "%s@%s", ident, ip);
+        for (ii=0; ii<hi->masks->used; ii++) 
+        {
+            if(match_ircglob(uh, hi->masks->list[ii])
+               || match_ircglob(ui, hi->masks->list[ii]))
+            {
+                wildmask++;
+                break;
+            }
+        }
+        free(buf);
+        free(uh);
+        free(ui);
+    }
+    else {
+
+        for (ii=0; ii<hi->masks->used; ii++)
+        {
+           if (!strcmp(hi->masks->list[ii], "*@*"))
+           {
+               wildmask++;
+               break;
+           }
+        }
     }
     if(wildmask < 1)
         return NULL;

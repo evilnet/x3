@@ -1485,7 +1485,22 @@ static CMD_FUNC(cmd_account)
     
     if(!strcmp(argv[2],"C"))
     {
-        if((hi = loc_auth(argv[4], argv[5])))
+        if((hi = loc_auth(argv[4], argv[5], NULL)))
+        {
+            /* Return a AC A */
+            putsock("%s " P10_ACCOUNT " %s A %s %lu", self->numeric, server->numeric , argv[3], hi->registered);
+
+        }
+        else
+        {
+            /* Return a AC D */
+            putsock("%s " P10_ACCOUNT " %s D %s", self->numeric, server->numeric , argv[3]);
+        }
+        return 1;
+    }
+    else if(!strcmp(argv[2],"H")) /* New enhanced (host) version of C */
+    {
+        if((hi = loc_auth(argv[5], argv[6], argv[4] )))
         {
             /* Return a AC A */
             putsock("%s " P10_ACCOUNT " %s A %s %lu", self->numeric, server->numeric , argv[3], hi->registered);

@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-04-02  Alex Schumann  <rubin@afternet.org>
+
+	* proto-p10.c: Provisional code for LOC account hostmask validation
+
+	* nickserv.c: Provisional code for LOC account hostmask validation
+
 2008-04-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* configure: Regenerated.
