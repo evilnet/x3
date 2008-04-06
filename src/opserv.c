@@ -2689,7 +2689,7 @@ opserv_new_user_check(struct userNode *user)
     }
 
     if (checkDefCon(DEFCON_NO_NEW_CLIENTS)) {
-        irc_kill(opserv, user, DefConGlineReason);
+        DelUser(user, opserv, 1, DefConGlineReason);
         return 0;
     }
 

@@ -1,11 +1,17 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-04-07  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Fixed a bug with x3 not handling kills properly.
+
+	* src/opserv.c: Fixed a bug with x3 not handling kills properly.
+
 2008-04-02  Alex Schumann  <rubin@afternet.org>
 
-	* proto-p10.c: Provisional code for LOC account hostmask validation
+	* src/proto-p10.c: Provisional code for LOC account hostmask validation
 
-	* nickserv.c: Provisional code for LOC account hostmask validation
+	* src/nickserv.c: Provisional code for LOC account hostmask validation
 
 2008-04-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 

@@ -7010,7 +7010,7 @@ static CHANSERV_FUNC(cmd_roulette)
 
         if (cData) {
             if (cData->roulette_chamber) {
-                irc_kill(chanserv, user, "BANG - Don't stuff bullets into a loaded gun");
+		DelUser(user, chanserv, 1, "BANG - Don't stuff bullets into a loaded gun");
                 return 1;
             }
         
@@ -7036,7 +7036,7 @@ static CHANSERV_FUNC(cmd_shoot)
         if (cData->roulette_chamber == 0) {
             reply("CSMSG_ROULETTE_BANG");
             reply("CSMSG_ROULETTE_BETTER_LUCK", user->nick);
-            irc_kill(chanserv, user, "BANG!!!!");
+            DelUser(user, chanserv, 1, "BANG!!!!");
         } else
             reply("CSMSG_ROULETTE_CLICK");
     }
