@@ -3102,7 +3102,7 @@ static OPTION_FUNC(opt_announcements)
 static OPTION_FUNC(opt_password)
 {
     char crypted[MD5_CRYPT_LENGTH+1];
-    if(argc < 1) {
+    if(argc < 2) {
        return 0;
     }
     if (!override) {
