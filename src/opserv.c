@@ -527,7 +527,7 @@ opserv_free_waiting_connection(void *data)
 
 typedef struct opservDiscrim {
     struct chanNode *channel;
-    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark, *mask_mark;
+    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark, *mask_mark, *modes;
     irc_in_addr_t ip_mask;
     unsigned long limit;
     time_t min_ts, max_ts;
@@ -2079,6 +2079,10 @@ static MODCMD_FUNC(cmd_whois)
         if (IsDeaf(target)) buffer[bpos++] = 'd';
         if (target->handle_info) buffer[bpos++] = 'r';
         if (IsHiddenHost(target)) buffer[bpos++] = 'x';
+	if (IsBotM(target)) buffer[bpos++] = 'B';
+	if (IsHideChans(target)) buffer[bpos++] = 'n';
+	if (IsHideIdle(target)) buffer[bpos++] = 'I';
+	if (IsXtraOp(target)) buffer[bpos++] = 'X';
         if (IsGagged(target)) buffer_cat(" (gagged)");
         if (IsRegistering(target)) buffer_cat(" (registered account)");
         buffer[bpos] = 0;
@@ -5387,6 +5391,8 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
             discrim->domain_depth = strtoul(argv[++i], NULL, 0);
         } else if (irccasecmp(argv[i], "clones") == 0) {
             discrim->min_clones = strtoul(argv[++i], NULL, 0);
+	} else if (irccasecmp(argv[i], "modes") == 0) {
+  	    discrim->modes = argv[++i];
         } else {
             send_message(user, bot, "MSG_INVALID_CRITERIA", argv[i]);
             goto fail;
@@ -5570,6 +5576,57 @@ discrim_match(discrim_t discrim, struct userNode *user)
         }
         if (irccasecmp(scmp,dcmp))
             return 0;
+    }
+
+    if (discrim->modes) {
+	    unsigned int ii, matches = 0;
+        for (ii = 0; ii < strlen(discrim->modes); ii++) {
+            switch(discrim->modes[ii]) {
+                case 'O':
+                    if(IsOper(user)) matches++;
+                    break;
+                case 'o':
+                    if(IsOper(user)) matches++;
+                    break;
+                case 'i':
+                    if(IsInvisible(user)) matches++;
+                    break;
+                case 'w':
+                    if(IsWallOp(user)) matches++;
+                    break;
+                case 's':
+                    if(IsServNotice(user)) matches++;
+                    break;
+                case 'd':
+                    if(IsDeaf(user)) matches++;
+                    break;
+                case 'k':
+                    if(IsService(user)) matches++;
+                    break;
+                case 'g':
+                    if(IsGlobal(user)) matches++;
+                    break;
+                case 'h':
+                    if(IsSetHost(user)) matches++;
+                    break;
+                case 'B':
+                    if(IsBotM(user)) matches++;
+                    break;
+                case 'n':
+                    if(IsHideChans(user)) matches++;
+                    break;
+                case 'I':
+                    if(IsHideIdle(user)) matches++;
+                    break;
+                case 'X':
+                    if(IsXtraOp(user)) matches++;
+                    break;
+                case 'x':
+                    if(IsHiddenHost(user)) matches++;
+                    break;
+            }
+        }
+        if (matches != strlen(discrim->modes)) return 0;
     }
 
     access = user->handle_info ? user->handle_info->opserv_level : 0;

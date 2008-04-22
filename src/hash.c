@@ -198,7 +198,7 @@ NickChange(struct userNode* user, const char *new_nick, int no_announce)
 }
 
 void
-SVSNickChange(struct userNode* bot, struct userNode* user, const char *new_nick)
+SVSNickChange(struct userNode* user, const char *new_nick)
 {
     char *old_nick;
     unsigned int nn;

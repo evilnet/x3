@@ -480,7 +480,7 @@ irc_server(struct server *srv)
     }
 }
 
-static void
+void
 irc_p10_pton(irc_in_addr_t *ip, const char *input)
 {
     if (strlen(input) == 6) {
@@ -507,7 +507,7 @@ irc_p10_pton(irc_in_addr_t *ip, const char *input)
     }
 }
 
-static void
+void
 irc_p10_ntop(char *output, const irc_in_addr_t *ip)
 {
     if (!irc_in_addr_is_valid(*ip)) {
@@ -589,6 +589,15 @@ irc_user(struct userNode *user)
             modes[modelen++] = 'f';
         if (IsHiddenHost(user))
             modes[modelen++] = 'x';
+        if (IsBotM(user))
+            modes[modelen++] = 'B';
+        if (IsHideChans(user))
+            modes[modelen++] = 'n';
+        if (IsHideIdle(user))
+            modes[modelen++] = 'I';
+        if (IsXtraOp(user))
+            modes[modelen++] = 'X';
+
         modes[modelen] = 0;
 
         /* we don't need to put the + in modes because it's in the format string. */
@@ -3032,10 +3041,10 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	case 'd': do_user_mode(FLAGS_DEAF); break;
 	case 'k': do_user_mode(FLAGS_SERVICE); break;
 	case 'g': do_user_mode(FLAGS_GLOBAL); break;
-	// sethost - reed/apples
-	// case 'h': do_user_mode(FLAGS_HELPER); break;
-	// I check if there's an 'h' in the first part, and if there, 
-	// then everything after the space becomes their new host.
+	case 'B': do_user_mode(FLAGS_BOT); break;
+	case 'n': do_user_mode(FLAGS_HIDECHANS); break;
+	case 'I': do_user_mode(FLAGS_HIDEIDLE); break;
+	case 'X': do_user_mode(FLAGS_XTRAOP); break;
 	case 'C': do_user_mode(FLAGS_CLOAKHOST);
 	    if (*word) {
 		char cloakhost[MAXLEN];
@@ -3060,6 +3069,10 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 		safestrncpy(user->cryptip, cloakip, sizeof(user->cryptip));
 	    }
 	    break;
+	// sethost - reed/apples
+	// case 'h': do_user_mode(FLAGS_HELPER); break;
+	// I check if there's an 'h' in the first part, and if there, 
+	// then everything after the space becomes their new host.
 	case 'h': do_user_mode(FLAGS_SETHOST);
 	    if (*word) {
 		char sethost[MAXLEN];

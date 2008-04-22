@@ -7195,7 +7195,7 @@ static CHANSERV_FUNC(cmd_spin)
                break;
          }
 
-         SVSNickChange(chanserv, user, abusednick);
+         SVSNickChange(user, abusednick);
          irc_svsnick(chanserv, user, abusednick);
 
          clone = AddClone(oldnick, oldident, oldhost, "I got abused by the wheel of misfortune :D");

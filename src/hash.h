@@ -55,28 +55,28 @@
 #define MODE_UPASS		0x08000000 /* +U userpass */
 #define MODE_REMOVE             0x80000000
 
-#define FLAGS_OPER		0x0001 /* Operator +O */
-#define FLAGS_LOCOP		0x0002 /* Local operator +o */
-#define FLAGS_INVISIBLE		0x0004 /* invisible +i */
-#define FLAGS_WALLOP		0x0008 /* receives wallops +w */
-#define FLAGS_SERVNOTICE	0x0010 /* receives server notices +s */
-#define FLAGS_DEAF		0x0020 /* deaf +d */
-#define FLAGS_SERVICE		0x0040 /* cannot be kicked, killed or deoped +k */
-#define FLAGS_GLOBAL		0x0080 /* receives global messages +g */
-
-// sethost - reed/apples
-// #define FLAGS_HELPER		0x0100 /* (network?) helper +h */
-#define FLAGS_SETHOST		0x0100 /* sethost +h */
-
-#define FLAGS_PERSISTENT	0x0200 /* for reserved nicks, this isn't just one-shot */
-#define FLAGS_GAGGED		0x0400 /* for gagged users */
-#define FLAGS_AWAY		0x0800 /* for away users */
-#define FLAGS_STAMPED           0x1000 /* for users who have been stamped */
-#define FLAGS_HIDDEN_HOST       0x2000 /* user's host is masked by their account */
-#define FLAGS_REGNICK           0x4000 /* user owns their current nick */
-#define FLAGS_REGISTERING	0x8000 /* user has issued account register command, is waiting for email cookie */
-#define FLAGS_CLOAKHOST         0x10000 /* user has cloaked host */
-#define FLAGS_CLOAKIP           0x20000 /* user has cloaked ip */
+#define FLAGS_OPER		0x000001 /* Operator +O */
+#define FLAGS_LOCOP		0x000002 /* Local operator +o */
+#define FLAGS_INVISIBLE		0x000004 /* invisible +i */
+#define FLAGS_WALLOP		0x000008 /* receives wallops +w */
+#define FLAGS_SERVNOTICE	0x000010 /* receives server notices +s */
+#define FLAGS_DEAF		0x000020 /* deaf +d */
+#define FLAGS_SERVICE		0x000040 /* cannot be kicked, killed or deoped +k */
+#define FLAGS_GLOBAL		0x000080 /* receives global messages +g */
+#define FLAGS_SETHOST		0x000100 /* sethost +h */
+#define FLAGS_PERSISTENT	0x000200 /* for reserved nicks, this isn't just one-shot */
+#define FLAGS_GAGGED		0x000400 /* for gagged users */
+#define FLAGS_AWAY		0x000800 /* for away users */
+#define FLAGS_STAMPED           0x001000 /* for users who have been stamped */
+#define FLAGS_HIDDEN_HOST       0x002000 /* user's host is masked by their account */
+#define FLAGS_REGNICK           0x004000 /* user owns their current nick */
+#define FLAGS_REGISTERING	0x008000 /* user has issued account register command, is waiting for email cookie */
+#define FLAGS_BOT		0x010000 /* Bot +B */
+#define FLAGS_HIDECHANS		0x020000 /* Hidden channels +n */
+#define FLAGS_HIDEIDLE		0x040000 /* Hidden idle time +I */
+#define FLAGS_XTRAOP		0x080000 /* Hidden idle time  */
+#define FLAGS_CLOAKHOST         0x100000 /* user has cloaked host */
+#define FLAGS_CLOAKIP           0x200000 /* user has cloaked ip */
 
 #define IsOper(x)               ((x)->modes & FLAGS_OPER)
 #define IsService(x)            ((x)->modes & FLAGS_SERVICE)
@@ -85,11 +85,11 @@
 #define IsGlobal(x)             ((x)->modes & FLAGS_GLOBAL)
 #define IsWallOp(x)             ((x)->modes & FLAGS_WALLOP)
 #define IsServNotice(x)         ((x)->modes & FLAGS_SERVNOTICE)
-
-// sethost - reed/apples
-// #define IsHelperIrcu(x)         ((x)->modes & FLAGS_HELPER)
+#define IsBotM(x)      		((x)->modes & FLAGS_BOT)
+#define IsHideChans(x)   	((x)->modes & FLAGS_HIDECHANS)
+#define IsHideIdle(x)      	((x)->modes & FLAGS_HIDEIDLE)
+#define IsXtraOp(x)		((x)->modes & FLAGS_XTRAOP)
 #define IsSetHost(x)		((x)->modes & FLAGS_SETHOST)
-
 #define IsGagged(x)             ((x)->modes & FLAGS_GAGGED)
 #define IsPersistent(x)         ((x)->modes & FLAGS_PERSISTENT) 
 #define IsAway(x)               ((x)->modes & FLAGS_AWAY)
@@ -369,7 +369,7 @@ void ReintroduceUser(struct userNode* user);
 typedef void (*nick_change_func_t)(struct userNode *user, const char *old_nick);
 void reg_nick_change_func(nick_change_func_t handler);
 void NickChange(struct userNode* user, const char *new_nick, int no_announce);
-void SVSNickChange(struct userNode* bot, struct userNode* user, const char *new_nick);
+void SVSNickChange(struct userNode* user, const char *new_nick);
 
 typedef void (*account_func_t) (struct userNode *user, const char *stamp);
 void reg_account_func(account_func_t handler);

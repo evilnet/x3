@@ -1,6 +1,22 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-04-22  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Fixed a small bug with SVSNickChange.
+
+	* src/hash.h: Added buttaknife's patch which allows modes to be
+	searched for using opserv trace. Also Fixed a small bug with
+	SVSNickChange.
+
+	* src/hash.c: Fixed a small bug with SVSNickChange.
+
+	* src/opserv.c: Added buttaknife's patch which allows modes to 
+	be searched for using opserv trace.
+
+	* src/proto-p10.c:  Added buttaknife's patch which allows modes
+	to be searched for using opserv trace.
+
 2008-04-10  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: Fix wrong param count check in oset password
