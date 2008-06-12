@@ -1944,7 +1944,6 @@ struct handle_info *loc_auth(char *handle, char *password, char *userhost)
 #ifdef WITH_LDAP
     int ldap_result = LDAP_SUCCESS;
     char *email = NULL;
-
 #endif
 
     hi = dict_find(nickserv_handle_dict, handle, NULL);
@@ -1957,7 +1956,6 @@ struct handle_info *loc_auth(char *handle, char *password, char *userhost)
            return NULL;
         }
     }
-//    else           
 #else
     if (!hi) {
         return NULL;
@@ -1968,7 +1966,16 @@ struct handle_info *loc_auth(char *handle, char *password, char *userhost)
     }
 #endif
 #ifdef WITH_LDAP
-    if( (!hi) && nickserv_conf.ldap_enable && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
+    /* ldap libs are present but we are not using them... */
+    if( !nickserv_conf.ldap_enable ) {
+       if (!hi) {
+          return NULL;
+       }
+       if (!checkpass(password, hi->passwd)) {
+         return NULL;
+       }
+    }
+    else if( (!hi) && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
          /* user not found, but authed to ldap successfully..
           * create the account.
           */

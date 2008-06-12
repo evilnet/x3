@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-06-12  Alex Schumann  <rubin@afternet.org>
+
+	* src/nickserv.c: fix login-on-connect logic problem when ldap libs
+	 are present but ldap is not in use.
+
 2008-04-22  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/chanserv.c: Fixed a small bug with SVSNickChange.
