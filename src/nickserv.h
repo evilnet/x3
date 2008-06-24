@@ -198,6 +198,7 @@ struct nickserv_config {
     const char *ldap_field_email;
     struct string_list *ldap_object_classes;
     const char *ldap_oper_group_dn;
+    unsigned int ldap_oper_group_level;
     const char *ldap_field_group_member;
     unsigned int ldap_timeout;
 #endif

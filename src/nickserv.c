@@ -128,6 +128,7 @@
 #define KEY_LDAP_FIELD_EMAIL "ldap_field_email"
 #define KEY_LDAP_OBJECT_CLASSES "ldap_object_classes"
 #define KEY_LDAP_OPER_GROUP_DN "ldap_oper_group_dn"
+#define KEY_LDAP_OPER_GROUP_LEVEL "ldap_oper_group_level"
 #define KEY_LDAP_FIELD_GROUP_MEMBER "ldap_field_group_member"
 #define KEY_LDAP_TIMEOUT "ldap_timeout"
 #endif
@@ -3265,7 +3266,7 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_oper_group_dn && nickserv_conf.ldap_admin_dn) {
         int rc;
-        if(new_level > 0)
+        if(new_level > nickserv_conf.ldap_oper_group_level)
           rc = ldap_add2group(target->handle, nickserv_conf.ldap_oper_group_dn);
         else
           rc = ldap_delfromgroup(target->handle, nickserv_conf.ldap_oper_group_dn);
@@ -4800,6 +4801,9 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_OPER_GROUP_DN, RECDB_QSTRING);
     nickserv_conf.ldap_oper_group_dn = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_OPER_GROUP_LEVEL, RECDB_QSTRING);
+    nickserv_conf.ldap_oper_group_level = str ? strtoul(str, NULL, 0) : 99;
 
     str = database_get_data(conf_node, KEY_LDAP_FIELD_GROUP_MEMBER, RECDB_QSTRING);
     nickserv_conf.ldap_field_group_member = str ? str : "";

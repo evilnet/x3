@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-06-23  Alex Schumann  <rubin@afternet.org>
+
+        * src/nickserv.c: make opserv access level required to be in oper ldap
+	group configurable.
+
+	* src/nickserv.h: make opserv access level required to be in oper ldap
+	group configurable.
+
 2008-06-12  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: fix login-on-connect logic problem when ldap libs
