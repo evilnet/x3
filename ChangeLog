@@ -3,7 +3,12 @@ X3 ChangeLog
 
 2008-06-23  Alex Schumann  <rubin@afternet.org>
 
-        * src/nickserv.c: make opserv access level required to be in oper ldap
+	* src/chanserv.c: Fix a bug where if spin abuse creates a clone, but an oper kills the
+	clone before its auto-removed, x3 crashes. Thanks tyler and jigsy.
+
+2008-06-23  Alex Schumann  <rubin@afternet.org>
+
+	* src/nickserv.c: make opserv access level required to be in oper ldap
 	group configurable.
 
 	* src/nickserv.h: make opserv access level required to be in oper ldap

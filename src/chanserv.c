@@ -7047,9 +7047,13 @@ static CHANSERV_FUNC(cmd_shoot)
 static void
 chanserv_remove_abuse(void *data)
 {
-    struct userNode *remnick = data;
-
-    DelUser(remnick, NULL, 1, "");
+    char *remnick = data;
+    struct userNode *user;
+    /* sometimes the clone was killed and maybe even the user took their nick back 
+     * (ie, an oper) so dont kill them here after all unless they are local. */
+    if( (user = GetUserH(remnick)) )
+       if(IsLocal(user) )
+         DelUser(user, NULL, 1, "");
 }
 
 int lamepart(struct userNode *nick) {
@@ -7199,7 +7203,7 @@ static CHANSERV_FUNC(cmd_spin)
          irc_svsnick(chanserv, user, abusednick);
 
          clone = AddClone(oldnick, oldident, oldhost, "I got abused by the wheel of misfortune :D");
-         timeq_add(now + 300, chanserv_remove_abuse, clone);
+         timeq_add(now + 300, chanserv_remove_abuse, clone->nick);
     }
     if (wheel == 11) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_11");
