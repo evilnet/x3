@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-07-02  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Added missing PRIV_*'s to privtab
+
+	* src/hash.h: #define's for missing PRIV_*'s
+
 2008-06-23  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: Fix a bug where if spin abuse creates a clone, but an oper kills the

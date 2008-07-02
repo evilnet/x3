@@ -133,6 +133,8 @@ enum Priv {
   PRIV_REMOTEREHASH,    /**< oper can remote REHASH */
   PRIV_RESTART,         /**< oper can RESTART */
   PRIV_DIE,             /**< oper can DIE */
+  PRIV_ZLINE,           /**< oper can ZLINE */
+  PRIV_LOCAL_ZLINE,     /**< oper can local ZLINE */
   PRIV_GLINE,           /**< oper can GLINE */
   PRIV_LOCAL_GLINE,     /**< oper can local GLINE */
   PRIV_SHUN,            /**< oper can SHUN */
@@ -150,6 +152,7 @@ enum Priv {
   PRIV_DISPLAY,         /**< "Is an oper" displayed */
   PRIV_SEE_OPERS,       /**< display hidden opers */
   PRIV_WIDE_GLINE,      /**< oper can set wider G-lines */
+  PRIV_WIDE_ZLINE,      /**< oper can set wider Z-Lines */
   PRIV_WIDE_SHUN,       /**< oper can set wider G-lines */
   PRIV_LIST_CHAN,       /**< oper can list secret channels */
   PRIV_FORCE_OPMODE,    /**< can hack modes on quarantined channels */
