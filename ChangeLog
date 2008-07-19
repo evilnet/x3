@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-07-18  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: set lastmod time to current time when sending
+	glines, otherwise ircd wont burst them later.
+
+	* src/modcmd.c: break credits out to its own command, and add svn
+	version string to ctcp version reply.
+
 2008-07-02  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Added missing PRIV_*'s to privtab

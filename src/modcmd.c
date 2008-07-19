@@ -37,7 +37,7 @@ static struct dict *modules;
 static struct dict *services;
 static struct pending_template *pending_templates;
 static struct module *modcmd_module;
-static struct modcmd *bind_command, *help_command, *version_command;
+static struct modcmd *bind_command, *help_command, *version_command, *credits_command;
 static const struct message_entry msgtab[] = {
     { "MCMSG_BARE_FLAG", "Flag %.*s must be preceded by a + or -." },
     { "MCMSG_UNKNOWN_FLAG", "Unknown module flag %.*s." },
@@ -929,6 +929,28 @@ svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *c
     return argc ? svccmd_invoke_argv(user, service, channel, argc, argv, server_qualified) : 0;
 }
 
+char *cvs_verstring() {
+  static char verstring[MAXLEN] = { 0 };
+  
+  if(!*verstring) {
+    char *svn = NULL, *svnver = NULL, *svndate = NULL, *v = 0, ver[MAXLEN];
+    int vc = 0;
+
+    strcpy(ver, CVS_VERSION);
+    for (svn = x3_strtok(&v, ver, " "); svn;
+         svn = x3_strtok(&v, 0, " ")) {
+        if (vc == 2)
+            svnver = svn;
+        else if (vc == 3)
+            svndate = svn;
+        vc++;
+    }
+    sprintf(verstring, "%s %s", svnver, svndate);
+  }
+  return verstring;
+}
+
+
 void
 modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int server_qualified) {
     struct service *service;
@@ -977,13 +999,7 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int serv
             snprintf(response, sizeof(response), "\x01USERINFO %s\x01", bot->info);
             irc_notice_user(bot, user, response);
         } else if (!irccasecmp(text, "VERSION")) {
-            /* This function provides copyright management information
-             * to end users of X3. You should not alter, disable or
-             * remove this command or its accessibility to normal IRC
-             * users, except to add copyright information pertaining
-             * to changes you make to X3.
-             */
-            snprintf(response, sizeof(response), "\x01VERSION %s\x01", PACKAGE_STRING);
+            snprintf(response, sizeof(response), "\x01VERSION %s+[%s]\x01", PACKAGE_STRING, cvs_verstring());
             irc_notice_user(bot, user, response);
         } else if (!irccasecmp(text, "GENDER")) {
              snprintf(response, sizeof(response), "\x01GENDER ummm im still deciding\x01");
@@ -1981,27 +1997,18 @@ static MODCMD_FUNC(cmd_dump_messages) {
 }
 
 static MODCMD_FUNC(cmd_version) {
-    /* This function provides copyright management information to end
-     * users of X3. You should not alter, disable or remove this
-     * command or its accessibility to normal IRC users, except to add
-     * copyright information pertaining to changes you make to X3.
-     */
+    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s]$b (Based on srvx 1.3.x), Built: "__DATE__", "__TIME__".", cvs_verstring());
+    send_message_type(4, user, cmd->parent->bot, "See $bCREDITS$b for more information.");
+    return 1;
+}
 
-    char *svn = NULL, *svnver = NULL, *svndate = NULL, *v = 0, ver[MAXLEN];
-    int vc = 0;
-
-    strcpy(ver, CVS_VERSION);
-    for (svn = x3_strtok(&v, ver, " "); svn;
-         svn = x3_strtok(&v, 0, " ")) {
-        if (vc == 2)
-            svnver = svn;
-        else if (vc == 3)
-            svndate = svn;
-        vc++;
-    }
-
-    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s %s]$b (Based on srvx 1.3.x), Built: "__DATE__", "__TIME__".", svnver, svndate);
-    send_message_type(4, user, cmd->parent->bot, "$b$b");
+/* This function provides copyright management information to end
+ * users of X3. You should not alter, disable or remove this
+ * command or its accessibility to normal IRC users, except to add
+ * copyright information pertaining to changes you make to X3.
+ */
+static MODCMD_FUNC(cmd_credits) {
+    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE"$b is based on srvx");
     send_message_type(4, user, cmd->parent->bot, "Copyright 2000-2007 srvx Development Team.");
     send_message_type(4, user, cmd->parent->bot, "Copyright 2004-2007 X3 Development Team.");
     send_message_type(4, user, cmd->parent->bot, "This software is OSI Certified Open Source Software.");
@@ -2012,7 +2019,7 @@ static MODCMD_FUNC(cmd_version) {
     send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at http://evilnet.sourceforge.net or in #evilnet on irc.afternet.org.");
     send_message_type(4, user, cmd->parent->bot, "$b$b");
     send_message_type(4, user, cmd->parent->bot, "Thanks goes to ThiefMaster, Joe Hansche (joeatrr), Martijn Smit (wasted), and to any other people who have contributed to X3.");
-    send_message_type(4, user, cmd->parent->bot, "This program is free software; see COPYING in the distribution.");
+    send_message_type(4, user, cmd->parent->bot, "This program is free software; see COPYING in the distribution files.");
 
     return 1;
 }
@@ -2269,6 +2276,7 @@ modcmd_init(void) {
     modcmd_register(modcmd_module, "dumpmessages", cmd_dump_messages, 1, 0, "oper_level", "1000", NULL);
     modcmd_register(modcmd_module, "rebindall", cmd_rebindall, 0, MODCMD_KEEP_BOUND, "oper_level", "800", NULL);
     version_command = modcmd_register(modcmd_module, "version", cmd_version, 1, 0, NULL);
+    credits_command = modcmd_register(modcmd_module, "credits", cmd_credits, 1, 0, NULL);
     message_register_table(msgtab);
 }
 
@@ -2474,6 +2482,7 @@ create_default_binds(int rebind) {
         /* Bind the help and version commands to this service */
         service_bind_modcmd(service, help_command, help_command->name);
         service_bind_modcmd(service, version_command, version_command->name);
+        service_bind_modcmd(service, credits_command, credits_command->name);
 
         /* Now some silly hax.. (aliases that most people want) */
         if (!irccasecmp(def_binds[ii].svcname, "ChanServ")) {

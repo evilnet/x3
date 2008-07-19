@@ -812,8 +812,8 @@ irc_introduce(const char *passwd)
 void
 irc_gline(struct server *srv, struct gline *gline, int silent)
 {
-    putsock("%s " P10_GLINE " %s +%s %ld :%s<%s> %s",
-            self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, silent ? "AUTO " : "", gline->issuer, gline->reason);
+    putsock("%s " P10_GLINE " %s +%s %ld %ld :%s<%s> %s",
+            self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, now, silent ? "AUTO " : "", gline->issuer, gline->reason);
 }
 
 void
