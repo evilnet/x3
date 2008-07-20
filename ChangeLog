@@ -3,7 +3,16 @@ X3 ChangeLog
 
 2008-07-19  Alex Schumann  <rubin@afternet.org>
 
-	* src/proto-p10.c: dont print warning on uping to a jupe
+	* src/proto-p10.c: dont print warning on uping to a jupe. added
+	irc_svsquit() function
+
+	* src/chanserv.c: rework wheel-of-misfortune a bit, allow individual
+	spins to be enabled in x3.conf and make it easy to add new ones or
+	change likelyhoods.
+
+	* src/proto.h: added irc_svsquit() prototype
+
+	* src/x3.conf.example: wheel action example configs
 
 2008-07-18  Alex Schumann  <rubin@afternet.org>
 

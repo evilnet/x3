@@ -533,19 +533,20 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_SPIN_WHEEL2", "Round and round she goes, where she stops, nobody knows...!" } ,
     { "CSMSG_SPIN_WHEEL3", "The wheel of misfortune has stopped on..." } ,
 
-    { "CSMSG_SPIN_1", "1: Peer's gonna eat you!!!!" } ,
-    { "CSMSG_SPIN_2", "2: Part all channels" } ,
-    { "CSMSG_SPIN_3", "3: Part all channels" } ,
-    { "CSMSG_SPIN_4", "4: /gline for random amount of time" } ,
-    { "CSMSG_SPIN_5", "5: /shun for random amount of time" } ,
-    { "CSMSG_SPIN_6", "6: Absolutely nothing" } ,
-    { "CSMSG_SPIN_7", "7: Join a bunch of random channels, then /part all of 'em several times" } ,
-    { "CSMSG_SPIN_8", "8: Abuse line added to /whois info" } ,
-    { "CSMSG_SPIN_9", "9: /kick from each channel you're in" } ,
-    { "CSMSG_SPIN_10", "10: Random Nick Change" } ,
-    { "CSMSG_SPIN_11", "11: /kill" } ,
-    { "CSMSG_SPIN_12", "12: Services ignore for random amount of time" } ,
-    { "CSMSG_SPIN_13", "13: /kick and ban from each channel your're in" } ,
+    { "CSMSG_SPIN_PEER", "Peer: Peer's gonna eat you!!!!" } ,
+    { "CSMSG_SPIN_PARTALL", "Part all: Part all channels" } ,
+    { "CSMSG_SPIN_Gline", "Gline: /gline for random amount of time" } ,
+    { "CSMSG_SPIN_SHUN", "Shun: /shun for random amount of time" } ,
+    { "CSMSG_SPIN_NOTHING", "Nothing: Absolutely nothing" } ,
+    { "CSMSG_SPIN_RANDJOIN", "Random join: Join a bunch of random channels, then /part all of 'em several times" } ,
+    { "CSMSG_SPIN_ABUSEWHOIS", "Abuse whois: Abuse line added to /whois info" } ,
+    { "CSMSG_SPIN_KICKALL", "Kick all: /kick from each channel you're in" } ,
+    { "CSMSG_SPIN_NICKCHANGE", "Nick change: Random Nick Change" } ,
+    { "CSMSG_SPIN_KILL", "Kill: /kill" } ,
+    { "CSMSG_SPIN_SVSIGNORE", "Ignore: Services ignore for random amount of time" } ,
+    { "CSMSG_SPIN_SVSIGNORE_OPER", "Ignore: I'm trying REALLY hard to ignore you, but your IRCOp smell is overwhelming!" } ,
+    { "CSMSG_SPIN_KICKBANALL", "Kickban all: /kick and ban from each channel your're in" } ,
+    { "CSMSG_SPIN_UNKNOWN", "Error: I don't know how to '%s' you, so you live for now..." },
 
 /* Other things */
     { "CSMSG_EVENT_SEARCH_RESULTS", "$bChannel Events for %s$b" },
@@ -621,6 +622,7 @@ static struct
     struct string_list  *set_shows;
     struct string_list  *eightball;
     struct string_list  *old_ban_names;
+    struct string_list  *wheel;
 
     const char          *ctcp_short_ban_duration;
     const char          *ctcp_long_ban_duration;
@@ -7083,62 +7085,75 @@ static CHANSERV_FUNC(cmd_spin)
             lamep = 0;
     }
 
-    int wheel = 1 + rand() % 12;
 
     send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_WHEEL1", user->nick);
     send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_WHEEL2");
     send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_WHEEL3");
 
-    if (wheel == 1) {
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_1");
+    if(chanserv_conf.wheel->used < 1) {
+        /* wheel actions not defined! eek */
+        return 1;
+    }
+
+    const char *wheel = chanserv_conf.wheel->list[ (int) ( (chanserv_conf.wheel->used) * (rand() / (RAND_MAX + 1.0)) ) ];
+    if(!wheel && *wheel) 
+        return 1;
+
+    printf("Testing wheel randomness: %s\n", wheel);
+    if(argc > 1) {
+      wheel = argv[1];
+    }
+    /* connection reset by peer */
+    if (!strcasecmp(wheel, "peer")) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_PEER");
          if (type < 7)
               irc_kill(chanserv, user, "Connection reset by peer");
          else
-              sputsock("%s SQ %s :Connection reset by peer", self->numeric, user->numeric);
+              irc_svsquit(chanserv, user, "Connection reset by peer");
     }
-    if (wheel == 2) {
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_2");
+    /* part all channels */
+    else if (!strcasecmp(wheel, "partall")) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_PARTALL");
          if (lamep)
              lamepart(user);
          else
              sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
     }
-    if (wheel == 3) {
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_3");
-         if (lamep)
-             lamepart(user);
-         else
-             sputsock("%s SJ %s 0 "FMT_TIME_T, self->numeric, user->numeric, now);
-    }
-    if (wheel == 4) {
-         char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
+    /* random time gline */
+    else if (!strcasecmp(wheel, "gline")) {
+         char target[IRC_NTOP_MAX_SIZE + 3];
          int wtime = 120 + rand() % 600;
 
-         strcpy(target + 2, user->hostname);
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_4");
+         strcpy(target, "*@");
+         strcat(target, user->hostname);
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_GLINE");
 
          gline_add(chanserv->nick, target, wtime, "Reward for spinning the wheel of misfortune!", now, 1, 0);
          irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
     }
-    if (wheel == 5) {
-         char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
+    /* random shun */
+    else if (!strcasecmp(wheel, "shun")) {
+         char target[IRC_NTOP_MAX_SIZE + 3];
          int wtime = 120 + rand() % 600;
 
-         strcpy(target + 2, user->hostname);
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_5");
+         strcpy(target, "*@");
+         strcat(target, user->hostname);
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_SHUN");
 
          shun_add(chanserv->nick, target, wtime, "Reward for spinning the wheel of misfortune!", now, 1);
     }
-    if (wheel == 6) {
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_6");
+    /* absolutely nothing */
+    else if (!strcasecmp(wheel, "nothing")) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_NOTHING");
     }
-    if (wheel == 7) {
+    /* join random chans and part em several times */
+    else if (!strcasecmp(wheel, "randjoin")) {
          int complete = 0;
          int rndchans = 0;
          int chango = 0;
          int roundz0r = 0;
 
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_7");
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_RANDJOIN");
          while(complete != 1)  {
             if (rndchans != 15) {
                 chango = 120 + rand() % 600;
@@ -7162,40 +7177,43 @@ static CHANSERV_FUNC(cmd_spin)
             }
         }
     }
-    if (wheel == 8) {
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_8");
+    /* abuse line added to /whois */
+    else if (!strcasecmp(wheel, "abusewhois")) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_ABUSEWHOIS");
          irc_swhois(chanserv, user, "is being defecated on by services");
     }
-    if (wheel == 9) {
+    /* kick from each channel your in */
+    else if (!strcasecmp(wheel, "kickall")) {
          unsigned int count, n;
          struct modeNode *mn;
 
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_9");
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_KICKALL");
 
          for (n=count=0; n<user->channels.used; n++) {
              mn = user->channels.list[n];
              irc_kick(chanserv, user, mn->channel, "Reward for spinning the wheel of misfortune!");
          }
     }
-    if (wheel == 10) {
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_10");
+    /* random nick change */
+    else if (!strcasecmp(wheel, "nickchange")) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_NICKCHANGE");
 
          char *oldnick = NULL;
          char *oldident = NULL;
          char *oldhost = NULL;
          char abusednick[NICKLEN] = "";
-         int abusednum = time(NULL);
+         int abusednum = 1 + (int) (10000.0 * (rand() / (RAND_MAX + 1.0)));
          struct userNode *clone;
 
          oldnick = strdup(user->nick);
          oldident = strdup(user->ident);
          oldhost = strdup(user->hostname);
 
-         snprintf(abusednick, NICKLEN, "Abused%d", abusednum+(1 + rand() % 120));
+         //snprintf(abusednick, NICKLEN, "Abused%d", abusednum+(1 + rand() % 120));
          while (1) {
-            log_module(MAIN_LOG, LOG_DEBUG, "Abused Nick: %s, Client Nick: %s", abusednick, user->nick);
              snprintf(abusednick, NICKLEN, "Abused%d", abusednum+(1 + rand() % 120));
-             if (user->nick != abusednick)
+             log_module(MAIN_LOG, LOG_DEBUG, "Abused Nick: %s, Client Nick: %s", abusednick, user->nick);
+             if(!GetUserH(abusednick))
                break;
          }
 
@@ -7205,39 +7223,77 @@ static CHANSERV_FUNC(cmd_spin)
          clone = AddClone(oldnick, oldident, oldhost, "I got abused by the wheel of misfortune :D");
          timeq_add(now + 300, chanserv_remove_abuse, clone->nick);
     }
-    if (wheel == 11) {
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_11");
+    /* kill */
+    else if (!strcasecmp(wheel, "kill")) {
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_KILL");
 
          irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
     }
-    if (wheel == 12) {
+    /* service ignore */
+    else if (!strcasecmp(wheel, "svsignore")) {
          int gagged, ignoretime = 0;
-         char target[IRC_NTOP_MAX_SIZE + 13] = { '+', 'b', ' ', '*', '!', '*', '@', '\0' };
+         char target[IRC_NTOP_MAX_SIZE + 13];
 
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_12");
+         if(IsOper(user)) {
+            /* we cant gag opers, so just verbally abuse them */
+            send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_SVSIGNORE_OPER");
+            return 1;
+         }
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_SVSIGNORE");
 
-         strcpy(target + 4, user->hostname);
-         srand(time(NULL));
+         strcpy(target, "*!*@");
+         strcat(target, user->hostname);
          ignoretime = now + (1 + rand() % 120);
 
          gagged = gag_create(target, "wheelofabuse", "Reward for spinning the wheel of misfortune!", ignoretime);
     }
-    if (wheel == 13) {
+    /* kick and ban from each channel your in */
+    else if (!strcasecmp(wheel, "kickbanall")) {
          unsigned int count, n;
          struct modeNode *mn;
-         char target[IRC_NTOP_MAX_SIZE + 1];
+         //char ban[IRC_NTOP_MAX_SIZE + 1];
 
-         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_13");
+         send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_KICKBANALL");
 
-         snprintf(target, sizeof(target), "+b *!*@%s", user->hostname);
+         //snprintf(ban, sizeof(ban), "*!*@%s", user->hostname);
          for (n=count=0; n<user->channels.used; n++) {
+             struct mod_chanmode *change;
+	     unsigned int exists;
+	     char *ban;
+	     ban = generate_hostmask(user, GENMASK_STRICT_HOST|GENMASK_ANY_IDENT|GENMASK_USENICK);
+	     log_module(MAIN_LOG, LOG_DEBUG, "Generated ban %s", ban);
              mn = user->channels.list[n];
-             irc_mode(chanserv, mn->channel, target);
+             if(mn->channel->banlist.used >= MAXBANS) {
+	        reply("CSMSG_BANLIST_FULL", mn->channel->name);
+	        free(ban);
+		continue;
+             }
+
+	     exists = ChannelBanExists(mn->channel, ban);
+	     change = mod_chanmode_alloc(2);
+	     change->args[0].mode = MODE_REMOVE|MODE_CHANOP|MODE_HALFOP|MODE_VOICE;
+	     change->args[0].u.member = GetUserMode(mn->channel, user);
+	     change->argc = 1;
+	     if(!exists) {
+	       change->args[1].mode = MODE_BAN;
+	       change->args[1].u.hostmask = ban;
+	       change->argc = 2;
+	     }
+	     mod_chanmode_announce(chanserv, mn->channel, change);
+	     mod_chanmode_free(change);
+	     if(exists) {
+	        reply("CSMSG_REDUNDANT_BAN", ban, mn->channel->name);
+	        free(ban);
+	     }
+
              irc_kick(chanserv, user, mn->channel, "Reward for spinning the wheel of misfortune!");
          }
     }
+    else {
+       send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_UNKNOWN", wheel);
+    }
 
-  return 1;
+    return 1;
 }
 
 #ifdef lame8ball
@@ -8382,6 +8438,23 @@ chanserv_conf_read(void)
         chanserv_conf.default_modes = *change;
         mod_chanmode_free(change);
     }
+    free_string_list(chanserv_conf.wheel);
+    strlist = database_get_data(conf_node, "wheel", RECDB_STRING_LIST);
+    if(strlist)
+        strlist = string_list_copy(strlist);
+    else
+    {
+       static const char *list[] = {
+          "peer", "partall", "gline",  /* "shun", */
+          "nothing", "randjoin", "abusewhois", "kickall", 
+          "nickchange", "kill", "svsignore", "kickbanall" };
+       unsigned int ii;
+       strlist = alloc_string_list(ArrayLength(list)-1);
+       for(ii=0; list[ii]; ii++)
+          string_list_append(strlist, strdup(list[ii]));
+    }
+    chanserv_conf.wheel = strlist;
+
     free_string_list(chanserv_conf.set_shows);
     strlist = database_get_data(conf_node, "set_shows", RECDB_STRING_LIST);
     if(strlist)
@@ -8412,6 +8485,7 @@ chanserv_conf_read(void)
      * function list as invalid, so it will be initialized.
      */
     set_shows_list.used = 0;
+
     free_string_list(chanserv_conf.eightball);
     strlist = database_get_data(conf_node, KEY_8BALL_RESPONSES, RECDB_STRING_LIST);
     if(strlist)
@@ -8426,6 +8500,7 @@ chanserv_conf_read(void)
         string_list_append(strlist, strdup("Maybe so."));
     }
     chanserv_conf.eightball = strlist;
+
     free_string_list(chanserv_conf.old_ban_names);
     strlist = database_get_data(conf_node, KEY_OLD_BAN_NAMES, RECDB_STRING_LIST);
     if(strlist)
@@ -9192,6 +9267,7 @@ chanserv_db_cleanup(void) {
     dict_delete(note_types);
     free_string_list(chanserv_conf.eightball);
     free_string_list(chanserv_conf.old_ban_names);
+    free_string_list(chanserv_conf.wheel);
     free_string_list(chanserv_conf.set_shows);
     free(set_shows_list.list);
     free(uset_shows_list.list);

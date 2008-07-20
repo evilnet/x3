@@ -98,6 +98,7 @@
 #define CMD_SVSJOIN             "SVSJOIN"
 #define CMD_SVSNICK             "SVSNICK"
 #define CMD_SVSPART             "SVSPART"
+#define CMD_SVSQUIT             "SVSQUIT"
 #define CMD_SWHOIS              "SWHOIS"
 #define CMD_TIME                "TIME"
 #define CMD_TOPIC               "TOPIC"
@@ -190,6 +191,7 @@
 #define TOK_SVSJOIN             "SJ"
 #define TOK_SVSNICK             "SN"
 #define TOK_SVSPART             "SP"
+#define TOK_SVSQUIT             "SX"
 #define TOK_SWHOIS              "SW"
 #define TOK_TIME                "TI"
 #define TOK_TOPIC               "T"
@@ -291,6 +293,7 @@
 #define P10_SVSJOIN             TYPE(SVSJOIN)
 #define P10_SVSNICK             TYPE(SVSNICK)
 #define P10_SVSPART             TYPE(SVSPART)
+#define P10_SVSQUIT		TYPE(SVSQUIT)
 #define P10_SWHOIS              TYPE(SWHOIS)
 #define P10_TIME                TYPE(TIME)
 #define P10_TOPIC               TYPE(TOPIC)
@@ -1027,6 +1030,12 @@ void
 irc_svspart(struct userNode *from, struct userNode *who, struct chanNode *to)
 {
     putsock("%s " P10_SVSPART " %s %s", from->uplink->numeric, who->numeric, to->name);
+}
+
+void
+irc_svsquit(struct userNode *from, struct userNode *who, char *reason)
+{
+    putsock("%s " P10_SVSQUIT " %s :%s", from->uplink->numeric, who->numeric, reason);
 }
 
 void

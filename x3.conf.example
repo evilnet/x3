@@ -471,6 +471,23 @@
                 "No.",
                 "Maybe.");
 
+        // This is a list of wheel-of-misfortune results. Remove them to disable.
+        // You must make sure your ircd supports, and has enabled, the features needed
+        // for these.
+        "wheel" ( 
+             "peer", 
+            // "partall",  // needs svspart
+             "gline", 
+            // "shun",     // needs shun
+             "nothing", 
+            // "randjoin", // needs svsjoin and svspart
+            // "abusewhois",  // needs epitaph in /whois support
+             "kickall", 
+            // "nickchange",  // needs svsnick
+             "kill", 
+             "svsignore", 
+             "kickbanall" );
+
         // channel(s) that support helpers must be in to be helping
         // if this is a list, any one by itself will do
         "support_channel" ("#Operations", "#Help");

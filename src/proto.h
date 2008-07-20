@@ -147,6 +147,7 @@ void irc_topic(struct userNode *service, struct userNode *who, struct chanNode *
 void irc_fetchtopic(struct userNode *from, const char *to);
 void irc_svsjoin(struct userNode *from, struct userNode *who, struct chanNode *to);
 void irc_svspart(struct userNode *from, struct userNode *who, struct chanNode *to);
+void irc_svsquit(struct userNode *from, struct userNode *who, char *reason);
 
 /* network maintenance */
 void irc_silence(struct userNode *who, const char *mask, int add);
