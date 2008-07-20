@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-07-19  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: dont print warning on uping to a jupe
+
 2008-07-18  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: set lastmod time to current time when sending

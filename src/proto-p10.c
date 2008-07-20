@@ -1329,7 +1329,7 @@ static CMD_FUNC(cmd_rping)
     struct server *dest;
 
     if (!(dest = GetServerN(argv[1])))
-        return 0;
+        return 1; /* if its a jupe or something, return 1 so its silently ignored */
 
     if (dest == self)
         irc_rpong(argv[2], argv[3], argv[4], argv[5]);
@@ -2525,6 +2525,7 @@ init_parse(void)
     /* ignore /trace and /motd commands targetted at us */
     dict_insert(irc_func_dict, TOK_TRACE, cmd_dummy);
     dict_insert(irc_func_dict, TOK_MOTD, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_UPING, cmd_dummy);
 
     /* handle topics */
     dict_insert(irc_func_dict, "331", cmd_num_topic);
