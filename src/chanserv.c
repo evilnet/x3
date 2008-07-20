@@ -7132,7 +7132,7 @@ static CHANSERV_FUNC(cmd_spin)
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_GLINE");
 
          gline_add(chanserv->nick, target, wtime, "Reward for spinning the wheel of misfortune!", now, 1, 0);
-         irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
+//         irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
     }
     /* random shun */
     else if (!strcasecmp(wheel, "shun")) {
@@ -7230,7 +7230,8 @@ static CHANSERV_FUNC(cmd_spin)
     else if (!strcasecmp(wheel, "kill")) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_KILL");
 
-         irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
+	 DelUser(user, chanserv, 1, "Reward for spinning the wheel of misfortune!");
+         //irc_kill(chanserv, user, "Reward for spinning the wheel of misfortune!");
     }
     /* service ignore */
     else if (!strcasecmp(wheel, "svsignore")) {

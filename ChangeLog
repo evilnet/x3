@@ -3,7 +3,7 @@ X3 ChangeLog
 
 2008-07-20  Alex Schumann  <rubin@afternet.org>
 
-	* src/chanserv.c: remove spin debugging code
+	* src/chanserv.c: remove spin debugging code. Fix gline/kill glitch.
 
 	* src/config.h: bump trunk to 1.7
 

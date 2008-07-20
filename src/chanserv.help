@@ -273,6 +273,15 @@
 	"8BALL answers yes or no questions, color queistions, numerical questions, and location questions.",
 	"If you do not have access in the channel, the answer may be reported to you privately instead of in the channel.",
 	"$uSee Also:$u dice, calc");
+"ROULETTE" ("/msg $C ROULETTE",
+        "ROULETTE loads the gun for a game of russion roulette. Use FIRE to shoot it",
+        "$uSee Also:$u fire, spin");
+"FIRE"  ("/msg $C FIRE",
+        "FIRE the gun (after you load it with ROULETTE). WARNING: this may kill you.",
+        "$uSee Also:$u roulette, spin");
+"SPIN"  ("/msg $C SPIN",
+        "This plas a game of Wheel-Of-Misfortune. WARNING: this will result in serious injury or death. Do not play this game if you are faint of heart!",
+        "$uSee Also:$u roulette");
 "CLIST" ("/msg $C CLIST <#channel> [mask]",
         "This command lists all users of level $bCoowner$b on a channel's userlist. If a mask is supplied, only coowners matching the mask will be shown.",
         "$uSee Also:$u addcoowner, delcoowner, mdelcoowner, users");
