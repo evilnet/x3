@@ -7099,10 +7099,13 @@ static CHANSERV_FUNC(cmd_spin)
     if(!wheel && *wheel) 
         return 1;
 
-    printf("Testing wheel randomness: %s\n", wheel);
+/*
+    log_module(MAIN_LOG, LOG_DEBUG,"Testing wheel randomness: %s\n", wheel);
+* enable this to be able to manually specify a result for testing:
     if(argc > 1) {
       wheel = argv[1];
     }
+*/
     /* connection reset by peer */
     if (!strcasecmp(wheel, "peer")) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_PEER");

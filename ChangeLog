@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-07-20  Alex Schumann  <rubin@afternet.org>
+
+	* src/chanserv.c: remove spin debugging code
+
+	* src/config.h: bump trunk to 1.7
+
 2008-07-19  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: dont print warning on uping to a jupe. added
