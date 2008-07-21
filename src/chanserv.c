@@ -7277,7 +7277,7 @@ static CHANSERV_FUNC(cmd_spin)
 		continue;
              }
 
-             bData = add_channel_ban(mn->channel->channel_info, ban, chanserv->nick, now, now, now + duration, "Reward for spinning the wheel of misfortune!");
+/*             bData = add_channel_ban(mn->channel->channel_info, ban, chanserv->nick, now, now, now + duration, "Reward for spinning the wheel of misfortune!"); */
 
 	     change = mod_chanmode_alloc(1);
 	     change->args[0].mode = MODE_REMOVE|MODE_CHANOP|MODE_HALFOP|MODE_VOICE;
