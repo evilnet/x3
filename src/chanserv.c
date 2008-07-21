@@ -7099,13 +7099,13 @@ static CHANSERV_FUNC(cmd_spin)
     if(!wheel && *wheel) 
         return 1;
 
-/*
+/* enable this to be able to manually specify a result for testing:
     log_module(MAIN_LOG, LOG_DEBUG,"Testing wheel randomness: %s\n", wheel);
-* enable this to be able to manually specify a result for testing:
     if(argc > 1) {
       wheel = argv[1];
     }
 */
+
     /* connection reset by peer */
     if (!strcasecmp(wheel, "peer")) {
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_PEER");
@@ -7262,9 +7262,13 @@ static CHANSERV_FUNC(cmd_spin)
          //snprintf(ban, sizeof(ban), "*!*@%s", user->hostname);
          for (n=count=0; n<user->channels.used; n++) {
              struct mod_chanmode *change;
+             struct banData *bData;
 	     unsigned int exists;
+	     int duration = 300;
 	     char *ban;
+
 	     ban = generate_hostmask(user, GENMASK_STRICT_HOST|GENMASK_ANY_IDENT|GENMASK_USENICK);
+
 	     log_module(MAIN_LOG, LOG_DEBUG, "Generated ban %s", ban);
              mn = user->channels.list[n];
              if(mn->channel->banlist.used >= MAXBANS) {
@@ -7273,19 +7277,27 @@ static CHANSERV_FUNC(cmd_spin)
 		continue;
              }
 
-	     exists = ChannelBanExists(mn->channel, ban);
-	     change = mod_chanmode_alloc(2);
+             bData = add_channel_ban(mn->channel->channel_info, ban, chanserv->nick, now, now, now + duration, "Reward for spinning the wheel of misfortune!");
+
+	     change = mod_chanmode_alloc(1);
 	     change->args[0].mode = MODE_REMOVE|MODE_CHANOP|MODE_HALFOP|MODE_VOICE;
 	     change->args[0].u.member = GetUserMode(mn->channel, user);
 	     change->argc = 1;
-	     if(!exists) {
-	       change->args[1].mode = MODE_BAN;
-	       change->args[1].u.hostmask = ban;
-	       change->argc = 2;
-	     }
+
 	     mod_chanmode_announce(chanserv, mn->channel, change);
 	     mod_chanmode_free(change);
-	     if(exists) {
+
+	     exists = ChannelBanExists(mn->channel, ban);
+	     if(!exists) {
+               change = mod_chanmode_alloc(1);
+	       change->args[0].mode = MODE_BAN;
+	       change->args[0].u.hostmask = ban;
+	       change->argc = 1;
+  	       mod_chanmode_announce(chanserv, mn->channel, change);
+	       mod_chanmode_free(change);
+             }
+
+             if(exists) {
 	        reply("CSMSG_REDUNDANT_BAN", ban, mn->channel->name);
 	        free(ban);
 	     }

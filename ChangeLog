@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-07-21  Neil SPierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Turn the kick ban all chans spin action into a
+	timed ban (5 minutes). Also seperated the setting of the ban from
+	the stripping of ohv. If Nefarious has halfops disabled then trying
+	to strip the modes and set the ban results in the numeric being set
+	as the ban. This will need to be fixed in nefarious.
+
 2008-07-20  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: remove spin debugging code. Fix gline/kill glitch.
