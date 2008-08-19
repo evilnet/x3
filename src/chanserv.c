@@ -8463,7 +8463,8 @@ chanserv_conf_read(void)
        static const char *list[] = {
           "peer", "partall", "gline",  /* "shun", */
           "nothing", "randjoin", "abusewhois", "kickall", 
-          "nickchange", "kill", "svsignore", "kickbanall" };
+          "nickchange", "kill", "svsignore", "kickbanall", 
+          NULL};
        unsigned int ii;
        strlist = alloc_string_list(ArrayLength(list)-1);
        for(ii=0; list[ii]; ii++)
