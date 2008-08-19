@@ -1,7 +1,7 @@
 /***********************************************************************
 X3 ChangeLog
 
-2008-07-20  Alex Schumann  <rubin@afternet.org>
+2008-08-19  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: fix a bug in the default wheel spin settings if they
 	were not in the config file, x3 would core.
