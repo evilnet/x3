@@ -199,6 +199,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_ALREADY_DOWN", "You are not opped, halfopped, or voiced in $b%s$b." },
     { "CSMSG_ALREADY_OPCHANNED", "There has been no net.join since the last opchan in $b%s$b." },
     { "CSMSG_OPCHAN_DONE", "I have (re-)opped myself in $b%s$b." },
+    { "CSMSG_NOT_IN_CHANNEL", "I am not in %s." },
 
 /* Removing yourself from a channel. */
     { "CSMSG_NO_OWNER_DELETEME", "You cannot delete your owner access in $b%s$b." },
@@ -2750,6 +2751,10 @@ static CHANSERV_FUNC(cmd_opchan)
     {
         reply("CSMSG_ALREADY_OPCHANNED", channel->name);
         return 0;
+    }
+    if(!IsInChannel(channel,chanserv)) {
+       reply("CSMSG_NOT_IN_CHANNEL", channel->name);
+       return 0;
     }
     channel->channel_info->may_opchan = 0;
     mod_chanmode_init(&change);

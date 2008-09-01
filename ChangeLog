@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-09-02  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Fixed an issue with OPCHAN and channels using off
+	channel.
+
 2008-08-19  Alex Schumann  <rubin@afternet.org>
 
 	* src/chanserv.c: fix a bug in the default wheel spin settings if they
