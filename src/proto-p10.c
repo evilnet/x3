@@ -1564,7 +1564,8 @@ static struct {
   P(DISPLAY),        P(SEE_OPERS),      P(WIDE_GLINE),    P(FORCE_OPMODE),
   P(FORCE_LOCAL_OPMODE), P(REMOTEREHASH), P(CHECK), P(SEE_SECRET_CHAN),
   P(SHUN),           P(LOCAL_SHUN),     P(WIDE_SHUN),     P(ZLINE),
-  P(LOCAL_ZLINE),    P(WIDE_ZLINE),     P(LIST_CHAN),
+  P(LOCAL_ZLINE),    P(WIDE_ZLINE),     P(LIST_CHAN),     P(WHOIS_NOTICE),
+  P(HIDE_IDLE),      P(XTRAOP),         P(HIDE_CHANNELS),
 #undef P
   { 0, 0 }
 };

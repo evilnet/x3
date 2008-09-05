@@ -159,6 +159,10 @@ enum Priv {
   PRIV_FORCE_LOCAL_OPMODE, /**< can hack modes on quarantined local channels */
   PRIV_CHECK,           /**< oper can use CHECK */
   PRIV_SEE_SECRET_CHAN, /**< oper can see +s channels in whois */
+  PRIV_WHOIS_NOTICE,    /**< oper can set/unset user mode +W */
+  PRIV_HIDE_IDLE,       /**< oper can set/unset user mode +I */
+  PRIV_XTRAOP,          /**< oper can set/unset user mode +X */
+  PRIV_HIDE_CHANNELS,   /**< oper can set/unset user mode +n */
   PRIV_LAST_PRIV        /**< number of privileges */
 };
 

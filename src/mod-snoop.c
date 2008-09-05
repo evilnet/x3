@@ -243,6 +243,19 @@ snoop_channel_mode(struct userNode *who, struct chanNode *channel, char **modes,
                                                        tg = tmp;
                                                break;
                                        }
+                               case 'h':
+                                       {
+                                               strcat(targets, " ");
+                                               if ((tmp = strchr(tg, ' ')))
+                                                       *tmp++ = 0;
+                                               if((un = GetUserN(tg)))
+                                                       strcat(targets, un->nick);
+                                               else
+                                                       strcat(targets, tg);
+                                               if(tmp)
+                                                       tg = tmp;
+                                               break;
+                                       }
                                case 'v':
                                        {
                                                strcat(targets, " ");
