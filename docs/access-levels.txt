@@ -18,7 +18,7 @@ the access level of their handle.  If they are not authenticated, it
 is zero.
 
 For ChanServ operations on a channel, there is also a "channel access
-level."  For peons, this is 100; for ops, 200; for masters, 300; for
+level."  For pals, this is 100; for ops, 200; for masters, 300; for
 co-owners, 400; for owners, 500; and for staff members with security
 override on, 600 (if they have a non-override account with sufficient
 access, that is used instead).

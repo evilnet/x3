@@ -13,7 +13,7 @@
         "  ADDCOOWNER  Fügt der Channel Userliste einen Coowner hinzu.",
         "  ADDMASTER   Fügt der Channel Userliste einen Master hinzu.",
         "  ADDOP       Fügt der Channel Userliste einen Op hinzu.",
-        "  ADDPEON     Fügt der Channel Userliste einen Peon hinzu.",
+        "  ADDPAL      Fügt der Channel Userliste einen Pal hinzu.",
         "  GIVEOWNERSHIP    Gibt die Owner Rechte einem anderen User.",
         "  CLVL        Ändert den Channel Access eines Users.",
         "  ADDUSER     Gibt einem User den angegebenen Access Level.",
@@ -22,7 +22,7 @@
         "  MDELCOOWNER Löscht alle Coowner, deren Accounts auf die angegebene Mask passen.",
         "  MDELMASTER  Löscht alle Master, deren Accounts auf die angegebene Mask passen.",
         "  MDELOP      Löscht alle Ops, deren Accounts auf die angegebene Mask passen.",
-        "  MDELPEON    Löscht alle Peons, deren Accounts auf die angegebene Mask passen.",
+        "  MDELPAL     Löscht alle Pals, deren Accounts auf die angegebene Mask passen.",
 	"  TRIM        Löscht inaktive User.",
         "  UP          Gibt dir Op/Voice in einem Channel, wenn du Access hast.",
         "  DOWN        Nimmt dir Op/Voice in einem Channel.",
@@ -56,7 +56,7 @@
         "  CLIST       Listet alle Coowner eines Channels auf.",
         "  MLIST       Listet alle Master eines Channels auf.",
         "  OLIST       Listet alle Ops eines Channels auf.",
-        "  PLIST       Listet alle Peons eines Channels auf.",
+        "  PLIST       Listet alle Pals eines Channels auf.",
         "  BANS        Listet alle permanenten Bans auf.",
         "  TOPIC       Setzt ein Topic oder resetted das Default Topic.",
         "  MODE        Ändert die Channel Modi.",
@@ -116,7 +116,7 @@
         
 "ADDUSER" ("/msg $C ADDUSER <#Channel> <Nick|*Account> <Level>",
         "Dieser Befehl fügt der Channel Userliste einen User mit dem angegebenen Access Level hinzu. (Du kannst Usern nur weniger Access geben als du hast.)",
-        "Der Access Level kann entweder $bPeon$b, $bOp$b, $bMaster$b, $bCoowner$b, $bOwner$b oder eine Zahl zwischen 1 und 500 sein.  Nur der Netzwerk Staff darf Usern Access Level 500 (Owner) geben.",
+        "Der Access Level kann entweder $bPal$b, $bOp$b, $bMaster$b, $bCoowner$b, $bOwner$b oder eine Zahl zwischen 1 und 500 sein.  Nur der Netzwerk Staff darf Usern Access Level 500 (Owner) geben.",
         "$uSiehe auch:$u deluser, users");
         
 "ADDTIMEDBAN" ("/msg $C ADDTIMEDBAN <#Channel> <Mask|Nick> <Länge> [Grund]",
@@ -195,7 +195,7 @@
         
 "DEVOICE" ("/msg $C DEVOICE <#Channel> <Nick> [Nick]...",
         "Nimmt dem/den angegebenen User(n) Voice.",
-        "$uSiehe auch:$u addpeon, delpeon, deop, voice");
+        "$uSiehe auch:$u addpal, delpal, deop, voice");
         
 "DOWN" ("/msg $C DOWN <#Channel>",
         "Dieser Befehl wird dir im angegebenen Channel Op/Voice wegnehmen.",
@@ -255,18 +255,18 @@
         
 "MDELMASTER" ("/msg $C MDELMASTER <#Channel> <Such-Mask>",
         "Löscht alle Master aus der Channel Userliste, deren Accounts auf die angegebene Such-Mask passen.",
-        "$uSiehe auch:$u mdelban, mdelcoowner, mdelop, mdelowner, mdelpeon");
+        "$uSiehe auch:$u mdelban, mdelcoowner, mdelop, mdelowner, mdelpal");
         
 "MDELOP" ("/msg $C MDELOP <#Channel> <Such-Mask>",
         "Löscht alle Ops aus der Channel Userliste, deren Accounts auf die angegebene Such-Mask passen.");
 
 "MDELOWNER" ("/msg $C MDELOWNER <#Channel> <Such-Mask>",
         "Löscht alle Owner aus der Channel Userliste, deren Accounts auf die angegebene Such-Mask passen.",
-        "$uSiehe auch:$u addowner, mdelcoowner, mdelmaster, mdelop, mdelpeon");
+        "$uSiehe auch:$u addowner, mdelcoowner, mdelmaster, mdelop, mdelpal");
 
-"MDELPEON" ("/msg $C MDELPEON <#Channel> <Such-Mask>",
-        "Löscht alle Peons aus der Channel Userliste, deren Accounts auf die angegebene Such-Mask passen.",
-        "$uSiehe auch:$u addpeon, mdelcoowner, mdelmaster, mdelop");
+"MDELPAL" ("/msg $C MDELPAL <#Channel> <Such-Mask>",
+        "Löscht alle Pals aus der Channel Userliste, deren Accounts auf die angegebene Such-Mask passen.",
+        "$uSiehe auch:$u addpal, mdelcoowner, mdelmaster, mdelop");
 
 "MERGE" ("/msg $C MERGE <#Channel> <Ziel>",
         "Kopiert alle Daten wie User und Bans von dem alten Channel in den neuen Channel. User, die ihm Ziel Channel mehr Access haben als im Alten, behalten den höheren Access.",
@@ -323,8 +323,8 @@
         "$uSiehe auch:$u info");
 
 "PLIST" ("/msg $C PLIST <#Channel> [Such-Maske]",
-        "Dieser Befehl listet alle $bPeons$b des Channels auf. Wenn eine Such-Maske angegeben wird, werden nur Peons aufgelistet, deren Accounts auf die Such-Maske passen.",
-        "$uSiehe auch:$u addpeon, delpeon, mdelpeon, users");
+        "Dieser Befehl listet alle $bPals$b des Channels auf. Wenn eine Such-Maske angegeben wird, werden nur Pals aufgelistet, deren Accounts auf die Such-Maske passen.",
+        "$uSiehe auch:$u addpal, delpal, mdelpal, users");
         
 "REGISTER" ("/msg $C REGISTER <#Channel> [User|*Account] [Force]",
         "Registriert einen Channel mit $b$C$b und gibt dem angegebenen User Owner Rechte. Wenn kein User angegeben wird, gibt $b$C$b die Owner Rechte an den User, der den Befehl benutzt hat.",

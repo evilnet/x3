@@ -1,6 +1,20 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-09-07  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Changed PEON to PAL
+
+	* src/chanserv.help: Changed PEON to PAL
+
+	* src/modcmd.c: Changed PEON to PAL
+
+	* docs/access-levels.txt: Changed PEON to PAL
+
+	* languages/de/chanserv.help: Changed PEON to PAL
+
+	* languages/en_GB/chanserv.help: Changed PEON to PAL
+
 2008-09-06  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Added new PRIV_*'s to privtab

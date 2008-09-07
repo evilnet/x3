@@ -2493,11 +2493,13 @@ create_default_binds(int rebind) {
             service_make_alias(service, "addop", "*chanserv.adduser", "$1", "op", "$2", NULL);
             service_make_alias(service, "addhop", "*chanserv.adduser", "$1", "halfop", "$2", NULL);
             service_make_alias(service, "addpeon", "*chanserv.adduser", "$1", "peon", "$2", NULL);
+            service_make_alias(service, "addpal", "*chanserv.adduser", "$1", "pal", "$2", NULL);
             service_make_alias(service, "delowner", "*chanserv.deluser", "owner", "$1", NULL);
             service_make_alias(service, "delcoowner", "*chanserv.deluser", "coowner", "$1", NULL);
             service_make_alias(service, "delmanager", "*chanserv.deluser", "manager", "$1", NULL);
             service_make_alias(service, "delop", "*chanserv.deluser", "op", "$1", NULL);
             service_make_alias(service, "delpeon", "*chanserv.deluser", "peon", "$1", NULL);
+            service_make_alias(service, "delpal", "*chanserv.deluser", "pal", "$1", NULL);
             service_make_alias(service, "llist", "*chanserv.lamers", "$1",  NULL);
             service_make_alias(service, "command", "*modcmd.command", NULL);
             service_make_alias(service, "god", "*modcmd.god", NULL);

@@ -30,14 +30,14 @@
             " $bMLIST$b       Show all MANAGERs of a channel.",
             " $bOLIST$b       Show all OPs of a channel.",
             " $bHLIST$b       Show all HALFOPs of a channel.",
-            " $bPLIST$b       Show all PEONs of a channel.",    
+            " $bPLIST$b       Show all PALs of a channel.",    
             " $bLAMERS$b      Show all  LAMERs of a channel.",
             " $bACCESS$b      Check someone's access level in a channel.",
             " $bCLVL$b        Change a person's access level in a channel.",
             " $bUSET$b        Set a channel user's options (autos, info).",
             " $bSEEN$b        Find out the last time a user was in a channel.",
             "$b$b",
-            " $bADDPEON$b     Add a user as a PEON in a channel.",
+            " $bADDPAL$b     Add a user as a PAL in a channel.",
             " $bADDHOP$b      Add a user as an HALFOP in a channel.",
             " $bADDOP$b       Add a user as an OP in a channel.",
             " $bADDMANAGER$b  Add a user as a MANAGER in a channel.",
@@ -51,7 +51,7 @@
             " $bMDELMANAGER$b Mass-delete managers with accounts matching a mask.",
             " $bMDELOP$b      Mass-delete ops with accounts matching a mask.",
             " $bMDELHOP$b     Mass-delete halfops with accounts matching a mask.",
-            " $bMDELPEON$b    Mass-delete peons with accounts matching a mask.",
+            " $bMDELPAL$b     Mass-delete pals with accounts matching a mask.",
             " $bDELLAMER$b    Remove the specified lamer from the lamer list.",
             " $bWIPEINFO$b    Remove a lower-ranked user's infoline.",
             " $bTRIM$b        Delete users who are inactive.",
@@ -111,10 +111,9 @@
             " $bMLIST$b       Show all MANAGERs of a channel.",
             " $bOLIST$b       Show all OPs of a channel.",
             " $bHLIST$b       Show all HALFOPs of a channel.",
-            " $bPLIST$b       Show all PEONs of a channel.",    
+            " $bPLIST$b       Show all PALs of a channel.",    
             " $bLAMERS$b      Show all  LAMERs of a channel.",
             " $bACCESS$b      Check someone's access level in a channel.",
-            " $bMYACCESS$b    Show all channels where you have access.",
 );
 "OPER"     ("$bHelper/IRC Operator commands:$b",
             " $bGOD$b         Turn security override on/off.",
@@ -188,7 +187,7 @@
 "LEVELS" ("/msg $S LEVELS",
         "Lists the numerical level equivelents for channel access levels.",
         "$b$b",
-        "$S can use either the names (OWNER, COOWNER, MANAGER, OP, HALFOP, and PEON) or numerical values from 1 to 500 to indicate channel access levels. The LEVELS command prints out all the levels and their numerical ranges.",
+        "$S can use either the names (OWNER, COOWNER, MANAGER, OP, HALFOP, and PAL) or numerical values from 1 to 500 to indicate channel access levels. The LEVELS command prints out all the levels and their numerical ranges.",
         "Advanced users can change their style with $N's set style command to view the numerical version in commands like USERS, and may use numbers instead of names for fine-tuning access.",
         "$uSee Also:$u ($N) set style, access, myaccess, adduser");
 
@@ -215,12 +214,12 @@
 
 "ADDUSER" ("/msg $C ADDUSER <#channel> <nick|*account> <level> [duration]",
         "This command adds someone to the channel user list with the specified access level.  (You may only add users to levels less than your own.)",
-        "The level may be one of $bpeon$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
+        "The level may be one of $bpal$b, $bop$b, $bmanager$b, $bcoowner$b, $bowner$b, or a number between 1 and 500.  Only network staff may add level 500 users (owners).",
         "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
         "$uSee Also:$u deluser, users, levels, durations");
 
-"ADDPEON" ("/msg $C ADDPEON <#channel> <nick|*account> [duration]",
-        "This command adds someone to the channel user list with PEON access level. (You may only add users to levels less than your own.)",
+"ADDPAL" ("/msg $C ADDPAL <#channel> <nick|*account> [duration]",
+        "This command adds someone to the channel user list with hPAL access level. (You may only add users to levels less than your own.)",
         "An optional duration can be specified, if specified then the after the given duration has expired the person will be automatically removed from the channel.",
         "$uSee Also:$u adduser, deluser, users, durations");
 
@@ -333,7 +332,7 @@
         "$uSee Also:$u down, hop");
 "DEVOICE" ("/msg $C DEVOICE <#channel> <nick> [nick]...",
         "This command will make $C devoice the selected user[s].",
-        "$uSee Also:$u addpeon, delpeon, deop, voice");
+        "$uSee Also:$u addpal, delpal, deop, voice");
 "DOWN" ("/msg $C DOWN <#channel>",
         "This command will devoice/dehalfop/deop you in the selected channel.",
         "$uSee Also:$u downall, up, upall");
@@ -398,16 +397,16 @@
         "Deletes all halfops with accounts matching the given pattern from the channel user list.");
 "MDELMANAGER" ("/msg $C MDELMANAGER <#channel> <pattern>",
         "Deletes all managers with accounts matching the given pattern from the channel user list.",
-        "$uSee Also:$u mdelban, mdelcoowner, mdelop, mdelowner, mdelpeon");
+        "$uSee Also:$u mdelban, mdelcoowner, mdelop, mdelowner, mdelpal");
 "MDELOP" ("/msg $C MDELOP <#channel> <pattern>",
         "Deletes all ops with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u addop, mdelowner, mdelcoowner, mdelmanager");
 "MDELOWNER" ("/msg $C MDELOWNER <#channel> <pattern>",
         "Deletes all owners with accounts matching the given pattern from the channel user list.",
-        "$uSee Also:$u addowner, mdelcoowner, mdelmanager, mdelop, mdelpeon");
-"MDELPEON" ("/msg $C MDELPEON <#channel> <pattern>",
-        "Deletes all peons with accounts matching the given pattern from the channel user list.",
-        "$uSee Also:$u addpeon, mdelcoowner, mdelmanager, mdelop");
+        "$uSee Also:$u addowner, mdelcoowner, mdelmanager, mdelop, mdelpal");
+"MDELPAL" ("/msg $C MDELPAL <#channel> <pattern>",
+        "Deletes all pals with accounts matching the given pattern from the channel user list.",
+        "$uSee Also:$u addpal, mdelcoowner, mdelmanager, mdelop");
 "MERGE" ("/msg $C MERGE <#channel> <destination>",
         "Merges the source channel's registration, users, lamers, and other data into the target channel. Users with access to both the source and target channels will retain the higher access level; if the access levels are the same, the more recent seen time is kept. Lamers are also merged, with lamers expiring later taking precedence.",
         "$uSee Also:$u register, move, unregister");
@@ -450,8 +449,8 @@
         "Displays the current topic, modes, and ops of the specified channel. Unlike $binfo$b, $bpeek$b displays channel information unrelated to $b$C$b.",
         "$uSee Also:$u info");
 "PLIST" ("/msg $C PLIST <#channel>",
-        "This command lists all users of level $bPeon$b on a channel's userlist. If a mask is supplied, only peons matching the mask will be shown.",
-        "$uSee Also:$u addpeon, delpeon, mdelpeon, users");
+        "This command lists all users of level $bpal$b on a channel's userlist. If a mask is supplied, only pals matching the mask will be shown.",
+        "$uSee Also:$u addpal, delpal, mdelpal, users");
 
 "REGISTER" (
         "/msg $C REGISTER <#channel>",
@@ -554,11 +553,11 @@
         "$uSee Also:$u set");
 
 "SET ENFOPS" ("/msg $C SET <#channel> ENFOPS <value>",
-        "This setting restricts who may op users who are not at least ops on the userlist.  If $C sees someone with access below the specified access op someone not on the userlist (or who is a peon), it will deop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
+        "This setting restricts who may op users who are not at least ops on the userlist.  If $C sees someone with access below the specified access op someone not on the userlist (or who is a pal), it will deop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
         "$uSee Also:$u set");
 
 "SET ENFHALFOPS" ("/msg $C SET <#channel> ENFHALFOPS <value>",
-        "This setting restricts who may halfop users who are not at least halfops on the userlist.  If $C sees someone with access below the specified access halfop someone not on the userlist (or who is a peon), it will dehalfop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
+        "This setting restricts who may halfop users who are not at least halfops on the userlist.  If $C sees someone with access below the specified access halfop someone not on the userlist (or who is a pal), it will dehalfop the second user.  It is a numeric user level, or 501 to mean no one may op unrecognized users.",
         "$uSee Also:$u set");
 
 "SET ENFMODES" ("/msg $C SET <#channel> ENFMODES <value>",
@@ -579,11 +578,11 @@
         "This setting configures who $C gives different channel modes to on join or RESYNC.  ",
         "Valid settings are:",
         "  $b0$b  Noone will be automatically oped, half-oped, or voiced.",
-        "  $b1$b  Give voice to peons, half-op to halfops, and op to ops.",
+        "  $b1$b  Give voice to pals, half-op to halfops, and op to ops.",
         "  $b2$b  #1 Plus Give voice to everyone.",
         "  $b3$b  #1 Plus give halfops to everyone.",
         "  $b4$b  #1 Plus give ops to everyone (not advised.)",
-        "  $b5$b  Give half-op to halfops, and op to ops only, but peons do not get voice. ",
+        "  $b5$b  Give half-op to halfops, and op to ops only, but pals do not get voice. ",
         "$uSee Also:$u set, up, uset autoop, resync");
 
 "SET BANTIMEOUT" ("/msg $C SET <#channel> BANTIMEOUT <value>",
@@ -649,7 +648,7 @@
         "$uSee Also:$u set usergreeting");
 
 "SET USERGREETING" ("/msg $C SET <#channel> USERGREETING <message>",
-        "Sets a message X3 will send to your users (PEONs, OPs, etc) when they join your channel.",
+        "Sets a message X3 will send to your users (PALs, OPs, etc) when they join your channel.",
         "This feature should be used sparingly, as many people find it annoying.",
         "Another set command, SET GREETING, is shown to people who are NOT on your userlist.",
         "$uSee Also:$u set greeting");
@@ -692,7 +691,7 @@
         "Displays up to a certain limit, all channels registered with $b$C$b that have not been visited within a certain duration. If a duration is not provided, a default will be used.",
         "$uSee Also:$u expire, search, durations");
 "UP" ("/msg $C UP <#channel>",
-        "Grants you your normal channel privileges.  Ops for OPs, HalfOps for HALFOPs, and Voice for PEONs.");
+        "Grants you your normal channel privileges.  Ops for OPs, HalfOps for HALFOPs, and Voice for PALs.");
 "UPALL" ("/msg $C UPALL",
         "Executes the $bup$b command for each channel you have access in.",
         "$uSee Also:$u up, down, downall");

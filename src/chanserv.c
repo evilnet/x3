@@ -325,7 +325,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_DEVOICED_USERS", "Devoiced users in $b%s$b." },
 
     { "CSMSG_AUTOMODE_NONE", "Noone will be automatically oped, half-oped, or voiced." },
-    { "CSMSG_AUTOMODE_NORMAL", "Give voice to peons, half-op to halfops, and op to ops." },
+    { "CSMSG_AUTOMODE_NORMAL", "Give voice to pals, half-op to halfops, and op to ops." },
     { "CSMSG_AUTOMODE_VOICE", "#1 plus give voice to everyone." },
     { "CSMSG_AUTOMODE_HOP", "#1 plus give halfops to everyone." },
     { "CSMSG_AUTOMODE_OP", "#1 plus give ops to everyone (not advised)" },
@@ -691,6 +691,7 @@ static const struct {
     unsigned short level;
     char ch;
 } accessLevels[] = { /* MUST be orderd less to most! */
+    { "pal", "Pal", UL_PEON, '+' },
     { "peon", "Peon", UL_PEON, '+' },
     { "halfop", "HalfOp", UL_HALFOP, '%' },
     { "op", "Op", UL_OP, '@' },
@@ -840,7 +841,7 @@ user_level_name_from_level(int level)
 
     highest = "None";
     if(level >= 1)
-        highest = "Peon";
+        highest = "Pal";
     for(ii = 0; (ii < ArrayLength(accessLevels)); ii++)
         if(level >= accessLevels[ii].level)
             highest = accessLevels[ii].title;
@@ -3031,6 +3032,10 @@ static CHANSERV_FUNC(cmd_mdelpeon)
     return cmd_mdel_user(user, channel, UL_PEON, UL_HALFOP-1, argv[1], cmd);
 }
 
+static CHANSERV_FUNC(cmd_mdelpal)
+{
+    return cmd_mdel_user(user, channel, UL_PEON, UL_HALFOP-1, argv[1], cmd);
+}
 
 static CHANSERV_FUNC(cmd_levels)
 {
@@ -9362,6 +9367,7 @@ init_chanserv(const char *nick)
     DEFINE_COMMAND(mdelmanager, 2, MODCMD_REQUIRE_CHANUSER, "access", "coowner", NULL);
     DEFINE_COMMAND(mdelop, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(mdelpeon, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
+    DEFINE_COMMAND(mdelpal, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
     DEFINE_COMMAND(mdelhalfop, 2, MODCMD_REQUIRE_CHANUSER, "access", "manager", NULL);
 
     DEFINE_COMMAND(levels, 1, 0, NULL);
