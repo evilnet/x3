@@ -89,9 +89,11 @@
 #define CMD_SERVSET             "SERVSET"
 #define CMD_SET			"SET"
 #define CMD_SETTIME             "SETTIME"
+#define CMD_SGLINE              "SGLINE"
 #define CMD_SHUN		"SHUN"
 #define CMD_SILENCE             "SILENCE"
 #define CMD_SNO                 "SNO"
+#define CMD_SSHUN		"SSHUN"
 #define CMD_SQUERY              "SQUERY"
 #define CMD_SQUIT               "SQUIT"
 #define CMD_STATS               "STATS"
@@ -182,9 +184,11 @@
 #define TOK_SERVSET             "SERVSET"
 #define TOK_SET			"SET"
 #define TOK_SETTIME             "SE"
+#define TOK_SGLINE              "SGL"
 #define TOK_SHUN		"SU"
 #define TOK_SILENCE             "U"
 #define TOK_SNO                 "SNO"
+#define TOK_SSHUN		"SSU"
 #define TOK_SQUERY              "SQUERY"
 #define TOK_SQUIT               "SQ"
 #define TOK_STATS               "R"
@@ -284,9 +288,11 @@
 #define P10_SERVSET             TYPE(SERVSET)
 #define P10_SET			TYPE(SET)
 #define P10_SETTIME             TYPE(SETTIME)
+#define P10_SGLINE              TYPE(SGLINE)
 #define P10_SHUN		TYPE(SHUN)
 #define P10_SILENCE             TYPE(SILENCE)
 #define P10_SNO                 TYPE(SNO)
+#define P10_SSHUN		TYPE(SSHUN)
 #define P10_SQUERY              TYPE(SQUERY)
 #define P10_SQUIT               TYPE(SQUIT)
 #define P10_STATS               TYPE(STATS)
@@ -2303,6 +2309,34 @@ static CMD_FUNC(cmd_gline)
         return 0;
 }
 
+static CMD_FUNC(cmd_sgline)
+{
+    struct server *sender;
+
+    if (argc < 4)
+        return 0;
+
+    if (!(sender = GetServerH(origin)))
+        return 0;
+
+    gline_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 0, 0);
+    return 1;
+}
+
+static CMD_FUNC(cmd_sshun)
+{
+    struct server *sender;
+
+    if (argc < 4)
+        return 0;
+
+    if (!(sender = GetServerH(origin)))
+        return 0;
+
+    shun_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 0);
+    return 1;
+}
+
 static CMD_FUNC(cmd_shun)
 {
     if (argc < 3)
@@ -2476,8 +2510,12 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_WHOIS, cmd_whois);
     dict_insert(irc_func_dict, CMD_GLINE, cmd_gline);
     dict_insert(irc_func_dict, TOK_GLINE, cmd_gline);
+    dict_insert(irc_func_dict, CMD_SGLINE, cmd_sgline);
+    dict_insert(irc_func_dict, TOK_SGLINE, cmd_sgline);
     dict_insert(irc_func_dict, CMD_SHUN, cmd_shun);
     dict_insert(irc_func_dict, TOK_SHUN, cmd_shun);
+    dict_insert(irc_func_dict, CMD_SSHUN, cmd_sshun);
+    dict_insert(irc_func_dict, TOK_SSHUN, cmd_sshun);
     dict_insert(irc_func_dict, CMD_OPMODE, cmd_opmode);
     dict_insert(irc_func_dict, TOK_OPMODE, cmd_opmode);
     dict_insert(irc_func_dict, CMD_CLEARMODE, cmd_clearmode);

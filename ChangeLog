@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-09-15  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/proto-p10.c: SGLINE and SSHUN support some stuff coming
+	soon in Nefarious.
+
 2008-09-07  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Changed PEON to PAL
