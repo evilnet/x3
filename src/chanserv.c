@@ -525,7 +525,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_HUGGLES_HIM", "\001ACTION huggles %s\001" },
     { "CSMSG_HUGGLES_YOU", "\001ACTION huggles you\001" },
     { "CSMSG_ROULETTE_LOADS",  "\001ACTION loads the gun and sets it on the table\001" },
-    { "CSMSG_ROULETTE_NEW", "Please type .roulette to start a new round" } ,
+    { "CSMSG_ROULETTE_NEW", "Please type %croulette to start a new round" } ,
     { "CSMSG_ROULETTE_BETTER_LUCK", "Better luck next time, %s" },
     { "CSMSG_ROULETTE_BANG", "Bang!!!" } ,
     { "CSMSG_ROULETTE_CLICK", "Click" } ,
@@ -7039,7 +7039,10 @@ static CHANSERV_FUNC(cmd_shoot)
         struct chanData *cData = channel->channel_info;
 
         if (cData->roulette_chamber <= 0) {
-            reply("CSMSG_ROULETTE_NEW");
+            struct service *service;
+            if ((service = service_find(chanserv->nick))) {
+                reply("CSMSG_ROULETTE_NEW", service->trigger);
+            }
             return 1;
         }
 

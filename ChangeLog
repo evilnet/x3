@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-09-27  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Fix for <trigger>shoot telling you to use
+	 .roulette instead of <trigger>roulette
+
 2008-09-15  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/proto-p10.c: SGLINE and SSHUN support some stuff coming
