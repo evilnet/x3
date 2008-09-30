@@ -1112,8 +1112,10 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     }
     else {
         if(user) {
-          register_nick(user->nick, hi);
-          send_message(user, nickserv, "NSMSG_REGISTER_HN_SUCCESS");
+          if (is_registerable_nick(user->nick)) {
+            register_nick(user->nick, hi);
+            send_message(user, nickserv, "NSMSG_REGISTER_HN_SUCCESS");
+          }
         }
     }
     if (settee && (user != settee)) {

@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-09-30  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Prevent automatic registration of dissallowed
+	nicks when registering an account
+
 2008-09-27  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Fix for <trigger>shoot telling you to use
