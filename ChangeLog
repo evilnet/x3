@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-10-10  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/opserv.c: Fix for crash on OpServ SVSPART where the
+	channel specified does not exist.
+
 2008-09-30  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Prevent automatic registration of dissallowed

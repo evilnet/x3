@@ -1818,9 +1818,15 @@ static MODCMD_FUNC(cmd_kickbanall)
 static MODCMD_FUNC(cmd_svspart)
 {
     struct userNode *target;
+    struct chanNode *target_channel;
 
     if(!IsChannelName(argv[2])) {
         reply("MSG_NOT_CHANNEL_NAME");
+        return 0;
+    }
+    if(!(target = GetChannel(argv[2])))
+    {
+        reply("MSG_INVALID_CHANNEL");
         return 0;
     }
     target = GetUserH(argv[1]);
