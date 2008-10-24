@@ -511,7 +511,7 @@
         "ENFOPS:       Who can op users.",
         "ENFHALFOPS:   Who can half-op users.",
         "ENFMODES:     Who can change the channel modes.",
-        "ENFTOPIC:     Who can chang the topic.",
+        "ENFTOPIC:     Who can change the topic.",
         "TOPICSNARF:   Manual topics changes (by /TOPIC) from users this level and above will change the default $b$C$b topic.",
         "SETTERS:      Who may change channel settings (using $bSET$b).",
         "CTCPREACTION: What happens when a CTCP is sent to the channel.",
