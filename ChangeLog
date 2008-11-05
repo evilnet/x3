@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-11-06  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/proto-p10.c: Fixes for SGLINE and SSHUN. As well as a fix for
+	bug 2173687 (PRIVS part of it is already fixed on trunk).
+
 2008-10-24  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.help: Minor spelling mistake "change" instead of

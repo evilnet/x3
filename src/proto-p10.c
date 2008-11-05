@@ -92,6 +92,7 @@
 #define CMD_SGLINE              "SGLINE"
 #define CMD_SHUN		"SHUN"
 #define CMD_SILENCE             "SILENCE"
+#define CMD_SMO                 "SMO"
 #define CMD_SNO                 "SNO"
 #define CMD_SSHUN		"SSHUN"
 #define CMD_SQUERY              "SQUERY"
@@ -187,6 +188,7 @@
 #define TOK_SGLINE              "SGL"
 #define TOK_SHUN		"SU"
 #define TOK_SILENCE             "U"
+#define TOK_SMO                 "SMO"
 #define TOK_SNO                 "SNO"
 #define TOK_SSHUN		"SSU"
 #define TOK_SQUERY              "SQUERY"
@@ -291,6 +293,7 @@
 #define P10_SGLINE              TYPE(SGLINE)
 #define P10_SHUN		TYPE(SHUN)
 #define P10_SILENCE             TYPE(SILENCE)
+#define P10_SMO                 TYPE(SMO)
 #define P10_SNO                 TYPE(SNO)
 #define P10_SSHUN		TYPE(SSHUN)
 #define P10_SQUERY              TYPE(SQUERY)
@@ -2319,7 +2322,7 @@ static CMD_FUNC(cmd_sgline)
     if (!(sender = GetServerH(origin)))
         return 0;
 
-    gline_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 0, 0);
+    gline_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 1, 0);
     return 1;
 }
 
@@ -2333,7 +2336,7 @@ static CMD_FUNC(cmd_sshun)
     if (!(sender = GetServerH(origin)))
         return 0;
 
-    shun_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 0);
+    shun_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 1);
     return 1;
 }
 
@@ -2524,6 +2527,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_VERSION, cmd_version);
     dict_insert(irc_func_dict, CMD_ADMIN, cmd_admin);
     dict_insert(irc_func_dict, TOK_ADMIN, cmd_admin);
+    dict_insert(irc_func_dict, CMD_SMO, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_SMO, cmd_dummy);
     dict_insert(irc_func_dict, CMD_SNO, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SNO, cmd_dummy);
 
