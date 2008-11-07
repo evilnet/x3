@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-11-06  Alex Schumann  <rubin@afternet.org>
+
+	src/modcmd.c,Makefile.in,src/Makefile.in,configure.in,src/config.h.in:
+	Begin work on embedding python.
+
 2008-11-06  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/proto-p10.c: Fixes for SGLINE and SSHUN. As well as a fix for

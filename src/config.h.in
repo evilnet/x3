@@ -290,6 +290,9 @@
 /* Define if LDAP libs are linked */
 #undef WITH_LDAP
 
+/* Define if using python */
+#undef WITH_PYTHON
+
 /* Define if using the Boehm GC to garbage collect and check memory leaks */
 #undef WITH_MALLOC_BOEHM_GC
 
