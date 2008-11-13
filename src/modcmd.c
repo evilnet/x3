@@ -26,10 +26,6 @@
 #include "saxdb.h"
 #include "timeq.h"
 
-#ifdef WITH_PYTHON
-#include "Python.h"
-#endif
-
 
 struct pending_template {
     struct svccmd *cmd;
@@ -2029,19 +2025,6 @@ static MODCMD_FUNC(cmd_credits) {
     return 1;
 }
 
-/* DEBUG: testing command... */
-static MODCMD_FUNC(cmd_script) {
-#ifdef WITH_PYTHON
-    send_message_type(4, user, cmd->parent->bot, "Testing python loading...");
-    Py_Initialize();
-    send_message_type(4, user, cmd->parent->bot, "Initialized");
-#else
-    send_message_type(4, user, cmd->parent->bot, "No Python support compiled in.");
-    return 0;
-#endif
-    return 1;
-}
-
 static void create_default_binds(int rebind);
 
 static MODCMD_FUNC(cmd_rebindall) {
@@ -2293,10 +2276,10 @@ modcmd_init(void) {
     modcmd_register(modcmd_module, "service remove", cmd_service_remove, 2, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "dumpmessages", cmd_dump_messages, 1, 0, "oper_level", "1000", NULL);
     modcmd_register(modcmd_module, "rebindall", cmd_rebindall, 0, MODCMD_KEEP_BOUND, "oper_level", "800", NULL);
-    modcmd_register(modcmd_module, "script", cmd_script, 1, 0, "oper_level", "1000", NULL);
     version_command = modcmd_register(modcmd_module, "version", cmd_version, 1, 0, NULL);
     credits_command = modcmd_register(modcmd_module, "credits", cmd_credits, 1, 0, NULL);
     message_register_table(msgtab);
+
 }
 
 static void
