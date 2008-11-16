@@ -1,13 +1,17 @@
 /***********************************************************************
 X3 ChangeLog
 
-2008-14-06  Alex Schumann  <rubin@afternet.org>
+2008-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.help: Minor mistake in help for 'SET MAXSETINFO'
+
+2008-11-16  Alex Schumann  <rubin@afternet.org>
 
 	src/mod-python.c: further work on building basic bits of this
 
 	src/mod-python.py: first pass at what will be the base python script.
 
-2008-12-06  Alex Schumann  <rubin@afternet.org>
+2008-11-13  Alex Schumann  <rubin@afternet.org>
 
 	src/modcmd.c: remove python tests (moved to mod-python.c)
 

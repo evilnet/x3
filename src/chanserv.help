@@ -570,7 +570,7 @@
         "If no topic mask is set, then a person must have the above access to change the topic from the default.",
         "$uSee Also:$u set, set topic, set topicmask");
 
-"SET MAXSETINFO" ("/msg $C SET <$channel> MAXSETINFO <value>",
+"SET MAXSETINFO" ("/msg $C SET <#channel> MAXSETINFO <value>",
 	"This setting restricts the length of user info lines.",
         "$uSee Also:$u set");
 
