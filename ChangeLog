@@ -1,21 +1,27 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-11-16  Alex Schumann  <rubin@afternet.org>
+
+	* src/mod-python.c: filled in some missing pieces.
+
+	* src/mod-python.py: more demo code for testing
+
 2008-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.help: Minor mistake in help for 'SET MAXSETINFO'
 
 2008-11-16  Alex Schumann  <rubin@afternet.org>
 
-	src/mod-python.c: further work on building basic bits of this
+	* src/mod-python.c: further work on building basic bits of this
 
-	src/mod-python.py: first pass at what will be the base python script.
+	* src/mod-python.py: first pass at what will be the base python script.
 
 2008-11-13  Alex Schumann  <rubin@afternet.org>
 
-	src/modcmd.c: remove python tests (moved to mod-python.c)
+	* src/modcmd.c: remove python tests (moved to mod-python.c)
 
-	src/mod-python.c: initial template based on memoserv
+	* src/mod-python.c: initial template based on memoserv
 
 2008-11-12  Matthew Beeching  <jobe@mdbnet.co.uk>
 
@@ -23,7 +29,7 @@ X3 ChangeLog
 
 2008-11-06  Alex Schumann  <rubin@afternet.org>
 
-	src/modcmd.c,Makefile.in,src/Makefile.in,configure.in,src/config.h.in:
+	* src/modcmd.c,Makefile.in,src/Makefile.in,configure.in,src/config.h.in:
 	Begin work on embedding python.
 
 2008-11-06  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
