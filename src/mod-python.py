@@ -19,10 +19,13 @@ def handle_init():
     print "This is x3init in python"
     return 0
 
-def handle_join(channel, user):
+def handle_join(channel, nick):
     print "This is handle_join() in python"
-    print "   %s joined %s"%(user, channel)
-    svc.send_target_privmsg("x3", channel, "Welcome to %s %s!"%(channel, user))
+    user = svc.get_user(nick)
+    svc.send_target_privmsg("x3", channel,  "   %s joined %s: %s"%(nick, channel, user))
+    svc.send_target_privmsg("x3", channel, "Welcome to %s %s (*%s)! Your IP is %s. You are now in %d channels!"%(channel, user['nick'], user['account'], user['ip'], len(user['channels']) ))
+    chan = svc.get_channel(channel)
+    svc.send_target_privmsg("x3", channel, "Channel details: %s"%chan)
     return 0
 
 

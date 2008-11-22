@@ -86,15 +86,139 @@ emb_send_target_privmsg(PyObject *self, PyObject *args)
         return NULL;
     if(!(service = service_find(servicenick))) {
         /* TODO: generate python exception here */
-        return 0;
+        return NULL;
     }
     send_target_message(5, channel, service->bot, "%s", buf);
     return Py_BuildValue("i", ret);
 }
 
+static PyObject*
+emb_get_user(PyObject *self, PyObject *args)
+{
+    char *nick;
+    struct userNode *user;
+    struct modeNode *mn;
+    int n;
+    PyObject* pChanList;
+    if(!PyArg_ParseTuple(args, "s", &nick))
+        return NULL;
+    if(!(user = GetUserH(nick))) {
+        /* TODO: generate python exception here */
+        return NULL;
+    }
+    pChanList = PyTuple_New(user->channels.used);
+    for(n=0;n<user->channels.used;n++) {
+        mn = user->channels.list[n];
+        PyTuple_SetItem(pChanList, n, Py_BuildValue("s", mn->channel->name));
+    }
+    return Py_BuildValue("{s:s,s:s,s:s,s:s,s:s"   /* format strings. s=string, i=int */
+                         ",s:s,s:s,s:s,s:s,s:s"   /* (format is key:value)  O=object */
+                         ",s:i,s:i,s:s,s:s,s:s"   /* blocks of 5 for readability     */
+                         "s:O}", 
+
+                         "nick", user->nick,
+                         "ident", user->ident,
+                         "info", user->info,
+                         "hostname", user->hostname,
+                         "ip", irc_ntoa(&user->ip),
+
+                         "fakehost", user->fakehost,
+                         "sethost", user->sethost,
+                         "crypthost", user->crypthost,
+                         "cryptip", user->cryptip,
+                         "numeric", user->numeric, /* TODO: only ifdef WITH_PROTOCOL_P10 */
+
+                         "loc", user->loc,
+                         "no_notice", user->no_notice,
+                         "mark", user->mark,
+                         "version_reply", user->version_reply,
+                         "account", user->handle_info?user->handle_info->handle:NULL,
+                         "channels", pChanList);
+}
+
+static PyObject*
+emb_get_channel(PyObject *self, PyObject *args)
+{
+    char *name;
+    struct chanNode *channel;
+    int n;
+    PyObject *pChannelMembers;
+    PyObject *pChannelBans;
+    PyObject *pChannelExempts;
+
+    if(!PyArg_ParseTuple(args, "s", &name))
+        return NULL;
+    if(!(channel = GetChannel(name))) {
+        /* TODO: generate py exception here */
+        return NULL;
+    }
+
+    /* build tuple of nicks in channel */
+    pChannelMembers = PyTuple_New(channel->members.used);
+    for(n=0;n < channel->members.used;n++) {
+        struct modeNode *mn = channel->members.list[n];
+        PyTuple_SetItem(pChannelMembers, n, Py_BuildValue("s", mn->user->nick));
+    }
+
+    /* build tuple of bans */
+    pChannelBans = PyTuple_New(channel->banlist.used);
+    for(n=0; n < channel->banlist.used;n++) {
+        struct banNode *bn = channel->banlist.list[n];
+        PyTuple_SetItem(pChannelBans, n, 
+                        Py_BuildValue("{s:s,s:s,s:i}",
+                            "ban", bn->ban,
+                            "who", bn->who,
+                            "set", bn->set)
+                );
+    }
+
+
+    /* build tuple of exempts */
+    pChannelExempts = PyTuple_New(channel->exemptlist.used);
+    for(n=0; n < channel->exemptlist.used;n++) {
+        struct exemptNode *en = channel->exemptlist.list[n];
+        PyTuple_SetItem(pChannelExempts, n, 
+                        Py_BuildValue("{s:s,s:s,s:i}",
+                            "ban", en->ban,
+                            "who", en->who,
+                            "set", en->set)
+                );
+    }
+
+
+
+    return Py_BuildValue("{s:s,s:s,s:s,s:i"
+                         ",s:i,s:i,s:O,s:O,s:O}",
+
+                         "name", channel->name,
+                         "topic", channel->topic,
+                         "topic_nick", channel->topic_nick,
+                         "topic_time", channel->topic_time,
+
+                         "timestamp", channel->timestamp,
+                         "modes", channel->modes,
+                         "members", pChannelMembers,
+                         "bans", pChannelBans,
+                         "exempts", pChannelExempts
+            );
+}
+
+/*
+static PyObject*
+emb_get_account(PyObject *self, PyObject *args)
+{
+    char *name;
+    if(!PyArg_ParseTuple(args, "s", &name))
+        return NULL;
+}
+*/
+
+
 static PyMethodDef EmbMethods[] = {
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
     {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
+    {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
+    {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -232,7 +356,7 @@ static MODCMD_FUNC(cmd_reload) {
     return 1;
 }
 
-static MODCMD_FUNC(cmd_python) {
+static MODCMD_FUNC(cmd_run) {
     
     char *msg;
     msg = unsplit_string(argv + 1, argc - 1, NULL);
@@ -257,7 +381,7 @@ int python_init(void) {
     modcmd_register(python_module, "send",    cmd_send,    3, MODCMD_REQUIRE_AUTHED, NULL);
 */
     modcmd_register(python_module, "reload",  cmd_reload,  1,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
-    modcmd_register(python_module, "python",  cmd_python,  2,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
+    modcmd_register(python_module, "run",  cmd_run,  2,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     reg_join_func(python_handle_join);
     reg_exit_func(python_cleanup);
 
