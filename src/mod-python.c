@@ -93,6 +93,27 @@ emb_send_target_privmsg(PyObject *self, PyObject *args)
 }
 
 static PyObject*
+emb_send_target_notice(PyObject *self, PyObject *args)
+{
+    int ret = 0;
+    char *servicenick;
+    char *target;
+    char *buf;
+
+    struct service *service;
+
+    if(!PyArg_ParseTuple(args, "sss:reply", &servicenick, &target, &buf ))
+        return NULL;
+    if(!(service = service_find(servicenick))) {
+        /* TODO: generate python exception here */
+        return NULL;
+    }
+    send_target_message(4, target, service->bot, "%s", buf);
+    return Py_BuildValue("i", ret);
+}
+
+
+static PyObject*
 emb_get_user(PyObject *self, PyObject *args)
 {
     char *nick;
@@ -179,7 +200,7 @@ emb_get_channel(PyObject *self, PyObject *args)
         struct exemptNode *en = channel->exemptlist.list[n];
         PyTuple_SetItem(pChannelExempts, n, 
                         Py_BuildValue("{s:s,s:s,s:i}",
-                            "ban", en->ban,
+                            "ban", en->exempt,
                             "who", en->who,
                             "set", en->set)
                 );
@@ -217,13 +238,15 @@ emb_get_account(PyObject *self, PyObject *args)
 static PyMethodDef EmbMethods[] = {
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
     {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
+    {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
     {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
     {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
     {NULL, NULL, 0, NULL}
 };
 
 
-int python_call_func(char *function, char *args[], size_t argc) {
+
+int python_call_func_real(char *function, char *args[], size_t argc) {
     /* TODO: get arguments, pass through to python function */
     PyObject *pFunc, *pValue;
     PyObject *pArgs = NULL;
@@ -246,6 +269,7 @@ int python_call_func(char *function, char *args[], size_t argc) {
                     PyTuple_SetItem(pArgs, i, pValue);
                 }
             }
+
             pValue = PyObject_CallObject(pFunc, pArgs);
             if(pArgs != NULL)  {
                Py_DECREF(pArgs);
@@ -284,6 +308,14 @@ int python_call_func(char *function, char *args[], size_t argc) {
     }
 }
 
+int python_call_func(char *function, char *args[], size_t argc, char *command_caller, char *command_target, char *command_service) {
+            char *setargs[] = {command_caller?command_caller:"", 
+                               command_target?command_target:"",
+                               command_service?command_service:""};
+            python_call_func_real("command_set", setargs, 3);
+            python_call_func_real(function, args, argc);
+            python_call_func_real("command_clear", NULL, 0);
+}
 
 static int
 python_handle_join(struct modeNode *mNode)
@@ -298,7 +330,7 @@ python_handle_join(struct modeNode *mNode)
     }
     else {
         char *args[] = {channel->name, user->nick};
-        return python_call_func("handle_join", args, 2);
+        return python_call_func("handle_join", args, 2, NULL, NULL, NULL);
     }
 }
 
@@ -308,18 +340,18 @@ int python_load() {
     setenv("PYTHONPATH", "/home/rubin/afternet/services/x3/x3-run/", 1);
     Py_Initialize();
     Py_InitModule("svc", EmbMethods);
-    PyRun_SimpleString("import svc");
-    /* TODO: get "mod-python" from x3.conf */
-    pName = PyString_FromString("mod-python");
+    //PyRun_SimpleString("import svc");
+    /* TODO: get "modpython" from x3.conf */
+    pName = PyString_FromString("modpython");
     base_module = PyImport_Import(pName);
     Py_DECREF(pName);
     if(base_module != NULL) {
-        python_call_func("handle_init", NULL, 0);
+        python_call_func("handle_init", NULL, 0, NULL, NULL, NULL);
         return 1;
     }
     else {
         PyErr_Print();
-        log_module(PY_LOG, LOG_WARNING, "Failed to load mod-python.py");
+        log_module(PY_LOG, LOG_WARNING, "Failed to load modpython.py");
         return 0;
     }
 }
@@ -360,7 +392,9 @@ static MODCMD_FUNC(cmd_run) {
     
     char *msg;
     msg = unsplit_string(argv + 1, argc - 1, NULL);
-    PyRun_SimpleString(msg);
+    /* PyRun_SimpleString(msg); */
+    char *args[] = {msg};
+    python_call_func("run", args, 1, user?user->nick:"", channel?channel->name:"", cmd->parent->bot->nick);
     return 1;
 }
 

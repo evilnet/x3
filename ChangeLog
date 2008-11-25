@@ -1,6 +1,15 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-11-25  Alex Schumann  <rubin@afternet.org>
+
+	* src/mod-python.c: call run function instead of using
+	pyrun_simplestring. Set global info for simple reply() to have what it
+	needs to run.
+
+	* src/modpython.py: new name as - interferes with module loading.
+	added reply() function
+
 2008-11-22  Alex Schumann  <rubin@afternet.org>
 
 	* src/mod-python.c: Added ability to query info about nick or channel
