@@ -2083,7 +2083,7 @@ static SPAMSERV_FUNC(cmd_addtrust)
     struct handle_info *hi;
 
     if (!(channel = GetChannel(argv[2]))) {
-        ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+        ss_reply("SSMSG_NOT_REGISTERED", argv[2]);
         return 0;
     }
 
@@ -2210,7 +2210,7 @@ static SPAMSERV_FUNC(cmd_deltrust)
     struct handle_info *hi;
 
     if (!(channel = GetChannel(argv[2]))) {
-        ss_reply("SSMSG_NOT_REGISTERED", channel->name);
+        ss_reply("SSMSG_NOT_REGISTERED", argv[2]);
         return 0;
     }
 

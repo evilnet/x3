@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-11-30  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/spamserv.c: Fix crash bug in ADDTRUST/DELTRUST
+
 2008-11-25  Alex Schumann  <rubin@afternet.org>
 
 	* src/mod-python.c: call run function instead of using
