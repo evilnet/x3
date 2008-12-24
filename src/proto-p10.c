@@ -2052,17 +2052,29 @@ static CMD_FUNC(cmd_num_topic)
 
 static CMD_FUNC(cmd_num_gline)
 {
-    if (argc < 6)
-        return 0;
-    gline_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0, 0);
+    if (argc < 7) {
+        if (argc < 6)
+            return 0;
+        else
+            gline_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0, 0);
+    } else {
+        if (argv[5] == "+")
+          gline_add(origin, argv[3], atoi(argv[4])-now, argv[6], now, 0, 0);
+    }
     return 1;
 }
 
 static CMD_FUNC(cmd_num_shun)
 {
-    if (argc < 6)
-        return 0;
-    shun_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0);
+    if (argc < 7) {
+        if (argc < 6)
+            return 0;
+        else
+            shun_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0);
+    } else {
+        if (argv[5] == "+")
+            shun_add(origin, argv[3], atoi(argv[4])-now, argv[6], now, 0);
+    }
     return 1;
 }
 
