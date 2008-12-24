@@ -1207,6 +1207,7 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
         else
             fmt = handle_find_message(hi, "NSEMAIL_PASSWORD_CHANGE_BODY");
         snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle);
+        first_time = 0;
         break;
     case EMAIL_CHANGE:
         misc = hi->email_addr;
@@ -1221,6 +1222,7 @@ nickserv_make_cookie(struct userNode *user, struct handle_info *hi, enum cookie_
             sendmail(nickserv, hi, subject, body, 1);
             fmt = handle_find_message(hi, "NSEMAIL_EMAIL_CHANGE_BODY_OLD");
             snprintf(body, sizeof(body), fmt, netname, cookie->cookie, nickserv->nick, self->name, hi->handle, COOKIELEN/2, hi->email_addr);
+            first_time = 1;
         } else {
 #endif
             send_message(user, nickserv, "NSMSG_USE_COOKIE_EMAIL_1");
