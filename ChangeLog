@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2008-12-24  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: Fix for SF bug #2353222 (+l not being removed
+	when dynlimit disabled.
+
+2008-12-24  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/proto-p10.c: Fix for SF bug #2401693 (gsync not working properly).
 
 2008-11-30  Matthew Beeching  <jobe@mdbnet.co.uk>

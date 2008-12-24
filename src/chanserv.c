@@ -6199,6 +6199,16 @@ static MODCMD_FUNC(chan_opt_nodelete)
 
 static MODCMD_FUNC(chan_opt_dynlimit)
 {
+    struct mod_chanmode change;
+
+    if (argc > 1) {
+        if (disabled_string(argv[1])) {
+            mod_chanmode_init(&change);
+            change.modes_clear |= MODE_LIMIT;
+            mod_chanmode_announce(chanserv, channel, &change);
+        }
+    }
+
     CHANNEL_BINARY_OPTION("CSMSG_SET_DYNLIMIT", CHANNEL_DYNAMIC_LIMIT);
 }
 
@@ -7275,9 +7285,9 @@ static CHANSERV_FUNC(cmd_spin)
          //snprintf(ban, sizeof(ban), "*!*@%s", user->hostname);
          for (n=count=0; n<user->channels.used; n++) {
              struct mod_chanmode *change;
-             struct banData *bData;
+/*             struct banData *bData; */
 	     unsigned int exists;
-	     int duration = 300;
+/*	     int duration = 300; */
 	     char *ban;
 
 	     ban = generate_hostmask(user, GENMASK_STRICT_HOST|GENMASK_ANY_IDENT|GENMASK_USENICK);
