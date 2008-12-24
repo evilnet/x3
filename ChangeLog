@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2008-12-24  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: Fix for SF bug #2423717. Invalid automode choices
+	with a string will now show the invalid string rather than 0.
+
+2008-12-24  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/nickserv.c: Fix for SF bug #2420339. Password change emails
 	will not have the first time part in the email. Email change emails
 	will have them though.

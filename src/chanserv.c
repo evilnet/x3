@@ -279,7 +279,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_BAD_SETLEVEL", "You cannot change any setting to above your level." },
     { "CSMSG_BAD_SETTERS", "You cannot change Setters to above your level." },
     { "CSMSG_INVALID_MODE_LOCK", "$b%s$b is an invalid mode lock." },
-    { "CSMSG_INVALID_NUMERIC",   "$b%d$b is not a valid choice.  Choose one:" },
+    { "CSMSG_INVALID_NUMERIC",   "$b%s$b is not a valid choice.  Choose one:" },
     { "CSMSG_SET_DEFAULT_TOPIC", "$bDefaultTopic$b %s" },
     { "CSMSG_SET_TOPICMASK",     "$bTopicMask   $b %s" },
     { "CSMSG_SET_GREETING",      "$bGreeting    $b %s" },
@@ -6408,7 +6408,7 @@ channel_multiple_option(enum charOption option, struct userNode *user, struct ch
 
 	if(!isdigit(argv[1][0]) || (index < 0) || (index >= count))
 	{
-	    reply("CSMSG_INVALID_NUMERIC", index);
+	    reply("CSMSG_INVALID_NUMERIC", argv[1]);
             /* Show possible values. */
             for(index = 0; index < count; index++)
                 reply(charOptions[option].format_name, index, user_find_message(user, charOptions[option].values[index].format_name));
