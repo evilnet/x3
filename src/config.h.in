@@ -120,6 +120,9 @@
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
 
+/* Define to 1 if you have the <math.h> header file. */
+#undef HAVE_MATH_H
+
 /* Define to 1 if you have the `memcpy' function. */
 #undef HAVE_MEMCPY
 
@@ -290,9 +293,6 @@
 /* Define if LDAP libs are linked */
 #undef WITH_LDAP
 
-/* Define if using python */
-#undef WITH_PYTHON
-
 /* Define if using the Boehm GC to garbage collect and check memory leaks */
 #undef WITH_MALLOC_BOEHM_GC
 
@@ -313,6 +313,9 @@
 
 /* Define if using the P10 dialect of IRC */
 #undef WITH_PROTOCOL_P10
+
+/* Define if using python */
+#undef WITH_PYTHON
 
 /* Define if SSL libs are linked */
 #undef WITH_SSL

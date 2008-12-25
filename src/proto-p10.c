@@ -484,10 +484,10 @@ irc_server(struct server *srv)
 
     inttobase64(extranum, srv->num_mask, (srv->numeric[1] || (srv->num_mask >= 64*64)) ? 3 : 2);
     if (srv == self) {
-        putsock(P10_SERVER " %s %d %li %li J10 %s%s +s6 :%s",
+        putsock(P10_SERVER " %s %d %d %d J10 %s%s +s6 :%s",
                 srv->name, srv->hops+1, srv->boot, srv->link, srv->numeric, extranum, srv->description);
     } else {
-        putsock("%s " P10_SERVER " %s %d %li %li %c10 %s%s +s6 :%s",
+        putsock("%s " P10_SERVER " %s %d %d %d %c10 %s%s +s6 :%s",
                 self->numeric, srv->name, srv->hops+1, srv->boot, srv->link, (srv->self_burst ? 'J' : 'P'), srv->numeric, extranum, srv->description);
     }
 }
@@ -613,10 +613,10 @@ irc_user(struct userNode *user)
         modes[modelen] = 0;
 
         /* we don't need to put the + in modes because it's in the format string. */
-        putsock("%s " P10_NICK " %s %d %li %s %s +%s %s %s :%s",
+        putsock("%s " P10_NICK " %s %d %d %s %s +%s %s %s :%s",
                 user->uplink->numeric, user->nick, user->uplink->hops+1, user->timestamp, user->ident, user->hostname, modes, b64ip, user->numeric, user->info);
     } else {
-        putsock("%s " P10_NICK " %s %d %li %s %s %s %s :%s",
+        putsock("%s " P10_NICK " %s %d %d %s %s %s %s :%s",
                 user->uplink->numeric, user->nick, user->uplink->hops+1, user->timestamp, user->ident, user->hostname, b64ip, user->numeric, user->info);
     }
 }
@@ -639,9 +639,9 @@ void
 irc_account(struct userNode *user, const char *stamp, time_t timestamp)
 {
     if(extended_accounts)
-        putsock("%s " P10_ACCOUNT " %s R %s %lu", self->numeric, user->numeric, stamp, timestamp); 
+        putsock("%s " P10_ACCOUNT " %s R %s %d", self->numeric, user->numeric, stamp, timestamp); 
     else
-        putsock("%s " P10_ACCOUNT " %s %s %lu", self->numeric, user->numeric, stamp, timestamp);
+        putsock("%s " P10_ACCOUNT " %s %s %d", self->numeric, user->numeric, stamp, timestamp);
 }
 
 void
@@ -824,14 +824,14 @@ irc_introduce(const char *passwd)
 void
 irc_gline(struct server *srv, struct gline *gline, int silent)
 {
-    putsock("%s " P10_GLINE " %s +%s %ld %ld :%s<%s> %s",
+    putsock("%s " P10_GLINE " %s +%s %d %d :%s<%s> %s",
             self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, now, silent ? "AUTO " : "", gline->issuer, gline->reason);
 }
 
 void
 irc_shun(struct server *srv, struct shun *shun)
 {
-    putsock("%s " P10_SHUN " %s +%s %ld :<%s> %s",
+    putsock("%s " P10_SHUN " %s +%s %d :<%s> %s",
             self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->issuer, shun->reason);
 }
 
@@ -1022,10 +1022,10 @@ void
 irc_join(struct userNode *who, struct chanNode *what)
 {
     if (what->members.used == 1) {
-        putsock("%s " P10_CREATE " %s %lu",
+        putsock("%s " P10_CREATE " %s %d",
                 who->numeric, what->name, what->timestamp);
     } else {
-        putsock("%s " P10_JOIN " %s %lu", who->numeric, what->name, what->timestamp);
+        putsock("%s " P10_JOIN " %s %d", who->numeric, what->name, what->timestamp);
     }
 }
 
@@ -1515,7 +1515,7 @@ static CMD_FUNC(cmd_account)
         if((hi = loc_auth(argv[4], argv[5], NULL)))
         {
             /* Return a AC A */
-            putsock("%s " P10_ACCOUNT " %s A %s %lu", self->numeric, server->numeric , argv[3], hi->registered);
+            putsock("%s " P10_ACCOUNT " %s A %s %d", self->numeric, server->numeric , argv[3], hi->registered);
 
         }
         else
@@ -1530,7 +1530,7 @@ static CMD_FUNC(cmd_account)
         if((hi = loc_auth(argv[5], argv[6], argv[4] )))
         {
             /* Return a AC A */
-            putsock("%s " P10_ACCOUNT " %s A %s %lu", self->numeric, server->numeric , argv[3], hi->registered);
+            putsock("%s " P10_ACCOUNT " %s A %s %d", self->numeric, server->numeric , argv[3], hi->registered);
 
         }
         else
@@ -2058,7 +2058,7 @@ static CMD_FUNC(cmd_num_gline)
         else
             gline_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0, 0);
     } else {
-        if (argv[5] == "+")
+        if (!strcmp(argv[5], "+"))
           gline_add(origin, argv[3], atoi(argv[4])-now, argv[6], now, 0, 0);
     }
     return 1;
@@ -2072,7 +2072,7 @@ static CMD_FUNC(cmd_num_shun)
         else
             shun_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0);
     } else {
-        if (argv[5] == "+")
+        if (!strcmp(argv[5], "+"))
             shun_add(origin, argv[3], atoi(argv[4])-now, argv[6], now, 0);
     }
     return 1;

@@ -24,11 +24,11 @@
 #include "saxdb.h"
 #include "timeq.h"
 
-#ifdef HAVE_TGMATH_H
-#include <tgmath.h>
+#ifndef HAVE_MATH_H
+  #include <math.h>
+  #include <complex.h>
 #else
-#include <math.h>
-#include <complex.h>
+  #include <tgmath.h>
 #endif
 
 #include <ctype.h>

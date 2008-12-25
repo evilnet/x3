@@ -4198,10 +4198,10 @@ search_unregister_func (struct userNode *source, struct handle_info *match)
         nickserv_unregister_handle(match, source, nickserv); // XXX nickserv hard coded
 }
 
+#ifdef WITH_LDAP
 static void
 search_add2ldap_func (struct userNode *source, struct handle_info *match)
 {
-#ifdef WITH_LDAP
     int rc;
     if(match->email_addr && match->passwd && match->handle) {
 	    rc  = ldap_do_add(match->handle, match->passwd, match->email_addr);
@@ -4209,8 +4209,8 @@ search_add2ldap_func (struct userNode *source, struct handle_info *match)
 	       send_message(source, nickserv, "NSMSG_LDAP_FAIL_ADD", match->handle, ldap_err2string(rc));
 	    }
     }
-#endif
 }
+#endif
 
 static int
 nickserv_sort_accounts_by_access(const void *a, const void *b)
@@ -4907,7 +4907,8 @@ handle_account(struct userNode *user, const char *stamp)
     hi = dict_find(nickserv_handle_dict, stamp, NULL);
     if(hi && timestamp && hi->registered != timestamp)
     {
-        log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match %lu is not %lu.", user->nick, stamp, timestamp, hi->registered);
+        log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match %s is not %s.", user->nick, stamp, ctime(&timestamp), 
+ctime(&hi->registered));
         return;
     }
 #else

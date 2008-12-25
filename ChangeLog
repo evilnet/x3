@@ -1,6 +1,28 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-12-25  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* configure: Regenerated.
+
+	* configure.in: Added math.h check.
+
+	* rx/Makefile.in: Regenerated.
+
+	* src/chanserv.c: Warning fixes.
+
+	* src/config.h.in: Regenerated.
+	
+	* src/Makefile.in: Regenerated.
+
+	* src/math.c: Warning fixes.
+
+	* src/nickserv.c: Warning fixes.
+
+	* src/opserv.c: Warning fixes.
+ 
+	* src/proto-p10.c: Warning fixes.
+
 2008-12-24  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/chanserv.c: Fix for SF bug #2423717. Invalid automode choices

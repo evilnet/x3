@@ -70,7 +70,7 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 
 dnl Would rather not bail on headers, BSD has alot of the functions elsewhere. -Jedi
-AC_CHECK_HEADERS(GeoIP.h GeoIPCity.h fcntl.h tgmath.h malloc.h netdb.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h arpa/inet.h sys/mman.h sys/stat.h dirent.h ,,)
+AC_CHECK_HEADERS(GeoIP.h GeoIPCity.h fcntl.h math.h tgmath.h malloc.h netdb.h netinet/in.h sys/resource.h sys/timeb.h sys/times.h sys/param.h sys/socket.h sys/time.h sys/types.h sys/wait.h unistd.h getopt.h memory.h arpa/inet.h sys/mman.h sys/stat.h dirent.h ,,)
 
 dnl portability stuff, hurray! -Jedi
 AC_CHECK_MEMBER([struct sockaddr.sa_len],

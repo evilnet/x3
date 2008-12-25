@@ -7098,7 +7098,7 @@ static CHANSERV_FUNC(cmd_spin)
     if(!channel)
         return 1;
       
-    int type, lamep = 1;
+    int type = 0, lamep = 1;
     char *tstr;
 
     tstr = conf_get_data("server/type", RECDB_QSTRING);
@@ -7183,7 +7183,7 @@ static CHANSERV_FUNC(cmd_spin)
          while(complete != 1)  {
             if (rndchans != 15) {
                 chango = 120 + rand() % 600;
-                sputsock("%s SJ %s #%d %ld", self->numeric, user->numeric, chango, now);
+                sputsock("%s SJ %s #%d %d", self->numeric, user->numeric, chango, now);
                 rndchans++;
             } else {
                 if (roundz0r != 1) {

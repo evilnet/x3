@@ -1824,7 +1824,7 @@ static MODCMD_FUNC(cmd_svspart)
         reply("MSG_NOT_CHANNEL_NAME");
         return 0;
     }
-    if(!(target = GetChannel(argv[2])))
+    if(!(target_channel = GetChannel(argv[2])))
     {
         reply("MSG_INVALID_CHANNEL");
         return 0;
@@ -1835,17 +1835,12 @@ static MODCMD_FUNC(cmd_svspart)
        return 0;
     }
 
-    if (!(channel = GetChannel(argv[2]))) {
-       reply("OSMSG_NOT_ON_CHANNEL", cmd->parent->bot->nick, channel->name);
-       return 0;
-    }
-
-    if (!GetUserMode(channel, target)) {
-        reply("OSMSG_NOT_ON_CHANNEL", cmd->parent->bot->nick, channel->name);
+    if (!GetUserMode(target_channel, target)) {
+        reply("OSMSG_NOT_ON_CHANNEL", cmd->parent->bot->nick, target_channel->name);
         return 0;
     }
 
-    irc_svspart(opserv, target, channel);
+    irc_svspart(opserv, target, target_channel);
     reply("OSMSG_SVSPART_SENT");
     return 1;
 }
