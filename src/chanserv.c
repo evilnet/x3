@@ -59,6 +59,7 @@
 #define KEY_NODELETE_LEVEL      "nodelete_level"
 #define KEY_MAX_USERINFO_LENGTH "max_userinfo_length"
 #define KEY_GIVEOWNERSHIP_PERIOD "giveownership_timeout"
+#define KEY_VALID_CHANNEL_REGEX "valid_channel_regex"
 
 /* ChanServ database */
 #define KEY_VERSION_CONTROL     "version_control"
@@ -619,6 +620,9 @@ static struct
     unsigned int 	max_chan_users;
     unsigned int 	max_chan_bans; /* lamers */
     unsigned int        max_userinfo_length;
+    unsigned int        valid_channel_regex_set : 1;
+
+    regex_t             valid_channel_regex;
 
     struct string_list  *set_shows;
     struct string_list  *eightball;
@@ -2271,6 +2275,19 @@ static CHANSERV_FUNC(cmd_register)
         return 0;
     }
     */
+
+    if (chanserv_conf.valid_channel_regex_set) {
+        int err = regexec(&chanserv_conf.valid_channel_regex, argv[1], 0, 0, 0);
+        if (err) {
+            char buff[256];
+            buff[regerror(err, &chanserv_conf.valid_channel_regex, buff, sizeof(buff))] = 0;
+            log_module(CS_LOG, LOG_INFO, "regexec error: %s (%d)", buff, err);
+        }
+        if(err == REG_NOMATCH) {
+            reply("CSMSG_ILLEGAL_CHANNEL", argv[1]);
+            return 0;
+        }
+    }
 
     if(new_channel)
         channel = AddChannel(argv[1], now, NULL, NULL, NULL);
@@ -8476,6 +8493,16 @@ chanserv_conf_read(void)
     {
         chanserv_conf.default_modes = *change;
         mod_chanmode_free(change);
+    }
+    str = database_get_data(conf_node, KEY_VALID_CHANNEL_REGEX, RECDB_QSTRING);
+    if (chanserv_conf.valid_channel_regex_set)
+        regfree(&chanserv_conf.valid_channel_regex);
+    if (str) {
+        int err = regcomp(&chanserv_conf.valid_channel_regex, str, REG_EXTENDED|REG_ICASE|REG_NOSUB);
+        chanserv_conf.valid_channel_regex_set = !err;
+        if (err) log_module(CS_LOG, LOG_ERROR, "Bad valid_channel_regex (error %d)", err);
+    } else {
+        chanserv_conf.valid_channel_regex_set = 0;
     }
     free_string_list(chanserv_conf.wheel);
     strlist = database_get_data(conf_node, "wheel", RECDB_STRING_LIST);

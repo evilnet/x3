@@ -511,6 +511,11 @@
 
         // when does god mode time out?
         "god_timeout" "30m";
+
+        // What should valid registered channels look like?
+        // Be very carefull changing these. This default is 
+        // basically limited to letters, numbers, dash and underscore.
+        "valid_channel_regex" "#^[-_a-z][-_a-z0-9]*$";
     };
 
     /* Global is a service bot that can send out network-wide messages for you. I

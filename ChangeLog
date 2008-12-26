@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* x3.conf.example: Added valid_channel_regex.
+
+	* src/chanserv.c: Added valid_channel_regex.
+
 2008-12-25  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/chanserv.c: Warning fixes.
