@@ -7183,7 +7183,7 @@ static CHANSERV_FUNC(cmd_spin)
          while(complete != 1)  {
             if (rndchans != 15) {
                 chango = 120 + rand() % 600;
-                sputsock("%s SJ %s #%d %d", self->numeric, user->numeric, chango, now);
+                sputsock("%s SJ %s #%d "FMT_TIME_T, self->numeric, user->numeric, chango, now);
                 rndchans++;
             } else {
                 if (roundz0r != 1) {

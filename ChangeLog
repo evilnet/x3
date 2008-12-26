@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2008-12-25  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: Warning fixes.
+
+	* src/proto-p10.c: Warning fixes.
+
+2008-12-25  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* configure: Regenerated.
 
 	* configure.in: Added math.h check.
