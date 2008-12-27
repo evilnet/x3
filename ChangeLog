@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/hash.c: SF feature 2353183. Made X3 aware of +a.
+
+	* src/hash.h: SF feature 2353183. Made X3 aware of +a.
+
+2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/global.c: Added RCHANNELS which will send notices to all
 	registered channels. Also changed CHANNELS to notice all channels
 	instead of registered ones only.

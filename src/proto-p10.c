@@ -3220,6 +3220,7 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'Q': do_chan_mode(MODE_NOQUITMSGS); break;
         case 'T': do_chan_mode(MODE_NOAMSG); break;
         case 'O': do_chan_mode(MODE_OPERSONLY); break;
+        case 'a': do_chan_mode(MODE_ADMINSONLY); break;
         case 'Z': do_chan_mode(MODE_SSLONLY); break;
 	case 'L': do_chan_mode(MODE_HIDEMODE); break;
 	case 'z':
@@ -3714,6 +3715,7 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'Q': remove |= MODE_NOQUITMSGS; break;
         case 'T': remove |= MODE_NOAMSG; break;
         case 'O': remove |= MODE_OPERSONLY; break;
+        case 'a': remove |= MODE_ADMINSONLY; break;
         case 'z': remove |= MODE_REGISTERED; break;
         case 'Z': remove |= MODE_SSLONLY; break;
 	case 'L': remove |= MODE_HIDEMODE; break;

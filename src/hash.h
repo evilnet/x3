@@ -53,6 +53,7 @@
 #define MODE_HIDEMODE		0x02000000 /* +L hide modes */
 #define MODE_APASS		0x04000000 /* +A adminpass */
 #define MODE_UPASS		0x08000000 /* +U userpass */
+#define MODE_ADMINSONLY         0x10000000 /* +a Admins only */
 #define MODE_REMOVE             0x80000000
 
 #define FLAGS_OPER		0x000001 /* Operator +O */
