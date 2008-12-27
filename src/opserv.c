@@ -76,6 +76,7 @@
 #define KEY_WARN "chanwarn"
 #define KEY_MAX "max"
 #define KEY_TIME "time"
+#define KEY_LAST "last"
 #define KEY_MAX_CLIENTS "max_clients"
 #define KEY_LIMIT "limit"
 #define KEY_EXPIRES "expires"
@@ -314,7 +315,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ALERTS_LIST", "$bCurrent $O alerts matching '$b%s$b'$b" },
     { "OSMSG_ALERTS_BAR",    "----------------------------------------------" },
     { "OSMSG_ALERTS_HEADER", "Name                 Action (by Oper)" },
-    { "OSMSG_ALERTS_DESC",   "   Criteria: %s" },
+    { "OSMSG_ALERTS_DESC",   "   $uCriteria$u: %s" },
+    { "OSMSG_ALERTS_LAST",   "   $uTriggered$u: %s" },
     { "OSMSG_ALERT_IS",      "$b%-20s$b %-6s (by %s)" },
     { "OSMSG_ALERT_END",     "----------------End of Alerts-----------------" },
     /* routing messages */
@@ -574,6 +576,7 @@ struct opserv_user_alert {
     char *text_discrim, *split_discrim;
     discrim_t discrim;
     opserv_alert_reaction reaction;
+    int last;
 };
 
 /* funny type to make it acceptible to dict_set_free_data, far below */
@@ -2422,6 +2425,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
     dict_iterator_t it;
     struct opserv_user_alert *alert;
     const char *reaction;
+    char t_buffer[INTERVALLEN];
     char *m = NULL;
 
     if(argc > 1) 
@@ -2449,6 +2453,10 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         }
         reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
         reply("OSMSG_ALERTS_DESC", alert->text_discrim);
+        if (alert->last > 0)
+          reply("OSMSG_ALERTS_LAST", intervalString(t_buffer, now - alert->last, user->handle_info));
+        else
+          reply("OSMSG_ALERTS_LAST", "Never");
     }
     reply("OSMSG_ALERT_END");
     return 1;
@@ -4653,7 +4661,7 @@ add_gag_helper(const char *key, void *data, UNUSED_ARG(void *extra))
 }
 
 static struct opserv_user_alert *
-opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_reaction reaction, const char *text_discrim)
+opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_reaction reaction, const char *text_discrim, int last)
 {
     unsigned int wordc;
     char *wordv[MAXNUMPARAMS], *discrim_copy;
@@ -4667,6 +4675,7 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
     alert = malloc(sizeof(*alert));
     alert->owner = strdup(req->handle_info ? req->handle_info->handle : req->nick);
     alert->text_discrim = strdup(text_discrim);
+    alert->last = last;
     discrim_copy = strdup(text_discrim); /* save a copy of the discrim */
     wordc = split_line(discrim_copy, false, ArrayLength(wordv), wordv);
     alert->discrim = opserv_discrim_create(req, opserv, wordc, wordv, 0);
@@ -4718,6 +4727,8 @@ static int
 add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
 {
     dict_t alert_dict;
+    char *str;
+    int last = 0;
     const char *discrim, *react, *owner;
     opserv_alert_reaction reaction;
     struct opserv_user_alert *alert;
@@ -4728,6 +4739,10 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
     }
     discrim = database_get_data(alert_dict, KEY_DISCRIM, RECDB_QSTRING);
     react = database_get_data(alert_dict, KEY_REACTION, RECDB_QSTRING);
+    str = database_get_data(alert_dict, KEY_LAST, RECDB_QSTRING);
+    if (str)
+      last = atoi(str);
+
     if (!react || !irccasecmp(react, "notice"))
         reaction = REACT_NOTICE;
     else if (!irccasecmp(react, "kill"))
@@ -4754,7 +4769,7 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
     }
-    alert = opserv_add_user_alert(opserv, key, reaction, discrim);
+    alert = opserv_add_user_alert(opserv, key, reaction, discrim, last);
     if (!alert) {
         log_module(OS_LOG, LOG_ERROR, "Unable to create alert %s from database.", key);
         return 0;
@@ -5024,6 +5039,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             saxdb_start_record(ctx, iter_key(it), 0);
             saxdb_write_string(ctx, KEY_DISCRIM, alert->text_discrim);
             saxdb_write_string(ctx, KEY_OWNER, alert->owner);
+            saxdb_write_int(ctx, KEY_LAST, alert->last);
             switch (alert->reaction) {
             case REACT_NOTICE: reaction = "notice"; break;
             case REACT_KILL: reaction = "kill"; break;
@@ -6493,6 +6509,8 @@ alert_check_user(const char *key, void *data, void *extra)
     if (alert->discrim->option_log)
         log_module(OS_LOG, LOG_INFO, "Alert %s triggered by user %s!%s@%s (%s).", key, user->nick, user->ident, user->hostname, alert->discrim->reason);
 
+    alert->last = now;
+
     /* Return 1 to halt alert matching, such as when killing the user
        that triggered the alert. */
     switch (alert->reaction) {
@@ -6716,7 +6734,7 @@ static MODCMD_FUNC(cmd_addalert)
         return 0;
     }
     if (!svccmd_can_invoke(user, opserv_service->bot, subcmd, channel, SVCCMD_NOISY)
-        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + 3, argc - 3, NULL))) {
+        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + 3, argc - 3, NULL), 0)) {
         reply("OSMSG_ALERT_ADD_FAILED");
         return 0;
     }
