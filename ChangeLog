@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: SF feature 1476390. Added nodelete option to
+	MERGE.
+
+	* src/chanserv.help: SF feature 1476390. Added nodelete option
+	to MERGE.
+
+2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/chanserv.c: SF feature 2353198. Patch from CaptKirk. Added
 	the channel flag to the register command. Also removed the
 	helping flag.

@@ -407,8 +407,8 @@
 "MDELPAL" ("/msg $C MDELPAL <#channel> <pattern>",
         "Deletes all pals with accounts matching the given pattern from the channel user list.",
         "$uSee Also:$u addpal, mdelcoowner, mdelmanager, mdelop");
-"MERGE" ("/msg $C MERGE <#channel> <destination>",
-        "Merges the source channel's registration, users, lamers, and other data into the target channel. Users with access to both the source and target channels will retain the higher access level; if the access levels are the same, the more recent seen time is kept. Lamers are also merged, with lamers expiring later taking precedence.",
+"MERGE" ("/msg $C MERGE <#channel> <destination> <nodelete>",
+        "Merges the source channel's registration, users, lamers, and other data into the target channel. Users with access to both the source and target channels will retain the higher access level; if the access levels are the same, the more recent seen time is kept. Lamers are also merged, with lamers expiring later taking precedence. If nodelete is added then the #channel wont be deleted after the merge.",
         "$uSee Also:$u register, move, unregister");
 "MLIST" ("/msg $C MLIST <#channel> [mask]",
         "This command lists all users of level $bManager$b on a channel's userlist. If a mask is supplied, only managers matching the mask will be shown.",

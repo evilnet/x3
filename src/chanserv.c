@@ -2711,6 +2711,7 @@ static CHANSERV_FUNC(cmd_merge)
     struct userData *target_user;
     struct chanNode *target;
     char reason[MAXLEN];
+    int nodelete = 0;
 
     REQUIRE_PARAMS(2);
 
@@ -2720,6 +2721,11 @@ static CHANSERV_FUNC(cmd_merge)
     {
         reply("MSG_INVALID_CHANNEL");
         return 0;
+    }
+
+    if (argc > 2) {
+      if (!irccasecmp("nodelete", argv[2]))
+        nodelete = 1;
     }
 
     if(!target->channel_info)
@@ -2757,7 +2763,8 @@ static CHANSERV_FUNC(cmd_merge)
     merge_channel(channel->channel_info, target->channel_info);
     spamserv_cs_move_merge(user, channel, target, 0);
     sprintf(reason, "merged into %s by %s.", target->name, user->handle_info->handle);
-    unregister_channel(channel->channel_info, reason);
+    if (!nodelete)
+      unregister_channel(channel->channel_info, reason);
     reply("CSMSG_MERGE_SUCCESS", target->name);
     return 1;
 }
