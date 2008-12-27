@@ -9382,7 +9382,7 @@ init_chanserv(const char *nick)
 
     reg_svccmd_unbind_func(handle_svccmd_unbind);
     chanserv_module = module_register("ChanServ", CS_LOG, "chanserv.help", chanserv_expand_variable);
-    DEFINE_COMMAND(register, 1, MODCMD_REQUIRE_AUTHED, "flags", "+acceptchan,+helping", NULL);
+    DEFINE_COMMAND(register, 1, MODCMD_REQUIRE_AUTHED, "flags", "+acceptchan,+channel", NULL);
     DEFINE_COMMAND(noregister, 1, MODCMD_REQUIRE_AUTHED, "flags", "+helping", NULL);
     DEFINE_COMMAND(allowregister, 2, 0, "template", "noregister", NULL);
     DEFINE_COMMAND(move, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "template", "register", NULL);
