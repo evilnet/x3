@@ -245,6 +245,8 @@ message_create(struct userNode *user, unsigned int argc, char *argv[])
 
 	    if(!irccasecmp(argv[i], "all")) {
 		flags |= MESSAGE_RECIPIENT_ALL;
+            } else if(!irccasecmp(argv[i], "authed")) {
+                flags |= MESSAGE_RECIPIENT_AUTHED;
 	    } else if(!irccasecmp(argv[i], "users")) {
 		flags |= MESSAGE_RECIPIENT_LUSERS;
 	    } else if(!irccasecmp(argv[i], "helpers")) {
@@ -310,6 +312,10 @@ messageType(const struct globalMessage *message)
     else if(message->flags & MESSAGE_RECIPIENT_LUSERS)
     {
 	return "users";
+    }
+    else if(message->flags & MESSAGE_RECIPIENT_AUTHED)
+    {
+        return "authed";
     }
     else
     {
@@ -400,6 +406,16 @@ message_send(struct globalMessage *message)
 	    notice_target(user->nick, message);
 	}
     }
+
+    if(message->flags & MESSAGE_RECIPIENT_AUTHED)
+    {
+        dict_iterator_t it;
+        for (it = dict_first(clients); it; it = iter_next(it)) {
+            struct userNode *luser = iter_data(it);
+            if (luser->handle_info)
+              notice_target(luser->nick, message);
+        }
+    }
 }
 
 void
@@ -438,7 +454,8 @@ global_message_args(long targets, const char *language_entry, ...)
             if(luser->uplink != self)
                 notice_target(luser->nick, message);
 
-            if ((message->flags & MESSAGE_RECIPIENT_LUSERS) || (message->flags & MESSAGE_RECIPIENT_HELPERS))
+            if ((message->flags & MESSAGE_RECIPIENT_LUSERS) || (message->flags & MESSAGE_RECIPIENT_HELPERS) || 
+                (message->flags & MESSAGE_RECIPIENT_AUTHED))
                 continue;
         }
 
@@ -446,13 +463,23 @@ global_message_args(long targets, const char *language_entry, ...)
         if (message->flags & MESSAGE_RECIPIENT_HELPERS && IsHelper(luser)) {
 	    notice_target(luser->nick, message);
 
-            if (message->flags & MESSAGE_RECIPIENT_LUSERS)
+            if ((message->flags & MESSAGE_RECIPIENT_LUSERS) || (message->flags & MESSAGE_RECIPIENT_AUTHED))
                 continue;
 	}
 
+        /* authed */
+        if ((message->flags & MESSAGE_RECIPIENT_AUTHED) && luser->handle_info) {
+            notice_target(luser->nick, message);
+
+            if (message->flags & MESSAGE_RECIPIENT_LUSERS)
+                continue;
+        }
+
         /* users */
-        if (message->flags & MESSAGE_RECIPIENT_LUSERS)
+        if (message->flags & MESSAGE_RECIPIENT_LUSERS) {
 	    notice_target(luser->nick, message);
+
+        }
     }
 
     message_del(message);
@@ -487,6 +514,8 @@ static GLOBAL_FUNC(cmd_notice)
 	target = MESSAGE_RECIPIENT_ALL;
     } else if(!irccasecmp(argv[1], "users")) {
 	target = MESSAGE_RECIPIENT_LUSERS;
+    } else if(!irccasecmp(argv[1], "authed")) {
+        target = MESSAGE_RECIPIENT_AUTHED;
     } else if(!irccasecmp(argv[1], "helpers")) {
 	target = MESSAGE_RECIPIENT_HELPERS;
     } else if(!irccasecmp(argv[1], "opers")) {
@@ -650,7 +679,7 @@ send_messages(struct userNode *user, long mask, int obstreperize)
 
 static GLOBAL_FUNC(cmd_messages)
 {
-    long mask = MESSAGE_RECIPIENT_LUSERS | MESSAGE_RECIPIENT_CHANNELS;
+    long mask = MESSAGE_RECIPIENT_AUTHED | MESSAGE_RECIPIENT_LUSERS | MESSAGE_RECIPIENT_CHANNELS;
     unsigned int count;
 
     if(IsOper(user))

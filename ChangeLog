@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/global.c: Added AUTHED target.
+
+	* src/global.h: Added AUTHED target.
+
+2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/opserv.c: Store when alerts were last triggered.
 
 2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
