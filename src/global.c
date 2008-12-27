@@ -257,6 +257,8 @@ message_create(struct userNode *user, unsigned int argc, char *argv[])
 		flags |= MESSAGE_RECIPIENT_STAFF;
 	    } else if(!irccasecmp(argv[i], "channels")) {
 		flags |= MESSAGE_RECIPIENT_CHANNELS;
+	    } else if(!irccasecmp(argv[i], "rchannels")) {
+		flags |= MESSAGE_RECIPIENT_RCHANNELS;
             } else if(!irccasecmp(argv[i], "announcement") || !irccasecmp(argv[i], "announce")) {
                 flags |= MESSAGE_RECIPIENT_ANNOUNCE;
 	    } else {
@@ -317,6 +319,10 @@ messageType(const struct globalMessage *message)
     {
         return "authed";
     }
+    else if(message->flags & MESSAGE_RECIPIENT_RCHANNELS)
+    {
+        return "rchannels";
+    }
     else
     {
 	return "channels";
@@ -360,7 +366,25 @@ message_send(struct globalMessage *message)
 
     if(message->flags & MESSAGE_RECIPIENT_CHANNELS)
     {
-	dict_foreach(channels, notice_channel, message);
+        dict_iterator_t it;
+
+        for (it = dict_first(channels); it; it = iter_next(it)) {
+            struct chanNode *chan = iter_data(it);
+
+            notice_target(chan->name, message);
+        }
+    }
+
+    if(message->flags & MESSAGE_RECIPIENT_RCHANNELS)
+    {
+        dict_iterator_t it;
+
+        for (it = dict_first(channels); it; it = iter_next(it)) {
+            struct chanNode *chan = iter_data(it);
+
+            if (chan->channel_info)
+                notice_target(chan->name, message);
+        }
     }
 
     if(message->flags & MESSAGE_RECIPIENT_LUSERS)
@@ -526,6 +550,8 @@ static GLOBAL_FUNC(cmd_notice)
         target |= MESSAGE_RECIPIENT_ANNOUNCE;
     } else if(!irccasecmp(argv[1], "channels")) {
 	target = MESSAGE_RECIPIENT_CHANNELS;
+    } else if(!irccasecmp(argv[1], "rchannels")) {
+	target = MESSAGE_RECIPIENT_RCHANNELS;
     } else {
 	global_notice(user, "GMSG_INVALID_TARGET", argv[1]);
 	return 0;
@@ -679,7 +705,7 @@ send_messages(struct userNode *user, long mask, int obstreperize)
 
 static GLOBAL_FUNC(cmd_messages)
 {
-    long mask = MESSAGE_RECIPIENT_AUTHED | MESSAGE_RECIPIENT_LUSERS | MESSAGE_RECIPIENT_CHANNELS;
+    long mask = MESSAGE_RECIPIENT_AUTHED | MESSAGE_RECIPIENT_LUSERS | MESSAGE_RECIPIENT_CHANNELS | MESSAGE_RECIPIENT_RCHANNELS;
     unsigned int count;
 
     if(IsOper(user))

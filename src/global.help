@@ -34,4 +34,5 @@
         "$bOPERS$b:      The message will be sent to opers only.",
         "$bSTAFF$b:      The message will be sent to helpers and opers.",
         "$bCHANNELS$b:   The message will be sent to all channels.",
+        "$bRCHANNELS$b:  The message will be sent to all registered channels.",
         "$bALL$b:        A combination of USERS and CHANNELS.");
