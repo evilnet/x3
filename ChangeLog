@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-01-01  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* languages/README.txt: Changed validate_lang.pl to validate.pl
+
+	* languages/validate.pl: Set executable
+
+	* languages/lang_export.sh: Set executable
+
 2008-12-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/chanserv.c: SF feature 1476390. Added nodelete option to

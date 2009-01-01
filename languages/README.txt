@@ -20,7 +20,7 @@ How to make a new language:
 5: edit the .help and .db files, translating them to your laungage.
    nano fo/strings.db  (etc)
 6: test the strings.db file
-   ./validate_lang.pl fo
+   ./validate.pl fo
 7: fix any problems.
 
 
@@ -29,7 +29,7 @@ How to keep your language up to date after changes:
 1: run the export script, to make an up-to-date "C" baseline db:
    ./lang_export.sh > strings.db
 2: test the strings.db file
-   ./validate_lang.pl fo
+   ./validate.pl fo
 3: fix any changes.
 
 You should also watch the cvs mailing list for changes in meaning of the strings
