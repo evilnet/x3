@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-01-04  Alex Schumann   <rubin@afternet.org>
+
+	* src/nickserv.c: fix access change bug when using ldap but not
+	ldap_oper_group_dn.
+
 2009-01-01  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* languages/README.txt: Changed validate_lang.pl to validate.pl

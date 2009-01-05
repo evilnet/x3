@@ -3268,7 +3268,7 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
         return 0;
     }
 #ifdef WITH_LDAP
-    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_oper_group_dn && nickserv_conf.ldap_admin_dn) {
+    if(nickserv_conf.ldap_enable && *(nickserv_conf.ldap_oper_group_dn) && *(nickserv_conf.ldap_admin_dn)) {
         int rc;
         if(new_level > nickserv_conf.ldap_oper_group_level)
           rc = ldap_add2group(target->handle, nickserv_conf.ldap_oper_group_dn);
