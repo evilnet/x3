@@ -1,7 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
-2009-01-04  Alex Schumann   <rubin@afternet.org>
+2008-01-12  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/opserv.c: Fix for SF bug #2491886. Added OSMSG_USER_ALREADY_THERE.
+
+2009-01-04  Alex Schumann  <rubin@afternet.org>
 
 	* src/nickserv.c: fix access change bug when using ldap but not
 	ldap_oper_group_dn.

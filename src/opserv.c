@@ -165,6 +165,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_NO_DEBUG_CHANNEL", "No debug channel has been configured." },
     { "OSMSG_INVITE_DONE", "Invited $b%s$b to $b%s$b." },
     { "OSMSG_ALREADY_THERE", "You are already in $b%s$b." },
+    { "OSMSG_USER_ALREADY_THERE", "%s is already in $b%s$b." },
     { "OSMSG_NOT_THERE", "You not in $b%s$b." },
     { "OSMSG_JOIN_DONE", "I have joined $b%s$b." },
     { "OSMSG_MARK_SET", "Set the MARK." },
@@ -1627,7 +1628,7 @@ static MODCMD_FUNC(cmd_svsjoin)
        channel = AddChannel(argv[2], now, NULL, NULL, NULL);
     }
     if (GetUserMode(channel, target)) {
-        reply("OSMSG_ALREADY_THERE", channel->name);
+        reply("OSMSG_USER_ALREADY_THERE", target->nick, channel->name);
         return 0;
     }
     irc_svsjoin(opserv, target, channel);
