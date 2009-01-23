@@ -511,6 +511,8 @@ if test "$python" = yes; then
                                 PY_LIBS="-L$PY_LIB/config -lpython$PY_VER -lpthread -lutil"
                                 PY_CFLAGS="-I$PY_INC"
                                 AC_MSG_RESULT(ok)
+                                CFLAGS="$CFLAGS $PY_CFLAGS"
+                                LIBS="$LIBS $PY_LIBS"
                         else
                                 python=no
                                 AC_MSG_RESULT([Can't find Python.h])

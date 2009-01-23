@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-01-23  Alex Schumann  <rubin@afternet.org>
+
+	* src/mod-python.c: refactor to use class-based hook manager
+
+	* src/modpython.py: refactored into classes
+
 2008-01-12  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/opserv.c: Fix for SF bug #2491886. Added OSMSG_USER_ALREADY_THERE.

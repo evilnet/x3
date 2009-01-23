@@ -54,6 +54,7 @@ const char *python_module_deps[] = { NULL };
 static struct module *python_module;
 
 PyObject *base_module = NULL; /* Base python handling library */
+PyObject *handler_object = NULL; /* instanciation of handler class */
 
 static PyObject*
 emb_dump(PyObject *self, PyObject *args)
@@ -119,7 +120,7 @@ emb_get_user(PyObject *self, PyObject *args)
     char *nick;
     struct userNode *user;
     struct modeNode *mn;
-    int n;
+    unsigned int n;
     PyObject* pChanList;
     if(!PyArg_ParseTuple(args, "s", &nick))
         return NULL;
@@ -162,7 +163,7 @@ emb_get_channel(PyObject *self, PyObject *args)
 {
     char *name;
     struct chanNode *channel;
-    int n;
+    unsigned int n;
     PyObject *pChannelMembers;
     PyObject *pChannelBans;
     PyObject *pChannelExempts;
@@ -246,6 +247,7 @@ static PyMethodDef EmbMethods[] = {
 
 
 
+/* This is just a hack-job for testing. It'll go away. */
 int python_call_func_real(char *function, char *args[], size_t argc) {
     /* TODO: get arguments, pass through to python function */
     PyObject *pFunc, *pValue;
@@ -308,6 +310,7 @@ int python_call_func_real(char *function, char *args[], size_t argc) {
     }
 }
 
+/* This is just a hack-job for testing. It will go away */
 int python_call_func(char *function, char *args[], size_t argc, char *command_caller, char *command_target, char *command_service) {
             char *setargs[] = {command_caller?command_caller:"", 
                                command_target?command_target:"",
@@ -315,8 +318,146 @@ int python_call_func(char *function, char *args[], size_t argc, char *command_ca
             python_call_func_real("command_set", setargs, 3);
             python_call_func_real(function, args, argc);
             python_call_func_real("command_clear", NULL, 0);
+            return 0;
 }
 
+
+PyObject *new_irc_object(char *command_service, char *command_caller, char *command_target) {
+    PyObject *pIrcArgs = NULL;
+    PyObject *pIrcClass;
+    PyObject *pIrcObj;
+
+    log_module(PY_LOG, LOG_INFO, "Attempting to instanciate irc class");
+    pIrcClass = PyObject_GetAttrString(base_module, "irc");
+    /* pIrcClass is a new reference */
+    if(pIrcClass && PyCallable_Check(pIrcClass)) {
+        size_t i;
+        size_t ircargc = 3;
+        char *ircargs[] = {command_service, command_caller, command_target};
+        PyObject *pValue;
+
+        pIrcArgs = PyTuple_New(sizeof(ircargs));
+        for(i = 0; i< ircargc; ++i) {
+            pValue = PyString_FromString(ircargs[i]);
+            if(!pValue) {
+                Py_DECREF(pIrcArgs);
+                log_module(PY_LOG, LOG_ERROR, "Unable to convert '%s' to python string", ircargs[i]);
+                return 0;
+            }
+            PyTuple_SetItem(pIrcArgs, i, pValue);
+        }
+        pIrcObj = PyObject_CallObject(pIrcClass, pIrcArgs);
+        if(pIrcArgs != NULL)  {
+           Py_DECREF(pIrcArgs);
+        }
+        return pIrcObj;
+    }
+    else {
+        log_module(PY_LOG, LOG_ERROR, "Unable to find irc class");
+        return NULL;
+    }
+}
+
+PyObject *python_build_args(size_t argc, char *args[]) {
+    size_t i;
+    PyObject *pArgs = NULL;
+
+    if(args && argc) {
+        pArgs = PyTuple_New(argc);
+        PyObject *pValue;
+        for(i = 0; i< argc; ++i) {
+            pValue = PyString_FromString(args[i]);
+            if(!pValue) {
+                Py_DECREF(pArgs);
+                log_module(PY_LOG, LOG_INFO, "Unable to convert '%s' to python string", args[i]);
+                return NULL;
+            }
+            PyTuple_SetItem(pArgs, i, pValue);
+        }
+    }
+    return pArgs;
+}
+
+
+int python_call_handler(char *handler, char *args[], size_t argc, char *command_service, char *command_caller, char *command_target) {
+    /* TODO:
+     *   - Instanciate class 'irc' with command-* arguments and save it.
+     *   - get/find handler class instance
+     *   - call handler.<handler> passing in proper args
+     *   - destroy irc instance
+     *   - return something useful?
+     */
+    PyObject *pIrcObj;
+    PyObject *pArgs;
+    PyObject *pMethod;
+    PyObject *pValue;
+
+    if(base_module != NULL) {
+        pIrcObj = new_irc_object(command_service, command_caller, command_target);
+
+        pArgs = python_build_args(argc, args);
+        pMethod = PyObject_GetAttrString(handler_object, handler);
+        if(pMethod && PyCallable_Check(pMethod)) {
+            pValue = PyObject_CallObject(pMethod, pArgs);
+            if(pArgs) {
+                Py_DECREF(pArgs);
+            }
+            if(pValue != NULL) {
+                int ret;
+                ret = PyInt_AsLong(pValue);
+                if(ret == -1 && PyErr_Occurred()) {
+                    PyErr_Print();
+                    log_module(PY_LOG, LOG_INFO, "error converting return value of handler %s to type long. ", handler);
+                    ret = 0;
+                }
+                log_module(PY_LOG, LOG_INFO, "handler %s was run successfully, returned %d.", handler, ret);
+                /* TODO: convert pValue to c int, return it below */
+                Py_DECREF(pValue);
+                return ret;
+            }
+            else {
+                Py_DECREF(pIrcObj);
+                Py_DECREF(pMethod);
+                /* TODO: instead of print errors, get them as strings
+                 * and deal with them with normal x3 log system. */
+                PyErr_Print();
+                log_module(PY_LOG, LOG_WARNING, "call to handler %s failed", handler);
+                return 0;
+            }
+        }
+        else { /* couldn't find handler methed */
+            log_module(PY_LOG, LOG_ERROR, "Cannot find handler %s.", handler);
+            return 0;
+
+        }
+    } 
+    else { /* No base module.. no python? */
+        return 0;
+    }
+}
+
+PyObject *python_new_handler_object() {
+    PyObject *pHandlerClass, *pHandlerObj;
+
+    log_module(PY_LOG, LOG_INFO, "Attempting to instanciate python class handler");
+    pHandlerClass = PyObject_GetAttrString(base_module, "handler");
+    /* Class is a new reference */
+    if(pHandlerClass && PyCallable_Check(pHandlerClass)) {
+        PyObject *pValue;
+
+        pHandlerObj = PyObject_CallObject(pHandlerClass, NULL);
+        return pHandlerObj;
+    }
+    else {
+        log_module(PY_LOG, LOG_ERROR, "Unable to find handler class");
+        return NULL;
+    }
+}
+
+/* debate: do we just register these and check them in python
+ * for every one (slow?) or actually work out if a plugin needs
+ * it first? We will start by doing it every time.
+ */
 static int
 python_handle_join(struct modeNode *mNode)
 {
@@ -330,9 +471,10 @@ python_handle_join(struct modeNode *mNode)
     }
     else {
         char *args[] = {channel->name, user->nick};
-        return python_call_func("handle_join", args, 2, NULL, NULL, NULL);
+        return python_call_handler("join", args, 2, NULL, NULL, NULL);
     }
 }
+
 
 int python_load() {
     PyObject *pName;
@@ -346,14 +488,23 @@ int python_load() {
     base_module = PyImport_Import(pName);
     Py_DECREF(pName);
     if(base_module != NULL) {
-        python_call_func("handle_init", NULL, 0, NULL, NULL, NULL);
-        return 1;
+        handler_object = python_new_handler_object();
+        if(handler_object) {
+            python_call_handler("init", NULL, 0, NULL, NULL, NULL );
+            return 1;
+        }
+        else {
+            /* error handler class not found */
+            log_module(PY_LOG, LOG_WARNING, "Failed to create handler object");
+            return 0;
+        }
     }
     else {
         PyErr_Print();
         log_module(PY_LOG, LOG_WARNING, "Failed to load modpython.py");
         return 0;
     }
+    return 0;
 }
 
 /* Called after X3 is fully up and running */
