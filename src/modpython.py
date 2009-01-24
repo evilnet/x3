@@ -22,13 +22,15 @@ class modules:
 
     def load(self, name):
         mod_name = "plugins.%s"%name
+        need_reload = false;
         if(sys.modules[mod_name]):
             need_reload = true
         #TODO: try to catch compile errors etc.
-        if(!need_reload):
+
+        if(need_reload == false):
             __import__(mod_name)
         module = sys.modules[mod_name]
-        if(need_reload):
+        if(need_reload == true):
             reload(module) # to ensure its read fresh
         self.loaded_modules[mod_name] = module
 
@@ -53,24 +55,6 @@ class irc:
         """ Send a private reply to the user using convenience values"""
         self.send_target_privmsg(self.service, self.caller, message)
 
-
-    def command_set(self, command_caller, command_target, command_service):
-        """ Setup defaults for convenience"""
-        global caller, target, service
-        caller = command_caller
-        target = command_target
-        service = command_service
-        return 0;
-
-    def command_clear(self):
-        """ Clear convenience defaults"""
-        global caller, target, service
-        caller = None
-        target = None
-        service = None
-        return 0;
-
-
 class handler:
     """ Handle callbacks """
 
@@ -78,9 +62,11 @@ class handler:
         print "DEBUG: This is x3init in python"
         return 0
 
-    def join(self, channel, nick)
+    def join(self, irc, channel, nick):
         user = svc.get_user(nick)
-        irc.send_target_privmsg("x3", channel, "test %s "%(service))
+        print "DEBUG: handler.join()"
+        irc.send_target_privmsg("x3", channel, "test %s "%(irc.service))
+        return 0
         
 #+print "This is mod-python.py"
 #+

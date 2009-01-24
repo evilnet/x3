@@ -321,41 +321,27 @@ int python_call_func(char *function, char *args[], size_t argc, char *command_ca
             return 0;
 }
 
+PyObject *python_build_handler_args(size_t argc, char *args[], PyObject *pIrcObj) {
+    size_t i = 0, n;
+    PyObject *pArgs = NULL;
 
-PyObject *new_irc_object(char *command_service, char *command_caller, char *command_target) {
-    PyObject *pIrcArgs = NULL;
-    PyObject *pIrcClass;
-    PyObject *pIrcObj;
+    pArgs = PyTuple_New(argc + 1);
+    Py_INCREF(pIrcObj);
+    PyTuple_SetItem(pArgs, i++, pIrcObj);
 
-    log_module(PY_LOG, LOG_INFO, "Attempting to instanciate irc class");
-    pIrcClass = PyObject_GetAttrString(base_module, "irc");
-    /* pIrcClass is a new reference */
-    if(pIrcClass && PyCallable_Check(pIrcClass)) {
-        size_t i;
-        size_t ircargc = 3;
-        char *ircargs[] = {command_service, command_caller, command_target};
+    if(args && argc) {
         PyObject *pValue;
-
-        pIrcArgs = PyTuple_New(sizeof(ircargs));
-        for(i = 0; i< ircargc; ++i) {
-            pValue = PyString_FromString(ircargs[i]);
+        for(n = 0; n < argc; ++n) {
+            pValue = PyString_FromString(args[n]);
             if(!pValue) {
-                Py_DECREF(pIrcArgs);
-                log_module(PY_LOG, LOG_ERROR, "Unable to convert '%s' to python string", ircargs[i]);
-                return 0;
+                Py_DECREF(pArgs);
+                log_module(PY_LOG, LOG_INFO, "Unable to convert '%s' to python string", args[n]);
+                return NULL;
             }
-            PyTuple_SetItem(pIrcArgs, i, pValue);
+            PyTuple_SetItem(pArgs, n+i, pValue);
         }
-        pIrcObj = PyObject_CallObject(pIrcClass, pIrcArgs);
-        if(pIrcArgs != NULL)  {
-           Py_DECREF(pIrcArgs);
-        }
-        return pIrcObj;
     }
-    else {
-        log_module(PY_LOG, LOG_ERROR, "Unable to find irc class");
-        return NULL;
-    }
+    return pArgs;
 }
 
 PyObject *python_build_args(size_t argc, char *args[]) {
@@ -379,6 +365,55 @@ PyObject *python_build_args(size_t argc, char *args[]) {
 }
 
 
+PyObject *new_irc_object(char *command_service, char *command_caller, char *command_target) {
+    PyObject *pIrcArgs = NULL;
+    PyObject *pIrcClass;
+    PyObject *pIrcObj;
+
+    log_module(PY_LOG, LOG_INFO, "Attempting to instanciate irc class");
+    pIrcClass = PyObject_GetAttrString(base_module, "irc");
+    /* pIrcClass is a new reference */
+    if(pIrcClass && PyCallable_Check(pIrcClass)) {
+        //size_t i;
+        char *ircargs[] = {command_service, command_caller, command_target};
+        //PyObject *pValue;
+
+        pIrcArgs = python_build_args(3, ircargs);
+        /*
+        pIrcArgs = PyTuple_New(sizeof(ircargs));
+        for(i = 0; i< ircargc; ++i) {
+            if(ircargs[i]) {
+                pValue = PyString_FromString(ircargs[i]);
+                if(!pValue) {
+                    Py_DECREF(pIrcArgs);
+                    log_module(PY_LOG, LOG_ERROR, "Unable to convert '%s' to python string", ircargs[i]);
+                    return 0;
+                }
+            } 
+            else  {
+               pValue = Py_None;
+               Py_INCREF(Py_None);
+            }
+            PyTuple_SetItem(pIrcArgs, i, pValue);
+        }
+        */
+        pIrcObj = PyObject_CallObject(pIrcClass, pIrcArgs);
+        if(!pIrcObj) {
+            log_module(PY_LOG, LOG_ERROR, "IRC Class failed to load");
+            PyErr_Print();
+        }
+        if(pIrcArgs != NULL)  {
+           Py_DECREF(pIrcArgs);
+        }
+        return pIrcObj;
+    }
+    else {
+        log_module(PY_LOG, LOG_ERROR, "Unable to find irc class");
+        return NULL;
+    }
+}
+
+
 int python_call_handler(char *handler, char *args[], size_t argc, char *command_service, char *command_caller, char *command_target) {
     /* TODO:
      *   - Instanciate class 'irc' with command-* arguments and save it.
@@ -392,10 +427,15 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
     PyObject *pMethod;
     PyObject *pValue;
 
+    log_module(PY_LOG, LOG_INFO, "attempting to call handler %s.", handler);
     if(base_module != NULL) {
         pIrcObj = new_irc_object(command_service, command_caller, command_target);
+        if(!pIrcObj) {
+            log_module(PY_LOG, LOG_INFO, "Can't get irc object. Bailing.");
+            return 0;
+        }
 
-        pArgs = python_build_args(argc, args);
+        pArgs = python_build_handler_args(argc, args, pIrcObj);
         pMethod = PyObject_GetAttrString(handler_object, handler);
         if(pMethod && PyCallable_Check(pMethod)) {
             pValue = PyObject_CallObject(pMethod, pArgs);
@@ -432,6 +472,7 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
         }
     } 
     else { /* No base module.. no python? */
+        log_module(PY_LOG, LOG_INFO, "Cannot handle %s, Python is not initialized.", handler);
         return 0;
     }
 }
@@ -443,7 +484,7 @@ PyObject *python_new_handler_object() {
     pHandlerClass = PyObject_GetAttrString(base_module, "handler");
     /* Class is a new reference */
     if(pHandlerClass && PyCallable_Check(pHandlerClass)) {
-        PyObject *pValue;
+        /*PyObject *pValue; */
 
         pHandlerObj = PyObject_CallObject(pHandlerClass, NULL);
         return pHandlerObj;
@@ -467,11 +508,12 @@ python_handle_join(struct modeNode *mNode)
 
     log_module(PY_LOG, LOG_INFO, "python module handle_join");
     if(!channel||!user) {
+        log_module(PY_LOG, LOG_WARNING, "Join without channel or user?");
         return 0;
     }
     else {
         char *args[] = {channel->name, user->nick};
-        return python_call_handler("join", args, 2, NULL, NULL, NULL);
+        return python_call_handler("join", args, 2, "", "", "");
     }
 }
 
@@ -490,7 +532,7 @@ int python_load() {
     if(base_module != NULL) {
         handler_object = python_new_handler_object();
         if(handler_object) {
-            python_call_handler("init", NULL, 0, NULL, NULL, NULL );
+            python_call_handler("init", NULL, 0, "", "", "");
             return 1;
         }
         else {
