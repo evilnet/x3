@@ -15,24 +15,8 @@ import svc
 
 import math
 
+import sys
 
-class modules:
-    """Class to handle loading/unloading of modules"""
-    loaded_modules = []
-
-    def load(self, name):
-        mod_name = "plugins.%s"%name
-        need_reload = false;
-        if(sys.modules[mod_name]):
-            need_reload = true
-        #TODO: try to catch compile errors etc.
-
-        if(need_reload == false):
-            __import__(mod_name)
-        module = sys.modules[mod_name]
-        if(need_reload == true):
-            reload(module) # to ensure its read fresh
-        self.loaded_modules[mod_name] = module
 
 class irc:
     """Used to interact with the world of IRC from module scripts"""
@@ -53,52 +37,53 @@ class irc:
 
     def reply(self, message):
         """ Send a private reply to the user using convenience values"""
-        self.send_target_privmsg(self.service, self.caller, message)
+        print "DEBUG: sending a message from %s to %s: %s"%(self.service, self.caller, message)
+        if(self.target):
+            self.send_target_privmsg(self.service, self.target, "%s: %s"%(self.caller, message))
+        else:
+            self.send_target_privmsg(self.service, self.caller, message)
 
 class handler:
-    """ Handle callbacks """
+    """ Main hub of python system. Handle callbacks from c. """
+    modules = None  #module object to deal with 
 
-    def init(): # not to be confused with __init__!
+    def init(self, irc): # not to be confused with __init__!
         print "DEBUG: This is x3init in python"
+        self.modules = modules()
         return 0
 
     def join(self, irc, channel, nick):
         user = svc.get_user(nick)
         print "DEBUG: handler.join()"
-        irc.send_target_privmsg("x3", channel, "test %s "%(irc.service))
+        irc.send_target_privmsg("x3", channel, "%s joined %s: %s "%(nick, channel, user))
         return 0
         
-#+print "This is mod-python.py"
-#+
-#+caller = ''
-#+target = ''
-#+service = ''
-#+
-#+def handle_init():
-#+    print "This is x3init in python"
-#+    return 0
-#+
-#+
-#+def handle_join(channel, nick):
-#+    global caller, target, service
-#+    print "This is handle_join() in python"
-#+    user = svc.get_user(nick)
-#+    svc.send_target_privmsg("x3", channel, "test %s "%(service))
-#+    svc.send_target_privmsg("x3", channel, "   %s joined %s: %s"%(nick, channel, user))
-#+    svc.send_target_privmsg("x3", channel, "Welcome to %s %s (*%s)! Your IP is %s. You are now in %d channels!"%(channel, user['nick'], user['account'], user['ip'], len(user['channels']) ))
-#+    chan = svc.get_channel(channel)
-#+    svc.send_target_privmsg("x3", channel, "Channel details: %s"%chan)
-#+    return 0
-#+
-#+def run(command):
-#+    eval(command)
-#+    return 0
-#+
-#+def reply(message):
-#+    global caller, target, service
-#+    print "DEBUG: %s / %s / %s : %s" %(caller, target, service, message);
-#+    if(len(target) > 0):
-#+        svc.send_target_privmsg(service, target, "%s: %s"%(caller, message));
-#+    else:
-#+        svc.send_target_notice(service, caller, message);
-#+    return 0
+    def cmd_run(self, irc, cmd):
+        print "DEBUG: handler.cmd_run: %s"%cmd
+        eval(cmd);
+        return 0;
+
+class modules:
+    """Class to handle loading/unloading of modules"""
+    loaded_modules = {}
+
+    def __init__(self):
+        self.load("annoy")
+
+    def load(self, name):
+        mod_name = "plugins.%s"%name
+        need_reload = False
+        if(sys.modules.has_key(mod_name)):
+            need_reload = true
+        #TODO: try to catch compile errors etc.
+
+        if(need_reload == False):
+            __import__(mod_name)
+        module = sys.modules[mod_name]
+        if(need_reload == True):
+            reload(module) # to ensure its read fresh
+        Class = module.Class
+        pluginObj = Class(irc())
+        self.loaded_modules[mod_name] = pluginObj
+
+       

@@ -4,9 +4,10 @@ X3 ChangeLog
 2009-01-23  Alex Schumann  <rubin@afternet.org>
 
 	* src/mod-python.c: refactor to use class-based hook manager. Seems to
-	run now.
+	run now. Also added better comments.
 
-	* src/modpython.py: refactored into classes. Seems to run now.
+	* src/modpython.py: refactored into classes. Seems to run now. Cleaned
+	up a bit.
 
 2008-01-12  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 

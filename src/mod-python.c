@@ -38,7 +38,7 @@
  * - Impliment most of proto-p10 irc_* commands for calling from scripts
  * - Impliment functions to look up whois, channel, account, and reg-channel info for scripts
  * - Impliment x3.conf settings for python variables like include path, etc.
- * - kod-python.py calls for everything you can reg_ a handler for in x3
+ * - modpython.py calls for everything you can reg_ a handler for in x3
  * - Some kind of system for getting needed binds bound automagicaly to make it easier
  *   to run peoples scripts and mod-python in general.
  */
@@ -56,9 +56,19 @@ static struct module *python_module;
 PyObject *base_module = NULL; /* Base python handling library */
 PyObject *handler_object = NULL; /* instanciation of handler class */
 
+
+/* ---------------------------------------------------------------------- * 
+    Some hooks you can call from modpython.py to interact with the   
+    service, and IRC.  These emb_* functions are available as svc.*
+    in python.
+ */
+
 static PyObject*
 emb_dump(PyObject *self, PyObject *args)
 {
+    /* Dump a raw string into the socket 
+        usage: svc.dump(<P10 string>)
+    */
     char *buf;
     int ret = 0;
     char linedup[MAXLEN];
@@ -76,6 +86,9 @@ emb_dump(PyObject *self, PyObject *args)
 static PyObject*
 emb_send_target_privmsg(PyObject *self, PyObject *args)
 {
+    /* Send a privmsg 
+        usage: svc.send_target_privmsg(<servicenick_from>, <nick_to>, <message>)
+    */
     int ret = 0;
     char *servicenick;
     char *channel;
@@ -96,6 +109,9 @@ emb_send_target_privmsg(PyObject *self, PyObject *args)
 static PyObject*
 emb_send_target_notice(PyObject *self, PyObject *args)
 {
+    /* send a notice
+        usage: svc.send_target_notice(<servicenick_from>, <nick_to>, <message>)
+    */
     int ret = 0;
     char *servicenick;
     char *target;
@@ -113,10 +129,12 @@ emb_send_target_notice(PyObject *self, PyObject *args)
     return Py_BuildValue("i", ret);
 }
 
-
 static PyObject*
 emb_get_user(PyObject *self, PyObject *args)
 {
+    /* Get a python object containing everything x3 knows about a user, by nick.
+        usage: svc.get_user(<nick>)
+    */
     char *nick;
     struct userNode *user;
     struct modeNode *mn;
@@ -161,6 +179,9 @@ emb_get_user(PyObject *self, PyObject *args)
 static PyObject*
 emb_get_channel(PyObject *self, PyObject *args)
 {
+    /* Returns a python dict object with all sorts of info about a channel.
+          usage: svc.get_channel(<name>)
+    */
     char *name;
     struct chanNode *channel;
     unsigned int n;
@@ -194,7 +215,6 @@ emb_get_channel(PyObject *self, PyObject *args)
                 );
     }
 
-
     /* build tuple of exempts */
     pChannelExempts = PyTuple_New(channel->exemptlist.used);
     for(n=0; n < channel->exemptlist.used;n++) {
@@ -206,8 +226,6 @@ emb_get_channel(PyObject *self, PyObject *args)
                             "set", en->set)
                 );
     }
-
-
 
     return Py_BuildValue("{s:s,s:s,s:s,s:i"
                          ",s:i,s:i,s:O,s:O,s:O}",
@@ -225,15 +243,43 @@ emb_get_channel(PyObject *self, PyObject *args)
             );
 }
 
-/*
 static PyObject*
 emb_get_account(PyObject *self, PyObject *args)
 {
+    /* Returns a python dict object with all sorts of info about an account.
+        usage: svc.get_account(<account name>)
+    */
     char *name;
+    struct handle_info *hi;
+
     if(!PyArg_ParseTuple(args, "s", &name))
         return NULL;
+
+    hi = get_handle_info(name);
+    if(!hi) {
+        return NULL;
+    }
+    return Py_BuildValue("{s:s,s:i,s:s,s:s,s:s"
+                         ",s:s,s:s}",
+                            
+                          "account", hi->handle,
+                          "registered", hi->registered,
+                          "last_seen", hi->lastseen,
+                          "infoline",  hi->infoline ? hi->infoline : "",
+                          "email", hi->email_addr ? hi->email_addr : "",
+                          
+                          "fakehost", hi->fakehost ? hi->fakehost : "",
+                          "last_quit_host", hi->last_quit_host
+                          
+                          /* TODO: */
+                          /* users online authed to this account */
+                          /* cookies */
+                          /* nicks (nickserv nets only?) */
+                          /* masks */
+                          /* ignores */
+                          /* channels */
+                           );
 }
-*/
 
 
 static PyMethodDef EmbMethods[] = {
@@ -242,86 +288,23 @@ static PyMethodDef EmbMethods[] = {
     {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
     {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
     {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
+    {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
     {NULL, NULL, 0, NULL}
 };
 
 
-
-/* This is just a hack-job for testing. It'll go away. */
-int python_call_func_real(char *function, char *args[], size_t argc) {
-    /* TODO: get arguments, pass through to python function */
-    PyObject *pFunc, *pValue;
-    PyObject *pArgs = NULL;
-    if(base_module != NULL) {
-        log_module(PY_LOG, LOG_INFO, "Attempting to run python function %s", function);
-        pFunc = PyObject_GetAttrString(base_module, function);
-        /* pFunc is a new reference */
-        if(pFunc && PyCallable_Check(pFunc)) {
-            size_t i;
-            if(args && argc) {
-                pArgs = PyTuple_New(argc);
-                for(i = 0; i< argc; ++i) {
-                    pValue = PyString_FromString(args[i]);
-                    if(!pValue) {
-                        Py_DECREF(pArgs);
-                        Py_DECREF(pFunc);
-                        log_module(PY_LOG, LOG_INFO, "Unable to convert '%s' to python string", args[i]);
-                        return 0;
-                    }
-                    PyTuple_SetItem(pArgs, i, pValue);
-                }
-            }
-
-            pValue = PyObject_CallObject(pFunc, pArgs);
-            if(pArgs != NULL)  {
-               Py_DECREF(pArgs);
-            }
-            if(pValue != NULL) {
-                int ret;
-                ret = PyInt_AsLong(pValue);
-                if(ret == -1 && PyErr_Occurred()) {
-                    PyErr_Print();
-                    log_module(PY_LOG, LOG_INFO, "error converting return value of %s to type long. ", function);
-                    ret = 0;
-                }
-                log_module(PY_LOG, LOG_INFO, "%s was run successfully, returned %d.", function, ret);
-                /* TODO: convert pValue to c int, return it below */
-                Py_DECREF(pValue);
-                return ret;
-            }
-            else {
-                Py_DECREF(pFunc);
-                /* TODO: instead of print errors, get them as strings
-                 * and deal with them with normal x3 log system. */
-                PyErr_Print();
-                log_module(PY_LOG, LOG_WARNING, "call to %s failed", function);
-                return 0;
-            }
-        }
-        else {
-            if(PyErr_Occurred())
-                PyErr_Print();
-            log_module(PY_LOG, LOG_WARNING, "function %s not found or uncallable", function);
-            return 0;
-        }
-    } 
-    else {
-        return 0;
-    }
-}
-
-/* This is just a hack-job for testing. It will go away */
-int python_call_func(char *function, char *args[], size_t argc, char *command_caller, char *command_target, char *command_service) {
-            char *setargs[] = {command_caller?command_caller:"", 
-                               command_target?command_target:"",
-                               command_service?command_service:""};
-            python_call_func_real("command_set", setargs, 3);
-            python_call_func_real(function, args, argc);
-            python_call_func_real("command_clear", NULL, 0);
-            return 0;
-}
+/* ------------------------------------------------------------------------------------------------ *
+     Thes functions set up the embedded environment for us to call out to modpython.py class 
+     methods.  
+ */
 
 PyObject *python_build_handler_args(size_t argc, char *args[], PyObject *pIrcObj) {
+    /* Sets up a python tuple with passed in arguments, prefixed by the Irc instance
+       which handlers use to interact with c.
+        argc = number of args
+        args = array of args
+        pIrcObj = instance of the irc class
+    */
     size_t i = 0, n;
     PyObject *pArgs = NULL;
 
@@ -345,6 +328,10 @@ PyObject *python_build_handler_args(size_t argc, char *args[], PyObject *pIrcObj
 }
 
 PyObject *python_build_args(size_t argc, char *args[]) {
+    /* Builds the passed in arguments into a python argument tuple.
+         argc = number of args
+         args = array of args
+    */
     size_t i;
     PyObject *pArgs = NULL;
 
@@ -366,11 +353,18 @@ PyObject *python_build_args(size_t argc, char *args[]) {
 
 
 PyObject *new_irc_object(char *command_service, char *command_caller, char *command_target) {
+    /* Creates a new instance of the irc class (from modpython.py) which is initalized
+       with current environment details like which service were talking to.
+         command_service = which service we are talking to, or empty string if none
+         command_caller = nick of user generating message, or empty string if none
+         command_target = If were reacting to something on a channel, this will
+                          be set to the name of the channel. Otherwise empty
+    */
     PyObject *pIrcArgs = NULL;
     PyObject *pIrcClass;
     PyObject *pIrcObj;
 
-    log_module(PY_LOG, LOG_INFO, "Attempting to instanciate irc class");
+    log_module(PY_LOG, LOG_INFO, "Attempting to instanciate irc class; %s %s %s", command_service, command_caller, command_target);
     pIrcClass = PyObject_GetAttrString(base_module, "irc");
     /* pIrcClass is a new reference */
     if(pIrcClass && PyCallable_Check(pIrcClass)) {
@@ -379,24 +373,6 @@ PyObject *new_irc_object(char *command_service, char *command_caller, char *comm
         //PyObject *pValue;
 
         pIrcArgs = python_build_args(3, ircargs);
-        /*
-        pIrcArgs = PyTuple_New(sizeof(ircargs));
-        for(i = 0; i< ircargc; ++i) {
-            if(ircargs[i]) {
-                pValue = PyString_FromString(ircargs[i]);
-                if(!pValue) {
-                    Py_DECREF(pIrcArgs);
-                    log_module(PY_LOG, LOG_ERROR, "Unable to convert '%s' to python string", ircargs[i]);
-                    return 0;
-                }
-            } 
-            else  {
-               pValue = Py_None;
-               Py_INCREF(Py_None);
-            }
-            PyTuple_SetItem(pIrcArgs, i, pValue);
-        }
-        */
         pIrcObj = PyObject_CallObject(pIrcClass, pIrcArgs);
         if(!pIrcObj) {
             log_module(PY_LOG, LOG_ERROR, "IRC Class failed to load");
@@ -405,9 +381,11 @@ PyObject *new_irc_object(char *command_service, char *command_caller, char *comm
         if(pIrcArgs != NULL)  {
            Py_DECREF(pIrcArgs);
         }
+        Py_DECREF(pIrcClass);
         return pIrcObj;
     }
     else {
+        /* need to free pIrcClass here if it WAS found but was NOT callable? */
         log_module(PY_LOG, LOG_ERROR, "Unable to find irc class");
         return NULL;
     }
@@ -415,12 +393,9 @@ PyObject *new_irc_object(char *command_service, char *command_caller, char *comm
 
 
 int python_call_handler(char *handler, char *args[], size_t argc, char *command_service, char *command_caller, char *command_target) {
-    /* TODO:
-     *   - Instanciate class 'irc' with command-* arguments and save it.
-     *   - get/find handler class instance
-     *   - call handler.<handler> passing in proper args
-     *   - destroy irc instance
-     *   - return something useful?
+    /*  This is how we talk to modpython.c.  First a new instance of the irc class is created using these
+        arguments to setup the current environment. Then the named method of the handler object is called
+        with the givin arguments.
      */
     PyObject *pIrcObj;
     PyObject *pArgs;
@@ -451,21 +426,24 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
                     ret = 0;
                 }
                 log_module(PY_LOG, LOG_INFO, "handler %s was run successfully, returned %d.", handler, ret);
-                /* TODO: convert pValue to c int, return it below */
                 Py_DECREF(pValue);
+                Py_DECREF(pIrcObj);
+                Py_DECREF(pMethod);
                 return ret;
             }
             else {
-                Py_DECREF(pIrcObj);
-                Py_DECREF(pMethod);
                 /* TODO: instead of print errors, get them as strings
                  * and deal with them with normal x3 log system. */
                 PyErr_Print();
                 log_module(PY_LOG, LOG_WARNING, "call to handler %s failed", handler);
+                Py_DECREF(pIrcObj);
+                Py_DECREF(pMethod);
                 return 0;
             }
         }
         else { /* couldn't find handler methed */
+            Py_DECREF(pArgs);
+            /* Free pMethod if it was found but not callable? */
             log_module(PY_LOG, LOG_ERROR, "Cannot find handler %s.", handler);
             return 0;
 
@@ -478,6 +456,10 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
 }
 
 PyObject *python_new_handler_object() {
+    /* Create a new instance of the handler class. 
+       This is called during python initilization (or reload)
+       and the result is saved and re-used.
+    */
     PyObject *pHandlerClass, *pHandlerObj;
 
     log_module(PY_LOG, LOG_INFO, "Attempting to instanciate python class handler");
@@ -495,20 +477,26 @@ PyObject *python_new_handler_object() {
     }
 }
 
-/* debate: do we just register these and check them in python
- * for every one (slow?) or actually work out if a plugin needs
- * it first? We will start by doing it every time.
+/* ------------------------------------------------------------------------------- *
+    Some gateway functions to convert x3 callbacks into modpython.py callbacks.
+    Mostly we just build relevant args and call the proper handler method
+
+   debate: do we just register these and check them in python
+   for every one (slow?) or actually work out if a plugin needs
+   it first? We will start by doing it every time.
  */
 static int
 python_handle_join(struct modeNode *mNode)
 {
+    /* callback for handle_join events. 
+    */
     struct userNode *user = mNode->user;
     struct chanNode *channel = mNode->channel;
 
 
     log_module(PY_LOG, LOG_INFO, "python module handle_join");
     if(!channel||!user) {
-        log_module(PY_LOG, LOG_WARNING, "Join without channel or user?");
+        log_module(PY_LOG, LOG_WARNING, "Python code got join without channel or user!");
         return 0;
     }
     else {
@@ -517,14 +505,18 @@ python_handle_join(struct modeNode *mNode)
     }
 }
 
+/* ----------------------------------------------------------------------------- */
+   
 
 int python_load() {
+    /* Init the python engine and do init work on modpython.py
+       This is called during x3 startup, and on a python reload
+    */
     PyObject *pName;
 
     setenv("PYTHONPATH", "/home/rubin/afternet/services/x3/x3-run/", 1);
     Py_Initialize();
     Py_InitModule("svc", EmbMethods);
-    //PyRun_SimpleString("import svc");
     /* TODO: get "modpython" from x3.conf */
     pName = PyString_FromString("modpython");
     base_module = PyImport_Import(pName);
@@ -549,9 +541,13 @@ int python_load() {
     return 0;
 }
 
-/* Called after X3 is fully up and running */
 int
 python_finalize(void) {
+    /* Called after X3 is fully up and running. 
+       Code can be put here that needs to run to init things, but
+       which is sensitive to everything else in x3 being up and ready
+       to go.
+     */
 
     PyRun_SimpleString("print 'Hello, World of Python!'");
     log_module(PY_LOG, LOG_INFO, "python module finalize");
@@ -559,16 +555,21 @@ python_finalize(void) {
     return 1;
 }
 
-/* Called on shutdown of the module */
 static void
-python_cleanup(void)
-{
+python_cleanup(void) {
+    /* Called on shutdown of the python module  (or before reloading)
+    */
     log_module(PY_LOG, LOG_INFO, "python module cleanup");
     Py_Finalize(); /* Shut down python enterpriter */
     return;
 }
 
+/* ---------------------------------------------------------------------------------- *
+   Python module command handlers. 
+*/
 static MODCMD_FUNC(cmd_reload) {
+    /* reload the python system completely 
+    */
     log_module(PY_LOG, LOG_INFO, "Shutting python down");
     python_cleanup();
     log_module(PY_LOG, LOG_INFO, "Loading python stuff");
@@ -582,17 +583,20 @@ static MODCMD_FUNC(cmd_reload) {
 }
 
 static MODCMD_FUNC(cmd_run) {
-    
+    /* run an arbitrary python command. This can include shell commands, so should be disabled on
+       production, and needs to be handled extremely cautiously as far as access control
+    */
     char *msg;
     msg = unsplit_string(argv + 1, argc - 1, NULL);
-    /* PyRun_SimpleString(msg); */
     char *args[] = {msg};
-    python_call_func("run", args, 1, user?user->nick:"", channel?channel->name:"", cmd->parent->bot->nick);
+    python_call_handler("cmd_run", args, 1, cmd->parent->bot->nick, user?user->nick:"", channel?channel->name:"");
     return 1;
 }
 
-/* Called on init of the module during startup */
 int python_init(void) {
+    /* X3 calls this function on init of the module during startup. We use it to
+       do all our setup tasks and bindings 
+    */
 
     PY_LOG = log_register_type("Python", "file:python.log");
     python_module = module_register("python", PY_LOG, "mod-python.help", NULL);
