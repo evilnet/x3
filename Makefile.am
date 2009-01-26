@@ -17,6 +17,7 @@ install-exec-local:
 	$(INSTALL) -m 644 $(srcdir)/src/*.help $(prefix)
 	$(INSTALL) -m 600 $(srcdir)/x3.conf.example $(prefix)
 	$(INSTALL) -m 644 $(srcdir)/sockcheck.conf.example $(prefix)
+	$(INSTALL) -m 644 $(srcdir)/src/modpython.py $(prefix)
 	./install-r.sh $(srcdir)/src/plugins $(prefix)
 	@echo
 	@echo X3-$(VERSION) has been installed to $(prefix)
