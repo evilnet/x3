@@ -281,14 +281,38 @@ emb_get_account(PyObject *self, PyObject *args)
                            );
 }
 
+static PyObject*
+emb_log_module(PyObject *self, PyObject *args)
+{
+    /* a gateway to standard X3 logging subsystem.
+     * level is a value 0 to 9 as defined by the log_severity enum in log.h.
+     * LOG_INFO is 3, LOG_WARNING is 6, LOG_ERROR is 7.
+     *
+     * for now, all logs go to the PY_LOG log. In the future this will change.
+     */
+    char *message;
+    int ret = 0;
+    int level;
+
+    if(!PyArg_ParseTuple(args, "is", &level, &message))
+        return NULL;
+
+    log_module(PY_LOG, level, "%s", message);
+
+    return Py_BuildValue("i", ret);
+}
 
 static PyMethodDef EmbMethods[] = {
+    /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
     {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
     {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
+    {"log_module", emb_log_module, METH_VARARGS, "Log something using the X3 log subsystem"},
+    /* Information gathering methods */
     {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
     {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
     {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
+    /* null terminator */
     {NULL, NULL, 0, NULL}
 };
 
@@ -297,6 +321,41 @@ static PyMethodDef EmbMethods[] = {
      Thes functions set up the embedded environment for us to call out to modpython.py class 
      methods.  
  */
+
+void python_log_module() {
+    /* Attempt to convert python errors to x3 log system */
+    PyObject *exc, *tb, *value, *tmp;
+    char *str_exc = "NONE";
+    char *str_value = "NONE";
+    char *str_tb = "NONE";
+
+    PyErr_Fetch(&exc, &value, &tb);
+
+    if(exc) {
+        if((tmp = PyObject_Str(exc)))
+            str_exc = PyString_AsString(tmp);
+    }
+    if(value) {
+        if((tmp = PyObject_Str(value)))
+            str_value = PyString_AsString(tmp);
+    }
+    if(tb) {
+        if((tmp = PyObject_Str(tb)))
+            str_tb = PyString_AsString(tmp);
+    }
+
+    /* Now restore it so we can print it (just in case) 
+     *   (should we do this only when running in debug mode?) */
+    PyErr_Restore(exc, value, tb);
+    PyErr_Print(); /* which of course, clears it again.. */
+
+    log_module(PY_LOG, LOG_WARNING, "PYTHON error: %s, value: %s", str_exc, str_value);
+
+    /* TODO: get the traceback using the traceback module via C api so we can add it to the X3 logs. See
+     * http://mail.python.org/pipermail/python-list/2003-March/192226.html */
+    // (this doesnt work, str_tb is just an object hashid) log_module(PY_LOG, LOG_INFO, "PYTHON error, traceback: %s", str_tb);
+}
+
 
 PyObject *python_build_handler_args(size_t argc, char *args[], PyObject *pIrcObj) {
     /* Sets up a python tuple with passed in arguments, prefixed by the Irc instance
@@ -376,7 +435,8 @@ PyObject *new_irc_object(char *command_service, char *command_caller, char *comm
         pIrcObj = PyObject_CallObject(pIrcClass, pIrcArgs);
         if(!pIrcObj) {
             log_module(PY_LOG, LOG_ERROR, "IRC Class failed to load");
-            PyErr_Print();
+            python_log_module();
+            //PyErr_Print();
         }
         if(pIrcArgs != NULL)  {
            Py_DECREF(pIrcArgs);
@@ -391,7 +451,6 @@ PyObject *new_irc_object(char *command_service, char *command_caller, char *comm
     }
 }
 
-
 int python_call_handler(char *handler, char *args[], size_t argc, char *command_service, char *command_caller, char *command_target) {
     /*  This is how we talk to modpython.c.  First a new instance of the irc class is created using these
         arguments to setup the current environment. Then the named method of the handler object is called
@@ -403,7 +462,7 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
     PyObject *pValue;
 
     log_module(PY_LOG, LOG_INFO, "attempting to call handler %s.", handler);
-    if(base_module != NULL) {
+    if(base_module != NULL && handler_object != NULL) {
         pIrcObj = new_irc_object(command_service, command_caller, command_target);
         if(!pIrcObj) {
             log_module(PY_LOG, LOG_INFO, "Can't get irc object. Bailing.");
@@ -413,6 +472,7 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
         pArgs = python_build_handler_args(argc, args, pIrcObj);
         pMethod = PyObject_GetAttrString(handler_object, handler);
         if(pMethod && PyCallable_Check(pMethod)) {
+            /* Call the method, with the arguments */
             pValue = PyObject_CallObject(pMethod, pArgs);
             if(pArgs) {
                 Py_DECREF(pArgs);
@@ -421,8 +481,9 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
                 int ret;
                 ret = PyInt_AsLong(pValue);
                 if(ret == -1 && PyErr_Occurred()) {
-                    PyErr_Print();
+                    //PyErr_Print();
                     log_module(PY_LOG, LOG_INFO, "error converting return value of handler %s to type long. ", handler);
+                    python_log_module();
                     ret = 0;
                 }
                 log_module(PY_LOG, LOG_INFO, "handler %s was run successfully, returned %d.", handler, ret);
@@ -434,8 +495,9 @@ int python_call_handler(char *handler, char *args[], size_t argc, char *command_
             else {
                 /* TODO: instead of print errors, get them as strings
                  * and deal with them with normal x3 log system. */
-                PyErr_Print();
                 log_module(PY_LOG, LOG_WARNING, "call to handler %s failed", handler);
+                //PyErr_Print();
+                python_log_module();
                 Py_DECREF(pIrcObj);
                 Py_DECREF(pMethod);
                 return 0;
@@ -469,10 +531,24 @@ PyObject *python_new_handler_object() {
         /*PyObject *pValue; */
 
         pHandlerObj = PyObject_CallObject(pHandlerClass, NULL);
-        return pHandlerObj;
+        if(pHandlerObj != NULL) {
+            log_module(PY_LOG, LOG_INFO, "Created new python handler object.");
+            return pHandlerObj;
+        }
+        else {
+            log_module(PY_LOG, LOG_ERROR, "Unable to instanciate handler object");
+            //PyErr_Print();
+            python_log_module();
+            return NULL;
+        }
     }
     else {
         log_module(PY_LOG, LOG_ERROR, "Unable to find handler class");
+        //PyErr_Print();
+        python_log_module();
+        if(pHandlerClass) {
+            Py_DECREF(pHandlerClass);
+        }
         return NULL;
     }
 }
@@ -534,7 +610,8 @@ int python_load() {
         }
     }
     else {
-        PyErr_Print();
+        //PyErr_Print();
+        python_log_module();
         log_module(PY_LOG, LOG_WARNING, "Failed to load modpython.py");
         return 0;
     }
@@ -593,6 +670,22 @@ static MODCMD_FUNC(cmd_run) {
     return 1;
 }
 
+#define numstrargs(X)   sizeof(X) / sizeof(*X)
+static MODCMD_FUNC(cmd_command) {
+    char *plugin = argv[1];
+    char *command = argv[2];
+    char *msg; /* args */
+    if(argc > 3) {
+       msg = unsplit_string(argv + 3, argc - 3, NULL);
+    }
+    else {
+        msg = "";
+    }
+    char *args[] = {plugin, command, msg};
+    python_call_handler("cmd_command", args, numstrargs(args), cmd->parent->bot->nick, user?user->nick:"", channel?channel->name:"");
+    return 1;
+}
+
 int python_init(void) {
     /* X3 calls this function on init of the module during startup. We use it to
        do all our setup tasks and bindings 
@@ -613,6 +706,7 @@ int python_init(void) {
 */
     modcmd_register(python_module, "reload",  cmd_reload,  1,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     modcmd_register(python_module, "run",  cmd_run,  2,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
+    modcmd_register(python_module, "command", cmd_command, 3, MODCMD_REQUIRE_STAFF, NULL);
     reg_join_func(python_handle_join);
     reg_exit_func(python_cleanup);
 

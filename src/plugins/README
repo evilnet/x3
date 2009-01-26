@@ -1,0 +1,6 @@
+These are mod-python plugins distributed with x3. If you wish to make customizations, you should do so in the 
+plugins/ directory of your x3 runtime location, rather than the x3 source tree. 
+
+Make a copy of the plugin directory you wish to change to your own plugin name, so your changes won't be overwritten on the next make install.
+
+

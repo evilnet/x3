@@ -38,39 +38,111 @@ class irc:
     def reply(self, message):
         """ Send a private reply to the user using convenience values"""
         print "DEBUG: sending a message from %s to %s: %s"%(self.service, self.caller, message)
-        if(self.target):
+        if(len(self.target)):
             self.send_target_privmsg(self.service, self.target, "%s: %s"%(self.caller, message))
         else:
             self.send_target_privmsg(self.service, self.caller, message)
 
 class handler:
     """ Main hub of python system. Handle callbacks from c. """
-    modules = None  #module object to deal with 
+
+    def __init__(self):
+        print "DEBUG: constructor for handler initing"
+        self.plugins = plugins(self)
+        if(not self.plugins):
+            print "DEBUG: unable to make self.plugins!?!"
 
     def init(self, irc): # not to be confused with __init__!
-        print "DEBUG: This is x3init in python"
-        self.modules = modules()
+        """ This gets called once all the objects are up and running. Otherwise,
+        were not done initing this own instance to be able to start calling it """
+        print "DEBUG: in handler.init()"
+        self.plugins.init()
         return 0
 
     def join(self, irc, channel, nick):
         user = svc.get_user(nick)
         print "DEBUG: handler.join()"
-        irc.send_target_privmsg("x3", channel, "%s joined %s: %s "%(nick, channel, user))
+        self.plugins.callhandler("join", irc, [channel, nick], [channel, nick])
         return 0
         
     def cmd_run(self, irc, cmd):
         print "DEBUG: handler.cmd_run: %s"%cmd
-        eval(cmd);
-        return 0;
+        eval(cmd)
+        return 0
 
-class modules:
-    """Class to handle loading/unloading of modules"""
-    loaded_modules = {}
+    def addhook(self, event, method, filter=[None], data=None):
+        self.plugins.addhook(event, method, filter, data)
+        return 0
 
-    def __init__(self):
+    def addcommand(self, plugin, command, method):
+        self.addhook("command", method, [plugin, command])
+
+    def cmd_command(self, irc, plugin, cmd, args):
+        print "DEBUG: handlec.cmd_command; %s %s; args= %s"%(plugin, cmd, args)
+        self.plugins.callhandler("command", irc, [plugin, cmd], [args])
+        return 0
+
+class plugins:
+    """Class to handle loading/unloading of plugins"""
+    loaded_plugins = {}
+    hooks = []
+
+    class hook:
+        """ This is a request from a plugin to be called on an event """
+        event = ""     # Event to be called on (eg "join")
+        method = None  # Method to call
+        filter = None  # Arguments to filter
+        data = ""      # plugin-supplied data for plugin use
+        
+        def __init__(self, event, method, filter, data):
+            self.event = event
+            self.method = method
+            self.filter = filter
+            self.data = data
+
+        def event_is(self, event, evdata):
+            if(self.event == event):
+                for i in range(len(self.filter)):
+                    if( self.filter[i] != None 
+                      and self.filter[i] != evdata[i]): # should be case insensitive? or how to compare?
+                        print "DEBUG: rejecting event, %s is not %s"%(self.filter[i], evdata[i])
+                        return False
+                return True
+            else:
+                return False
+
+        def trigger(self, irc, args):
+            print "DEBUG: Triggering %s event. with '%s' arguments."%(self.event, args)
+            self.method(irc, *args)
+
+    def __init__(self, handler):
+        """ Constructor """
+        print "DEBUG: constructor for plugins initing"
+        self.handler = handler
+
+    def init(self):
+        print "DEBUG: in plugins.init()"
         self.load("annoy")
 
+    def addhook(self, event, method, filter=[None], data=None):
+        print "DEBUG: Adding hook for %s."%event
+        self.hooks.append(self.hook(event, method, filter, data))
+
+    def findhooksforevent(self, event, data):
+        ret = []
+        print "DEBUG: findhooksforevent() looking..."
+        for hook in self.hooks:
+            print "DEBUG: looking at a %s hook..."%hook.event
+            if(hook.event_is(event, data)):
+                ret.append(hook)
+        return ret
+
+    def callhandler(self, event, irc, filter, args):
+        for hook in self.findhooksforevent(event, filter):
+            hook.trigger(irc, args)
+
     def load(self, name):
+        """ Loads a plugin by name """
         mod_name = "plugins.%s"%name
         need_reload = False
         if(sys.modules.has_key(mod_name)):
@@ -83,7 +155,6 @@ class modules:
         if(need_reload == True):
             reload(module) # to ensure its read fresh
         Class = module.Class
-        pluginObj = Class(irc())
-        self.loaded_modules[mod_name] = pluginObj
+        pluginObj = Class(self.handler, irc())
+        self.loaded_plugins[mod_name] = pluginObj
 
-       

@@ -1,6 +1,17 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-01-24  Alex Schumann  <rubin@afternet.org>
+
+	* src/mod-python.c: added plugin hook to log to x3 logs, and worked
+	out the basics of callback registration.
+
+	* src/modpython.py: x3 logging hook and new callback registration
+
+	* Makefile.am: install modpython.py and plugins/ during make install
+
+	* install-r.sh: shell script to do recursive copy with exclusions
+
 2009-01-23  Alex Schumann  <rubin@afternet.org>
 
 	* src/mod-python.c: refactor to use class-based hook manager. Seems to
