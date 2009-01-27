@@ -462,6 +462,7 @@ static dict_t opserv_waiting_connections; /* data is struct waitingConnection */
 static dict_t opserv_hostinfo_dict; /* data is struct opserv_hostinfo* */
 static dict_t opserv_user_alerts; /* data is struct opserv_user_alert* */
 static dict_t opserv_nick_based_alerts; /* data is struct opserv_user_alert* */
+static dict_t opserv_account_based_alerts; /* data is struct opserv_user_alert* */
 static dict_t opserv_channel_alerts; /* data is struct opserv_user_alert* */
 static struct module *opserv_module;
 static struct log_type *OS_LOG;
@@ -4704,6 +4705,8 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
         dict_insert(opserv_channel_alerts, name_dup, alert);
     if (alert->discrim->mask_nick)
         dict_insert(opserv_nick_based_alerts, name_dup, alert);
+    if (alert->discrim->accountmask)
+        dict_insert(opserv_account_based_alerts, name_dup, alert);
     return alert;
 }
 
@@ -6559,6 +6562,12 @@ alert_check_user(const char *key, void *data, void *extra)
 }
 
 static void
+opserv_alert_check_account(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
+{
+    dict_foreach(opserv_account_based_alerts, alert_check_user, user);
+}
+
+static void
 opserv_alert_check_nick(struct userNode *user, UNUSED_ARG(const char *old_nick))
 {
     struct gag_entry *gag;
@@ -6749,6 +6758,7 @@ static MODCMD_FUNC(cmd_delalert)
     for (i=1; i<argc; i++) {
         dict_remove(opserv_nick_based_alerts, argv[i]);
         dict_remove(opserv_channel_alerts, argv[i]);
+        dict_remove(opserv_account_based_alerts, argv[i]);
         if (dict_remove(opserv_user_alerts, argv[i]))
             reply("OSMSG_REMOVED_ALERT", argv[i]);
         else
@@ -6939,6 +6949,8 @@ opserv_db_init(void) {
     opserv_channel_alerts = dict_new();
     dict_delete(opserv_nick_based_alerts);
     opserv_nick_based_alerts = dict_new();
+    dict_delete(opserv_account_based_alerts);
+    opserv_account_based_alerts = dict_new();
     dict_delete(opserv_user_alerts);
     opserv_user_alerts = dict_new();
     dict_set_free_keys(opserv_user_alerts, free);
@@ -6965,6 +6977,7 @@ opserv_db_cleanup(void)
     unreg_del_user_func(opserv_user_cleanup);
     dict_delete(opserv_hostinfo_dict);
     dict_delete(opserv_nick_based_alerts);
+    dict_delete(opserv_account_based_alerts);
     dict_delete(opserv_channel_alerts);
     dict_delete(opserv_user_alerts);
     for (nn=0; nn<ArrayLength(level_strings); ++nn)
@@ -7138,6 +7151,7 @@ init_opserv(const char *nick)
     reg_del_channel_func(opserv_channel_delete);
     reg_join_func(opserv_join_check);
     reg_auth_func(opserv_staff_alert);
+    reg_auth_func(opserv_alert_check_account);
     reg_notice_func(opserv, opserv_notice_handler);
 
     opserv_db_init();
