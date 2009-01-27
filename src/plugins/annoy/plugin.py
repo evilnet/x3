@@ -11,6 +11,7 @@ class Annoy:
 #        irc.send_target_privmsg("O3", "#TheOPS", "%s is loaded"%self.name)
 #        handler.addhook("join", self.on_join, "foobar")
         handler.addcommand(self.name, "dance", self.dance)
+        handler.addcommand(self.name, "nickof", self.nickof)
         self.test = "footest"
 
 #    def on_join(self, irc, channel, nick):
@@ -31,5 +32,13 @@ class Annoy:
         reply += "."
 
         irc.reply(reply)
+
+    def nickof(self, irc, bot):
+        info = svc.get_info()
+
+        if(bot and bot in info.keys()):
+            irc.reply("%s has nick %s"%(bot, info[bot]))
+        else:
+            irc.reply("I dunno. Try %s"%str(info.keys()))
 
 Class = Annoy

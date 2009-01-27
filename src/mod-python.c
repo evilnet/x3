@@ -32,6 +32,7 @@
 #include "saxdb.h"
 #include "sendmail.h"
 #include "timeq.h"
+#include "compat.h"
 
 /* TODO notes
  *
@@ -41,6 +42,7 @@
  * - modpython.py calls for everything you can reg_ a handler for in x3
  * - Some kind of system for getting needed binds bound automagicaly to make it easier
  *   to run peoples scripts and mod-python in general.
+ * - An interface to reading/writing data to x3.db. Maybe generic, or attached to account or channel reg records?
  */
 
 static const struct message_entry msgtab[] = {
@@ -57,6 +59,8 @@ PyObject *base_module = NULL; /* Base python handling library */
 PyObject *handler_object = NULL; /* instanciation of handler class */
 
 
+extern struct userNode *global, *chanserv, *opserv, *nickserv, *spamserv;
+
 /* ---------------------------------------------------------------------- * 
     Some hooks you can call from modpython.py to interact with the   
     service, and IRC.  These emb_* functions are available as svc.*
@@ -64,7 +68,7 @@ PyObject *handler_object = NULL; /* instanciation of handler class */
  */
 
 static PyObject*
-emb_dump(PyObject *self, PyObject *args)
+emb_dump(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Dump a raw string into the socket 
         usage: svc.dump(<P10 string>)
@@ -72,6 +76,7 @@ emb_dump(PyObject *self, PyObject *args)
     char *buf;
     int ret = 0;
     char linedup[MAXLEN];
+
 
     if(!PyArg_ParseTuple(args, "s:dump", &buf ))
         return NULL;
@@ -84,7 +89,7 @@ emb_dump(PyObject *self, PyObject *args)
 }
 
 static PyObject*
-emb_send_target_privmsg(PyObject *self, PyObject *args)
+emb_send_target_privmsg(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Send a privmsg 
         usage: svc.send_target_privmsg(<servicenick_from>, <nick_to>, <message>)
@@ -95,6 +100,7 @@ emb_send_target_privmsg(PyObject *self, PyObject *args)
     char *buf;
 
     struct service *service;
+
 
     if(!PyArg_ParseTuple(args, "sss:reply", &servicenick, &channel, &buf ))
         return NULL;
@@ -107,7 +113,7 @@ emb_send_target_privmsg(PyObject *self, PyObject *args)
 }
 
 static PyObject*
-emb_send_target_notice(PyObject *self, PyObject *args)
+emb_send_target_notice(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* send a notice
         usage: svc.send_target_notice(<servicenick_from>, <nick_to>, <message>)
@@ -118,6 +124,7 @@ emb_send_target_notice(PyObject *self, PyObject *args)
     char *buf;
 
     struct service *service;
+
 
     if(!PyArg_ParseTuple(args, "sss:reply", &servicenick, &target, &buf ))
         return NULL;
@@ -130,7 +137,7 @@ emb_send_target_notice(PyObject *self, PyObject *args)
 }
 
 static PyObject*
-emb_get_user(PyObject *self, PyObject *args)
+emb_get_user(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Get a python object containing everything x3 knows about a user, by nick.
         usage: svc.get_user(<nick>)
@@ -140,6 +147,8 @@ emb_get_user(PyObject *self, PyObject *args)
     struct modeNode *mn;
     unsigned int n;
     PyObject* pChanList;
+
+
     if(!PyArg_ParseTuple(args, "s", &nick))
         return NULL;
     if(!(user = GetUserH(nick))) {
@@ -177,7 +186,7 @@ emb_get_user(PyObject *self, PyObject *args)
 }
 
 static PyObject*
-emb_get_channel(PyObject *self, PyObject *args)
+emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Returns a python dict object with all sorts of info about a channel.
           usage: svc.get_channel(<name>)
@@ -188,6 +197,7 @@ emb_get_channel(PyObject *self, PyObject *args)
     PyObject *pChannelMembers;
     PyObject *pChannelBans;
     PyObject *pChannelExempts;
+
 
     if(!PyArg_ParseTuple(args, "s", &name))
         return NULL;
@@ -244,13 +254,14 @@ emb_get_channel(PyObject *self, PyObject *args)
 }
 
 static PyObject*
-emb_get_account(PyObject *self, PyObject *args)
+emb_get_account(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Returns a python dict object with all sorts of info about an account.
         usage: svc.get_account(<account name>)
     */
     char *name;
     struct handle_info *hi;
+
 
     if(!PyArg_ParseTuple(args, "s", &name))
         return NULL;
@@ -282,7 +293,24 @@ emb_get_account(PyObject *self, PyObject *args)
 }
 
 static PyObject*
-emb_log_module(PyObject *self, PyObject *args)
+emb_get_info(UNUSED_ARG(PyObject *self), UNUSED_ARG(PyObject *args))
+{
+    /* return some info about the general setup
+     * of X3, such as what the chanserv's nickname
+     * is.
+     */
+
+
+    return Py_BuildValue("{s:s,s:s,s:s,s:s,s:s}",
+                          "chanserv", chanserv? chanserv->nick : "ChanServ",
+                          "nickserv", nickserv?nickserv->nick : "NickServ",
+                          "opserv", opserv?opserv->nick : "OpServ",
+                          "global", global?global->nick : "Global",
+                          "spamserv", spamserv?spamserv->nick : "SpamServ");
+}
+
+static PyObject*
+emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* a gateway to standard X3 logging subsystem.
      * level is a value 0 to 9 as defined by the log_severity enum in log.h.
@@ -293,6 +321,7 @@ emb_log_module(PyObject *self, PyObject *args)
     char *message;
     int ret = 0;
     int level;
+
 
     if(!PyArg_ParseTuple(args, "is", &level, &message))
         return NULL;
@@ -308,10 +337,27 @@ static PyMethodDef EmbMethods[] = {
     {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
     {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
     {"log_module", emb_log_module, METH_VARARGS, "Log something using the X3 log subsystem"},
+//TODO:    {"exec_cmd", emb_exec_cmd, METH_VARARGS, "execute x3 command provided"},
+//          This should use environment from "python command" call to pass in, if available
+//TODO:    {"kill"
+//TODO:    {"shun"
+//TODO:    {"unshun"
+//TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
+//TODO:    {"ungline", emb_ungline, METH_VARARGS, "remove a gline"},
+//TODO:    {"kick", emb_kick, METH_VARARGS, "kick someone from a channel"},
+//TODO:    {"channel_mode", emb_channel_mode, METH_VARARGS, "set modes on a channel"},
+//TODO:    {"user_mode", emb_user_mode, METH_VARARGS, "Have x3 set usermodes on one of its own nicks"},
+//
+//TODO:    {"get_config", emb_get_config, METH_VARARGS, "get x3.conf settings into a nested dict"},
+//TODO:    {"config_set", emb_config_set, METH_VARARGS, "change a config setting 'on-the-fly'."},
+//
+//TODO:    {"timeq_add", emb_timeq_new, METH_VARARGS, "some kind of interface to the timed event system."},
+//TODO:    {"timeq_del", emb_timeq_new, METH_VARARGS, "some kind of interface to the timed event system."},
     /* Information gathering methods */
     {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
     {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
     {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
+    {"get_info", emb_get_info, METH_VARARGS, "Get various misc info about x3"},
     /* null terminator */
     {NULL, NULL, 0, NULL}
 };
@@ -707,7 +753,35 @@ int python_init(void) {
     modcmd_register(python_module, "reload",  cmd_reload,  1,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     modcmd_register(python_module, "run",  cmd_run,  2,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     modcmd_register(python_module, "command", cmd_command, 3, MODCMD_REQUIRE_STAFF, NULL);
+
+//  Please help us by implimenting any of the callbacks listed as TODO below. They already exist
+//  in x3, they just need handle_ bridges implimented. (see python_handle_join for an example)
+//TODO:    reg_server_link_func(python_handle_server_link);
+//TODO:    reg_new_user_func(python_handle_new_user);
+//TODO:    reg_nick_change_func(python_handle_nick_change);
+//TODO:    reg_del_user_func(python_handle_del_user);
+//TODO:    reg_account_func(python_handle_account); /* stamping of account name to the ircd */
+//TODO:    reg_handle_rename_func(python_handle_handle_rename); /* handle used to ALSO mean account name */
+//TODO:    reg_failpw_func(python_handle_failpw);
+//TODO:    reg_allowauth_func(python_handle_allowauth);
+//TODO:    reg_handle_merge_func(python_handle_merge);
+//
+//TODO:    reg_oper_func(python_handle_oper);
+//TODO:    reg_new_channel_func(python_handle_new_channel);
     reg_join_func(python_handle_join);
+//TODO:    reg_del_channel_func(python_handle_del_channel);
+//TODO:    reg_part_func(python_handle_part);
+//TODO:    reg_kick_func(python_handle_kick);
+//TODO:    reg_topic_func(python_handle_topic);
+//TODO:    reg_channel_mode_func(python_handle_channel_mode);
+
+//TODO:    reg_privmsg_func(python_handle_privmsg);
+//TODO:    reg_notice_func
+//TODO:    reg_svccmd_unbind_func(python_handle_svccmd_unbind);
+//TODO:    reg_chanmsg_func(python_handle_chanmsg);
+//TODO:    reg_allchanmsg_func
+//TODO:    reg_user_mode_func
+
     reg_exit_func(python_cleanup);
 
     python_load();

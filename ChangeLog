@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-01-26  Alex Schumann  <rubin@afternet.org>
 
+	* src/plugins/annoy/plugin.py: more test code
+
+	* src/mod-python.c: added emb_get_info, silenced warnings, and stub 
+	TODO comments for all the handlers and emb functions we need to 
+	create. search for TODO and lend a hand! :)
+
+2009-01-26  Alex Schumann  <rubin@afternet.org>
+
 	* src/plugins/annoy/plugin.py: new version of test plugin
 
 2009-01-25  Alex Schumann  <rubin@afternet.org>
