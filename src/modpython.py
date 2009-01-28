@@ -37,7 +37,7 @@ class irc:
 
     def reply(self, message):
         """ Send a private reply to the user using convenience values"""
-        print "DEBUG: sending a message from %s to %s: %s"%(self.service, self.caller, message)
+        #print "DEBUG: sending a message from %s to %s: %s"%(self.service, self.caller, message)
         if(len(self.target)):
             self.send_target_privmsg(self.service, self.target, "%s: %s"%(self.caller, message))
         else:
@@ -47,7 +47,7 @@ class handler:
     """ Main hub of python system. Handle callbacks from c. """
 
     def __init__(self):
-        print "DEBUG: constructor for handler initing"
+        #print "DEBUG: constructor for handler initing"
         self.plugins = plugins(self)
         if(not self.plugins):
             print "DEBUG: unable to make self.plugins!?!"
@@ -55,18 +55,18 @@ class handler:
     def init(self, irc): # not to be confused with __init__!
         """ This gets called once all the objects are up and running. Otherwise,
         were not done initing this own instance to be able to start calling it """
-        print "DEBUG: in handler.init()"
+        #print "DEBUG: in handler.init()"
         self.plugins.init()
         return 0
 
     def join(self, irc, channel, nick):
         user = svc.get_user(nick)
-        print "DEBUG: handler.join()"
+        #print "DEBUG: handler.join()"
         self.plugins.callhandler("join", irc, [channel, nick], [channel, nick])
         return 0
         
     def cmd_run(self, irc, cmd):
-        print "DEBUG: handler.cmd_run: %s"%cmd
+        #print "DEBUG: handler.cmd_run: %s"%cmd
         eval(cmd)
         return 0
 
@@ -78,9 +78,12 @@ class handler:
         self.addhook("command", method, [plugin, command])
 
     def cmd_command(self, irc, plugin, cmd, args):
-        print "DEBUG: handlec.cmd_command; %s %s; args= %s"%(plugin, cmd, args)
+        #print "DEBUG: handel.cmd_command; %s %s; args= %s"%(plugin, cmd, args)
         self.plugins.callhandler("command", irc, [plugin, cmd], [args])
         return 0
+
+    def load(self, irc, plugin):
+        return self.plugins.load(plugin)
 
 class plugins:
     """Class to handle loading/unloading of plugins"""
@@ -105,34 +108,35 @@ class plugins:
                 for i in range(len(self.filter)):
                     if( self.filter[i] != None 
                       and self.filter[i] != evdata[i]): # should be case insensitive? or how to compare?
-                        print "DEBUG: rejecting event, %s is not %s"%(self.filter[i], evdata[i])
+                        #print "DEBUG: rejecting event, %s is not %s"%(self.filter[i], evdata[i])
                         return False
                 return True
             else:
                 return False
 
         def trigger(self, irc, args):
-            print "DEBUG: Triggering %s event. with '%s' arguments."%(self.event, args)
+            #print "DEBUG: Triggering %s event. with '%s' arguments."%(self.event, args)
             self.method(irc, *args)
 
     def __init__(self, handler):
         """ Constructor """
-        print "DEBUG: constructor for plugins initing"
+        #print "DEBUG: constructor for plugins initing"
         self.handler = handler
 
     def init(self):
-        print "DEBUG: in plugins.init()"
+        #print "DEBUG: in plugins.init()"
         self.load("annoy")
+        self.load("hangman")
 
     def addhook(self, event, method, filter=[None], data=None):
-        print "DEBUG: Adding hook for %s."%event
+        #print "DEBUG: Adding hook for %s."%event
         self.hooks.append(self.hook(event, method, filter, data))
 
     def findhooksforevent(self, event, data):
         ret = []
-        print "DEBUG: findhooksforevent() looking..."
+        #print "DEBUG: findhooksforevent() looking..."
         for hook in self.hooks:
-            print "DEBUG: looking at a %s hook..."%hook.event
+            #print "DEBUG: looking at a %s hook..."%hook.event
             if(hook.event_is(event, data)):
                 ret.append(hook)
         return ret
@@ -157,4 +161,5 @@ class plugins:
         Class = module.Class
         pluginObj = Class(self.handler, irc())
         self.loaded_plugins[mod_name] = pluginObj
+        return True
 

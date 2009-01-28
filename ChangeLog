@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2009-01-27  Alex Schumann  <rubin@afternet.org>
 
+	* src/modpython.py: Comment out debug printing
+
+	* src/plugins/hangman: New example plugin: Hangman game
+
+2009-01-27  Alex Schumann  <rubin@afternet.org>
+
 	* src/opserv.c: Fix a hole Sindacious found, where alerts on account
 	don't trigger because they arent looked for during/after auth.
 
