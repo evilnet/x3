@@ -193,6 +193,8 @@ static void
 track_nick_change(struct userNode *user, const char *old_nick) {
     if (!track_cfg.enabled) return;
 
+    if(!IsUserP(user))
+        return 0;
     if(check_track_user(old_nick)) {
         del_track_user(old_nick);
         add_track_user(user);
@@ -245,6 +247,9 @@ track_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *ch
 
 static int
 track_new_user(struct userNode *user) {
+
+    if(!IsUserP(user))
+        return 0;
     if (!track_cfg.enabled) return 0;
     if (user->uplink->burst && !track_cfg.show_bursts) return 0;
     if (check_track_new(track_cfg) && check_track_user(user->nick))
@@ -272,6 +277,8 @@ track_del_user(struct userNode *user, struct userNode *killer, const char *why) 
 
 static void
 track_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
+    if(!IsUserP(user))
+        return;
     if (!track_cfg.enabled) return;
     if (user->uplink->burst && !track_cfg.show_bursts) return;
     if (user->handle_info && (check_track_auth(track_cfg) && check_track_user(user->nick))) {

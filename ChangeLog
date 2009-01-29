@@ -1,6 +1,21 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-01-29  Alex Schumann  <rubin@afternet.org>
+
+	* src/hash.c: Added a function to check if a user pointer
+	points to a user that actually exists.
+
+	* src/dict-splay.c: added a dict function to check if data exists
+	in a dict list.
+
+	* src/opserv.c: added safety checks on nick and auth callbacks to
+	ensure the user still exists (and wasn't removed by a previous
+	callback)
+
+	* src/mod-track.c: added safety checks on nick and auth callbacks
+	to ensure the user still exists
+
 2009-01-27  Alex Schumann  <rubin@afternet.org>
 
 	* src/modpython.py: Comment out debug printing

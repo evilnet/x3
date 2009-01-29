@@ -231,6 +231,15 @@ SVSNickChange(struct userNode* user, const char *new_nick)
     free(old_nick);
 }
 
+/* go through all clients and look for one with this userNode pointer.
+ * if we can find it, return true. Otherwise, the user got killed or 
+ * something and the pointer is not valid anymore */
+unsigned int
+IsUserP(struct userNode *user)
+{
+    return dict_validptr(clients, user);
+}
+
 struct userNode *
 GetUserH(const char *nick)
 {
@@ -253,7 +262,8 @@ call_account_func(struct userNode *user, const char *stamp)
 {
     /* We've received an account stamp for a user; notify
        NickServ, which registers the sole account_func
-       right now.
+       right now.  TODO: This is a bug. This needs to register 
+       a proper list not just kill with each call!! -Rubin
 
        P10 Protocol violation if (user->modes & FLAGS_STAMPED) here.
     */
