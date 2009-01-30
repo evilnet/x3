@@ -55,7 +55,6 @@ void dict_insert(dict_t dict, const char *key, void *data);
 void dict_set_free_keys(dict_t dict, free_f free_keys);
 void dict_set_free_data(dict_t dict, free_f free_data);
 unsigned int dict_size(dict_t dict);
-unsigned int dict_validptr(dict_t dict, void *data);
 /* if present!=NULL, then *present=1 iff node was found (if node is
  * not found, return value is NULL, which may be a valid datum) */
 void* dict_find(dict_t dict, const char *key, int *present);

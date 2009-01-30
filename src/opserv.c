@@ -2666,9 +2666,6 @@ opserv_new_user_check(struct userNode *user)
     struct gag_entry *gag;
     char addr[IRC_NTOP_MAX_SIZE];
 
-    if(!IsUserP(user))
-        return 0; /* bail if this user ptr doesnt still exist in users */
-
     /* Check to see if we should ignore them entirely. */
     if (IsLocal(user) || IsService(user))
         return 0;
@@ -6567,8 +6564,6 @@ alert_check_user(const char *key, void *data, void *extra)
 static void
 opserv_alert_check_account(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 {
-    if(!IsUserP(user))
-        return; /* bail if this user ptr doesnt still exist in users */
     dict_foreach(opserv_account_based_alerts, alert_check_user, user);
 }
 
@@ -6577,10 +6572,8 @@ opserv_alert_check_nick(struct userNode *user, UNUSED_ARG(const char *old_nick))
 {
     struct gag_entry *gag;
 
-    if(!IsUserP(user))
-        return; /* bail if this user ptr doesnt still exist in users */
+    dict_foreach(opserv_nick_based_alerts, alert_check_user, user); 
 
-    dict_foreach(opserv_nick_based_alerts, alert_check_user, user);
     /* Gag them if appropriate (and only if). */
     user->modes &= ~FLAGS_GAGGED;
     for (gag = gagList; gag; gag = gag->next) {
@@ -6595,9 +6588,6 @@ static void
 opserv_staff_alert(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 {
     const char *type;
-
-    if(!IsUserP(user))
-        return; /* bail if this user ptr doesnt still exist in users */
 
     if (!opserv_conf.staff_auth_channel
         || user->uplink->burst

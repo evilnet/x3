@@ -67,22 +67,6 @@ dict_foreach(dict_t dict, dict_iterator_f it_f, void *extra)
     return NULL;
 }
 
-/* We seem to find ourselves in a situation where callbacks sometimes contain
- * data pointers to users who have been killed and deleted by previously hooked
- * callbacks. This function provides a way to check for that before using
- * what will be unallocated memory pointed to by an old pointer. */
-unsigned int
-dict_validptr(dict_t dict, void *data)
-{
-    dict_iterator_t it;
-    for (it=dict_first(dict); it; it=iter_next(it)) {
-        if(iter_data(it) == data)
-            return true;
-    }
-    return false;
-}
-
-
 /*
  *   This function finds a node and pulls it to the top of the tree.
  *   This helps balance the tree and auto-cache things you search for.
