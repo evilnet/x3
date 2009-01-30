@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-01-30  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/opserv.c: Warning fix.
+
+	* src/proto-p10.c: Bug fix for SF Bug #2547157 (topic ident bug).
+
 2009-01-29  Alex Schumann  <rubin@afternet.org>
 
 	* src/hash.c: Added a function to check if a user pointer

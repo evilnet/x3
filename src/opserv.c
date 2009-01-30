@@ -2667,7 +2667,7 @@ opserv_new_user_check(struct userNode *user)
     char addr[IRC_NTOP_MAX_SIZE];
 
     if(!IsUserP(user))
-        return; /* bail if this user ptr doesnt still exist in users */
+        return 0; /* bail if this user ptr doesnt still exist in users */
 
     /* Check to see if we should ignore them entirely. */
     if (IsLocal(user) || IsService(user))

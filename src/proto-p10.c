@@ -1091,8 +1091,7 @@ void
 irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what, const char *topic)
 {
 
-   int type = 4;
-   int host_in_topic = 0;
+   int type = 4, host_in_topic = 0, hasident = 0;
    const char *hstr, *tstr;
    char *host, *hostmask;
    char shost[MAXLEN];
@@ -1110,12 +1109,17 @@ irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what,
           safestrncpy(shost, who->fakehost, sizeof(shost));
       else if (IsSetHost(who)) {
           hostmask = strdup(who->sethost);
-          if ((host = (strrchr(hostmask, '@'))))
+          if ((host = (strrchr(hostmask, '@')))) {
+              hasident = 1;
               *host++ = '\0';
-          else
+          } else
               host = hostmask;
 
-          safestrncpy(sident, hostmask, sizeof(shost));
+          if (hasident)
+              safestrncpy(sident, hostmask, sizeof(shost));
+          else
+              safestrncpy(sident, who->ident, sizeof(shost));
+
           safestrncpy(shost, host, sizeof(shost));
       } else
           safestrncpy(shost, who->hostname, sizeof(shost));
