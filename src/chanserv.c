@@ -8384,7 +8384,7 @@ handle_unreg(UNUSED_ARG(struct userNode *user), struct handle_info *handle)
     }
 }
 
-static void
+static int 
 handle_server_link(UNUSED_ARG(struct server *server))
 {
     struct chanData *cData;
@@ -8402,6 +8402,7 @@ handle_server_link(UNUSED_ARG(struct server *server))
             timeq_add(now + chanserv_conf.adjust_delay, chanserv_adjust_limit, cData);
         }
     }
+    return 0;
 }
 
 static void

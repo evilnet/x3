@@ -366,7 +366,7 @@ struct chanNode* GetChannel(const char *name);
 struct modeNode* GetUserMode(struct chanNode* channel, struct userNode* user);
 unsigned int IsUserP(struct userNode *user);
 
-typedef void (*server_link_func_t) (struct server *server);
+typedef int (*server_link_func_t) (struct server *server);
 void reg_server_link_func(server_link_func_t handler);
 
 typedef int (*new_user_func_t) (struct userNode *user);

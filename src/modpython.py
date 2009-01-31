@@ -60,10 +60,20 @@ class handler:
         return 0
 
     def join(self, irc, channel, nick):
-        user = svc.get_user(nick)
+        #user = svc.get_user(nick)
         #print "DEBUG: handler.join()"
-        self.plugins.callhandler("join", irc, [channel, nick], [channel, nick])
-        return 0
+        return self.plugins.callhandler("join", irc, [channel, nick], [channel, nick])
+
+    def server_link(self, irc, name, desc):
+        return self.plugins.callhandler("server_link", irc, [name, desc], [name, desc])
+
+    def new_user(self, irc, nick, ident, hostname, info):
+        # we may filter on all the user fields, but we only pass the nick because
+        # the plugin can get the rest itself
+        return self.plugins.callhandler("new_user", irc, [nick, ident, hostname, info], [nick])
+
+    def nick_change(self, irc, nick, old_nick):
+        return self.plugins.callhandler("nick_change", irc, [nick, old_nick], [nick, old_nick])
         
     def cmd_run(self, irc, cmd):
         #print "DEBUG: handler.cmd_run: %s"%cmd
@@ -79,8 +89,7 @@ class handler:
 
     def cmd_command(self, irc, plugin, cmd, args):
         #print "DEBUG: handel.cmd_command; %s %s; args= %s"%(plugin, cmd, args)
-        self.plugins.callhandler("command", irc, [plugin, cmd], [args])
-        return 0
+        return self.plugins.callhandler("command", irc, [plugin, cmd], [args])
 
     def load(self, irc, plugin):
         return self.plugins.load(plugin)
@@ -143,7 +152,9 @@ class plugins:
 
     def callhandler(self, event, irc, filter, args):
         for hook in self.findhooksforevent(event, filter):
-            hook.trigger(irc, args)
+            if(hook.trigger(irc, args)):
+                return 1
+        return 0
 
     def load(self, name):
         """ Loads a plugin by name """

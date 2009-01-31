@@ -627,6 +627,47 @@ python_handle_join(struct modeNode *mNode)
     }
 }
 
+static int
+python_handle_server_link(struct server *server)
+{
+    log_module(PY_LOG, LOG_INFO, "python module handle_server_link");
+    if(!server) {
+        log_module(PY_LOG, LOG_WARNING, "Python code got server link without server!");
+        return 0;
+    }
+    else {
+        char *args[] = {server->name, server->description};
+        return python_call_handler("server_link", args, 2, "", "", "");
+    }
+}
+
+static int
+python_handle_new_user(struct userNode *user)
+{
+    log_module(PY_LOG, LOG_INFO, "Python module handle_new_user");
+    if(!user) {
+        log_module(PY_LOG, LOG_WARNING, "Python code got new_user without the user");
+        return 0;
+    }
+    else {
+        char *args[] = {user->nick, user->ident, user->hostname, user->info};
+        return python_call_handler("new_user", args, 4, "", "", "");
+    }
+}
+
+static void
+python_handle_nick_change(struct userNode *user, const char *old_nick)
+{
+    log_module(PY_LOG, LOG_INFO, "Python module handle_nick_change");
+    if(!user) {
+        log_module(PY_LOG, LOG_WARNING, "Python code got nick_change without the user!");
+    }
+    else {
+        char *args[] = {user->nick, (char *)old_nick};
+        python_call_handler("nick_change", args, 2, "", "", "");
+    }
+}
+
 /* ----------------------------------------------------------------------------- */
    
 
@@ -756,9 +797,9 @@ int python_init(void) {
 
 //  Please help us by implimenting any of the callbacks listed as TODO below. They already exist
 //  in x3, they just need handle_ bridges implimented. (see python_handle_join for an example)
-//TODO:    reg_server_link_func(python_handle_server_link);
-//TODO:    reg_new_user_func(python_handle_new_user);
-//TODO:    reg_nick_change_func(python_handle_nick_change);
+    reg_server_link_func(python_handle_server_link);
+    reg_new_user_func(python_handle_new_user);
+    reg_nick_change_func(python_handle_nick_change);
 //TODO:    reg_del_user_func(python_handle_del_user);
 //TODO:    reg_account_func(python_handle_account); /* stamping of account name to the ircd */
 //TODO:    reg_handle_rename_func(python_handle_handle_rename); /* handle used to ALSO mean account name */
