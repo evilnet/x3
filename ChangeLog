@@ -1,5 +1,9 @@
 /***********************************************************************
 X3 ChangeLog
+2009-02-27  Alex Schumann  <rubin@afternet.org>
+
+	* src/proto-p10.c: Patch from muer to support auto-oper for LOC
+	connections too.
 
 2009-01-31  Alex Schumann  <rubin@afternet.org>
 
