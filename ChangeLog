@@ -1,5 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
+
+2009-03-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/proto-p10.c: Update PRIV handling code for the latest
+	nefarious 1.3 changes.
+
 2009-02-27  Alex Schumann  <rubin@afternet.org>
 
 	* src/proto-p10.c: Patch from muer to support auto-oper for LOC

@@ -1607,6 +1607,16 @@ char *client_report_privs(struct userNode *client)
   return privbuf;
 }
 
+int clear_privs(struct userNode *who) {
+  int i = 0;
+  assert(0 != who);
+
+  for (i = 0; privtab[i].name; i++)
+    RevokePriv(who, privtab[i].priv);
+
+  return 0;
+}
+
 int client_modify_priv_by_name(struct userNode *who, char *priv, int what) {
  int i = 0;
  assert(0 != priv);
@@ -1645,43 +1655,55 @@ irc_privs(struct userNode *target, char *flag, int add)
 
 static CMD_FUNC(cmd_privs)
 {
-  char *tstr = NULL;
-  int type = 0;
+    char *tstr = NULL;
+    char buf[512] = "";
+    char *p = 0;
+    char *tmp;
 
-  tstr = conf_get_data("server/type", RECDB_QSTRING);
-  if(tstr)
-    type = atoi(tstr);
+    int what = PRIV_ADD;
+    int type = 0;
 
-  if (type < 6)
-    return 1; /* silently ignore */
+    unsigned int i;
 
-  struct userNode *user = argc > 1 ? GetUserN(argv[1]) : NULL;
-  char buf[512] = "";
-  int what = PRIV_ADD;
-  char *p = 0;
-  char *tmp;
-  unsigned int i;
+    struct server *sender;
+    struct userNode *user;
 
-  if (argc < 3)
-    return 0;
 
-  if (!user)
-    return 0;
+    tstr = conf_get_data("server/type", RECDB_QSTRING);
+    if(tstr)
+        type = atoi(tstr);
 
-  for (i=1; i<argc; i++) {
-    strcat(buf, argv[i]);
-    strcat(buf, " ");
-  }
 
-  for (i = 2; i < argc; i++) {
-    if (*argv[i] == '+') { what = PRIV_ADD; argv[i]++; }
-    if (*argv[i] == '-') { what = PRIV_DEL; argv[i]++; }
-    for (tmp = x3_strtok(&p, argv[i], ","); tmp;
-         tmp = x3_strtok(&p, NULL, ",")) {
-      client_modify_priv_by_name(user, tmp, what);
+    if (!(sender = GetServerH(origin))) { /* from oper */
+        return 1; /* ignore as no services have privs set */
+    } else { /* from server */
+        if (type < 5)
+            return 1; /* silently ignore */
+
+        user = argc > 1 ? GetUserN(argv[1]) : NULL;
+
+        if (!user)
+            return 0;
+
+        for (i=1; i<argc; i++) {
+            strcat(buf, argv[i]);
+            strcat(buf, " ");
+        }
+
+        for (i = 2; i < argc; i++) {
+            if (*argv[i] == '+') { what = PRIV_ADD; argv[i]++; }
+            if (*argv[i] == '-') { what = PRIV_DEL; argv[i]++; }
+            for (tmp = x3_strtok(&p, argv[i], ","); tmp;
+                 tmp = x3_strtok(&p, NULL, ",")) {
+                if (!strcmp(tmp, "PRIV_NONE")) {
+                    clear_privs(user);
+                    break;
+                } else
+                    client_modify_priv_by_name(user, tmp, what);
+            }
+        }
     }
-  }
-  return 1;
+    return 1;
 }
 
 static CMD_FUNC(cmd_burst)
