@@ -213,11 +213,12 @@
         "$uSee Also:$u commands, modcmd"
         );
 
-"ADDALERT" ("/msg $O ADDALERT <name> <reaction> <criteria>",
+"ADDALERT" ("/msg $O ADDALERT <name> <reaction> [expire <duration>] <criteria>",
         "Adds the specified alert to the $b$O$b alert list.",
         "Alerts watch for users matching a givin criteria and perform an action on them.",
         "   <name> - An alphanumeric word to identify this alert in the list",
         "   <reaction> - What to do if a user matches the criteria. See $bALERT REACTION$b.",
+        "   <duration> - Duration after which the alert should be deleted. See $bdurations$b.",
         "   <criteria> - What to look for. See $bTRACE CRITERIA$b.",
         "Access level: $b${level/addalert}$b",
         "$uSee Also:$u delalert, alert reaction, trace criteria"

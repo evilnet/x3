@@ -77,6 +77,7 @@
 #define KEY_MAX "max"
 #define KEY_TIME "time"
 #define KEY_LAST "last"
+#define KEY_EXPIRE "expire"
 #define KEY_MAX_CLIENTS "max_clients"
 #define KEY_LIMIT "limit"
 #define KEY_EXPIRES "expires"
@@ -319,6 +320,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_ALERTS_DESC",   "   $uCriteria$u: %s" },
     { "OSMSG_ALERTS_LAST",   "   $uTriggered$u: %s" },
     { "OSMSG_ALERT_IS",      "$b%-20s$b %-6s (by %s)" },
+    { "OSMSG_ALERT_EXPIRE",  "   $uExpires:$u: %s" },
     { "OSMSG_ALERT_END",     "----------------End of Alerts-----------------" },
     /* routing messages */
     { "OSMSG_ROUTINGPLAN",  "$bRouting Plan(s)$b" },
@@ -560,6 +562,7 @@ static discrim_t opserv_discrim_create(struct userNode *user, struct userNode *b
 static unsigned int opserv_discrim_search(discrim_t discrim, discrim_search_func dsf, void *data);
 static int gag_helper_func(struct userNode *match, void *extra);
 static int ungag_helper_func(struct userNode *match, void *extra);
+static void alert_expire(void* name);
 
 typedef enum {
     REACT_NOTICE,
@@ -579,6 +582,7 @@ struct opserv_user_alert {
     discrim_t discrim;
     opserv_alert_reaction reaction;
     int last;
+    time_t expire;
 };
 
 /* funny type to make it acceptible to dict_set_free_data, far below */
@@ -2428,6 +2432,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
     struct opserv_user_alert *alert;
     const char *reaction;
     char t_buffer[INTERVALLEN];
+    char expire_buffer[30];
     char *m = NULL;
 
     if(argc > 1) 
@@ -2454,6 +2459,10 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         default: reaction = "<unknown>"; break;
         }
         reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
+        if (alert->expire) {
+            strftime(expire_buffer, sizeof(expire_buffer), "%Y-%m-%d %H:%M:%S %z", localtime(&alert->expire));
+            reply("OSMSG_ALERT_EXPIRE", expire_buffer);
+        }
         reply("OSMSG_ALERTS_DESC", alert->text_discrim);
         if (alert->last > 0)
           reply("OSMSG_ALERTS_LAST", intervalString(t_buffer, now - alert->last, user->handle_info));
@@ -4663,7 +4672,7 @@ add_gag_helper(const char *key, void *data, UNUSED_ARG(void *extra))
 }
 
 static struct opserv_user_alert *
-opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_reaction reaction, const char *text_discrim, int last)
+opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_reaction reaction, const char *text_discrim, int last, int expire)
 {
     unsigned int wordc;
     char *wordv[MAXNUMPARAMS], *discrim_copy;
@@ -4681,6 +4690,7 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
     discrim_copy = strdup(text_discrim); /* save a copy of the discrim */
     wordc = split_line(discrim_copy, false, ArrayLength(wordv), wordv);
     alert->discrim = opserv_discrim_create(req, opserv, wordc, wordv, 0);
+    alert->expire = expire;
     /* Check for missing required criteria or broken records */
     if (!alert->discrim || (reaction==REACT_SVSJOIN && !alert->discrim->chantarget) ||
        (reaction==REACT_SVSPART && !alert->discrim->chantarget) ||
@@ -4707,6 +4717,9 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
         dict_insert(opserv_nick_based_alerts, name_dup, alert);
     if (alert->discrim->accountmask)
         dict_insert(opserv_account_based_alerts, name_dup, alert);
+
+    if (alert->expire)
+        timeq_add(alert->expire, alert_expire, (void*)name_dup);
     return alert;
 }
 
@@ -4732,7 +4745,7 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
 {
     dict_t alert_dict;
     char *str;
-    int last = 0;
+    int last = 0, expire = 0;
     const char *discrim, *react, *owner;
     opserv_alert_reaction reaction;
     struct opserv_user_alert *alert;
@@ -4746,6 +4759,9 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
     str = database_get_data(alert_dict, KEY_LAST, RECDB_QSTRING);
     if (str)
       last = atoi(str);
+    str = database_get_data(alert_dict, KEY_EXPIRE, RECDB_QSTRING);
+    if (str)
+        expire = atoi(str);
 
     if (!react || !irccasecmp(react, "notice"))
         reaction = REACT_NOTICE;
@@ -4773,7 +4789,7 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
     }
-    alert = opserv_add_user_alert(opserv, key, reaction, discrim, last);
+    alert = opserv_add_user_alert(opserv, key, reaction, discrim, last, expire);
     if (!alert) {
         log_module(OS_LOG, LOG_ERROR, "Unable to create alert %s from database.", key);
         return 0;
@@ -5044,6 +5060,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             saxdb_write_string(ctx, KEY_DISCRIM, alert->text_discrim);
             saxdb_write_string(ctx, KEY_OWNER, alert->owner);
             saxdb_write_int(ctx, KEY_LAST, alert->last);
+            saxdb_write_int(ctx, KEY_EXPIRE, alert->expire);
             switch (alert->reaction) {
             case REACT_NOTICE: reaction = "notice"; break;
             case REACT_KILL: reaction = "kill"; break;
@@ -6711,6 +6728,7 @@ static MODCMD_FUNC(cmd_addalert)
     struct svccmd *subcmd;
     const char *name;
     char buf[MAXLEN];
+    int expire = 0;
 
     name = argv[1];
     sprintf(buf, "addalert %s", argv[2]);
@@ -6745,8 +6763,12 @@ static MODCMD_FUNC(cmd_addalert)
         reply("OSMSG_UNKNOWN_REACTION", argv[2]);
         return 0;
     }
+
+    if (argc >= 4 && !irccasecmp(argv[3], "expire"))
+        expire = now + ParseInterval(argv[4]);
+
     if (!svccmd_can_invoke(user, opserv_service->bot, subcmd, channel, SVCCMD_NOISY)
-        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + 3, argc - 3, NULL), 0)) {
+        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + (expire ? 5 : 3), argc - (expire ? 5 : 3), NULL), 0, expire)) {
         reply("OSMSG_ALERT_ADD_FAILED");
         return 0;
     }
@@ -6754,14 +6776,30 @@ static MODCMD_FUNC(cmd_addalert)
     return 1;
 }
 
+static int delete_alert(char const* name)
+{
+    dict_remove(opserv_nick_based_alerts, (char const*)name);
+    dict_remove(opserv_channel_alerts, (char const*)name);
+    dict_remove(opserv_account_based_alerts, (char const*)name);
+    return dict_remove(opserv_user_alerts, (char const*)name);
+}
+
+static void alert_expire(void* name)
+{
+    int present = 0;
+    struct opserv_user_alert* alert = NULL;
+
+    alert = dict_find(opserv_user_alerts, (char const*)name, &present);
+
+    if (present && alert && alert->expire > 0 && alert->expire <= now)
+        delete_alert(name);
+}
+
 static MODCMD_FUNC(cmd_delalert)
 {
     unsigned int i;
     for (i=1; i<argc; i++) {
-        dict_remove(opserv_nick_based_alerts, argv[i]);
-        dict_remove(opserv_channel_alerts, argv[i]);
-        dict_remove(opserv_account_based_alerts, argv[i]);
-        if (dict_remove(opserv_user_alerts, argv[i]))
+        if (delete_alert(argv[i]))
             reply("OSMSG_REMOVED_ALERT", argv[i]);
         else
             reply("OSMSG_NO_SUCH_ALERT", argv[i]);
