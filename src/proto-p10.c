@@ -856,7 +856,7 @@ irc_unshun(const char *mask)
     putsock("%s " P10_SHUN " * -%s", self->numeric, mask);
 }
 
-static void
+void
 irc_burst(struct chanNode *chan)
 {
     char burst_line[512];
