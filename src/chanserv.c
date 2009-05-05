@@ -2277,20 +2277,20 @@ static CHANSERV_FUNC(cmd_register)
     */
 
     if (chanserv_conf.valid_channel_regex_set) {
-        int err = regexec(&chanserv_conf.valid_channel_regex, argv[1], 0, 0, 0);
+        int err = regexec(&chanserv_conf.valid_channel_regex, chan_name, 0, 0, 0);
         if (err) {
             char buff[256];
             buff[regerror(err, &chanserv_conf.valid_channel_regex, buff, sizeof(buff))] = 0;
             log_module(CS_LOG, LOG_INFO, "regexec error: %s (%d)", buff, err);
         }
         if(err == REG_NOMATCH) {
-            reply("CSMSG_ILLEGAL_CHANNEL", argv[1]);
+            reply("CSMSG_ILLEGAL_CHANNEL", chan_name);
             return 0;
         }
     }
 
     if(new_channel)
-        channel = AddChannel(argv[1], now, NULL, NULL, NULL);
+        channel = AddChannel(chan_name, now, NULL, NULL, NULL);
 
     cData = register_channel(channel, user->handle_info->handle);
     scan_user_presence(add_channel_user(cData, handle, UL_OWNER, 0, NULL, 0), NULL);
