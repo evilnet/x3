@@ -1,7 +1,7 @@
 /***********************************************************************
 X3 ChangeLog
 
-2009-03-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+2009-05-04  Alex Schumann  <rubin@afternet.org>
 
         * src/chanserv.c: julien and polo noticed a crash during channel register. Fixed
 
