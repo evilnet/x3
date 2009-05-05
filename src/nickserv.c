@@ -4998,6 +4998,23 @@ nickserv_db_cleanup(void)
         regfree(&nickserv_conf.valid_nick_regex);
 }
 
+void handle_loc_auth_oper(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
+    if (!*nickserv_conf.auto_oper || !user->handle_info)
+        return;
+
+    if (!IsOper(user)) {
+        if (*nickserv_conf.auto_admin && user->handle_info->opserv_level >= opserv_conf_admin_level()) {
+            irc_umode(user, nickserv_conf.auto_admin);
+            irc_sno(0x1, "%s (%s@%s) is now an IRC Administrator",
+                    user->nick, user->ident, user->hostname);
+        } else if (*nickserv_conf.auto_oper && user->handle_info->opserv_level) {
+            irc_umode(user, nickserv_conf.auto_oper);
+            irc_sno(0x1, "%s (%s@%s) is now an IRC Operator",
+                    user->nick, user->ident, user->hostname);
+        }
+    }
+}
+
 void
 init_nickserv(const char *nick)
 {
@@ -5008,6 +5025,7 @@ init_nickserv(const char *nick)
     reg_nick_change_func(handle_nick_change);
     reg_del_user_func(nickserv_remove_user);
     reg_account_func(handle_account);
+    reg_auth_func(handle_loc_auth_oper);
 
     /* set up handle_inverse_flags */
     memset(handle_inverse_flags, 0, sizeof(handle_inverse_flags));

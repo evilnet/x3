@@ -1196,6 +1196,15 @@ irc_mark(struct userNode *user, char *mark)
     }
 }
 
+void irc_sno(unsigned int mask, char const* format, ...) {
+    va_list arg_list;
+    char buffer[MAXLEN];
+    va_start(arg_list, format);
+    vsnprintf(buffer, MAXLEN-2, format, arg_list);
+    buffer[MAXLEN-1] = 0;
+    putsock("%s " CMD_SNO " %d :%s", self->numeric, mask, buffer);
+}
+
 static void send_burst(void);
 
 static void
@@ -1502,7 +1511,6 @@ static CMD_FUNC(cmd_account)
     struct userNode *user;
     struct server *server;
     struct handle_info *hi;
-	extern struct nickserv_config nickserv_conf;
 
     if ((argc < 3) || !origin || !(server = GetServerH(origin)))
         return 0; /* Origin must be server. */
@@ -1523,9 +1531,6 @@ static CMD_FUNC(cmd_account)
             putsock("%s " P10_ACCOUNT " %s A %s "FMT_TIME_T, self->numeric, server->numeric , argv[3], hi->registered);
 
 			log_module(MAIN_LOG, LOG_DEBUG, "loc_auth: %s\n", user->nick);
-
-			if (nickserv_conf.auto_oper[0] && hi->opserv_level > 0)
-				putsock("%s " P10_MODE " %s %s ", self->numeric, argv[4], nickserv_conf.auto_oper);
          }
         else
         {
@@ -1540,9 +1545,6 @@ static CMD_FUNC(cmd_account)
         {
             /* Return a AC A */
             putsock("%s " P10_ACCOUNT " %s A %s "FMT_TIME_T, self->numeric, server->numeric , argv[3], hi->registered);
-
-			if (nickserv_conf.auto_oper[0] && hi->opserv_level > 0)
-				putsock("%s " P10_MODE " %s %s ", self->numeric, argv[5], nickserv_conf.auto_oper);
         }
         else
         {

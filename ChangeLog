@@ -1,6 +1,16 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-05-05  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/proto-p10.c: introduced irc_sno for SNO messages. Removed broken
+	auto_oper on LOC support.
+
+	* src/proto.h: introduced irc_sno for SNO messages.
+
+	* src/nickserv.c: added registered authentication function to handle
+	auto_oper on LOC.
+
 2009-05-04  Alex Schumann  <rubin@afternet.org>
 
         * src/chanserv.c: julien and polo noticed a crash during channel register. Fixed

@@ -171,6 +171,7 @@ void irc_account(struct userNode *user, const char *stamp, time_t timestamp);
 void irc_regnick(struct userNode *user);
 void irc_fakehost(struct userNode *user, const char *host);
 void irc_mark(struct userNode *user, char *mark);
+void irc_sno(unsigned int mask, char const* format, ...);
 
 /* numeric messages */
 void irc_numeric(struct userNode *user, unsigned int num, const char *format, ...);
