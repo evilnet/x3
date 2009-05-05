@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2009-03-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+        * src/chanserv.c: julien and polo noticed a crash during channel register. Fixed
+
+        * x3.conf.example: fix typeo in default channel regex. Thanks again to julien for noticing this.
+
+2009-03-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/proto-p10.c: Update PRIV handling code for the latest
 	nefarious 1.3 changes.
 
