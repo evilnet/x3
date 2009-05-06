@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-05-06  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/mod-python.c: generalised PYTHONPATH environment setting to
+	not explicitly set Alex's home directory.
+
 2009-05-05  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/proto-p10.c: introduced irc_sno for SNO messages. Removed broken

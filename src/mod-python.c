@@ -51,6 +51,13 @@ static const struct message_entry msgtab[] = {
     { NULL, NULL } /* sentenal */
 };
 
+#define MODPYTHON_CONF_NAME "modules/python"
+
+static
+struct {
+    char const* scripts_dir;
+} modpython_conf;
+
 static struct log_type *PY_LOG;
 const char *python_module_deps[] = { NULL };
 static struct module *python_module;
@@ -676,8 +683,22 @@ int python_load() {
        This is called during x3 startup, and on a python reload
     */
     PyObject *pName;
+    char* buffer;
+    char* env = getenv("PYTHONPATH");
 
-    setenv("PYTHONPATH", "/home/rubin/afternet/services/x3/x3-run/", 1);
+    if (env)
+        env = strdup(env);
+
+    if (!env)
+        setenv("PYTHONPATH", modpython_conf.scripts_dir, 1);
+    else if (!strstr(env, modpython_conf.scripts_dir)) {
+        buffer = (char*)malloc(strlen(env) + strlen(modpython_conf.scripts_dir) + 2);
+        sprintf(buffer, "%s:%s", modpython_conf.scripts_dir, env);
+        setenv("PYTHONPATH", buffer, 1);
+        free(buffer);
+        free(env);
+    }
+
     Py_Initialize();
     Py_InitModule("svc", EmbMethods);
     /* TODO: get "modpython" from x3.conf */
@@ -773,6 +794,19 @@ static MODCMD_FUNC(cmd_command) {
     return 1;
 }
 
+static void modpython_conf_read(void) {
+    dict_t conf_node;
+    char const* str;
+
+    if (!(conf_node = conf_get_data(MODPYTHON_CONF_NAME, RECDB_OBJECT))) {
+        log_module(PY_LOG, LOG_ERROR, "config node '%s' is missing or has wrong type", MODPYTHON_CONF_NAME);
+        return;
+    }
+
+    str = database_get_data(conf_node, "scripts_dir", RECDB_QSTRING);
+    modpython_conf.scripts_dir = str ? str : "./";
+}
+
 int python_init(void) {
     /* X3 calls this function on init of the module during startup. We use it to
        do all our setup tasks and bindings 
@@ -780,6 +814,8 @@ int python_init(void) {
 
     PY_LOG = log_register_type("Python", "file:python.log");
     python_module = module_register("python", PY_LOG, "mod-python.help", NULL);
+    conf_register_reload(modpython_conf_read);
+
     log_module(PY_LOG, LOG_INFO, "python module init");
     message_register_table(msgtab);
 
