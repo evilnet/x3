@@ -23,7 +23,7 @@
 #ifdef WITH_PYTHON /* just disable this file if python doesnt exist */
 
 
-#include "Python.h"
+#include <Python.h>
 #include "chanserv.h"
 #include "conf.h"
 #include "modcmd.h"
@@ -48,6 +48,8 @@
 static const struct message_entry msgtab[] = {
     { "PYMSG_RELOAD_SUCCESS", "Reloaded Python scripts successfully." },
     { "PYMSG_RELOAD_FAILED", "Error reloading Python scripts." },
+    { "PYMSG_RUN_UNKNOWN_EXCEPTION", "Error running python: unknown exception." },
+    { "PYMSG_RUN_EXCEPTION", "Error running python: %s." },
     { NULL, NULL } /* sentenal */
 };
 
@@ -744,7 +746,10 @@ static void
 python_cleanup(void) {
     /* Called on shutdown of the python module  (or before reloading)
     */
+
     log_module(PY_LOG, LOG_INFO, "python module cleanup");
+    if (PyErr_Occurred())
+        PyErr_Clear();
     Py_Finalize(); /* Shut down python enterpriter */
     return;
 }
@@ -767,14 +772,110 @@ static MODCMD_FUNC(cmd_reload) {
     return 1;
 }
 
+static char* format_python_error(int space_nls) {
+    PyObject* extype = NULL, *exvalue = NULL, *extraceback = NULL;
+    PyObject* pextypestr = NULL, *pexvaluestr = NULL;
+    char* extypestr = NULL, *exvaluestr = NULL;
+    size_t retvallen = 0;
+    char* retval = NULL, *tmp;
+
+    PyErr_Fetch(&extype, &exvalue, &extraceback);
+    if (!extype)
+        goto cleanup;
+
+    pextypestr = PyObject_Str(extype);
+    if (!pextypestr)
+        goto cleanup;
+    extypestr = PyString_AsString(pextypestr);
+    if (!extypestr)
+        goto cleanup;
+
+    pexvaluestr = PyObject_Str(exvalue);
+    if (pexvaluestr)
+        exvaluestr = PyString_AsString(pexvaluestr);
+
+    retvallen = strlen(extypestr) + (exvaluestr ? strlen(exvaluestr) + 2 : 0) + 1;
+    retval = (char*)malloc(retvallen);
+    if (exvaluestr)
+        snprintf(retval, retvallen, "%s: %s", extypestr, exvaluestr);
+    else
+        strncpy(retval, extypestr, retvallen);
+
+    if (space_nls) {
+        tmp = retval;
+        while (*tmp) {
+            if (*tmp == '\n')
+                *tmp = ' ';
+            ++tmp;
+        }
+    }
+
+cleanup:
+    if (PyErr_Occurred())
+        PyErr_Clear(); /* ignore errors caused by formatting */
+    Py_XDECREF(extype);
+    Py_XDECREF(exvalue);
+    Py_XDECREF(extraceback);
+    Py_XDECREF(pextypestr);
+    Py_XDECREF(pexvaluestr);
+
+    if (retval)
+        return retval;
+
+    return strdup("unknown exception");
+}
+
+static int python_run_statements(char const* msg, char** err) {
+    PyObject* o;
+    char* exmsg = NULL;
+    PyObject* py_main_module = NULL;
+    PyObject* py_globals;
+
+    py_main_module = PyImport_AddModule("__main__");
+    if (!py_main_module) {
+        exmsg = format_python_error(1);
+        if (exmsg)
+            *err = exmsg;
+        else
+            *err = strdup("unknown exception");
+        return 1;
+    }
+
+    py_globals = PyModule_GetDict(py_main_module);
+
+    o = PyRun_String(msg, Py_file_input, py_globals, py_globals);
+    if (o == NULL) {
+        exmsg = format_python_error(1);
+        if (exmsg)
+            *err = exmsg;
+        else
+            *err = strdup("unknown exception");
+        return 1;
+    }
+    else {
+        Py_DECREF(o);
+    }
+
+    return 0;
+}
+
 static MODCMD_FUNC(cmd_run) {
-    /* run an arbitrary python command. This can include shell commands, so should be disabled on
-       production, and needs to be handled extremely cautiously as far as access control
-    */
-    char *msg;
+    /* this method allows running arbitrary python commands.
+     * use with care.
+     */
+    char* msg;
+    char* exmsg = NULL;
+
     msg = unsplit_string(argv + 1, argc - 1, NULL);
-    char *args[] = {msg};
-    python_call_handler("cmd_run", args, 1, cmd->parent->bot->nick, user?user->nick:"", channel?channel->name:"");
+
+    if (python_run_statements(msg, &exmsg)) {
+        if (exmsg) {
+            reply("PYMSG_RUN_EXCEPTION", exmsg);
+            free(exmsg);
+        } else
+            reply("PYMSG_RUN_UNKNOWN_EXCEPTION");
+    }
+
     return 1;
 }
 

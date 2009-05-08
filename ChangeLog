@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-05-08  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/mod-python.c: generalised cmd_run to process file_input productions.
+
 2009-05-06  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/mod-python.c: generalised PYTHONPATH environment setting to
