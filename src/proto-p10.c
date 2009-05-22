@@ -2635,6 +2635,7 @@ init_parse(void)
     dict_insert(irc_func_dict, "432", cmd_error_nick); /* Erroneus [sic] nickname */
     /* ban list resetting */
     /* "stats g" responses */
+    dict_insert(irc_func_dict, "230", cmd_dummy); /* ignore stats headers */
     dict_insert(irc_func_dict, "247", cmd_num_gline);
     dict_insert(irc_func_dict, "542", cmd_num_shun);
     dict_insert(irc_func_dict, "219", cmd_dummy); /* "End of /STATS report" */
