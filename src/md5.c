@@ -139,10 +139,10 @@ MD5_CTX *context;                                        /* context */
 unsigned char *input;                                /* input block */
 unsigned int inputLen;                     /* length of input block */
 {
-  unsigned int i, index, partLen;
+  unsigned int i, idx, partLen;
 
   /* Compute number of bytes mod 64 */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3F);
+  idx = (unsigned int)((context->count[0] >> 3) & 0x3F);
 
   /* Update number of bits */
   if ((context->count[0] += ((UINT4)inputLen << 3))
@@ -150,23 +150,23 @@ unsigned int inputLen;                     /* length of input block */
       context->count[1]++;
   context->count[1] += ((UINT4)inputLen >> 29);
 
-  partLen = 64 - index;
+  partLen = 64 - idx;
 
   /* Transform as many times as possible. */
   if (inputLen >= partLen) {
-      memcpy((POINTER)&context->buffer[index], (POINTER)input, partLen);
+      memcpy((POINTER)&context->buffer[idx], (POINTER)input, partLen);
       MD5Transform (context->state, context->buffer);
 
       for (i = partLen; i + 63 < inputLen; i += 64)
 	  MD5Transform (context->state, &input[i]);
 
-      index = 0;
+      idx = 0;
   }
   else
     i = 0;
 
   /* Buffer remaining input */
-  memcpy((POINTER)&context->buffer[index], (POINTER)&input[i],
+  memcpy((POINTER)&context->buffer[idx], (POINTER)&input[i],
   inputLen-i);
 }
 
@@ -178,14 +178,14 @@ unsigned char digest[16];                         /* message digest */
 MD5_CTX *context;                                       /* context */
 {
   unsigned char bits[8];
-  unsigned int index, padLen;
+  unsigned int idx, padLen;
 
   /* Save number of bits */
   Encode (bits, context->count, 8);
 
   /* Pad out to 56 mod 64. */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3f);
-  padLen = (index < 56) ? (56 - index) : (120 - index);
+  idx = (unsigned int)((context->count[0] >> 3) & 0x3f);
+  padLen = (idx < 56) ? (56 - idx) : (120 - idx);
   MD5Update (context, PADDING, padLen);
 
   /* Append length (before padding) */
@@ -636,22 +636,22 @@ cryptpass(const char *pass, char *buffer)
 }
 
 int
-checkpass(const char *pass, const char *crypt)
+checkpass(const char *pass, const char *crypted)
 {
-    char new_crypt[MD5_CRYPT_LENGTH], hseed[9];
+    char new_crypted[MD5_CRYPT_LENGTH], hseed[9];
     int seed;
 
-    if (crypt[0] == '$') {
+    if (crypted[0] == '$') {
         /* new-style crypt, use "seed" after '$' */
-        strncpy(hseed, crypt+1, 8);
+        strncpy(hseed, crypted+1, 8);
         hseed[8] = 0;
         seed = strtoul(hseed, NULL, 16);
-        cryptpass_real(pass, new_crypt, seed);
+        cryptpass_real(pass, new_crypted, seed);
     } else {
         /* new "old-style" md5 crypt compatable with php, md5sum etc */
-        md5(pass, new_crypt);
+        md5(pass, new_crypted);
     }
-    return !strcmp(crypt, new_crypt);
+    return !strcmp(crypted, new_crypted);
 }
 
 

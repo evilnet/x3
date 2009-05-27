@@ -1,11 +1,11 @@
-/* alloc-x3.c - Debug allocation wrapper
+/* alloc-srvx.c - Debug allocation wrapper
  * Copyright 2005 srvx Development Team
  *
  * This file is part of srvx.
  *
- * x3 is free software; you can redistribute it and/or modify
+ * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -150,5 +150,3 @@ verify(const void *ptr)
     assert(header->magic == ALLOC_MAGIC);
     assert(!memcmp((char*)(header + 1) + header->size, redzone, sizeof(redzone)));
 }
-
-

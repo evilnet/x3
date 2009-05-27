@@ -180,7 +180,7 @@ target_os = @target_os@
 target_vendor = @target_vendor@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-EXTRA_DIST = FAQ x3.conf.example sockcheck.conf.example
+EXTRA_DIST = FAQ x3.conf.example sockcheck.conf.example autogen.sh
 SUBDIRS = @MY_SUBDIRS@
 DIST_SUBDIRS = src rx
 all: all-recursive

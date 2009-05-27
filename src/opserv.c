@@ -146,6 +146,11 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_NEED_CHANNEL", "You must specify a channel for $b%s$b." },
     { "OSMSG_INVALID_IRCMASK", "$b%s$b is an invalid IRC hostmask." },
     { "OSMSG_ADDED_BAN", "I have banned $b%s$b from $b%s$b." },
+    { "OSMSG_BLOCK_TRUSTED", "$b%s$b is on a trusted ip. If you really want to G-line him, use the GLINE command." },
+    { "OSMSG_BLOCK_OPER" , "G-lining $b%s$b (*@%s) would also hit the IRC operator $b%s$b." },
+    { "OSMSG_SBLOCK_OPER" , "Shuning $b%s$b (*@%s) would also hit the IRC operator $b%s$b." },
+    { "OSMSG_NO_GLINE_CMD", "The GLINE command is not bound so you can only block with the default duration." },
+    { "OSMSG_NO_SHUN_CMD", "The SHUN command is not bound so you can only block with the default duration." },
     { "OSMSG_SHUN_ISSUED", "Shun issued for $b%s$b." },
     { "OSMSG_SHUN_REMOVED", "Shun removed for $b%s$b." },
     { "OSMSG_SHUN_FORCE_REMOVED", "Unknown/expired Shun removed for $b%s$b." },
@@ -240,6 +245,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_EXEMPTED_LIST", "Exempted channels: %s" },
     { "OSMSG_GLINE_COUNT", "There are %d glines active on the network." },
     { "OSMSG_SHUN_COUNT", "There are %d shuns active on the network." },
+    { "OSMSG_NO_GLINE", "$b%s$b is not a known G-line." },
+    { "OSMSG_NO_SHUN", "$b%s$b is not a known Shun" },
     { "OSMSG_LINKS_SERVER", "%s%s (%u clients; %s)" },
     { "OSMSG_MAX_CLIENTS", "Max clients: %d at %s" },
     { "OSMSG_NETWORK_INFO", "Total users: %d (%d invisible, %d opers)" },
@@ -298,8 +305,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_LOG_SEARCH_RESULTS", "The following log entries were found:" },
     { "OSMSG_GSYNC_RUNNING", "Synchronizing glines from %s." },
     { "OSMSG_SSYNC_RUNNING", "Synchronizing shuns from %s." },
-    { "OSMSG_GTRACE_FORMAT", "%s (issued %s by %s, expires %s): %s" },
-    { "OSMSG_STRACE_FORMAT", "%s (issued %s by %s, expires %s): %s" },
+    { "OSMSG_GTRACE_FORMAT", "%s (issued %s by %s, lastmod %s, expires %s): %s" },
+    { "OSMSG_STRACE_FORMAT", "%s (issued %s by %s, lastmod %s, expires %s): %s" },
     { "OSMSG_GAG_APPLIED", "Gagged $b%s$b, affecting %d users." },
     { "OSMSG_GAG_ADDED", "Gagged $b%s$b." },
     { "OSMSG_REDUNDANT_GAG", "Gag $b%s$b is redundant." },
@@ -407,9 +414,11 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_CHANINFO_MANY_USERS", "%d users (\"/msg $S %s %s users\" for the list)" },
     { "OSMSG_CHANINFO_USER_COUNT", "Users (%d):" },
     { "OSMSG_CSEARCH_CHANNEL_INFO", "%s [%d users] %s %s" },
+    { "OSMSG_TRACE_MAX_CHANNELS", "You may not use the 'channel' criterion more than %d times." },
     { "OSMSG_INVALID_REGEX", "Invalid regex: %s: %s (%d)" },
     { "OSMSG_TRACK_DISABLED", "Tracking is not currently compiled into X3" },
     { "OSMSG_MAXUSERS_RESET", "Max clients has been reset to $b%d$b" },
+    { "OSMSG_FORCEKICK_LOCAL", "You cannot kick $b%s$b forcefully." },
 
     { "OSMSG_DEFCON_INVALID", "DefCon level %d is invalid, please choose a value between 1 and 5" },
     { "OSMSG_DEFCON_ALLOWING_ALL", "DefCon is at level 5 and allowing everything" },
@@ -531,9 +540,12 @@ opserv_free_waiting_connection(void *data)
     free(wc);
 }
 
+#define DISCRIM_MAX_CHANS 20
+
 typedef struct opservDiscrim {
-    struct chanNode *channel;
-    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark, *mask_mark, *modes;
+    struct chanNode *channels[DISCRIM_MAX_CHANS];
+    unsigned int channel_count;
+    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark, *mask_mark, *modes, *notice_target;
     irc_in_addr_t ip_mask;
     unsigned long limit;
     time_t min_ts, max_ts;
@@ -541,8 +553,8 @@ typedef struct opservDiscrim {
     unsigned int has_regex_nick : 1, has_regex_ident : 1, has_regex_host : 1, has_regex_info : 1, has_regex_version : 1;
     unsigned int min_level, max_level, domain_depth, duration, min_clones, min_channels, max_channels;
     unsigned char ip_mask_bits;
-    unsigned int match_opers : 1, option_log : 1;
-    unsigned int chan_req_modes : 2, chan_no_modes : 2;
+    unsigned int match_opers : 1, match_trusted : 1, option_log : 1;
+    unsigned int chan_req_modes[DISCRIM_MAX_CHANS], chan_no_modes[DISCRIM_MAX_CHANS];
     int authed : 2, info_space : 2;
     unsigned int intra_scmp : 2, intra_dcmp : 2;
     unsigned int use_regex : 1;
@@ -590,8 +602,9 @@ static void
 opserv_free_user_alert(void *data)
 {
     struct opserv_user_alert *alert = data;
-    if (alert->discrim->channel)
-        UnlockChannel(alert->discrim->channel);
+    unsigned int i;
+    for(i = 0; i < alert->discrim->channel_count; i++)
+        UnlockChannel(alert->discrim->channels[i]);
     free(alert->owner);
     free(alert->text_discrim);
     free(alert->split_discrim);
@@ -610,9 +623,15 @@ opserv_free_user_alert(void *data)
     free(alert);
 }
 
-#define opserv_debug(format...) do { if (opserv_conf.debug_channel) send_channel_notice(opserv_conf.debug_channel , opserv , ## format); } while (0)
-#define opserv_alert(format...) do { if (opserv_conf.alert_channel) send_channel_notice(opserv_conf.alert_channel , opserv , ## format); } while (0)
-
+#if defined(GCC_VARMACROS)
+# define opserv_debug(ARGS...) do { if (opserv_conf.debug_channel) send_channel_notice(opserv_conf.debug_channel, opserv, ARGS); } while (0)
+# define opserv_alert(ARGS...) do { if (opserv_conf.alert_channel) send_channel_notice(opserv_conf.alert_channel, opserv, ARGS); } while (0)
+# define opserv_custom_alert(CHAN, ARGS...) do { if (CHAN) send_target_message(4, (CHAN), opserv, ARGS); else if (opserv_conf.alert_channel) send_channel_notice(opserv_conf.alert_channel, opserv, ARGS); } while (0)
+#elif defined(C99_VARMACROS)
+# define opserv_debug(...) do { if (opserv_conf.debug_channel) send_channel_notice(opserv_conf.debug_channel, opserv, __VA_ARGS__); } while (0)
+# define opserv_alert(...) do { if (opserv_conf.alert_channel) send_channel_notice(opserv_conf.alert_channel, opserv, __VA_ARGS__); } while (0)
+# define opserv_custom_alert(chan, ...) do { if (chan) send_target_message(4, chan, opserv, __VA_ARGS__); else if (opserv_conf.alert_channel) send_channel_notice(opserv_conf.alert_channel, opserv, __VA_ARGS__); } while (0)
+#endif
 
 char *defconReverseModes(const char *modes)
 {
@@ -1285,7 +1304,7 @@ opserv_block(struct userNode *target, char *src_handle, char *reason, unsigned l
                  "G-line requested by %s.", src_handle);
     if (!duration)
         duration = opserv_conf.block_gline_duration;
-    return gline_add(src_handle, mask, duration, reason, now, 1, silent ? 1 : 0);
+    return gline_add(src_handle, mask, duration, reason, now, now, 1, silent ? 1 : 0);
 }
 
 static MODCMD_FUNC(cmd_block)
@@ -1293,6 +1312,10 @@ static MODCMD_FUNC(cmd_block)
     struct userNode *target;
     struct gline *gline;
     char *reason;
+    unsigned long duration = 0;
+    unsigned int offset = 2;
+    unsigned int nn;
+    struct svccmd *gline_cmd;
 
     target = GetUserH(argv[1]);
     if (!target) {
@@ -1303,8 +1326,32 @@ static MODCMD_FUNC(cmd_block)
         reply("MSG_SERVICE_IMMUNE", target->nick);
         return 0;
     }
-    reason = (argc > 2) ? unsplit_string(argv+2, argc-2, NULL) : NULL;
-    gline = opserv_block(target, user->handle_info->handle, reason, 0, 0);
+    if (dict_find(opserv_trusted_hosts, irc_ntoa(&target->ip), NULL)) {
+        reply("OSMSG_BLOCK_TRUSTED", target->nick);
+        return 0;
+    }
+    for(nn = 0; nn < curr_opers.used; nn++) {
+        if(memcmp(&curr_opers.list[nn]->ip, &target->ip, sizeof(irc_in_addr_t)) == 0) {
+            reply("OSMSG_BLOCK_OPER", target->nick, irc_ntoa(&target->ip), curr_opers.list[nn]->nick);
+            return 0;
+        }
+    }
+    if(argc > 2 && (duration = ParseInterval(argv[2]))) {
+        offset = 3;
+    }
+    if(duration && duration != opserv_conf.block_gline_duration) {
+        /* We require more access when the duration is not the default block duration. */
+        gline_cmd = dict_find(cmd->parent->commands, "gline", NULL);
+        if(!gline_cmd)
+        {
+            reply("OSMSG_NO_GLINE_CMD");
+            return 0;
+        }
+        if(!svccmd_can_invoke(user, cmd->parent->bot, gline_cmd, channel, SVCCMD_NOISY))
+            return 0;
+    }
+    reason = (argc > offset) ? unsplit_string(argv+offset, argc-offset, NULL) : NULL;
+    gline = opserv_block(target, user->handle_info->handle, reason, duration, 0);
     reply("OSMSG_GLINE_ISSUED", gline->target);
     return 1;
 }
@@ -1329,7 +1376,7 @@ static MODCMD_FUNC(cmd_gline)
         reply("MSG_INVALID_DURATION", argv[2]);
         return 0;
     }
-    gline = gline_add(user->handle_info->handle, argv[1], duration, reason, now, 1, 0);
+    gline = gline_add(user->handle_info->handle, argv[1], duration, reason, now, now, 1, 0);
     reply("OSMSG_GLINE_ISSUED", gline->target);
     return 1;
 }
@@ -1459,7 +1506,7 @@ opserv_shun(struct userNode *target, char *src_handle, char *reason, unsigned lo
         snprintf(reason, MAXLEN, "Shun requested by %s.", src_handle);
     }
     if (!duration) duration = opserv_conf.block_shun_duration;
-    return shun_add(src_handle, mask, duration, reason, now, 1);
+    return shun_add(src_handle, mask, duration, reason, now, now, 1);
 }
 
 static MODCMD_FUNC(cmd_sblock)
@@ -1467,6 +1514,10 @@ static MODCMD_FUNC(cmd_sblock)
     struct userNode *target;
     struct shun *shun;
     char *reason;
+    unsigned long duration = 0;
+    unsigned int offset = 2;
+    unsigned int nn;
+    struct svccmd *shun_cmd;
 
     target = GetUserH(argv[1]);
     if (!target) {
@@ -1477,8 +1528,32 @@ static MODCMD_FUNC(cmd_sblock)
         reply("MSG_SERVICE_IMMUNE", target->nick);
         return 0;
     }
+    if (dict_find(opserv_trusted_hosts, irc_ntoa(&target->ip), NULL)) {
+        reply("OSMSG_BLOCK_TRUSTED", target->nick);
+        return 0;
+    }
+    for(nn = 0; nn < curr_opers.used; nn++) {
+        if(memcmp(&curr_opers.list[nn]->ip, &target->ip, sizeof(irc_in_addr_t)) == 0) {
+            reply("OSMSG_SBLOCK_OPER", target->nick, irc_ntoa(&target->ip), curr_opers.list[nn]->nick);
+            return 0;
+        }
+    }
+    if(argc > 2 && (duration = ParseInterval(argv[2]))) {
+        offset = 3;
+    }
+    if(duration && duration != opserv_conf.block_shun_duration) {
+        // We require more access when the duration is not the default block duration.
+        shun_cmd = dict_find(cmd->parent->commands, "shun", NULL);
+        if(!shun_cmd)
+        {
+            reply("OSMSG_NO_SHUN_CMD");
+            return 0;
+        }
+        if(!svccmd_can_invoke(user, cmd->parent->bot, shun_cmd, channel, SVCCMD_NOISY))
+            return 0;
+    }
     reason = (argc > 2) ? unsplit_string(argv+2, argc-2, NULL) : NULL;
-    shun = opserv_shun(target, user->handle_info->handle, reason, 0);
+    shun = opserv_shun(target, user->handle_info->handle, reason, duration);
     reply("OSMSG_SHUN_ISSUED", shun->target);
     return 1;
 }
@@ -1503,7 +1578,7 @@ static MODCMD_FUNC(cmd_shun)
         reply("MSG_INVALID_DURATION", argv[2]);
         return 0;
     }
-    shun = shun_add(user->handle_info->handle, argv[1], duration, reason, now, 1);
+    shun = shun_add(user->handle_info->handle, argv[1], duration, reason, now, now, 1);
     reply("OSMSG_SHUN_ISSUED", shun->target);
     return 1;
 }
@@ -1662,10 +1737,13 @@ static MODCMD_FUNC(cmd_join)
 {
     struct userNode *bot = cmd->parent->bot;
 
-    if (!IsChannelName(argv[1])) {
-        reply("MSG_NOT_CHANNEL_NAME");
-        return 0;
-    } else if (!(channel = GetChannel(argv[1]))) {
+    if (!channel) {
+        if((argc < 2) || !IsChannelName(argv[1]))
+        {
+            reply("MSG_NOT_CHANNEL_NAME");
+            return 0;
+        }
+
         channel = AddChannel(argv[1], now, NULL, NULL, NULL);
         AddChannelUser(bot, channel)->modes |= MODE_CHANOP;
     } else if (GetUserMode(channel, bot)) {
@@ -1705,6 +1783,34 @@ static MODCMD_FUNC(cmd_kick)
         return 0;
     }
     KickChannelUser(target, channel, cmd->parent->bot, reason);
+    return 1;
+}
+
+static MODCMD_FUNC(cmd_forcekick)
+{
+    struct userNode *target;
+    char *reason;
+
+    if (argc < 3) {
+        reason = alloca(strlen(OSMSG_KICK_REQUESTED)+strlen(user->nick)+1);
+        sprintf(reason, OSMSG_KICK_REQUESTED, user->nick);
+    } else {
+        reason = unsplit_string(argv+2, argc-2, NULL);
+    }
+    target = GetUserH(argv[1]);
+    if (!target) {
+        reply("MSG_NICK_UNKNOWN", argv[1]);
+        return 0;
+    }
+    if (!GetUserMode(channel, target)) {
+        reply("OSMSG_NOT_ON_CHANNEL", target->nick, channel->name);
+        return 0;
+    }
+    if (IsLocal(target)) {
+        reply("OSMSG_FORCEKICK_LOCAL", target->nick);
+        return 0;
+    }
+    irc_kick(cmd->parent->bot, target, channel, reason);
     return 1;
 }
 
@@ -1858,19 +1964,13 @@ static MODCMD_FUNC(cmd_part)
 {
     char *reason;
 
-    if (!IsChannelName(argv[1])) {
-        reply("MSG_NOT_CHANNEL_NAME");
+    if (!GetUserMode(channel, cmd->parent->bot)) {
+        reply("OSMSG_NOT_ON_CHANNEL", cmd->parent->bot->nick, channel->name);
         return 0;
     }
-    if ((channel = GetChannel(argv[1]))) {
-        if (!GetUserMode(channel, cmd->parent->bot)) {
-            reply("OSMSG_NOT_ON_CHANNEL", cmd->parent->bot->nick, channel->name);
-            return 0;
-        }
-        reason = (argc < 3) ? "Leaving." : unsplit_string(argv+2, argc-2, NULL);
-        reply("OSMSG_LEAVING", channel->name);
-        DelChannelUser(cmd->parent->bot, channel, reason, 0);
-    }
+    reason = (argc < 2) ? "Leaving." : unsplit_string(argv+1, argc-1, NULL);
+    reply("OSMSG_LEAVING", channel->name);
+    DelChannelUser(cmd->parent->bot, channel, reason, 0);
     return 1;
 }
 
@@ -2079,7 +2179,6 @@ static MODCMD_FUNC(cmd_whois)
         if (IsWallOp(target)) buffer[bpos++] = 'w';
         if (IsOper(target)) buffer[bpos++] = 'o';
         if (IsGlobal(target)) buffer[bpos++] = 'g';
-        if (IsServNotice(target)) buffer[bpos++] = 's';
 
         // sethost - reed/apples
         // if (IsHelperIrcu(target)) buffer[bpos++] = 'h';
@@ -2212,16 +2311,6 @@ static MODCMD_FUNC(cmd_stats_bad) {
     return 1;
 }
 
-static MODCMD_FUNC(cmd_stats_glines) {
-    reply("OSMSG_GLINE_COUNT", gline_count());
-    return 1;
-}
-
-static MODCMD_FUNC(cmd_stats_shuns) {
-    reply("OSMSG_SHUN_COUNT", shun_count());
-    return 1;
-}
-
 static void
 trace_links(struct userNode *bot, struct userNode *user, struct server *server, unsigned int depth) {
     unsigned int nn, pos;
@@ -2317,7 +2406,7 @@ static MODCMD_FUNC(cmd_stats_network2) {
 #endif
         tbl.contents[nn][1] = buffer;
         ofs = strlen(buffer) + 1;
-        intervalString(buffer + ofs, now - server->link, user->handle_info);
+        intervalString(buffer + ofs, now - server->link_time, user->handle_info);
         if (server->self_burst)
             strcat(buffer + ofs, " Bursting");
         tbl.contents[nn][2] = buffer + ofs;
@@ -2597,7 +2686,7 @@ opserv_add_reserve(struct svccmd *cmd, struct userNode *user, const char *nick, 
             return NULL;
         }
     }
-    if ((resv = AddClone(nick, ident, host, desc))) {
+    if ((resv = AddLocalUser(nick, ident, host, desc, "+i"))) {
         dict_insert(opserv_reserved_nick_dict, resv->nick, resv);
     }
     return resv;
@@ -2681,7 +2770,7 @@ opserv_new_user_check(struct userNode *user)
 
     /* Check for alerts, and stop if we find one that kills them. */
     if (dict_foreach(opserv_user_alerts, alert_check_user, user))
-        return 1;
+        return 0;
 
     /* Gag them if appropriate. */
     for (gag = gagList; gag; gag = gag->next) {
@@ -2722,9 +2811,9 @@ opserv_new_user_check(struct userNode *user)
 
         strcpy(target + 2, user->hostname);
         if (checkDefCon(DEFCON_GLINE_NEW_CLIENTS))
-            gline_add(opserv->nick, target, DefConGlineExpire, DefConGlineReason, now, 1, 0);
+            gline_add(opserv->nick, target, DefConGlineExpire, DefConGlineReason, now, now, 1, 0);
         else if (checkDefCon(DEFCON_SHUN_NEW_CLIENTS))
-            shun_add(opserv->nick, target, DefConGlineExpire, DefConGlineReason, now, 1);
+            shun_add(opserv->nick, target, DefConGlineExpire, DefConGlineReason, now, now, 1);
           
         return 0;
     }
@@ -2748,7 +2837,7 @@ opserv_new_user_check(struct userNode *user)
         } else if (ohi->clients.used > limit) {
             char target[IRC_NTOP_MAX_SIZE + 3] = { '*', '@', '\0' };
             strcpy(target + 2, addr);
-            gline_add(opserv->nick, target, opserv_conf.clone_gline_duration, "Excessive connections from a single host.", now, 1, 1);
+            gline_add(opserv->nick, target, opserv_conf.clone_gline_duration, "Excessive connections from a single host.", now, now, 1, 1);
         }
     }
 
@@ -2845,16 +2934,20 @@ opserv_channel_delete(struct chanNode *chan)
 }
 
 static void
-opserv_notice_handler(struct userNode *user, struct userNode *bot, char *text, UNUSED_ARG(int server_qualified))
+opserv_notice_handler(struct userNode *user, struct userNode *bot, const char *text, UNUSED_ARG(int server_qualified))
 {
     char *cmd; 
+    char *textb;
+
+    textb = strdup(text);
+
     /* if its a version reply, do an alert check (only alerts with version=something) */
     if(bot == opserv) {
         if(text[0] == '\001') {
-            text++;
-            cmd = mysep(&text, " ");
+            textb++;
+            cmd = mysep(&textb, " ");
             if(cmd && !irccasecmp(cmd, "VERSION")) {
-                char *version = mysep(&text, "\n");
+                char *version = mysep(&textb, "\n");
                 if(!version)
                     version = "";
                 /* opserv_debug("Opserv got CTCP VERSION Notice from %s: %s", user->nick, version); */
@@ -2877,7 +2970,7 @@ opserv_join_check(struct modeNode *mNode)
 
     dict_foreach(opserv_channel_alerts, alert_check_user, user);
 
-    if (channel->bad_channel) {
+    if (opserv && channel->bad_channel) {
         opserv_debug("Found $b%s$b in bad-word channel $b%s$b; removing the user.", user->nick, channel->name);
         if (channel->name[0] != '#')
             DelUser(user, opserv, 1, "OSMSG_ILLEGAL_KILL_REASON");
@@ -2903,7 +2996,7 @@ opserv_join_check(struct modeNode *mNode)
         struct mod_chanmode change;
         mod_chanmode_init(&change);
         channel->join_flooded = 1;
-        if (opserv_conf.join_flood_moderate && (channel->members.used > opserv_conf.join_flood_moderate_threshold)) {
+        if (opserv && opserv_conf.join_flood_moderate && (channel->members.used > opserv_conf.join_flood_moderate_threshold)) {
             if (!GetUserMode(channel, opserv)) {
                 /* If we aren't in the channel, join it. */
                 change.args[0].mode = MODE_CHANOP;
@@ -2947,7 +3040,6 @@ opserv_add_bad_word(struct svccmd *cmd, struct userNode *user, const char *new_b
                     reply("OSMSG_BAD_NUKING", orig_bad);
                 string_list_delete(opserv_bad_words, bad_idx);
                 bad_idx--;
-                free(orig_bad);
             }
             return 1;
         }
@@ -3578,7 +3670,7 @@ void routing_karma_timer(void *data) {
                     routing_change_karma(rps, iter_key(it), KARMA_ENTROPE);
                     /* give an additonal +KARMA_RELIABLE to servers that
                      * have been linked at least KARMA_TIMER seconds. */
-                    if(server  && (server->link < (now - KARMA_TIMER) ) ) {
+                    if(server  && (server->link_time < (now - KARMA_TIMER) ) ) {
                             routing_change_karma(rps, iter_key(it), KARMA_RELIABLE);
                     }
                 }
@@ -4105,17 +4197,17 @@ static MODCMD_FUNC(cmd_addbad)
     /* Scan for existing channels that match the new bad word. */
     if (!bad_found) {
         for (it = dict_first(channels); it; it = iter_next(it)) {
-            struct chanNode *channel = iter_data(it);
+            struct chanNode *chan = iter_data(it);
 
-            if (!opserv_bad_channel(channel->name))
+            if (!opserv_bad_channel(chan->name))
                 continue;
-            channel->bad_channel = 1;
-            if (channel->name[0] == '#')
-                opserv_shutdown_channel(channel, "OSMSG_ILLEGAL_REASON");
+            chan->bad_channel = 1;
+            if (chan->name[0] == '#')
+                opserv_shutdown_channel(chan, "OSMSG_ILLEGAL_REASON");
             else {
                 unsigned int nn;
-                for (nn=0; nn<channel->members.used; nn++) {
-                    struct userNode *user = channel->members.list[nn]->user;
+                for (nn=0; nn<chan->members.used; nn++) {
+                    struct userNode *user = chan->members.list[nn]->user;
                     DelUser(user, cmd->parent->bot, 1, "OSMSG_ILLEGAL_KILL_REASON");
                 }
             }
@@ -4276,7 +4368,7 @@ static MODCMD_FUNC(cmd_edittrust)
         return 0;
     }
     count = strtoul(argv[2], &tmp, 10);
-    if (!count || *tmp) {
+    if (*tmp != '\0') {
         reply("OSMSG_BAD_NUMBER", argv[2]);
         return 0;
     }
@@ -4355,7 +4447,7 @@ static MODCMD_FUNC(cmd_clone)
             reply("OSMSG_NOT_A_HOSTMASK");
             return 0;
         }
-        if (!(clone = AddClone(argv[2], ident, argv[3]+i, userinfo))) {
+	if (!(clone = AddLocalUser(argv[2], ident, argv[3]+i, userinfo, "+i"))) {
             reply("OSMSG_CLONE_FAILED", argv[2]);
             return 0;
         }
@@ -4556,7 +4648,7 @@ int add_reserved(const char *key, void *data, void *extra)
         log_module(OS_LOG, LOG_ERROR, "Missing description for reserve of %s", key);
         return 0;
     }
-    if ((reserve = AddClone(key, ident, hostname, desc))) {
+    if ((reserve = AddLocalUser(key, ident, hostname, desc, "+i"))) {
         reserve->modes |= FLAGS_PERSISTENT;
         dict_insert(extra, reserve->nick, reserve);
     }
@@ -4711,7 +4803,7 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
      * max_channels would have to be checked on /part, which we do not
      * yet do, and which seems of questionable value.
      */
-    if (alert->discrim->channel || alert->discrim->min_channels)
+    if (alert->discrim->channel_count || alert->discrim->min_channels)
         dict_insert(opserv_channel_alerts, name_dup, alert);
     if (alert->discrim->mask_nick)
         dict_insert(opserv_nick_based_alerts, name_dup, alert);
@@ -5336,52 +5428,65 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         }
     } else if (irccasecmp(argv[i], "duration") == 0) {
         discrim->duration = ParseInterval(argv[++i]);
-        } else if (irccasecmp(argv[i], "channel") == 0) {
-            for (j=0, i++; ; j++) {
-                switch (argv[i][j]) {
-                case '#':
-                    goto find_channel;
-                case '-':
-                    discrim->chan_no_modes  |= MODE_CHANOP | MODE_HALFOP | MODE_VOICE;
-                    break;
-                case '+':
-                    discrim->chan_req_modes |= MODE_VOICE;
-                    discrim->chan_no_modes  |= MODE_CHANOP;
-                    discrim->chan_no_modes  |= MODE_HALFOP;
-                    break;
-                case '%':
-                    discrim->chan_req_modes |= MODE_HALFOP;
-                    discrim->chan_no_modes  |= MODE_CHANOP;
-                    discrim->chan_no_modes  |= MODE_VOICE;
-                    break;
-                case '@':
-                    discrim->chan_req_modes |= MODE_CHANOP;
-                    break;
-                case '\0':
-                    send_message(user, bot, "MSG_NOT_CHANNEL_NAME");
-                    goto fail;
-                }
+    } else if (irccasecmp(argv[i], "channel") == 0) {
+        if(discrim->channel_count == DISCRIM_MAX_CHANS)
+        {
+            send_message(user, opserv, "OSMSG_TRACE_MAX_CHANNELS", DISCRIM_MAX_CHANS);
+            goto fail;
+        }
+
+        for (j=0, i++; ; j++) {
+            switch (argv[i][j]) {
+            case '#':
+                goto find_channel;
+            case '-':
+                discrim->chan_no_modes[discrim->channel_count]  |= MODE_CHANOP | MODE_VOICE;
+                break;
+            case '+':
+                discrim->chan_req_modes[discrim->channel_count] |= MODE_VOICE;
+                discrim->chan_no_modes[discrim->channel_count]  |= MODE_CHANOP;
+                discrim->chan_no_modes[discrim->channel_count]  |= MODE_HALFOP;
+                break;
+            case '%':
+                discrim->chan_req_modes[discrim->channel_count] |= MODE_HALFOP;
+                discrim->chan_no_modes[discrim->channel_count]  |= MODE_CHANOP;
+                discrim->chan_no_modes[discrim->channel_count]  |= MODE_VOICE;
+                break;
+            case '@':
+                discrim->chan_req_modes[discrim->channel_count] |= MODE_CHANOP;
+                break;
+            case '\0':
+                send_message(user, opserv, "MSG_NOT_CHANNEL_NAME");
+                goto fail;
             }
-          find_channel:
-            discrim->chan_no_modes &= ~discrim->chan_req_modes;
-            if (!(discrim->channel = GetChannel(argv[i]+j))) {
-                /* secretly "allow_channel" now means "if a channel name is
-                 * specified, require that it currently exist" */
-                if (allow_channel) {
-                    send_message(user, bot, "MSG_CHANNEL_UNKNOWN", argv[i]);
-                    goto fail;
-                } else {
-                    discrim->channel = AddChannel(argv[i]+j, now, NULL, NULL, NULL);
-                }
+        }
+        find_channel:
+        discrim->chan_no_modes[discrim->channel_count] &= ~discrim->chan_req_modes[discrim->channel_count];
+        if (!(discrim->channels[discrim->channel_count] = GetChannel(argv[i]+j))) {
+            /* secretly "allow_channel" now means "if a channel name is
+             * specified, require that it currently exist" */
+            if (allow_channel) {
+                send_message(user, opserv, "MSG_CHANNEL_UNKNOWN", argv[i]);
+                goto fail;
+            } else {
+                discrim->channels[discrim->channel_count] = AddChannel(argv[i]+j, now, NULL, NULL, NULL);
             }
-            LockChannel(discrim->channel);
-        } else if (irccasecmp(argv[i], "numchannels") == 0) {
-            discrim->min_channels = discrim->max_channels = strtoul(argv[++i], NULL, 10);
-        } else if (irccasecmp(argv[i], "limit") == 0) {
-            discrim->limit = strtoul(argv[++i], NULL, 10);
+        }
+        LockChannel(discrim->channels[discrim->channel_count]);
+        discrim->channel_count++;
+    } else if (irccasecmp(argv[i], "numchannels") == 0) {
+        discrim->min_channels = discrim->max_channels = strtoul(argv[++i], NULL, 10);
+    } else if (irccasecmp(argv[i], "limit") == 0) {
+        discrim->limit = strtoul(argv[++i], NULL, 10);
         } else if (irccasecmp(argv[i], "reason") == 0) {
             discrim->reason = strdup(unsplit_string(argv+i+1, argc-i-1, NULL));
             i = argc;
+        } else if (irccasecmp(argv[i], "notice_target") == 0 || irccasecmp(argv[i], "target") == 0) {
+            if (!IsChannelName(argv[i + 1])) {
+                send_message(user, opserv, "MSG_NOT_CHANNEL_NAME");
+                goto fail;
+            }
+            discrim->notice_target = argv[++i];
         } else if (irccasecmp(argv[i], "last") == 0) {
             discrim->min_ts = now - ParseInterval(argv[++i]);
         } else if ((irccasecmp(argv[i], "linked") == 0)
@@ -5400,7 +5505,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                     discrim->max_ts = now - (ParseInterval(cmp+1) - 1);
                 }
             } else {
-                discrim->min_ts = now - ParseInterval(cmp+2);
+                discrim->min_ts = now - ParseInterval(cmp);
             }
         } else if (irccasecmp(argv[i], "access") == 0) {
             const char *cmp = argv[++i];
@@ -5420,11 +5525,15 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
                     discrim->min_level = strtoul(cmp+1, NULL, 0) + 1;
                 }
             } else {
-                discrim->min_level = strtoul(cmp+2, NULL, 0);
+                discrim->min_level = strtoul(cmp, NULL, 0);
             }
-        } else if ((irccasecmp(argv[i], "abuse") == 0)
-                   && (irccasecmp(argv[++i], "opers") == 0)) {
-            discrim->match_opers = 1;
+        } else if (irccasecmp(argv[i], "abuse") == 0) {
+            const char *abuse_what = argv[++i];
+            if (irccasecmp(abuse_what, "opers") == 0) {
+                discrim->match_opers = 1;
+            } else if (irccasecmp(abuse_what, "trusted") == 0) {
+                discrim->match_trusted = 1;
+            }
         } else if (irccasecmp(argv[i], "depth") == 0) {
             discrim->domain_depth = strtoul(argv[++i], NULL, 0);
         } else if (irccasecmp(argv[i], "clones") == 0) {
@@ -5549,7 +5658,7 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
 static int
 discrim_match(discrim_t discrim, struct userNode *user)
 {
-    unsigned int access;
+    unsigned int level, i;
     char *scmp=NULL, *dcmp=NULL;
 
     if ((user->timestamp < discrim->min_ts)
@@ -5567,8 +5676,9 @@ discrim_match(discrim_t discrim, struct userNode *user)
         )
         return 0;
 
-    if (discrim->channel && !GetUserMode(discrim->channel, user))
-        return 0;
+   for(i = 0; i < discrim->channel_count; i++)
+           if (!GetUserMode(discrim->channels[i], user))
+                   return 0;
 
     if(discrim->use_regex)
     {
@@ -5632,9 +5742,6 @@ discrim_match(discrim_t discrim, struct userNode *user)
                 case 'w':
                     if(IsWallOp(user)) matches++;
                     break;
-                case 's':
-                    if(IsServNotice(user)) matches++;
-                    break;
                 case 'd':
                     if(IsDeaf(user)) matches++;
                     break;
@@ -5667,9 +5774,9 @@ discrim_match(discrim_t discrim, struct userNode *user)
         if (matches != strlen(discrim->modes)) return 0;
     }
 
-    access = user->handle_info ? user->handle_info->opserv_level : 0;
-    if ((access < discrim->min_level)
-        || (access > discrim->max_level)) {
+    level = user->handle_info ? user->handle_info->opserv_level : 0;
+    if ((level < discrim->min_level)
+        || (level > discrim->max_level)) {
         return 0;
     }
     if (discrim->min_clones > 1) {
@@ -5683,23 +5790,38 @@ discrim_match(discrim_t discrim, struct userNode *user)
 static unsigned int
 opserv_discrim_search(discrim_t discrim, discrim_search_func dsf, void *data)
 {
-    unsigned int nn, count;
+    unsigned int nn, count, match;
     struct userList matched;
 
     userList_init(&matched);
     /* Try most optimized search methods first */
-    if (discrim->channel) {
-        for (nn=0;
-                (nn < discrim->channel->members.used)
-                && (matched.used < discrim->limit);
-                nn++) {
-            struct modeNode *mn = discrim->channel->members.list[nn];
-            if (((mn->modes & discrim->chan_req_modes) != discrim->chan_req_modes)
-                    || ((mn->modes & discrim->chan_no_modes) != 0)) {
+    if (discrim->channel_count)
+    {
+        for (nn=0; (nn < discrim->channels[0]->members.used)
+             && (matched.used < discrim->limit);
+             nn++) {
+            struct modeNode *mn = discrim->channels[0]->members.list[nn];
+
+            if (((mn->modes & discrim->chan_req_modes[0]) != discrim->chan_req_modes[0])
+               || ((mn->modes & discrim->chan_no_modes[0]) != 0)) {
                 continue;
             }
-            if (discrim_match(discrim, mn->user)) {
-                userList_append(&matched, mn->user);
+            if ((match = discrim_match(discrim, mn->user)))
+            {
+                unsigned int i;
+
+                for (i = 1; i < discrim->channel_count; i++) {
+                    struct modeNode *mn2 = GetUserMode(discrim->channels[i], mn->user);
+
+                    if (((mn2->modes & discrim->chan_req_modes[i]) != discrim->chan_req_modes[i])
+                        || ((mn2->modes & discrim->chan_no_modes[i]) != 0)) {
+                        match = 0;
+                        break;
+                    }
+                }
+
+                if (match)
+                    userList_append(&matched, mn->user);
             }
         }
     } else if (discrim->ip_mask_bits == 128) {
@@ -5768,12 +5890,32 @@ trace_count_func(UNUSED_ARG(struct userNode *match), UNUSED_ARG(void *extra))
 }
 
 static int
-is_oper_victim(struct userNode *user, struct userNode *target, int match_opers)
+is_oper_victim(struct userNode *user, struct userNode *target, int match_opers, int check_ip)
 {
-    return !(IsService(target)
-             || (!match_opers && IsOper(target))
-             || (target->handle_info
-                 && target->handle_info->opserv_level > user->handle_info->opserv_level));
+    unsigned char is_victim;
+    unsigned int nn;
+
+    is_victim = !(IsService(target)
+                  || (!match_opers && IsOper(target))
+                  || (target->handle_info
+                      && target->handle_info->opserv_level > user->handle_info->opserv_level));
+
+    /* If we don't need an ip check or want to hit opers or the the "cheap" check already disqualified the target, we are done. */
+    if (!check_ip || match_opers || !is_victim)
+        return is_victim;
+
+    for(nn = 0; nn < curr_opers.used; nn++) {
+        if(memcmp(&curr_opers.list[nn]->ip, &target->ip, sizeof(irc_in_addr_t)) == 0)
+            return 0;
+    }
+
+    return 1;
+}
+
+static int
+is_trust_victim(struct userNode *target, int match_trusted)
+{
+    return (match_trusted || !dict_find(opserv_trusted_hosts, irc_ntoa(&target->ip), NULL));
 }
 
 static int
@@ -5781,7 +5923,8 @@ trace_gline_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
 
-    if (is_oper_victim(das->source, match, das->discrim->match_opers)) {
+
+    if (is_oper_victim(das->source, match, das->discrim->match_opers, 1) && is_trust_victim(match, das->discrim->match_trusted)) {
         opserv_block(match, das->source->handle_info->handle, das->discrim->reason, das->discrim->duration, das->discrim->silent);
     }
 
@@ -5793,7 +5936,7 @@ trace_shun_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
 
-    if (is_oper_victim(das->source, match, das->discrim->match_opers)) {
+    if (is_oper_victim(das->source, match, das->discrim->match_opers, 1) && is_trust_victim(match, das->discrim->match_trusted)) {
         opserv_shun(match, das->source->handle_info->handle, das->discrim->reason, das->discrim->duration);
     }
 
@@ -5805,7 +5948,7 @@ trace_kill_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
 
-    if (is_oper_victim(das->source, match, das->discrim->match_opers)) {
+    if (is_oper_victim(das->source, match, das->discrim->match_opers, 1)) {
         char *reason;
         if (das->discrim->reason) {
             reason = das->discrim->reason;
@@ -5921,7 +6064,7 @@ trace_gag_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
 
-    if (is_oper_victim(das->source, match, das->discrim->match_opers)) {
+    if (is_oper_victim(das->source, match, das->discrim->match_opers, 1) && is_trust_victim(match, das->discrim->match_trusted)) {
         char *reason, *mask;
         int masksize;
         if (das->discrim->reason) {
@@ -6011,7 +6154,7 @@ static MODCMD_FUNC(cmd_trace)
 {
     struct discrim_and_source das;
     discrim_search_func action;
-    unsigned int matches;
+    unsigned int matches, i;
     struct svccmd *subcmd;
     char buf[MAXLEN];
     int ret = 1;
@@ -6112,8 +6255,8 @@ static MODCMD_FUNC(cmd_trace)
                 reply("MSG_NO_MATCHES");
     }
 
-    if (das.discrim->channel)
-        UnlockChannel(das.discrim->channel);
+    for (i = 0; i < das.discrim->channel_count; i++)
+        UnlockChannel(das.discrim->channels[i]);
     free(das.discrim->reason);
 
     if(das.discrim->has_regex_nick)
@@ -6160,6 +6303,9 @@ opserv_cdiscrim_create(struct userNode *user, struct userNode *bot, unsigned int
 
     discrim = calloc(1, sizeof(*discrim));
     discrim->limit = 25;
+    discrim->max_users = ~0;
+    /* So, time_t is frequently signed.  Fun. */
+    discrim->max_ts = (1ul << (CHAR_BIT * sizeof(time_t) - 1)) - 1;
 
     for (i = 0; i < argc; i++) {
         /* Assume all criteria require arguments. */
@@ -6187,7 +6333,7 @@ opserv_cdiscrim_create(struct userNode *user, struct userNode *bot, unsigned int
                 else
                     discrim->min_users = strtoul(cmp+1, NULL, 0) + 1;
             } else {
-                discrim->min_users = strtoul(cmp+2, NULL, 0);
+                discrim->min_users = strtoul(cmp, NULL, 0);
             }
         } else if (!irccasecmp(argv[i], "timestamp")) {
             const char *cmp = argv[++i];
@@ -6230,10 +6376,10 @@ cdiscrim_match(cdiscrim_t discrim, struct chanNode *chan)
 {
     if ((discrim->name && !match_ircglob(chan->name, discrim->name)) ||
         (discrim->topic && !match_ircglob(chan->topic, discrim->topic)) ||
-        (discrim->min_users && chan->members.used < discrim->min_users) ||
-        (discrim->max_users && chan->members.used > discrim->max_users) ||
-        (discrim->min_ts && chan->timestamp < discrim->min_ts) ||
-            (discrim->max_ts && chan->timestamp > discrim->max_ts)) {
+        (chan->members.used < discrim->min_users) ||
+        (chan->members.used > discrim->max_users) ||
+        (chan->timestamp < discrim->min_ts) ||
+        (chan->timestamp > discrim->max_ts)) {
         return 0;
     }
     return 1;
@@ -6357,11 +6503,38 @@ static void
 gtrace_print_func(struct gline *gline, void *extra)
 {
     struct gline_extra *xtra = extra;
-    char *when_text, set_text[20];
-    strftime(set_text, sizeof(set_text), "%Y-%m-%d", localtime(&gline->issued));
-    when_text = asctime(localtime(&gline->expires));
-    when_text[strlen(when_text)-1] = 0; /* strip lame \n */
-    send_message(xtra->user, xtra->bot, "OSMSG_GTRACE_FORMAT", gline->target, set_text, gline->issuer, when_text, gline->reason);
+    char issued[INTERVALLEN];
+    char lastmod[INTERVALLEN];
+    char expires[INTERVALLEN];
+
+    intervalString(issued, now - gline->issued, xtra->user->handle_info);
+    if (gline->lastmod)
+        intervalString(lastmod, now - gline->lastmod, xtra->user->handle_info);
+    else
+        strcpy(lastmod, "<unknown>");
+    if (gline->expires)
+        intervalString(expires, gline->expires - now, xtra->user->handle_info);
+    else
+        strcpy(expires, "never");
+    send_message(xtra->user, opserv, "OSMSG_GTRACE_FORMAT", gline->target, issued, gline->issuer, lastmod, expires, gline->reason);
+}
+
+static MODCMD_FUNC(cmd_stats_glines) {
+    if (argc < 2) {
+        reply("OSMSG_GLINE_COUNT", gline_count());
+        return 1;
+    } else if (argc < 3) {
+        struct gline_extra extra;
+        struct gline *gl;
+
+        extra.user = user;
+        gl = gline_find(argv[1]);
+        if (!gl)
+            reply("OSMSG_NO_GLINE", argv[1]);
+        else
+            gtrace_print_func(gl, &extra);
+        return 1;
+    } else return 0;
 }
 
 static void
@@ -6439,11 +6612,38 @@ static void
 strace_print_func(struct shun *shun, void *extra)
 {
     struct shun_extra *xtra = extra;
-    char *when_text, set_text[20];
-    strftime(set_text, sizeof(set_text), "%Y-%m-%d", localtime(&shun->issued));
-    when_text = asctime(localtime(&shun->expires));
-    when_text[strlen(when_text)-1] = 0; /* strip lame \n */
-    send_message(xtra->user, xtra->bot, "OSMSG_STRACE_FORMAT", shun->target, set_text, shun->issuer, when_text, shun->reason);
+    char issued[INTERVALLEN];
+    char lastmod[INTERVALLEN];
+    char expires[INTERVALLEN];
+
+    intervalString(issued, now - shun->issued, xtra->user->handle_info);
+    if (shun->lastmod)
+        intervalString(lastmod, now - shun->lastmod, xtra->user->handle_info);
+    else
+        strcpy(lastmod, "<unknown>");
+    if (shun->expires)
+        intervalString(expires, shun->expires - now, xtra->user->handle_info);
+    else
+        strcpy(expires, "never");
+    send_message(xtra->user, opserv, "OSMSG_STRACE_FORMAT", shun->target, issued, shun->issuer, lastmod, expires, shun->reason);
+}
+
+static MODCMD_FUNC(cmd_stats_shuns) {
+    if (argc < 2) {
+        reply("OSMSG_SHUN_COUNT", shun_count());
+        return 1;
+    } else if (argc < 3) {
+        struct shun_extra extra;
+        struct shun *gl;
+
+        extra.user = user;
+        gl = shun_find(argv[1]);
+        if (!gl)
+            reply("OSMSG_NO_SHUN", argv[1]);
+        else
+            strace_print_func(gl, &extra);
+        return 1;
+    } else return 0;
 }
 
 static void
@@ -6526,6 +6726,11 @@ alert_check_user(const char *key, void *data, void *extra)
         return 0;
     }
 
+    if ((alert->reaction != REACT_NOTICE)
+        && !is_trust_victim(user, alert->discrim->match_trusted)) {
+        return 0;
+    }
+
     /* The user matches the alert criteria, so trigger the reaction. */
     if (alert->discrim->option_log)
         log_module(OS_LOG, LOG_INFO, "Alert %s triggered by user %s!%s@%s (%s).", key, user->nick, user->ident, user->hostname, alert->discrim->reason);
@@ -6566,7 +6771,7 @@ alert_check_user(const char *key, void *data, void *extra)
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s.", alert->reaction, key);
         /* fall through to REACT_NOTICE case */
     case REACT_NOTICE:
-        opserv_alert("Alert $b%s$b triggered by user $b%s$b!%s@%s (%s).", key, user->nick, user->ident, user->hostname, alert->discrim->reason);
+        opserv_custom_alert(alert->discrim->notice_target, "Alert $b%s$b triggered by user $b%s$b!%s@%s (%s).", key, user->nick, user->ident, user->hostname, alert->discrim->reason);
         break;
     case REACT_TRACK:
 #ifdef HAVE_TRACK
@@ -7034,7 +7239,7 @@ init_opserv(const char *nick)
     OS_LOG = log_register_type("OpServ", "file:opserv.log");
     if (nick) {
         const char *modes = conf_get_data("services/opserv/modes", RECDB_QSTRING);
-        opserv = AddService(nick, modes ? modes : NULL, "Oper Services", NULL);
+        opserv = AddLocalUser(nick, nick, NULL, "Oper Services", modes);
     }
     conf_register_reload(opserv_conf_read);
 
@@ -7092,13 +7297,14 @@ init_opserv(const char *nick)
     opserv_define_func("STRACE PRINT", NULL, 0, 0, 0);
     opserv_define_func("INVITE", cmd_invite, 100, 2, 0);
     opserv_define_func("INVITEME", cmd_inviteme, 100, 0, 0);
-    opserv_define_func("JOIN", cmd_join, 601, 0, 2);
+    opserv_define_func("JOIN", cmd_join, 601, 1, 0);
     opserv_define_func("SVSNICK", cmd_svsnick, 999, 0, 3);
     opserv_define_func("SVSJOIN", cmd_svsjoin, 999, 0, 3);
     opserv_define_func("SVSPART", cmd_svspart, 999, 0, 3);
     opserv_define_func("JUMP", cmd_jump, 900, 0, 2);
     opserv_define_func("JUPE", cmd_jupe, 900, 0, 4);
     opserv_define_func("KICK", cmd_kick, 100, 2, 2);
+    opserv_define_func("FORCEKICK", cmd_forcekick, 800, 2, 2);
     opserv_define_func("KICKALL", cmd_kickall, 400, 2, 0);
     opserv_define_func("KICKBAN", cmd_kickban, 100, 2, 2);
     opserv_define_func("KICKBANALL", cmd_kickbanall, 450, 2, 0);
@@ -7111,7 +7317,7 @@ init_opserv(const char *nick)
     opserv_define_func("HOPALL", cmd_hopall, 400, 2, 0);
     opserv_define_func("MAP", cmd_stats_links, 0, 0, 0);
     opserv_define_func("PRIVSET", cmd_privset, 900, 0, 3);
-    opserv_define_func("PART", cmd_part, 601, 0, 2);
+    opserv_define_func("PART", cmd_part, 601, 2, 0);
     opserv_define_func("QUERY", cmd_query, 0, 0, 0);
     opserv_define_func("RAW", cmd_raw, 999, 0, 2);
     opserv_define_func("RECONNECT", cmd_reconnect, 900, 0, 0);

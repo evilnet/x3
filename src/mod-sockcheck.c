@@ -152,7 +152,7 @@ static const struct message_entry msgtab[] = {
     { "PCMSG_DISABLED", "Proxy scanning is $bdisabled$b." },
     { "PCMSG_NOT_CACHED", "No proxycheck records exist for IP %s." },
     { "PCMSG_STATUS_CHECKING", "IP %s proxycheck state: last touched %s ago, still checking" },
-    { "PCMSG_STATUS_ACCEPTED", "IP %s proxycheck state: last touched %s ago, acepted" },
+    { "PCMSG_STATUS_ACCEPTED", "IP %s proxycheck state: last touched %s ago, accepted" },
     { "PCMSG_STATUS_REJECTED", "IP %s proxycheck state: last touched %s ago, rejected: %s" },
     { "PCMSG_STATUS_UNKNOWN", "IP %s proxycheck state: last touched %s ago, invalid status" },
     { "PCMSG_STATISTICS", "Since booting, I have checked %d clients for illicit proxies, and detected %d proxy hosts.\nI am currently checking %d clients (out of %d max) and have a backlog of %d more to start on.\nI currently have %d hosts cached.\nI know how to detect %d kinds of proxies." },
@@ -206,7 +206,7 @@ sockcheck_issue_gline(sockcheck_cache_info sci)
     char addr[IRC_NTOP_MAX_SIZE + 2] = {'*', '@', '\0'};
     irc_ntop(addr + 2, sizeof(addr) - 2, &sci->addr);
     log_module(PC_LOG, LOG_INFO, "Issuing gline for client at %s: %s", addr + 2, sci->reason);
-    gline_add("ProxyCheck", addr, sockcheck_conf.gline_duration, sci->reason, now, 1, 1);
+    gline_add("ProxyCheck", addr, sockcheck_conf.gline_duration, sci->reason, now, now, 1, 1);
 
 }
 
@@ -228,11 +228,11 @@ static void
 sockcheck_free_client(struct sockcheck_client *client)
 {
     if (SOCKCHECK_DEBUG) {
-        log_module(PC_LOG, LOG_INFO, "Goodbye %s (%p)!  I set you free!", client->addr->hostname, client);
+        log_module(PC_LOG, LOG_INFO, "Goodbye %s (%p)!  I set you free!", client->addr->hostname, (void*)client);
     }
     verify(client);
-    if (client->fd)
-        ioset_close(client->fd->fd, 1);
+    ioset_close(client->fd, 1);
+    client->fd = NULL;
     sockcheck_list_unref(client->tests);
     free(client->read);
     free(client->resp_state);
@@ -261,14 +261,14 @@ sockcheck_print_client(const struct sockcheck_client *client)
     log_module(PC_LOG, LOG_INFO, "client %p: { addr = %p { decision = %s; last_touched = "FMT_TIME_T"; reason = %s; hostname = \"%s\" }; "
         "test_index = %d; state = %p { port = %d; type = %s; template = \"%s\"; ... }; "
         "fd = %p(%d); read = %p; read_size = %d; read_used = %d; read_pos = %d; }",
-        client, client->addr, decs[client->addr->decision], client->addr->last_touched,
+        (void*)client, (void*)client->addr, decs[client->addr->decision], client->addr->last_touched,
         client->addr->reason, client->addr->hostname,
-        client->test_index, client->state,
+        client->test_index, (void*)client->state,
         (client->state ? client->state->port : 0),
         (client->state ? decs[client->state->type] : "N/A"),
         (client->state ? client->state->template : "N/A"),
-        client->fd, (client->fd ? client->fd->fd : 0),
-        client->read, client->read_size, client->read_used, client->read_pos);
+        (void*)client->fd, (client->fd ? client->fd->fd : 0),
+        (void*)client->read, client->read_size, client->read_used, client->read_pos);
 }
 
 static char hexvals[256] = {
@@ -288,13 +288,9 @@ expand_var(const struct sockcheck_client *client, char var, char **p_expansion, 
     extern struct cManagerNode cManager;
     const char *expansion;
     unsigned int exp_length;
-#ifndef __SOLARIS__
-    u_int32_t exp4;
-    u_int16_t exp2;
-#else
     uint32_t exp4;
     uint16_t exp2;
-#endif
+
     /* expand variable */
     switch (var) {
     case 'c':
@@ -411,7 +407,7 @@ sockcheck_elaborate_state(struct sockcheck_client *client)
         /* If it doesn't require reading, take it now. */
         if (client->resp_state[nn] && !*client->resp_state[nn]) {
             if (SOCKCHECK_DEBUG) {
-                log_module(PC_LOG, LOG_INFO, "Skipping straight to easy option %d for %p.", nn, client);
+                log_module(PC_LOG, LOG_INFO, "Skipping straight to easy option %d for %p.", nn, (void*)client);
             }
             sockcheck_advance(client, nn);
             return;
@@ -514,7 +510,7 @@ sockcheck_advance(struct sockcheck_client *client, unsigned int next_state)
         }
         break;
     default:
-        log_module(PC_LOG, LOG_ERROR, "BUG: unknown next-state type %d (after %p).", ns->type, client->state);
+        log_module(PC_LOG, LOG_ERROR, "BUG: unknown next-state type %d (after %p).", ns->type, (void*)client->state);
         break;
     }
 }
@@ -649,7 +645,6 @@ sockcheck_connected(struct io_fd *fd, int rc)
         return;
     case 0: break;
     }
-    fd->wants_reads = 1;
     if (SOCKCHECK_DEBUG) {
         log_module(PC_LOG, LOG_INFO, "Connected: to %s port %d.", client->addr->hostname, client->state->port);
     }
@@ -662,15 +657,14 @@ sockcheck_begin_test(struct sockcheck_client *client)
     struct io_fd *io_fd;
 
     verify(client);
-    if (client->fd) {
-        ioset_close(client->fd->fd, 1);
-        client->fd = NULL;
-    }
+    ioset_close(client->fd, 1);
+    client->fd = NULL;
     do {
         client->state = client->tests->list[client->test_index];
         client->read_pos = 0;
         client->read_used = 0;
-        client->fd = io_fd = ioset_connect(sockcheck_conf.local_addr, sockcheck_conf.local_addr_len, client->addr->hostname, client->state->port, 0, client, sockcheck_connected);
+        io_fd = ioset_connect(sockcheck_conf.local_addr, sockcheck_conf.local_addr_len, client->addr->hostname, client->state->port, 0, client, sockcheck_connected);
+        client->fd = io_fd;
         if (!io_fd) {
             client->test_index++;
             continue;
@@ -678,7 +672,7 @@ sockcheck_begin_test(struct sockcheck_client *client)
         io_fd->readable_cb = sockcheck_readable;
         timeq_add(now + client->state->timeout, sockcheck_timeout_client, client);
         if (SOCKCHECK_DEBUG) {
-            log_module(PC_LOG, LOG_INFO, "Starting proxy check on %s:%d (test %d) with fd %d (%p).", client->addr->hostname, client->state->port, client->test_index, io_fd->fd, io_fd);
+            log_module(PC_LOG, LOG_INFO, "Starting proxy check on %s:%d (test %d) with fd %d (%p).", client->addr->hostname, client->state->port, client->test_index, io_fd->fd, (void*)io_fd);
         }
         return;
     } while (client->test_index < client->tests->used);
@@ -702,7 +696,7 @@ sockcheck_start_client(unsigned int idx)
     sockcheck_num_clients++;
     if (!tests) return;
     client = client_list[idx] = sockcheck_alloc_client(sci);
-    log_module(PC_LOG, LOG_INFO, "Proxy-checking client at %s as client %d (%p) of %d.", sci->hostname, idx, client, sockcheck_num_clients);
+    log_module(PC_LOG, LOG_INFO, "Proxy-checking client at %s as client %d (%p) of %d.", sci->hostname, idx, (void*)client, sockcheck_num_clients);
     client->test_rep = 0;
     client->client_index = idx;
     sockcheck_begin_test(client);
@@ -1035,7 +1029,7 @@ static MODCMD_FUNC(cmd_hostscan)
             }
         } else {
             char *scanhost = argv[n];
-            if (!irc_pton(&ipaddr, NULL, scanhost)) {
+            if (irc_pton(&ipaddr, NULL, scanhost)) {
                 sockcheck_queue_address(ipaddr);
                 reply("PCMSG_ADDRESS_QUEUED", scanhost);
             } else {
@@ -1155,14 +1149,18 @@ sockcheck_read_conf(void)
         str = database_get_data(my_node, "gline_duration", RECDB_QSTRING);
         if (str) sockcheck_conf.gline_duration = ParseInterval(str);
 	str = database_get_data(my_node, "address", RECDB_QSTRING);
+        str = database_get_data(my_node, "bind_address", RECDB_QSTRING);
+        if (!str) str = database_get_data(my_node, "address", RECDB_QSTRING);
         if (!getaddrinfo(str, NULL, NULL, &ai)) {
            sockcheck_conf.local_addr_len = ai->ai_addrlen;
             sockcheck_conf.local_addr = calloc(1, ai->ai_addrlen);
             memcpy(sockcheck_conf.local_addr, ai->ai_addr, ai->ai_addrlen);
+            freeaddrinfo(ai);
         } else {
             sockcheck_conf.local_addr_len = 0;
             sockcheck_conf.local_addr = NULL;
-            log_module(PC_LOG, LOG_ERROR, "Error: Unable to get host named `%s', not checking a specific address.", str);
+            if (str)
+                log_module(PC_LOG, LOG_ERROR, "Error: Unable to get host named `%s', not checking from a specific address.", str);
 	}
     }
 }

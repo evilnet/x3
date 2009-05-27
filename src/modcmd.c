@@ -21,6 +21,7 @@
 #include "../ChangeLog"
 #include "chanserv.h"
 #include "conf.h"
+#include "compat.h"
 #include "modcmd.h"
 #include "opserv.h"
 #include "saxdb.h"
@@ -149,7 +150,7 @@ struct userData *_GetChannelUser(struct chanData *channel, struct handle_info *h
 static struct modcmd_flag {
     const char *name;
     unsigned int flag;
-} flags[] = {
+} modcmd_flags[] = {
     { "acceptchan", MODCMD_ACCEPT_CHANNEL },
     { "acceptpluschan", MODCMD_ACCEPT_PCHANNEL },
     { "authed", MODCMD_REQUIRE_AUTHED },
@@ -185,8 +186,8 @@ flags_qsort(const void *a, const void *b) {
     return irccasecmp(fa->name, fb->name);
 }
 
-DEFINE_LIST(svccmd_list, struct svccmd*);
-DEFINE_LIST(module_list, struct module*);
+DEFINE_LIST(svccmd_list, struct svccmd*)
+DEFINE_LIST(module_list, struct module*)
 
 static void
 free_service_command(void *data) {
@@ -335,7 +336,7 @@ svccmd_configure(struct svccmd *cmd, struct userNode *user, struct userNode *bot
                 return 0;
             }
             value++;
-            flag = bsearch(value, flags, ArrayLength(flags)-1, sizeof(flags[0]), flags_bsearch);
+            flag = bsearch(value, modcmd_flags, ArrayLength(modcmd_flags)-1, sizeof(modcmd_flags[0]), flags_bsearch);
             if (!flag) {
                 if (user)
                     send_message(user, bot, "MCMSG_UNKNOWN_FLAG", end, value);
@@ -445,6 +446,7 @@ modcmd_register(struct module *module, const char *name, modcmd_func_t func, uns
  */
 int
 svccmd_can_invoke(struct userNode *user, struct userNode *bot, struct svccmd *cmd, struct chanNode *channel, int options) {
+    extern struct userNode *chanserv;
     unsigned int uData_checked = 0;
     struct userData *uData = NULL;
     int rflags = 0, flags = cmd->effective_flags;
@@ -478,15 +480,17 @@ svccmd_can_invoke(struct userNode *user, struct userNode *bot, struct svccmd *cm
             return 0;
         }
         if (flags & MODCMD_REQUIRE_REGCHAN) {
-            if (!channel->channel_info) {
+            if (!chanserv) {
+                /* Just use the inferred MODCMD_REQUIRE_CHANNEL. */
+            } else if (!channel->channel_info) {
                 if (options & SVCCMD_NOISY)
                     send_message(user, bot, "MCMSG_CHAN_NOT_REGISTERED", channel->name);
                 return 0;
             } else if (IsSuspended(channel->channel_info) && !(flags & MODCMD_IGNORE_CSUSPEND)) {
-                /* allow security-override users to always ignore channel suspensions, but flag it as a staff command */
-                if (!user->handle_info
-                    || !HANDLE_FLAGGED(user->handle_info, HELPING)
-                    || (flags & MODCMD_NEVER_CSUSPEND)) {
+                /* Allow security-override users to ignore most channel
+                 * suspensions, but flag that use as a staff command.
+                 */
+                if (!IsHelping(user) || (flags & MODCMD_NEVER_CSUSPEND)) {
                     if (options & SVCCMD_NOISY)
                         send_message(user, bot, "MCMSG_CHAN_SUSPENDED", channel->name, channel->channel_info->suspended->reason);
                     return 0;
@@ -497,7 +501,9 @@ svccmd_can_invoke(struct userNode *user, struct userNode *bot, struct svccmd *cm
         if (flags & MODCMD_REQUIRE_CHANUSER) {
             if (!uData_checked)
                 uData = _GetChannelUser(channel->channel_info, user->handle_info, 1, 0), uData_checked = 1;
-            if (!uData) {
+            if (!chanserv) {
+                /* Assume someone knows what they're doing. */
+            } else if (!uData) {
                 if (options & SVCCMD_NOISY)
                     send_message(user, bot, "MCMSG_NO_CHANNEL_ACCESS", channel->name);
                 return 0;
@@ -588,7 +594,7 @@ svccmd_can_invoke(struct userNode *user, struct userNode *bot, struct svccmd *cm
 }
 
 static int
-svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_argc, char *old_argv[], char *new_argv[]) {
+svccmd_expand_alias(struct svccmd *cmd, unsigned int old_argc, char *old_argv[], char *new_argv[]) {
     unsigned int ii, new_argc;
     char *arg;
 
@@ -620,30 +626,16 @@ svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_
                 log_module(MAIN_LOG, LOG_ERROR, "Alias expansion parse error in %s (near %s; %s.%s arg %d).", arg, end_num, cmd->parent->bot->nick, cmd->name, ii);
                 return 0;
             }
+            if (lbound >= old_argc)
+                return -1;
             if (ubound >= old_argc)
                 ubound = old_argc - 1;
             if (lbound < old_argc)
                 for (jj = lbound; jj <= ubound; )
                     new_argv[new_argc++] = old_argv[jj++];
         } else {
-            switch(arg[1]) {
-                case 'a':
-                    new_argv[new_argc++] = (user && user->handle_info) ? user->handle_info->handle : "(account)";
-                    break;
-                case 'n':
-                    new_argv[new_argc++] = user ? user->nick : "(nick)";
-                    break;
-                case 'm':
-#ifdef WITH_PROTOCOL_P10
-                    new_argv[new_argc++] = user ? user->numeric : "(numnick)";
-#else
-                    new_argv[new_argc++] = "(This ircd protocol has no numnicks!)";
-#endif
-                    break;
-                default:
-                    log_module(MAIN_LOG, LOG_ERROR, "Alias expansion: I do not know how to handle %s (%s.%s arg %d).", arg, cmd->parent->bot->nick, cmd->name, ii);
-                    return 0;
-            }
+            log_module(MAIN_LOG, LOG_ERROR, "Alias expansion: I do not know how to handle %s (%s.%s arg %d).", arg, cmd->parent->bot->nick, cmd->name, ii);
+            return 0;
         }
     }
     return new_argc;
@@ -653,7 +645,7 @@ int
 svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNode *channel, unsigned int argc, char *argv[], unsigned int server_qualified) {
     extern struct userNode *chanserv;
     struct svccmd *cmd;
-    unsigned int cmd_arg, perms, flags, options;
+    unsigned int cmd_arg, perms, flags, options, result;
     char channel_name[CHANNELLEN+1];
 
     options = (server_qualified ? SVCCMD_QUALIFIED : 0) | SVCCMD_DEBIT | SVCCMD_NOISY;
@@ -719,11 +711,17 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
     /* Expand the alias arguments, if there are any. */
     if (cmd->alias.used) {
         char *new_argv[MAXNUMPARAMS];
-        argc = svccmd_expand_alias(cmd, user, argc, argv, new_argv);
-        if (!argc) {
+        int res;
+
+        res = svccmd_expand_alias(cmd, argc, argv, new_argv);
+        if (res < 0) {
+            send_message(user, service->bot, "MSG_MISSING_PARAMS", cmd->name);
+            return 0;
+        } else if (res == 0) {
             send_message(user, service->bot, "MCMSG_ALIAS_ERROR", cmd->name);
             return 0;
         }
+        argc = res;
         argv = new_argv;
 
         /* Try again to grab a handle to the channel after alias
@@ -766,11 +764,13 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
         safestrncpy(channel_name, channel->name, sizeof(channel_name));
     else
         channel_name[0] = 0;
-    if (!cmd->command->func(user, channel, argc, argv, cmd))
+    if (!(result = cmd->command->func(user, channel, argc, argv, cmd)))
         return 0;
     if (!(flags & MODCMD_NO_LOG)) {
         enum log_severity slvl;
-        if (perms & ACTION_STAFF)
+        if (result & CMD_LOG_OVERRIDE)
+            slvl = LOG_OVERRIDE;
+        else if ((perms & ACTION_STAFF) || (result & CMD_LOG_STAFF))
             slvl = LOG_STAFF;
         else if (perms & ACTION_OVERRIDE)
             slvl = LOG_OVERRIDE;
@@ -906,9 +906,10 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
 }
 
 static int
-svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *channel, char *text, int server_qualified) {
+svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *channel, const char *text, int server_qualified) {
     unsigned int argc;
     char *argv[MAXNUMPARAMS];
+    char tmpline[MAXLEN];
 
     if (!*text)
         return 0;
@@ -926,7 +927,8 @@ svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *c
             return 0;
         }
     }
-    argc = split_line(text, false, ArrayLength(argv), argv);
+    safestrncpy(tmpline, text, sizeof(tmpline));
+    argc = split_line(tmpline, false, ArrayLength(argv), argv);
     return argc ? svccmd_invoke_argv(user, service, channel, argc, argv, server_qualified) : 0;
 }
 
@@ -953,7 +955,7 @@ char *cvs_verstring() {
 
 
 void
-modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int server_qualified) {
+modcmd_privmsg(struct userNode *user, struct userNode *bot, const char *text, int server_qualified) {
     struct service *service;
 
     if (!(service = dict_find(services, bot->nick, NULL))) {
@@ -1015,10 +1017,12 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, char *text, int serv
 }
 
 void
-modcmd_chanmsg(struct userNode *user, struct chanNode *chan, char *text, struct userNode *bot) {
+modcmd_chanmsg(struct userNode *user, struct chanNode *chan, const char *text, struct userNode *bot, unsigned int is_notice) {
     struct service *service;
-    if (!(service = dict_find(services, bot->nick, NULL))) return;
+    if (!(service = dict_find(services, bot->nick, NULL)))
+        return;
     svccmd_invoke(user, service, chan, text, 0);
+    (void)is_notice;
 }
 
 struct service *
@@ -1102,8 +1106,9 @@ check_alias_args(char *argv[], unsigned int argc) {
             continue;
         } else if (isdigit(argv[arg][1])) {
             char *end_num;
+            unsigned long tmp;
 
-            strtoul(argv[arg]+1, &end_num, 10);
+            tmp = strtoul(argv[arg]+1, &end_num, 10);
             switch (end_num[0]) {
             case 0:
                 continue;
@@ -1504,18 +1509,19 @@ modcmd_describe_command(struct userNode *user, struct svccmd *cmd, struct svccmd
         snprintf(buf1, sizeof(buf1), "%s.%s", target->command->parent->name, target->command->name);
         reply("MCMSG_COMMAND_BINDING", target->name, buf1);
     }
-    for (ii = buf1_used = buf2_used = 0; flags[ii].name; ++ii) {
-        if (target->flags & flags[ii].flag) {
+    for (ii = buf1_used = buf2_used = 0; modcmd_flags[ii].name; ++ii) {
+        const struct modcmd_flag *flag = &modcmd_flags[ii];
+        if (target->flags & flag->flag) {
             if (buf1_used)
                 buf1[buf1_used++] = ',';
-            len = strlen(flags[ii].name);
-            memcpy(buf1 + buf1_used, flags[ii].name, len);
+            len = strlen(flag->name);
+            memcpy(buf1 + buf1_used, flag->name, len);
             buf1_used += len;
-        } else if (target->effective_flags & flags[ii].flag) {
+        } else if (target->effective_flags & flag->flag) {
             if (buf2_used)
                 buf2[buf2_used++] = ',';
-            len = strlen(flags[ii].name);
-            memcpy(buf2 + buf2_used, flags[ii].name, len);
+            len = strlen(flag->name);
+            memcpy(buf2 + buf2_used, flag->name, len);
             buf2_used += len;
         }
     }
@@ -1818,20 +1824,20 @@ static MODCMD_FUNC(cmd_showcommands) {
         if (show_opserv_level)
             tbl.contents[ii+1][1] = strtab(svccmd->min_opserv_level);
         if (show_channel_access) {
-            const char *access;
+            const char *access_name;
             int flags = svccmd->effective_flags;
             if (flags & MODCMD_REQUIRE_HELPING)
-                access = "helping";
+                access_name = "helping";
             else if (flags & MODCMD_REQUIRE_STAFF) {
                 if (flags & MODCMD_REQUIRE_OPER)
-                    access = "oper";
+                    access_name = "oper";
                 else if (flags & MODCMD_REQUIRE_NETWORK_HELPER)
-                    access = "net.helper";
+                    access_name = "net.helper";
                 else
-                    access = "staff";
+                    access_name = "staff";
             } else
-                access = strtab(svccmd->min_channel_access);
-            tbl.contents[ii+1][1+show_opserv_level] = access;
+                access_name = strtab(svccmd->min_channel_access);
+            tbl.contents[ii+1][1+show_opserv_level] = access_name;
         }
     }
     svccmd_list_clean(&commands);
@@ -1883,7 +1889,7 @@ static MODCMD_FUNC(cmd_service_add) {
         reply("MCMSG_ALREADY_SERVICE", bot->nick);
         return 0;
     }
-    bot = AddService(nick, NULL, desc, hostname);
+    bot = AddLocalUser(nick, nick, hostname, desc, NULL);
     service_register(bot);
     reply("MCMSG_NEW_SERVICE", bot->nick);
     return 1;
@@ -1981,17 +1987,15 @@ static MODCMD_FUNC(cmd_dump_messages) {
         reply("MSG_INTERNAL_FAILURE");
         return 0;
     }
-    if ((res = setjmp(ctx->jbuf)) != 0) {
-        ctx->complex.used = 0; /* to avoid false assert()s in close */
-        saxdb_close_context(ctx);
-        fclose(pf);
+
+    if ((res = setjmp(*saxdb_jmp_buf(ctx))) != 0) {
+        saxdb_close_context(ctx, 1);
         reply("MCMSG_MESSAGE_DUMP_FAILED", strerror(res));
         return 0;
     } else {
         for (it = dict_first(lang_C->messages); it; it = iter_next(it))
             saxdb_write_string(ctx, iter_key(it), iter_data(it));
-        saxdb_close_context(ctx);
-        fclose(pf);
+        saxdb_close_context(ctx, 1);
         reply("MCMSG_MESSAGES_DUMPED", fname);
         return 1;
     }
@@ -2033,6 +2037,19 @@ static MODCMD_FUNC(cmd_rebindall) {
     return 1;
 }
 
+static MODCMD_FUNC(cmd_tell) {
+    struct userNode *target;
+    char *msg;
+
+    target = GetUserH(argv[1]);
+    msg = unsplit_string(argv + 2, argc - 2, NULL);
+    if (!target) {
+        reply("MSG_NOT_TARGET_NAME");
+        return 0;
+    }
+    send_message_type(MSG_TYPE_NOXLATE, target, cmd->parent->bot, "%s", msg);
+    return 1;
+}
 
 void
 modcmd_nick_change(struct userNode *user, const char *old_nick) {
@@ -2068,11 +2085,12 @@ modcmd_saxdb_write_command(struct saxdb_context *ctx, struct svccmd *cmd) {
         saxdb_write_int(ctx, "channel_access", cmd->min_channel_access);
     if (cmd->flags != template->flags) {
         if (cmd->flags) {
-            for (nn=pos=0; flags[nn].name; ++nn) {
-                if (cmd->flags & flags[nn].flag) {
+            for (nn=pos=0; modcmd_flags[nn].name; ++nn) {
+                const struct modcmd_flag *flag = &modcmd_flags[nn];
+                if (cmd->flags & flag->flag) {
                     buf[pos++] = '+';
-                    len = strlen(flags[nn].name);
-                    memcpy(buf+pos, flags[nn].name, len);
+                    len = strlen(flag->name);
+                    memcpy(buf+pos, flag->name, len);
                     pos += len;
                     buf[pos++] = ',';
                 }
@@ -2226,7 +2244,7 @@ modcmd_load_bots(struct dict *db, int default_nick) {
         hostname = database_get_data(rd->d.object, "hostname", RECDB_QSTRING);
         if (desc) {
             if (!svc)
-                svc = service_register(AddService(nick, NULL, desc, hostname));
+                svc = service_register(AddLocalUser(nick, nick, hostname, desc, NULL));
             else if (hostname)
                 strcpy(svc->bot->hostname, hostname);
             desc = database_get_data(rd->d.object, "trigger", RECDB_QSTRING);
@@ -2246,7 +2264,7 @@ modcmd_conf_read(void) {
 
 void
 modcmd_init(void) {
-    qsort(flags, ArrayLength(flags)-1, sizeof(flags[0]), flags_qsort);
+    qsort(modcmd_flags, ArrayLength(modcmd_flags)-1, sizeof(modcmd_flags[0]), flags_qsort);
     modules = dict_new();
     dict_set_free_data(modules, free_module);
     services = dict_new();
@@ -2275,6 +2293,7 @@ modcmd_init(void) {
     modcmd_register(modcmd_module, "service privileged", cmd_service_privileged, 2, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "service remove", cmd_service_remove, 2, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "dumpmessages", cmd_dump_messages, 1, 0, "oper_level", "1000", NULL);
+    modcmd_register(modcmd_module, "tell", cmd_tell, 3, 0, "flags", "+oper", NULL);
     modcmd_register(modcmd_module, "rebindall", cmd_rebindall, 0, MODCMD_KEEP_BOUND, "oper_level", "800", NULL);
     version_command = modcmd_register(modcmd_module, "version", cmd_version, 1, 0, NULL);
     credits_command = modcmd_register(modcmd_module, "credits", cmd_credits, 1, 0, NULL);

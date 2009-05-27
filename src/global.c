@@ -141,7 +141,11 @@ static struct
     unsigned int announcements_default : 1;
 } global_conf;
 
-#define global_notice(target, format...) send_message(target , global , ## format)
+#if defined(GCC_VARMACROS)
+# define global_notice(target, ARGS...) send_message(target, global, ARGS)
+#elif defined(C99_VARMACROS)
+# define global_notice(target, ...) send_message(target, global, __VA_ARGS__)
+#endif
 
 void message_expire(void *data);
 
@@ -865,7 +869,7 @@ init_global(const char *nick)
     if(nick)
     {
         const char *modes = conf_get_data("services/global/modes", RECDB_QSTRING);
-        global = AddService(nick, modes ? modes : NULL, "Global Services", NULL);
+        global = AddLocalUser(nick, nick, NULL, "Global Services", modes);
         global_service = service_register(global);
     }
 

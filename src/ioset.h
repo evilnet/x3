@@ -1,11 +1,11 @@
 /* ioset.h - srvx event loop
  * Copyright 2002-2003 srvx Development Team
  *
- * This file is part of x3.
+ * This file is part of srvx.
  *
- * x3 is free software; you can redistribute it and/or modify
+ * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -21,7 +21,9 @@
 #if !defined(IOSET_H)
 #define IOSET_H
 
-/* Forward declare, since ioset_connect() takes a sockaddr argument. */
+#include "common.h"
+
+/* Forward declare, since functions take these as arguments. */
 struct sockaddr;
 
 struct ioq {
@@ -32,27 +34,29 @@ struct ioq {
 struct io_fd {
     int fd;
     void *data;
-    unsigned int connected : 1;
-    unsigned int wants_reads : 1;
+    enum { IO_CLOSED, IO_LISTENING, IO_CONNECTING, IO_CONNECTED } state;
     unsigned int line_reads : 1;
-    unsigned int eof : 1;
     int line_len;
     struct ioq send;
     struct ioq recv;
+    void (*accept_cb)(struct io_fd *listener, struct io_fd *new_connect);
     void (*connect_cb)(struct io_fd *fd, int error);
     void (*readable_cb)(struct io_fd *fd);
     void (*destroy_cb)(struct io_fd *fd);
 };
-
 extern int do_write_dbs;
 extern int do_reopen;
 
+void ioset_init(void);
 struct io_fd *ioset_add(int fd);
+struct io_fd *ioset_listen(struct sockaddr *local, unsigned int sa_size, void *data, void (*accept_cb)(struct io_fd *listener, struct io_fd *new_connect));
 struct io_fd *ioset_connect(struct sockaddr *local, unsigned int sa_size, const char *hostname, unsigned int port, int blocking, void *data, void (*connect_cb)(struct io_fd *fd, int error));
+void ioset_update(struct io_fd *fd);
 void ioset_run(void);
 void ioset_write(struct io_fd *fd, const char *buf, unsigned int nbw);
+int ioset_printf(struct io_fd *fd, const char *fmt, ...) PRINTF_LIKE(2, 3);
 int ioset_line_read(struct io_fd *fd, char *buf, int maxlen);
-void ioset_close(int fd, int os_close);
+void ioset_close(struct io_fd *fd, int os_close);
 void ioset_cleanup(void);
 void ioset_set_time(unsigned long new_now);
 

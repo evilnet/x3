@@ -50,6 +50,18 @@ void init_structs(void)
     reg_exit_func(hash_cleanup);
 }
 
+int userList_contains(struct userList *list, struct userNode *user)
+{
+    unsigned int ii;
+
+    for (ii = 0; ii < list->used; ++ii) {
+        if (user == list->list[ii]) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 server_link_func_t *slf_list;
 unsigned int slf_size = 0, slf_used = 0;
 
@@ -189,7 +201,7 @@ NickChange(struct userNode* user, const char *new_nick, int no_announce)
     /* Make callbacks for nick changes.  Do this with new nick in
      * place because that is slightly more useful.
      */
-    for (nn=0; nn<ncf2_used; nn++)
+    for (nn=0; (nn<ncf2_used) && !user->dead; nn++)
         ncf2_list[nn](user, old_nick);
     user->timestamp = now;
     if (IsLocal(user) && !no_announce)
@@ -224,7 +236,7 @@ SVSNickChange(struct userNode* user, const char *new_nick)
     /* Make callbacks for nick changes.  Do this with new nick in
      * place because that is slightly more useful.
      */
-    for (nn=0; nn<ncf2_used; nn++)
+    for (nn=0; (nn<ncf2_used) && !user->dead; nn++)
         ncf2_list[nn](user, old_nick);
     user->timestamp = now;
 
@@ -549,6 +561,7 @@ DelChannel(struct chanNode *channel)
 {
     unsigned int n;
 
+    verify(channel);
     dict_remove(channels, channel->name);
 
     if (channel->members.used || channel->locks) {
@@ -557,7 +570,7 @@ DelChannel(struct chanNode *channel)
 
     /* go through all channel members and delete them from the channel */
     for (n=channel->members.used; n>0; )
-	DelChannelUser(channel->members.list[--n]->user, channel, false, 1);
+	DelChannelUser(channel->members.list[--n]->user, channel, NULL, 1);
 
     /* delete all channel bans */
     for (n=channel->banlist.used; n>0; )
@@ -609,15 +622,16 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
             && !(channel->modes & MODE_APASS))
             mNode->modes |= MODE_CHANOP;
 
+        if (IsLocal(user)) {
+            irc_join(user, channel);
+        }
+
         for (n=0; n<jf_used; n++) {
             /* Callbacks return true if they kick or kill the user,
              * and we can continue without removing mNode. */
             if (jf_list[n](mNode))
                 return NULL;
         }
-
-	if (IsLocal(user))
-            irc_join(user, channel);
 
 	return mNode;
 }
@@ -673,7 +687,7 @@ DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reas
     struct modeNode* mNode;
     unsigned int n;
 
-    if (reason)
+    if (IsLocal(user) && reason)
         irc_part(user, channel, reason);
 
     mNode = GetUserMode(channel, user);
@@ -827,6 +841,10 @@ SetChannelTopic(struct chanNode *channel, struct userNode *service, struct userN
 	irc_topic(service, user, channel, topic);
     } else {
 	for (n=0; n<tf_used; n++)
+            /* A topic change handler can return non-zero to indicate
+             * that it has reverted the topic change, and that further
+             * hooks should not be called.
+             */
 	    if (tf_list[n](user, channel, old_topic))
                 break;
     }

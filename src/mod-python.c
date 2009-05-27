@@ -30,7 +30,7 @@
 #include "nickserv.h"
 #include "opserv.h"
 #include "saxdb.h"
-#include "sendmail.h"
+#include "mail.h"
 #include "timeq.h"
 #include "compat.h"
 

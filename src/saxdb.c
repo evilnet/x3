@@ -24,7 +24,11 @@
 #include "saxdb.h"
 #include "timeq.h"
 
-DEFINE_LIST(int_list, int);
+#if !defined(SAXDB_BUFFER_SIZE)
+# define SAXDB_BUFFER_SIZE (32 * 1024)
+#endif
+
+DEFINE_LIST(int_list, int)
 
 struct saxdb {
     char *name;
@@ -36,6 +40,14 @@ struct saxdb {
     time_t last_write;
     unsigned int last_write_duration;
     struct saxdb *prev;
+};
+
+struct saxdb_context {
+    struct string_buffer obuf;
+    FILE *output;
+    unsigned int indent;
+    struct int_list complex;
+    jmp_buf jbuf;
 };
 
 #define COMPLEX(CTX) ((CTX)->complex.used ? ((CTX)->complex.list[(CTX)->complex.used-1]) : 1)
@@ -58,6 +70,7 @@ saxdb_read_db(struct saxdb *db) {
     if (!data)
         return;
     if (db->writer == saxdb_mondo_writer) {
+        free_database(mondo_db);
         mondo_db = data;
     } else {
         db->reader(data);
@@ -118,37 +131,35 @@ saxdb_register(const char *name, saxdb_reader_func_t *reader, saxdb_writer_func_
 
 static int
 saxdb_write_db(struct saxdb *db) {
-    struct saxdb_context ctx;
+    struct saxdb_context *ctx;
+    FILE *output;
     char tmp_fname[MAXLEN];
     int res, res2;
     time_t start, finish;
 
     assert(db->filename);
     sprintf(tmp_fname, "%s.new", db->filename);
-    memset(&ctx, 0, sizeof(ctx));
-    ctx.output = fopen(tmp_fname, "w+");
-    int_list_init(&ctx.complex);
-    if (!ctx.output) {
+    output = fopen(tmp_fname, "w+");
+
+    if (!output) {
         log_module(MAIN_LOG, LOG_ERROR, "Unable to write to %s: %s", tmp_fname, strerror(errno));
-        int_list_clean(&ctx.complex);
         return 1;
     }
+    ctx = saxdb_open_context(output);
     start = time(NULL);
-    if ((res = setjmp(ctx.jbuf)) || (res2 = db->writer(&ctx))) {
+    if ((res = setjmp(*saxdb_jmp_buf(ctx))) || (res2 = db->writer(ctx))) {
         if (res) {
             log_module(MAIN_LOG, LOG_ERROR, "Error writing to %s: %s", tmp_fname, strerror(res));
         } else {
             log_module(MAIN_LOG, LOG_ERROR, "Internal error %d while writing to %s", res2, tmp_fname);
         }
-        int_list_clean(&ctx.complex);
-        fclose(ctx.output);
+        ctx->complex.used = 0; /* Squelch asserts about unbalanced output. */
+        saxdb_close_context(ctx, 1);
         remove(tmp_fname);
         return 2;
     }
     finish = time(NULL);
-    assert(ctx.complex.used == 0);
-    int_list_clean(&ctx.complex);
-    fclose(ctx.output);
+    saxdb_close_context(ctx, 1);
     if (rename(tmp_fname, db->filename) < 0) {
         log_module(MAIN_LOG, LOG_ERROR, "Unable to rename %s to %s: %s", tmp_fname, db->filename, strerror(errno));
     }
@@ -184,46 +195,78 @@ saxdb_write_all(void) {
     }
 }
 
-#define saxdb_put_char(DEST, CH) do { \
-    if (fputc(CH, (DEST)->output) == EOF) \
-        longjmp((DEST)->jbuf, errno); \
-    } while (0)
-#define saxdb_put_string(DEST, CH) do { \
-    if (fputs(CH, (DEST)->output) == EOF) \
-        longjmp((DEST)->jbuf, errno); \
-    } while (0)
+static void
+saxdb_flush(struct saxdb_context *dest) {
+    ssize_t nbw;
+    size_t ofs;
+    int fd;
 
-static inline void
-saxdb_put_nchars(struct saxdb_context *dest, const char *name, int len) {
-    while (len--)
-        if (fputc(*name++, dest->output) == EOF)
+    assert(dest->obuf.used <= dest->obuf.size);
+    fd = fileno(dest->output);
+    for (ofs = 0; ofs < dest->obuf.used; ofs += nbw) {
+        nbw = write(fd, dest->obuf.list + ofs, dest->obuf.used);
+        if (nbw < 0) {
             longjmp(dest->jbuf, errno);
+        }
+    }
+    dest->obuf.used = 0;
 }
 
 static void
+saxdb_put_char(struct saxdb_context *dest, char ch) {
+    dest->obuf.list[dest->obuf.used] = ch;
+    if (++dest->obuf.used == dest->obuf.size)
+        saxdb_flush(dest);
+}
+
+static void
+saxdb_put_nchars(struct saxdb_context *dest, const char *name, int len) {
+    int frag;
+    int ofs;
+
+    for (ofs = 0; ofs < len; ofs += frag) {
+        frag = dest->obuf.size - dest->obuf.used;
+        if (frag > len - ofs)
+            frag = len - ofs;
+        memcpy(dest->obuf.list + dest->obuf.used, name + ofs, frag);
+        dest->obuf.used += frag;
+        if (dest->obuf.used == dest->obuf.size)
+            saxdb_flush(dest);
+    }
+}
+
+#define saxdb_put_string(DEST, STR) do { \
+    saxdb_put_nchars((DEST), (STR), strlen(STR)); \
+    } while (0)
+
+static void
 saxdb_put_qstring(struct saxdb_context *dest, const char *str) {
-    const char *esc;
+    size_t ofs;
+    size_t span;
 
     assert(str);
     saxdb_put_char(dest, '"');
-    while ((esc = strpbrk(str, "\\\a\b\t\n\v\f\r\""))) {
-        if (esc != str)
-            saxdb_put_nchars(dest, str, esc-str);
-        saxdb_put_char(dest, '\\');
-        switch (*esc) {
-        case '\a': saxdb_put_char(dest, 'a'); break;
-        case '\b': saxdb_put_char(dest, 'b'); break;
-        case '\t': saxdb_put_char(dest, 't'); break;
-        case '\n': saxdb_put_char(dest, 'n'); break;
-        case '\v': saxdb_put_char(dest, 'v'); break;
-        case '\f': saxdb_put_char(dest, 'f'); break;
-        case '\r': saxdb_put_char(dest, 'r'); break;
-        case '\\': saxdb_put_char(dest, '\\'); break;
-        case '"': saxdb_put_char(dest, '"'); break;
+    for (ofs = 0; str[ofs] != '\0'; ) {
+        char stop;
+        span = strcspn(str + ofs, "\\\a\b\t\n\v\f\r\"");
+        saxdb_put_nchars(dest, str + ofs, span);
+        ofs += span;
+        stop = str[ofs];
+        switch (stop) {
+        case '\0': continue;
+        case '\a': stop = 'a'; break;
+        case '\b': stop = 'b'; break;
+        case '\t': stop = 't'; break;
+        case '\n': stop = 'n'; break;
+        case '\v': stop = 'v'; break;
+        case '\f': stop = 'f'; break;
+        case '\r': stop = 'r'; break;
         }
-        str = esc + 1;
+        saxdb_put_char(dest, '\\');
+        saxdb_put_char(dest, stop);
+        ofs++;
+
     }
-    saxdb_put_string(dest, str);
     saxdb_put_char(dest, '"');
 }
 
@@ -299,6 +342,14 @@ saxdb_write_int(struct saxdb_context *dest, const char *name, unsigned long valu
     char buf[16];
     /* we could optimize this to take advantage of the fact that buf will never need escapes */
     snprintf(buf, sizeof(buf), "%lu", value);
+    saxdb_write_string(dest, name, buf);
+}
+
+void
+saxdb_write_sint(struct saxdb_context *dest, const char *name, long value) {
+    char buf[16];
+    /* we could optimize this to take advantage of the fact that buf will never need escapes */
+    snprintf(buf, sizeof(buf), "%ld", value);
     saxdb_write_string(dest, name, buf);
 }
 
@@ -418,6 +469,10 @@ static MODCMD_FUNC(cmd_stats_databases) {
     tbl.contents[0][4] = "Last Duration";
     for (ii=1, it=dict_first(saxdbs); it; it=iter_next(it), ++ii) {
         struct saxdb *db = iter_data(it);
+        if (db->mondo_section) {
+            --ii;
+            continue;
+        }
         char *buf = malloc(INTERVALLEN*3);
         tbl.contents[ii] = calloc(tbl.width, sizeof(tbl.contents[ii][0]));
         tbl.contents[ii][0] = db->name;
@@ -438,6 +493,7 @@ static MODCMD_FUNC(cmd_stats_databases) {
         tbl.contents[ii][3] = buf+INTERVALLEN;
         tbl.contents[ii][4] = buf+INTERVALLEN*2;
     }
+    tbl.length = ii;
     table_send(cmd->parent->bot, user->nick, 0, 0, tbl);
     free(tbl.contents[0]);
     for (ii=1; ii<tbl.length; ++ii) {
@@ -516,21 +572,19 @@ write_database_helper(struct saxdb_context *ctx, struct dict *db) {
 
 int
 write_database(FILE *out, struct dict *db) {
-    struct saxdb_context ctx;
+    struct saxdb_context *ctx;
     int res;
 
-    ctx.output = out;
-    ctx.indent = 0;
-    int_list_init(&ctx.complex);
-    if (!(res = setjmp(ctx.jbuf))) {
-        write_database_helper(&ctx, db);
+    ctx = saxdb_open_context(out);
+    if (!(res = setjmp(*saxdb_jmp_buf(ctx)))) {
+        write_database_helper(ctx, db);
     } else {
         log_module(MAIN_LOG, LOG_ERROR, "Exception %d caught while writing to stream", res);
-        int_list_clean(&ctx.complex);
+        ctx->complex.used = 0; /* Squelch asserts about unbalanced output. */
+        saxdb_close_context(ctx, 0);
         return 1;
     }
-    assert(ctx.complex.used == 0);
-    int_list_clean(&ctx.complex);
+    saxdb_close_context(ctx, 0);
     return 0;
 }
 
@@ -541,14 +595,27 @@ saxdb_open_context(FILE *file) {
     assert(file);
     ctx = calloc(1, sizeof(*ctx));
     ctx->output = file;
+    ctx->obuf.size = SAXDB_BUFFER_SIZE;
+    ctx->obuf.list = calloc(1, ctx->obuf.size);
     int_list_init(&ctx->complex);
 
     return ctx;
 }
 
+jmp_buf *
+saxdb_jmp_buf(struct saxdb_context *ctx) {
+    return &ctx->jbuf;
+}
+
 void
-saxdb_close_context(struct saxdb_context *ctx) {
+saxdb_close_context(struct saxdb_context *ctx, int close_file) {
     assert(ctx->complex.used == 0);
+    saxdb_flush(ctx);
     int_list_clean(&ctx->complex);
+    free(ctx->obuf.list);
+    if (close_file)
+        fclose(ctx->output);
+    else
+        fflush(ctx->output);
     free(ctx);
 }

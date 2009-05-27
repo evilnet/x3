@@ -1,11 +1,11 @@
 /* heap.h - Abstract heap type
  * Copyright 2000-2001 srvx Development Team
  *
- * This file is part of x3.
+ * This file is part of srvx.
  *
- * x3 is free software; you can redistribute it and/or modify
+ * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -38,7 +38,6 @@ int heap_remove_pred(heap_t heap, int (*pred)(void *key, void *data, void *extra
 /* useful comparators */
 
 /* int strcmp(const char *s1, const char *s2); from <string.h> can be used */
-int int_comparator(const void*, const void*);
-int timeval_comparator(const void*, const void*);
+int ulong_comparator(const void*, const void*);
 
 #endif /* ndef HEAP_H */

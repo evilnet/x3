@@ -60,7 +60,7 @@
 #define FLAGS_LOCOP		0x000002 /* Local operator +o */
 #define FLAGS_INVISIBLE		0x000004 /* invisible +i */
 #define FLAGS_WALLOP		0x000008 /* receives wallops +w */
-#define FLAGS_SERVNOTICE	0x000010 /* receives server notices +s */
+#define FLAGS_DUMMY             0x000010 /* user is not announced to other servers */
 #define FLAGS_DEAF		0x000020 /* deaf +d */
 #define FLAGS_SERVICE		0x000040 /* cannot be kicked, killed or deoped +k */
 #define FLAGS_GLOBAL		0x000080 /* receives global messages +g */
@@ -85,7 +85,6 @@
 #define IsInvisible(x)          ((x)->modes & FLAGS_INVISIBLE)
 #define IsGlobal(x)             ((x)->modes & FLAGS_GLOBAL)
 #define IsWallOp(x)             ((x)->modes & FLAGS_WALLOP)
-#define IsServNotice(x)         ((x)->modes & FLAGS_SERVNOTICE)
 #define IsBotM(x)      		((x)->modes & FLAGS_BOT)
 #define IsHideChans(x)   	((x)->modes & FLAGS_HIDECHANS)
 #define IsHideIdle(x)      	((x)->modes & FLAGS_HIDEIDLE)
@@ -98,6 +97,7 @@
 #define IsHiddenHost(x)         ((x)->modes & FLAGS_HIDDEN_HOST)
 #define IsReggedNick(x)         ((x)->modes & FLAGS_REGNICK)
 #define IsRegistering(x)	((x)->modes & FLAGS_REGISTERING)
+#define IsDummy(x)              ((x)->modes & FLAGS_DUMMY)
 #define IsFakeHost(x)           ((x)->fakehost[0] != '\0')
 #define IsLocal(x)              ((x)->uplink == self)
 
@@ -224,6 +224,7 @@ struct userNode {
     char *version_reply;          /* only filled in if a version query was triggered */
 
     time_t timestamp;             /* Time of last nick change */
+    time_t idle_since;
     struct server *uplink;        /* Server that user is connected to */
     struct modeList channels;     /* Vector of channels user is in */
     struct Privs   privs;
@@ -299,7 +300,7 @@ struct modeNode {
 struct server {
     char name[SERVERNAMEMAX+1];
     time_t boot;
-    time_t link;
+    time_t link_time;
     char description[SERVERDESCRIPTMAX+1];
 #ifdef WITH_PROTOCOL_P10
     char numeric[COMBO_NUMERIC_LEN+1];
@@ -364,6 +365,7 @@ struct server* GetServerH(const char *name); /* using full name */
 struct userNode* GetUserH(const char *nick);   /* using nick */
 struct chanNode* GetChannel(const char *name);
 struct modeNode* GetUserMode(struct chanNode* channel, struct userNode* user);
+int userList_contains(struct userList *list, struct userNode *user);
 unsigned int IsUserP(struct userNode *user);
 
 typedef int (*server_link_func_t) (struct server *server);

@@ -1,11 +1,11 @@
 /* alloc-slab.c - Slab debugging allocator
- * Copyright 2005 srvx Development Team
+ * Copyright 2005,2007 srvx Development Team
  *
  * This file is part of srvx.
  *
- * x3 is free software; you can redistribute it and/or modify
+ * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -25,10 +25,23 @@
 # error The slab allocator requires that your system have the mmap() system call.
 #endif
 
-#define SLAB_DEBUG 1
-#define SLAB_RESERVE 1024
+#define SLAB_DEBUG_HEADER 1
+#define SLAB_DEBUG_LOG    2
+#define SLAB_DEBUG_PERMS  4
 
-#if SLAB_DEBUG
+#if !defined(SLAB_DEBUG)
+# define SLAB_DEBUG 0
+#endif
+
+#if !defined(SLAB_RESERVE)
+# define SLAB_RESERVE 0
+#endif
+
+#if !defined(MAX_SLAB_FREE)
+# define MAX_SLAB_FREE 1024
+#endif
+
+#if SLAB_DEBUG & SLAB_DEBUG_HEADER
 
 #define ALLOC_MAGIC 0x1a
 #define FREE_MAGIC  0xcf
@@ -122,6 +135,92 @@ unsigned long slab_alloc_size;
 # define MAP_ANON 0
 #endif
 
+#if SLAB_DEBUG & SLAB_DEBUG_LOG
+
+FILE *slab_log;
+
+struct slab_log_entry
+{
+    struct timeval tv;
+    void *slab;
+    ssize_t size;
+};
+
+static void
+close_slab_log(void)
+{
+    fclose(slab_log);
+}
+
+static void
+slab_log_alloc(void *slab, size_t size)
+{
+    struct slab_log_entry sle;
+
+    gettimeofday(&sle.tv, NULL);
+    sle.slab = slab;
+    sle.size = (ssize_t)size;
+
+    if (!slab_log)
+    {
+        const char *fname;
+        fname = getenv("SLAB_LOG_FILE");
+        if (!fname)
+            fname = "slab.log";
+        slab_log = fopen(fname, "w");
+        atexit(close_slab_log);
+    }
+
+    fwrite(&sle, sizeof(sle), 1, slab_log);
+}
+
+static void
+slab_log_free(void *slab, size_t size)
+{
+    struct slab_log_entry sle;
+
+    gettimeofday(&sle.tv, NULL);
+    sle.slab = slab;
+    sle.size = -(ssize_t)size;
+    fwrite(&sle, sizeof(sle), 1, slab_log);
+}
+
+static void
+slab_log_unmap(void *slab)
+{
+    struct slab_log_entry sle;
+
+    gettimeofday(&sle.tv, NULL);
+    sle.slab = slab;
+    sle.size = 0;
+    fwrite(&sle, sizeof(sle), 1, slab_log);
+}
+
+#else
+# define slab_log_alloc(SLAB, SIZE)
+# define slab_log_free(SLAB, SIZE)
+# define slab_log_unmap(SLAB)
+#endif
+
+#if (SLAB_DEBUG & SLAB_DEBUG_PERMS) && defined(HAVE_MPROTECT)
+
+static void
+slab_protect(struct slab *slab)
+{
+    mprotect(slab, (char*)(slab + 1) - (char*)slab->base, PROT_NONE);
+}
+
+static void
+slab_unprotect(struct slab *slab)
+{
+    mprotect(slab, (char*)(slab + 1) - (char*)slab->base, PROT_READ | PROT_WRITE);
+}
+
+#else
+# define slab_protect(SLAB) (void)(SLAB)
+# define slab_unprotect(SLAB) (void)(SLAB)
+#endif
+
 static size_t
 slab_pagesize(void)
 {
@@ -196,6 +295,7 @@ slab_alloc(struct slabset *sset)
         /* Allocate new slab. */
         if (free_slab_head) {
             slab = free_slab_head;
+            slab_unprotect(slab);
             if (!(free_slab_head = slab->next))
                 free_slab_tail = NULL;
         } else {
@@ -204,6 +304,7 @@ slab_alloc(struct slabset *sset)
             slab->base = item;
             slab_count++;
         }
+        slab_log_alloc(slab, sset->size);
 
         /* Populate free list. */
         step = (sset->size + SLAB_ALIGN - 1) & ~(SLAB_ALIGN - 1);
@@ -284,6 +385,8 @@ slab_unalloc(void *ptr, size_t size)
         assert(!slab->next || slab == slab->next->prev);
         assert(!slab->prev || slab == slab->prev->next);
     } else if (!slab->used) {
+        slab_log_free(slab, size);
+
         /* Unlink slab from its parent. */
         slab->parent->nslabs--;
         if (slab->prev)
@@ -299,36 +402,62 @@ slab_unalloc(void *ptr, size_t size)
         }
 
 #if SLAB_RESERVE
-        if (!free_slab_count) {
-            /* Make sure we have enough free slab pages. */
-            while (free_slab_count < SLAB_RESERVE) {
-                struct slab *tslab;
-                void *item;
+        /* Make sure we have enough free slab pages. */
+        while (free_slab_count < SLAB_RESERVE) {
+            struct slab *tslab;
+            void *item;
 
-                item = slab_map(slab_pagesize());
-                tslab = (struct slab*)((char*)item + slab_pagesize() - sizeof(*slab));
-                tslab->base = item;
-                tslab->prev = free_slab_tail;
-                free_slab_tail = tslab;
-                if (!free_slab_head)
-                    free_slab_head = tslab;
-                free_slab_count++;
-                slab_count++;
+            item = slab_map(slab_pagesize());
+            tslab = (struct slab*)((char*)item + slab_pagesize() - sizeof(*slab));
+            tslab->base = item;
+            tslab->prev = free_slab_tail;
+            free_slab_tail = tslab;
+            if (!free_slab_head)
+                free_slab_head = tslab;
+            else {
+                slab_unprotect(tslab->prev);
+                tslab->prev->next = tslab;
+                slab_protect(tslab->prev);
             }
+            free_slab_count++;
+            slab_count++;
         }
+#endif
 
-        /* Unmap old slab, so accesses to stale pointers will fault. */
-        munmap(slab->base, slab_pagesize());
-        slab_count--;
-#else
         /* Link to list of free slabs. */
         slab->parent = NULL;
-        slab->prev = free_slab_tail;
         slab->next = NULL;
-        free_slab_tail = slab;
-        if (!free_slab_head)
+        slab->prev = free_slab_tail;
+        if (slab->prev) {
+            slab_unprotect(slab->prev);
+            slab->prev->next = slab;
+            slab_protect(slab->prev);
+        } else
             free_slab_head = slab;
+        slab_protect(slab);
+        free_slab_tail = slab;
         free_slab_count++;
+
+#if MAX_SLAB_FREE >= 0
+        /* Unlink and unmap old slabs, so accesses to stale-enough
+         * pointers will fault. */
+        while (free_slab_count > MAX_SLAB_FREE) {
+            struct slab *tslab;
+
+            tslab = free_slab_tail;
+            slab_unprotect(tslab);
+            free_slab_tail = tslab->prev;
+            if (tslab->prev) {
+                slab_unprotect(tslab->prev);
+                tslab->prev->next = NULL;
+                slab_protect(tslab->prev);
+            } else
+                free_slab_head = NULL;
+            free_slab_count--;
+            slab_count--;
+            slab_log_unmap(slab);
+            munmap(slab->base, slab_pagesize());
+        }
 #endif
     }
     (void)size;
@@ -350,8 +479,9 @@ slab_malloc(const char *file, unsigned int line, size_t size)
         res = slab_map(slab_round_up(real));
         big_alloc_count++;
         big_alloc_size += size;
+        slab_log_alloc(res, size);
     }
-#if SLAB_DEBUG
+#if SLAB_DEBUG & SLAB_DEBUG_HEADER
     res->file_id = get_file_id(file);
     res->size = size;
     res->line = line;
@@ -375,7 +505,7 @@ slab_realloc(const char *file, unsigned int line, void *ptr, size_t size)
 
     verify(ptr);
     orig = (alloc_header_t*)ptr - 1;
-#if SLAB_DEBUG
+#if SLAB_DEBUG & SLAB_DEBUG_HEADER
     osize = orig->size;
 #else
     osize = *orig;
@@ -410,7 +540,7 @@ slab_free(const char *file, unsigned int line, void *ptr)
         return;
     verify(ptr);
     hdr = (alloc_header_t*)ptr - 1;
-#if SLAB_DEBUG
+#if SLAB_DEBUG & SLAB_DEBUG_HEADER
     hdr->file_id = get_file_id(file);
     hdr->line = line;
     hdr->magic = FREE_MAGIC;
@@ -429,6 +559,7 @@ slab_free(const char *file, unsigned int line, void *ptr)
         munmap(hdr, slab_round_up(real));
         big_alloc_count--;
         big_alloc_size -= user;
+        slab_log_unmap(hdr);
     }
 }
 
@@ -444,7 +575,7 @@ verify(const void *ptr)
         return;
 
     hdr = (alloc_header_t*)ptr - 1;
-#if SLAB_DEBUG
+#if SLAB_DEBUG & SLAB_DEBUG_HEADER
     real = hdr->size + sizeof(*hdr);
     assert(hdr->file_id < file_ids_used);
     assert(hdr->magic == ALLOC_MAGIC);

@@ -1,11 +1,11 @@
 /* heap.c - Abstract heap type
  * Copyright 2000-2002 srvx Development Team
  *
- * This file is part of x3.
+ * This file is part of srvx.
  *
- * x3 is free software; you can redistribute it and/or modify
+ * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -55,23 +55,24 @@ heap_new(comparator_f comparator)
  *  its value).
  */
 static void
-heap_heapify_up(heap_t heap, unsigned int index)
+heap_heapify_up(heap_t heap, unsigned int idx)
 {
     int res;
     unsigned int parent;
     void *last_key, *last_data;
-    last_key = heap->data[index*2];
-    last_data = heap->data[index*2+1];
-    while (index > 0) {
-	parent = (index - 1) >> 1;
-	res = heap->comparator(last_key, heap->data[parent*2]);
-	if (res > 0) break;
-	heap->data[index*2] = heap->data[parent*2];
-	heap->data[index*2+1] = heap->data[parent*2+1];
-	index = parent;
+
+    last_key = heap->data[idx*2];
+    last_data = heap->data[idx*2+1];
+    while (idx > 0) {
+        parent = (idx - 1) >> 1;
+        res = heap->comparator(last_key, heap->data[parent*2]);
+        if (res > 0) break;
+        heap->data[idx*2] = heap->data[parent*2];
+        heap->data[idx*2+1] = heap->data[parent*2+1];
+        idx = parent;
     }
-    heap->data[index*2] = last_key;
-    heap->data[index*2+1] = last_data;
+    heap->data[idx*2] = last_key;
+    heap->data[idx*2+1] = last_data;
 }
 
 /*
@@ -81,8 +82,8 @@ void
 heap_insert(heap_t heap, void *key, void *data)
 {
     if (heap->data_used == heap->data_alloc) {
-	heap->data_alloc *= 2;
-	heap->data = realloc(heap->data, 2*heap->data_alloc*sizeof(void*));
+        heap->data_alloc *= 2;
+        heap->data = realloc(heap->data, 2*heap->data_alloc*sizeof(void*));
     }
     heap->data[heap->data_used*2] = key;
     heap->data[heap->data_used*2+1] = data;
@@ -115,36 +116,36 @@ heap_heapify_down(heap_t heap, int pos)
     last_data = heap->data[pos*2+1];
     /* start at left child */
     while ((child=pos*2+1) < heap->data_used) {
-	/* use right child if it exists and is smaller */
-	if (child+1 < heap->data_used) {
-	    res = heap->comparator(heap->data[(child+1)*2], heap->data[child*2]);
-	    if (res < 0) child = child+1;
-	}
-	res = heap->comparator(last_key, heap->data[child*2]);
-	if (res <= 0) break;
-	heap->data[pos*2] = heap->data[child*2];
-	heap->data[pos*2+1] = heap->data[child*2+1];
-	pos = child;
+        /* use right child if it exists and is smaller */
+        if (child+1 < heap->data_used) {
+            res = heap->comparator(heap->data[(child+1)*2], heap->data[child*2]);
+            if (res < 0) child = child+1;
+        }
+        res = heap->comparator(last_key, heap->data[child*2]);
+        if (res <= 0) break;
+        heap->data[pos*2] = heap->data[child*2];
+        heap->data[pos*2+1] = heap->data[child*2+1];
+        pos = child;
     }
     heap->data[pos*2] = last_key;
     heap->data[pos*2+1] = last_data;
 }
 
 /*
- * Remove the element at "index" from the heap (preserving the heap ordering).
+ * Remove the element at "idx" from the heap (preserving the heap ordering).
  */
 static void
-heap_remove(heap_t heap, unsigned int index)
+heap_remove(heap_t heap, unsigned int idx)
 {
     /* sanity check */
-    if (heap->data_used <= index) return;
-    /* swap index with last element */
+    if (heap->data_used <= idx) return;
+    /* swap idx with last element */
     heap->data_used--;
-    heap->data[index*2] = heap->data[heap->data_used*2];
-    heap->data[index*2+1] = heap->data[heap->data_used*2+1];
-    /* heapify down if index has children */
-    if (heap->data_used >= 2*index+1) heap_heapify_down(heap, index);
-    if ((index > 0) && (index < heap->data_used)) heap_heapify_up(heap, index);
+    heap->data[idx*2] = heap->data[heap->data_used*2];
+    heap->data[idx*2+1] = heap->data[heap->data_used*2+1];
+    /* heapify down if idx has children */
+    if (heap->data_used >= 2*idx+1) heap_heapify_down(heap, idx);
+    if ((idx > 0) && (idx < heap->data_used)) heap_heapify_up(heap, idx);
 }
 
 /*
@@ -179,7 +180,7 @@ heap_remove_pred(heap_t heap, int (*pred)(void *key, void *data, void *extra), v
         pos = 1;
     }
     while (pos < heap->data_used) {
-	if (pred(heap->data[pos*2], heap->data[pos*2+1], extra)) {
+        if (pred(heap->data[pos*2], heap->data[pos*2+1], extra)) {
             heap_remove(heap, pos);
             pos = 0;
         } else {
@@ -210,7 +211,7 @@ heap_size(heap_t heap)
 
 /* prepackaged comparators */
 int
-int_comparator(const void *a, const void *b)
+ulong_comparator(const void *a, const void *b)
 {
-    return (time_t)a-(time_t)b;
+    return (unsigned long)a-(unsigned long)b;
 }

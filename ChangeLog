@@ -1,7 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
-2009-06-22  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+2009-05-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* Major update to bring X3 in line with the latest SRVX commit.  Please see
+	UPGRADE. Credits go to the SRVX team.
+
+2009-04-22  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/proto-p10.c: Ignore stats headers.
 

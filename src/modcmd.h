@@ -32,16 +32,16 @@ struct modcmd;
 
 #define MODCMD_FUNC(NAME) int NAME(struct userNode *user, UNUSED_ARG(struct chanNode *channel), UNUSED_ARG(unsigned int argc), UNUSED_ARG(char **argv), UNUSED_ARG(struct svccmd *cmd))
 typedef MODCMD_FUNC(modcmd_func_t);
-#define SVCMSG_HOOK(NAME) int NAME(struct userNode *user, struct userNode *target, char *text, int server_qualified);
+#define SVCMSG_HOOK(NAME) int NAME(struct userNode *user, struct userNode *target, const char *text, int server_qualified)
 typedef SVCMSG_HOOK(svcmsg_hook_t);
 
 DECLARE_LIST(svccmd_list, struct svccmd*);
 DECLARE_LIST(module_list, struct module*);
 
-#if defined(__GNUC__) && (__GNUC__ < 3)
-#define reply(FMT...) send_message(user, cmd->parent->bot, FMT)
-#elif !defined(S_SPLINT_S) /* doesn't recognize C99 variadic macros */
-#define reply(...) send_message(user, cmd->parent->bot, __VA_ARGS__)
+#if defined(GCC_VARMACROS)
+# define reply(ARGS...) send_message(user, cmd->parent->bot, ARGS)
+#elif defined(C99_VARMACROS)
+# define reply(...) send_message(user, cmd->parent->bot, __VA_ARGS__)
 #endif
 #define modcmd_get_handle_info(USER, NAME) smart_get_handle_info(cmd->parent->bot, USER, NAME)
 #define modcmd_chanmode_announce(CHANGE) mod_chanmode_announce(cmd->parent->bot, channel, CHANGE)
@@ -74,6 +74,12 @@ DECLARE_LIST(module_list, struct module*);
 #define SVCCMD_QUALIFIED              0x000001
 #define SVCCMD_DEBIT                  0x000002
 #define SVCCMD_NOISY                  0x000004
+
+/* We do not use constants for 0 (no logging) and 1 (regular logging) as those
+ * are used very often and are intuitive enough.
+ */
+#define CMD_LOG_STAFF       0x02
+#define CMD_LOG_OVERRIDE    0x04
 
 /* Modularized commands work like this:
  *

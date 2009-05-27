@@ -110,6 +110,7 @@ struct addrinfo {
 
 #define AI_PASSIVE 1
 #define AI_CANONNAME 2
+#define AI_NUMERICHOST 4
 
 #endif /* !defined(HAVE_STRUCT_ADDRINFO) */
 
@@ -119,6 +120,10 @@ int getaddrinfo(const char *node, const char *service, const struct addrinfo *hi
 int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
 void freeaddrinfo(struct addrinfo *res);
 
+#endif
+
+#ifndef SIGCHLD
+# define SIGCHLD SIGCLD
 #endif
 
 #endif /* COMPAT_H */

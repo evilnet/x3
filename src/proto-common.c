@@ -95,7 +95,7 @@ uplink_readable(struct io_fd *fd) {
 void
 socket_destroyed(struct io_fd *fd)
 {
-    if (fd && fd->eof)
+    if (fd && fd->state != IO_CONNECTED)
         log_module(MAIN_LOG, LOG_ERROR, "Connection to server lost.");
     socket_io_fd = NULL;
     cManager.uplink->state = DISCONNECTED;
@@ -108,7 +108,7 @@ void replay_event_loop(void)
     while (!quit_services) {
         if (!replay_connected) {
             /* this time fudging is to get some of the logging right */
-            self->link = self->boot = now;
+            self->link_time = self->boot = now;
             cManager.uplink->state = AUTHENTICATING;
             irc_introduce(cManager.uplink->password);
             replay_connected = 1;
@@ -147,7 +147,6 @@ create_socket_client(struct uplinkNode *target)
     socket_io_fd->readable_cb = uplink_readable;
     socket_io_fd->destroy_cb = socket_destroyed;
     socket_io_fd->line_reads = 1;
-    socket_io_fd->wants_reads = 1;
     log_module(MAIN_LOG, LOG_INFO, "Connection to server established.");
     cManager.uplink = target;
     target->state = AUTHENTICATING;
@@ -278,7 +277,8 @@ close_socket(void)
         replay_connected = 0;
         socket_destroyed(socket_io_fd);
     } else {
-        ioset_close(socket_io_fd->fd, 1);
+        ioset_close(socket_io_fd, 3);
+        socket_io_fd = NULL;
     }
 }
 
@@ -434,7 +434,7 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
 {
     struct privmsg_desc *pd = data;
     struct modeNode *mn;
-    struct chanmsg_func *cf = &chanmsg_funcs[(unsigned char)pd->text[0]];
+    struct chanmsg_func *cf;
     int x;
 
     /* Don't complain if it can't find the modeNode because the channel might
@@ -443,9 +443,10 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
         mn->idle_since = now;
 
     /* Never send a NOTICE to a channel to one of the services */
-    if (!pd->is_notice && cf->func
-        && ((cn->modes & MODE_REGISTERED) || GetUserMode(cn, cf->service)))
-         cf->func(pd->user, cn, pd->text+1, cf->service);
+    cf = &chanmsg_funcs[(unsigned char)pd->text[0]];
+    if (cf->func && !pd->is_notice
+        && GetUserMode(cn, cf->service) && !IsDeaf(cf->service))
+        cf->func(pd->user, cn, pd->text+1, cf->service, pd->is_notice);
     else
         spamserv_channel_message(cn, pd->user, pd->text);
 
@@ -455,7 +456,7 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
        if (!cf->func)
          break; /* end of list */
        else
-         cf->func(pd->user, cn, pd->text, cf->service);
+         cf->func(pd->user, cn, pd->text, cf->service, pd->is_notice);
     }
 }
 
@@ -469,10 +470,30 @@ privmsg_invalid(char *name, void *data)
     irc_numeric(pd->user, ERR_NOSUCHNICK, "%s@%s :No such nick", name, self->name);
 }
 
+struct part_desc {
+    struct userNode *user;
+    const char *text;
+};
+
 static void
 part_helper(struct chanNode *cn, void *data)
 {
-    DelChannelUser(data, cn, false, 0);
+    struct part_desc *desc = data;
+    DelChannelUser(desc->user, cn, desc->text, false);
+}
+
+static CMD_FUNC(cmd_part)
+{
+    struct part_desc desc;
+
+    if (argc < 2)
+        return 0;
+    desc.user = GetUserH(origin);
+    if (!desc.user)
+        return 0;
+    desc.text = (argc > 2) ? argv[argc - 1] : NULL;
+    parse_foreach(argv[1], part_helper, NULL, NULL, NULL, &desc);
+    return 1;
 }
 
 void
@@ -519,6 +540,37 @@ reg_mode_change_func(mode_change_func_t handler)
 	}
     }
     mcf_list[mcf_used++] = handler;
+}
+
+static oper_func_t *of_list;
+
+static unsigned int of_size = 0, of_used = 0;
+
+void
+reg_oper_func(oper_func_t handler)
+{
+    if (of_used == of_size) {
+        if (of_size) {
+            of_size <<= 1;
+            of_list = realloc(of_list, of_size*sizeof(oper_func_t));
+        } else {
+            of_size = 8;
+            of_list = malloc(of_size*sizeof(oper_func_t));
+        }
+    }
+    of_list[of_used++] = handler;
+}
+
+static void
+call_oper_funcs(struct userNode *user)
+{
+    unsigned int n;
+    if (IsLocal(user))
+        return;
+    for (n=0; (n<of_used) && !user->dead; n++)
+    {
+        of_list[n](user);
+    }
 }
 
 struct mod_chanmode *
@@ -871,8 +923,8 @@ generate_hostmask(struct userNode *user, int options)
         for (ii=cnt=0; hostname[ii]; ii++)
             if (hostname[ii] == '.')
                 cnt++;
-        if (cnt == 1) {
-            /* only a two-level domain name; leave hostname */
+        if (cnt == 0 || cnt == 1) {
+            /* only a one- or two-level domain name; leave hostname */
         } else if (cnt == 2) {
             for (ii=0; user->hostname[ii] != '.'; ii++) ;
             /* Add 3 to account for the *. and \0. */

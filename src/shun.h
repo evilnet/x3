@@ -25,6 +25,7 @@
 
 struct shun {
     time_t issued;
+    time_t lastmod;
     time_t expires;
     char *issuer;
     char *target;
@@ -40,10 +41,12 @@ struct shun_discrim {
     char *reason_mask;
     time_t max_issued;
     time_t min_expire;
+    time_t min_lastmod;
+    time_t max_lastmod;
 };
 
 void shun_init(void);
-struct shun *shun_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, int announce);
+struct shun *shun_add(const char *issuer, const char *target, unsigned long duration, const char *reason, time_t issued, time_t lastmod, int announce);
 struct shun *shun_find(const char *target);
 int shun_remove(const char *target, int announce);
 void shun_refresh_server(struct server *srv);

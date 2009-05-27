@@ -1,4 +1,4 @@
-EXTRA_DIST = FAQ x3.conf.example sockcheck.conf.example
+EXTRA_DIST = FAQ x3.conf.example sockcheck.conf.example autogen.sh
 SUBDIRS = @MY_SUBDIRS@
 PY_CFLAGS = @PY_CFLAGS@
 PY_LIBS = @PY_LIBS@

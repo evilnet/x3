@@ -1,11 +1,11 @@
 /* log.c - Diagnostic and error logging
  * Copyright 2000-2004 srvx Development Team
  *
- * This file is part of x3.
+ * This file is part of srvx.
  *
- * x3 is free software; you can redistribute it and/or modify
+ * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -20,14 +20,15 @@
 
 #include "conf.h"
 #include "log.h"
-#include "modcmd.h"
 #include "helpfile.h" /* send_message, message_register, etc */
+#include "modcmd.h"
 #include "nickserv.h"
 
 #define Block  4096
 #define MAXLOGSEARCHLENGTH 10000
 
 struct userNode *chanserv;
+
 struct logDestination;
 
 struct logDest_vtable {
@@ -56,6 +57,7 @@ struct log_type {
     unsigned int log_count;
     unsigned int max_age;
     unsigned int max_count;
+    unsigned int depth;
     unsigned int default_set : 1;
 };
 
@@ -78,7 +80,7 @@ static struct dict *log_types;
 static struct log_type *log_default;
 static int log_inited, log_debugged;
 
-DEFINE_LIST(logList, struct logDestination*);
+DEFINE_LIST(logList, struct logDestination*)
 static void log_format_audit(struct logEntry *entry);
 static const struct message_entry msgtab[] = {
     { "MSG_INVALID_FACILITY", "$b%s$b is an invalid log facility." },
@@ -161,14 +163,14 @@ logList_join(struct logList *target, const struct logList *source)
     target->size += source->used;
     target->list = realloc(target->list, target->size * sizeof(target->list[0]));
     for (ii = 0; ii < source->used; ++ii, ++jj) {
-        int dup;
-        for (dup = 0, kk = 0; kk < jj; kk++) {
+        int is_duplicate;
+        for (is_duplicate = 0, kk = 0; kk < jj; kk++) {
             if (target->list[kk] == source->list[ii]) {
-                dup = 1;
+                is_duplicate = 1;
                 break;
             }
         }
-        if (dup) {
+        if (is_duplicate) {
             jj--;
             target->used--;
             continue;
@@ -332,14 +334,14 @@ log_parse_sevset(char *buffer, char targets[LOG_NUM_SEVERITIES])
 static void
 log_parse_cross(const char *buffer, struct string_list *types, char sevset[LOG_NUM_SEVERITIES])
 {
-    char *dup, *sep;
+    char *buffer_copy, *sep;
 
-    dup = strdup(buffer);
-    sep = strchr(dup, '.');
+    buffer_copy = strdup(buffer);
+    sep = strchr(buffer_copy, '.');
     *sep++ = 0;
-    log_parse_logset(dup, types);
+    log_parse_logset(buffer_copy, types);
     log_parse_sevset(sep, sevset);
-    free(dup);
+    free(buffer_copy);
 }
 
 static void
@@ -581,6 +583,11 @@ log_module(struct log_type *type, enum log_severity sev, const char *format, ...
     unsigned int ii;
     va_list args;
 
+    if (!type)
+        return;
+    if (type->depth)
+        return;
+    ++type->depth;
     if (sev > LOG_FATAL) {
         log_module(MAIN_LOG, LOG_ERROR, "Illegal log_module severity %d", sev);
         return;
@@ -601,8 +608,9 @@ log_module(struct log_type *type, enum log_severity sev, const char *format, ...
         /* Special behavior before we start full operation */
         fprintf(stderr, "%s: %s\n", log_severity_names[sev], msgbuf);
     }
+    --type->depth;
     if (sev == LOG_FATAL) {
-        //assert(0 && "fatal message logged");
+        assert(0 && "fatal message logged");
         _exit(1);
     }
 }
@@ -618,8 +626,8 @@ log_discrim_create(struct userNode *service, struct userNode *user, unsigned int
     /* Assume all criteria require arguments. */
     if((argc - 1) % 2)
     {
-	send_message(user, service, "MSG_MISSING_PARAMS", argv[0]);
-	return NULL;
+        send_message(user, service, "MSG_MISSING_PARAMS", argv[0]);
+        return NULL;
     }
 
     discrim = malloc(sizeof(struct logSearch));
@@ -662,7 +670,7 @@ log_discrim_create(struct userNode *service, struct userNode *user, unsigned int
                 else
                     discrim->max_time = now - (ParseInterval(cmp+1) - 1);
             } else {
-                discrim->min_time = now - ParseInterval(cmp+2);
+                discrim->min_time = now - ParseInterval(cmp);
             }
         } else if (!irccasecmp(argv[ii], "limit")) {
             discrim->limit = strtoul(argv[++ii], NULL, 10);
@@ -686,10 +694,10 @@ log_discrim_create(struct userNode *service, struct userNode *user, unsigned int
                 send_message(user, service, "MSG_INVALID_FACILITY", argv[ii]);
                 goto fail;
             }
-	} else {
-	    send_message(user, service, "MSG_INVALID_CRITERIA", argv[ii]);
-	    goto fail;
-	}
+        } else {
+            send_message(user, service, "MSG_INVALID_CRITERIA", argv[ii]);
+            goto fail;
+        }
     }
 
     return discrim;
@@ -719,7 +727,7 @@ entry_match(struct logSearch *discrim, struct logEntry *entry)
             && !match_ircglob(entry->user_hostmask, discrim->masks.user_hostmask))
         || (discrim->masks.command
             && !match_ircglob(entry->command, discrim->masks.command))) {
-	return 0;
+        return 0;
     }
     return 1;
 }
@@ -765,10 +773,12 @@ log_entry_search(struct logSearch *discrim, entry_search_func esf, void *data)
 /* generic helper functions */
 
 static void
-log_format_timestamp(time_t when, struct string_buffer *sbuf)
+log_format_timestamp(unsigned long when, struct string_buffer *sbuf)
 {
     struct tm local;
-    localtime_r(&when, &local);
+    time_t feh;
+    feh = when;
+    localtime_r(&feh, &local);
     if (sbuf->size < 24) {
         sbuf->size = 24;
         free(sbuf->list);
@@ -837,51 +847,51 @@ ldFile_open(const char *args) {
 }
 
 static void
-ldFile_reopen(struct logDestination *self_) {
-    struct logDest_file *self = (struct logDest_file*)self_;
-    fclose(self->output);
-    self->output = fopen(self->fname, "a");
+ldFile_reopen(struct logDestination *dest_) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
+    fclose(dest->output);
+    dest->output = fopen(dest->fname, "a");
 }
 
 static void
-ldFile_close(struct logDestination *self_) {
-    struct logDest_file *self = (struct logDest_file*)self_;
-    fclose(self->output);
-    free(self->fname);
-    free(self);
+ldFile_close(struct logDestination *dest_) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
+    fclose(dest->output);
+    free(dest->fname);
+    free(dest);
 }
 
 static void
-ldFile_audit(struct logDestination *self_, UNUSED_ARG(struct log_type *type), struct logEntry *entry) {
-    struct logDest_file *self = (struct logDest_file*)self_;
-    fputs(entry->default_desc, self->output);
-    fputc('\n', self->output);
-    fflush(self->output);
+ldFile_audit(struct logDestination *dest_, UNUSED_ARG(struct log_type *type), struct logEntry *entry) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
+    fputs(entry->default_desc, dest->output);
+    fputc('\n', dest->output);
+    fflush(dest->output);
 }
 
 static void
-ldFile_replay(struct logDestination *self_, UNUSED_ARG(struct log_type *type), int is_write, const char *line) {
-    struct logDest_file *self = (struct logDest_file*)self_;
+ldFile_replay(struct logDestination *dest_, UNUSED_ARG(struct log_type *type), int is_write, const char *line) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
     struct string_buffer sbuf;
     memset(&sbuf, 0, sizeof(sbuf));
     log_format_timestamp(now, &sbuf);
     string_buffer_append_string(&sbuf, is_write ? "W: " : "   ");
     string_buffer_append_string(&sbuf, line);
-    fputs(sbuf.list, self->output);
-    fputc('\n', self->output);
+    fputs(sbuf.list, dest->output);
+    fputc('\n', dest->output);
     free(sbuf.list);
-    fflush(self->output);
+    fflush(dest->output);
 }
 
 static void
-ldFile_module(struct logDestination *self_, struct log_type *type, enum log_severity sev, const char *message) {
-    struct logDest_file *self = (struct logDest_file*)self_;
+ldFile_module(struct logDestination *dest_, struct log_type *type, enum log_severity sev, const char *message) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
     struct string_buffer sbuf;
     memset(&sbuf, 0, sizeof(sbuf));
     log_format_timestamp(now, &sbuf);
-    fprintf(self->output, "%s (%s:%s) %s\n", sbuf.list, type->name, log_severity_names[sev], message);
+    fprintf(dest->output, "%s (%s:%s) %s\n", sbuf.list, type->name, log_severity_names[sev], message);
     free(sbuf.list);
-    fflush(self->output);
+    fflush(dest->output);
 }
 
 static struct logDest_vtable ldFile_vtbl = {
@@ -917,22 +927,22 @@ ldStd_open(const char *args) {
 }
 
 static void
-ldStd_close(struct logDestination *self_) {
-    struct logDest_file *self = (struct logDest_file*)self_;
-    free(self->fname);
-    free(self);
+ldStd_close(struct logDestination *dest_) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
+    free(dest->fname);
+    free(dest);
 }
 
 static void
-ldStd_replay(struct logDestination *self_, UNUSED_ARG(struct log_type *type), int is_write, const char *line) {
-    struct logDest_file *self = (struct logDest_file*)self_;
-    fprintf(self->output, "%s%s\n", is_write ? "W: " : "   ", line);
+ldStd_replay(struct logDestination *dest_, UNUSED_ARG(struct log_type *type), int is_write, const char *line) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
+    fprintf(dest->output, "%s%s\n", is_write ? "W: " : "   ", line);
 }
 
 static void
-ldStd_module(struct logDestination *self_, UNUSED_ARG(struct log_type *type), enum log_severity sev, const char *message) {
-    struct logDest_file *self = (struct logDest_file*)self_;
-    fprintf(self->output, "%s: %s\n", log_severity_names[sev], message);
+ldStd_module(struct logDestination *dest_, UNUSED_ARG(struct log_type *type), enum log_severity sev, const char *message) {
+    struct logDest_file *dest = (struct logDest_file*)dest_;
+    fprintf(dest->output, "%s: %s\n", log_severity_names[sev], message);
 }
 
 static struct logDest_vtable ldStd_vtbl = {
@@ -963,32 +973,29 @@ ldIrc_open(const char *args) {
 }
 
 static void
-ldIrc_close(struct logDestination *self_) {
-    struct logDest_irc *self = (struct logDest_irc*)self_;
-    free(self->target);
-    free(self);
+ldIrc_close(struct logDestination *dest_) {
+    struct logDest_irc *dest = (struct logDest_irc*)dest_;
+    free(dest->target);
+    free(dest);
 }
 
-/* 
- * ldIrc_audit and ldIrc_module send log messages targetted to an IRC channel, to the channel
- */
 static void
-ldIrc_audit(struct logDestination *self_, UNUSED_ARG(struct log_type *type), struct logEntry *entry) {
-    struct logDest_irc *self = (struct logDest_irc*)self_;
+ldIrc_audit(struct logDestination *dest_, UNUSED_ARG(struct log_type *type), struct logEntry *entry) {
+    struct logDest_irc *dest = (struct logDest_irc*)dest_;
 
     if (entry->channel_name) {
-        send_target_message(5, self->target, entry->bot, "(%s", strchr(strchr(entry->default_desc, ' '), ':')+1);
+        send_target_message(4, dest->target, entry->bot, "(%s", strchr(strchr(entry->default_desc, ' '), ':')+1);
     } else {
-        send_target_message(5, self->target, entry->bot, "%s", strchr(entry->default_desc, ')')+2);
+        send_target_message(4, dest->target, entry->bot, "%s", strchr(entry->default_desc, ')')+2);
     }
 }
 
 static void
-ldIrc_module(struct logDestination *self_, struct log_type *type, enum log_severity sev, const char *message) {
-    struct logDest_irc *self = (struct logDest_irc*)self_;
+ldIrc_module(struct logDestination *dest_, struct log_type *type, enum log_severity sev, const char *message) {
+    struct logDest_irc *dest = (struct logDest_irc*)dest_;
     extern struct userNode *opserv;
 
-    send_target_message(5, self->target, opserv, "%s %s: %s\n", type->name, log_severity_names[sev], message);
+    send_target_message(4, dest->target, opserv, "%s %s: %s\n", type->name, log_severity_names[sev], message);
 }
 
 static struct logDest_vtable ldIrc_vtbl = {

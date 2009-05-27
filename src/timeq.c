@@ -1,11 +1,11 @@
 /* timeq.c - time-based event queue
  * Copyright 2000-2004 srvx Development Team
  *
- * This file is part of x3.
+ * This file is part of srvx.
  *
- * x3 is free software; you can redistribute it and/or modify
+ * srvx is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -21,7 +21,6 @@
 #include "common.h"
 #include "heap.h"
 #include "timeq.h"
-#include "log.h"
 
 heap_t timeq;
 
@@ -35,38 +34,42 @@ timeq_cleanup(void)
 {
     timeq_del(0, 0, 0, TIMEQ_IGNORE_WHEN|TIMEQ_IGNORE_FUNC|TIMEQ_IGNORE_DATA);
     heap_delete(timeq);
+    timeq = NULL;
 }
 
-void
+static void
 timeq_init(void)
 {
-    timeq = heap_new(int_comparator);
+    timeq = heap_new(ulong_comparator);
     reg_exit_func(timeq_cleanup);
 }
 
-time_t
+unsigned long
 timeq_next(void)
 {
-    void *time;
-    heap_peek(timeq, &time, 0);
-    return (time_t)time;
+    void *timep;
+    if (!timeq)
+        return ~0;
+    heap_peek(timeq, &timep, 0);
+    return (unsigned long)timep;
 }
 
 void
-timeq_add_real(time_t when, timeq_func func, void *data, UNUSED_ARG(const char *calling_func))
+timeq_add(unsigned long when, timeq_func func, void *data)
 {
     struct timeq_entry *ent;
     void *w;
-/*    log_module(MAIN_LOG, LOG_DEBUG, "TIMEQ: %s adding timer: %ul (address: %x)", calling_func, (unsigned int)when, (unsigned int)func); */
     ent = malloc(sizeof(struct timeq_entry));
     ent->func = func;
     ent->data = data;
     w = (void*)when;
+    if (!timeq)
+        timeq_init();
     heap_insert(timeq, w, ent);
 }
 
 struct timeq_extra {
-    time_t when;
+    unsigned long when;
     timeq_func func;
     void *data;
     int mask;
@@ -77,10 +80,9 @@ timeq_del_matching(void *key, void *data, void *extra)
 {
     struct timeq_entry *a = data;
     struct timeq_extra *b = extra;
-    if (((b->mask & TIMEQ_IGNORE_WHEN) || ((time_t)key == b->when))
-	&& ((b->mask & TIMEQ_IGNORE_FUNC) || (a->func == b->func))
-	&& ((b->mask & TIMEQ_IGNORE_DATA) || (a->data == b->data))) {
-        /* log_module(MAIN_LOG, LOG_DEBUG, "TIMEQ:     - deleting matching timer %x", a->func); */
+    if (((b->mask & TIMEQ_IGNORE_WHEN) || ((unsigned long)key == b->when))
+        && ((b->mask & TIMEQ_IGNORE_FUNC) || (a->func == b->func))
+        && ((b->mask & TIMEQ_IGNORE_DATA) || (a->data == b->data))) {
         free(data);
         return 1;
     } else {
@@ -89,15 +91,15 @@ timeq_del_matching(void *key, void *data, void *extra)
 }
 
 void
-timeq_del_real(time_t when, timeq_func func, void *data, int mask, UNUSED_ARG(const char *calling_func))
+timeq_del(unsigned long when, timeq_func func, void *data, int mask)
 {
     struct timeq_extra extra;
-    /* log_module(MAIN_LOG, LOG_DEBUG, "TIMEQ: %s deleting timer: %d (address: %x mask: %x)", calling_func, (unsigned int)when, (unsigned int) func,  mask); */
     extra.when = when;
     extra.func = func;
     extra.data = data;
     extra.mask = mask;
-    heap_remove_pred(timeq, timeq_del_matching, &extra);
+    if (timeq)
+        heap_remove_pred(timeq, timeq_del_matching, &extra);
 }
 
 unsigned int
@@ -112,12 +114,12 @@ timeq_run(void)
     void *k, *d;
     struct timeq_entry *ent;
     while (heap_size(timeq) > 0) {
-	heap_peek(timeq, &k, &d);
-	if ((time_t)k > now)
+        heap_peek(timeq, &k, &d);
+        if ((time_t)k > now)
             break;
-	ent = d;
-	heap_pop(timeq);
-	ent->func(ent->data);
+        ent = d;
+        heap_pop(timeq);
+        ent->func(ent->data);
         free(ent);
     }
 }

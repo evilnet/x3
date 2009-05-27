@@ -32,10 +32,6 @@
 #define MAXNUMPARAMS    200
 #define ALLCHANMSG_FUNCS_MAX  4 /* +1 == 5 potential 'allchanmsg' funcs */
 
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
 struct gline;
 struct shun;
 struct server;
@@ -98,16 +94,16 @@ char *client_report_privs(struct userNode *client);
 int check_priv(char *priv);
 
 /* Callback notifications for protocol support. */
-typedef void (*chanmsg_func_t) (struct userNode *user, struct chanNode *chan, char *text, struct userNode *bot);
+typedef void (*chanmsg_func_t) (struct userNode *user, struct chanNode *chan, const char *text, struct userNode *bot, unsigned int is_notice);
 void reg_chanmsg_func(unsigned char prefix, struct userNode *service, chanmsg_func_t handler);
 void reg_allchanmsg_func(struct userNode *service, chanmsg_func_t handler);
 struct userNode *get_chanmsg_bot(unsigned char prefix);
 
-typedef void (*privmsg_func_t) (struct userNode *user, struct userNode *target, char *text, int server_qualified);
+typedef void (*privmsg_func_t) (struct userNode *user, struct userNode *target, const char *text, int server_qualified);
 void reg_privmsg_func(struct userNode *user, privmsg_func_t handler);
 void reg_notice_func(struct userNode *user, privmsg_func_t handler);
-void unreg_privmsg_func(struct userNode *user, privmsg_func_t handler);
-void unreg_notice_func(struct userNode *user, privmsg_func_t handler);
+void unreg_privmsg_func(struct userNode *user);
+void unreg_notice_func(struct userNode *user);
 
 typedef void (*oper_func_t) (struct userNode *user);
 void reg_oper_func(oper_func_t handler);
@@ -179,17 +175,21 @@ void irc_numeric(struct userNode *user, unsigned int num, const char *format, ..
 #define RPL_ENDOFSTATS          219
 #define RPL_STATSUPTIME         242
 #define RPL_MAXCONNECTIONS      250
+#define RPL_AWAY                301
 #define RPL_WHOISUSER           311
 #define RPL_WHOISSERVER         312
 #define RPL_WHOISOPERATOR       313
+#define RPL_WHOISIDLE           317
 #define RPL_ENDOFWHOIS          318
+#define RPL_WHOISCHANNELS       319
+#define RPL_WHOISACCOUNT        330
+#define RPL_WHOISACTUALLY       338
 #define ERR_NOSUCHNICK          401
 
 /* stuff originally from other headers that is really protocol-specific */
 int IsChannelName(const char *name);
 int is_valid_nick(const char *nick);
-struct userNode *AddService(const char *nick, const char *modes, const char *desc, const char *hostname);
-struct userNode *AddClone(const char *nick, const char *ident, const char *hostname, const char *desc);
+struct userNode *AddLocalUser(const char *nick, const char *ident, const char *hostname, const char *desc, const char *modes);
 struct server* AddServer(struct server* uplink, const char *name, int hops, time_t boot, time_t link, const char *numeric, const char *description);
 void DelServer(struct server* serv, int announce, const char *message);
 void DelUser(struct userNode* user, struct userNode *killer, int announce, const char *why);

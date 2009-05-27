@@ -245,7 +245,7 @@ static const struct message_entry msgtab[] = {
     { "HSMSG_PAGE_HELPER_GONE_2", "Request ID#%lu from $b%s$b (Not authed) $bhas been unassigned$b, as its helper, %s has %s." },
     { "HSMSG_PAGE_HELPER_GONE_3", "Request ID#%lu from an offline user (Account %s) $bhas been unassigned$b, as its helper, %s has %s." },
     { "HSMSG_PAGE_HELPER_GONE_4", "Request ID#%lu from an offline user (No account) $bhas been unassigned$b, as its helper, %s has %s." },
-    { "HSMSG_PAGE_WHINE_HEADER", "$b%u unhandled request(s)$b waiting at least $b%s$b (%u total)" },
+    { "HSMSG_PAGE_WHINE_HEADER", "$b%u unhandled request(s)$b waiting at least $b%s$b (%u unhandled, %u total)" },
     { "HSMSG_PAGE_IDLE_HEADER", "$b%u users$b in %s $bidle at least %s$b:" },
     { "HSMSG_PAGE_EMPTYALERT", "$b%s has no helpers present (%u unhandled request(s))$b" },
     { "HSMSG_PAGE_ONLYTRIALALERT", "$b%s has no full helpers present (%d trial(s) present; %u unhandled request(s))$b" },
@@ -613,16 +613,16 @@ void STRUCTNAME##_free(void *data) {\
 }
 
 DECLARE_LIST(helpserv_botlist, struct helpserv_bot *);
-DEFINE_LIST(helpserv_botlist, struct helpserv_bot *);
-DEFINE_LIST_ALLOC(helpserv_botlist);
+DEFINE_LIST(helpserv_botlist, struct helpserv_bot *)
+DEFINE_LIST_ALLOC(helpserv_botlist)
 
 DECLARE_LIST(helpserv_reqlist, struct helpserv_request *);
-DEFINE_LIST(helpserv_reqlist, struct helpserv_request *);
-DEFINE_LIST_ALLOC(helpserv_reqlist);
+DEFINE_LIST(helpserv_reqlist, struct helpserv_request *)
+DEFINE_LIST_ALLOC(helpserv_reqlist)
 
 DECLARE_LIST(helpserv_userlist, struct helpserv_user *);
-DEFINE_LIST(helpserv_userlist, struct helpserv_user *);
-DEFINE_LIST_ALLOC(helpserv_userlist);
+DEFINE_LIST(helpserv_userlist, struct helpserv_user *)
+DEFINE_LIST_ALLOC(helpserv_userlist)
 
 struct helpfile *helpserv_helpfile;
 static struct module *helpserv_module;
@@ -642,7 +642,7 @@ extern struct userNode *opserv;
 #define HELPSERV_SYNTAX() helpserv_help(hs, from_opserv, user, argv[0], 0)
 #define HELPSERV_FUNC(NAME) int NAME(struct userNode *user, UNUSED_ARG(struct helpserv_bot *hs), int from_opserv, UNUSED_ARG(unsigned int argc), UNUSED_ARG(char *argv[]))
 typedef HELPSERV_FUNC(helpserv_func_t);
-#define HELPSERV_USERCMD(NAME) int NAME(UNUSED_ARG(struct helpserv_request *req), UNUSED_ARG(struct userNode *likely_helper), UNUSED_ARG(char *args), UNUSED_ARG(int argc), UNUSED_ARG(char *argv[]), UNUSED_ARG(struct userNode *user), UNUSED_ARG(struct helpserv_bot *hs))
+#define HELPSERV_USERCMD(NAME) int NAME(UNUSED_ARG(struct helpserv_request *req), UNUSED_ARG(struct userNode *likely_helper), UNUSED_ARG(const char *args), UNUSED_ARG(int argc), UNUSED_ARG(char *argv[]), UNUSED_ARG(struct userNode *user), UNUSED_ARG(struct helpserv_bot *hs))
 typedef HELPSERV_USERCMD(helpserv_usercmd_t);
 #define HELPSERV_OPTION(NAME) HELPSERV_FUNC(NAME)
 typedef HELPSERV_OPTION(helpserv_option_func_t);
@@ -655,31 +655,37 @@ static HELPSERV_FUNC(cmd_help);
         return 0; }
 
 /* For messages going to users being helped */
-#define helpserv_msguser(target, format...) send_message_type((from_opserv ? 0 : hs->privmsg_only), (target), (from_opserv ? opserv : hs->helpserv) , ## format)
-#define helpserv_user_reply(format...) send_message_type(req->hs->privmsg_only, req->user, req->hs->helpserv , ## format)
+#if defined(GCC_VARMACROS)
+# define helpserv_msguser(target, ARGS...) send_message_type((from_opserv ? 0 : hs->privmsg_only), (target), (fromopserv ? opserv : hs->helpserv), ARGS)
+# define helpserv_user_reply(ARGS...) send_message_type(req->hs->privmsg_only, req->user, req->hs->helpserv, ARGS)
 /* For messages going to helpers */
-#define helpserv_notice(target, format...) send_message((target), (from_opserv ? opserv : hs->helpserv) , ## format)
-#define helpserv_notify(helper, format...) do { struct userNode *_target; for (_target = (helper)->handle->users; _target; _target = _target->next_authed) { \
-        send_message(_target, (helper)->hs->helpserv, ## format); \
+# define helpserv_notice(target, ARGS...) send_message((target), (from_opserv ? opserv : hs->helpserv), ARGS)
+# define helpserv_notify(helper, ARGS...) do { struct userNode *_target; for (_target = (helper)->handle->users; _target; _target = _target->next_authed) { \
+        send_message(_target, (helper)->hs->helpserv, ARGS); \
     } } while (0)
+# define helpserv_page(TYPE, ARGS...) do { \
+    int msg_type=0; struct chanNode *target=helpserv_get_page_type(hs, (TYPE), &msg_type); \
+    if (target) send_target_message(msg_type, target->name, hs->helpserv, ARGS); \
+    } while (0)
+#elif defined(C99_VARMACROS)
+# define helpserv_msguser(target, ...) send_message_type((from_opserv ? 0 : hs->privmsg_only), (target), (from_opserv ? opserv : hs->helpserv), __VA_ARGS__)
+# define helpserv_user_reply(...) send_message_type(req->hs->privmsg_only, req->user, req->hs->helpserv, __VA_ARGS__)
+/* For messages going to helpers */
+# define helpserv_notice(target, ...) send_message((target), (from_opserv ? opserv : hs->helpserv), __VA_ARGS__)
+# define helpserv_notify(helper, ...) do { struct userNode *_target; for (_target = (helper)->handle->users; _target; _target = _target->next_authed) { \
+        send_message(_target, (helper)->hs->helpserv, __VA_ARGS__); \
+    } } while (0)
+# define helpserv_page(TYPE, ...) do { \
+    int msg_type=0; struct chanNode *target=helpserv_get_page_type(hs, (TYPE), &msg_type); \
+    if (target) send_target_message(msg_type, target->name, hs->helpserv, __VA_ARGS__); \
+    } while (0)
+#endif
 #define helpserv_message(hs, target, id) do { if ((hs)->messages[id]) { \
     if (from_opserv) \
         send_message_type(4, (target), opserv, "%s", (hs)->messages[id]); \
     else \
         send_message_type(4 | hs->privmsg_only, (target), hs->helpserv, "%s", (hs)->messages[id]); \
     } } while (0)
-#define helpserv_page(TYPE, FORMAT...) do { \
-    struct chanNode *target=NULL; int msg_type=0; \
-    target = hs->page_targets[TYPE]; \
-    switch (hs->page_types[TYPE]) { \
-        case PAGE_NOTICE: msg_type = 0; break; \
-        case PAGE_PRIVMSG: msg_type = 1; break; \
-        case PAGE_ONOTICE: msg_type = 2; break; \
-        default: log_module(HS_LOG, LOG_ERROR, "helpserv_page() called but %s has an invalid page type %d.", hs->helpserv->nick, TYPE); \
-        case PAGE_NONE: target = NULL; break; \
-    } \
-    if (target) send_target_message(msg_type, target->name, hs->helpserv, ## FORMAT); \
-    } while (0)
 #define helpserv_get_handle_info(user, text) smart_get_handle_info((from_opserv ? opserv : hs->helpserv) , (user), (text))
 
 struct helpserv_cmd {
@@ -728,10 +734,10 @@ static void helpserv_log_request(struct helpserv_request *req, const char *reaso
 
     assert(req != NULL);
     assert(reason != NULL);
-    if (!(ctx = saxdb_open_context(reqlog_f)))
+    if (!reqlog_f || !(ctx = saxdb_open_context(reqlog_f)))
         return;
     sprintf(key, "%s-" FMT_TIME_T "-%lu", req->hs->helpserv->nick, req->opened, req->id);
-    if ((res = setjmp(ctx->jbuf)) != 0) {
+    if ((res = setjmp(*saxdb_jmp_buf(ctx))) != 0) {
         log_module(HS_LOG, LOG_ERROR, "Unable to log helpserv request: %s.", strerror(res));
     } else {
         saxdb_start_record(ctx, key, 1);
@@ -752,9 +758,29 @@ static void helpserv_log_request(struct helpserv_request *req, const char *reaso
         saxdb_write_string(ctx, KEY_REQUEST_CLOSEREASON, reason);
         saxdb_write_string_list(ctx, KEY_REQUEST_TEXT, req->text);
         saxdb_end_record(ctx);
-        saxdb_close_context(ctx);
-        fflush(reqlog_f);
+        saxdb_close_context(ctx, 0);
     }
+}
+
+static struct chanNode *helpserv_get_page_type(struct helpserv_bot *hs, enum page_source type, int *msg_type)
+{
+    switch (hs->page_types[type]) {
+        case PAGE_NOTICE:
+            *msg_type = 0;
+            break;
+        case PAGE_PRIVMSG:
+            *msg_type = 1;
+            break;
+        case PAGE_ONOTICE:
+            *msg_type = 2;
+            break;
+        default:
+            log_module(HS_LOG, LOG_ERROR, "helpserv_page() called but %s has an invalid page type %d.", hs->helpserv->nick, type);
+            /* and fall through */
+        case PAGE_NONE:
+            return NULL;
+    }
+    return hs->page_targets[type];
 }
 
 /* Searches for a request by number, nick, or account (num|nick|*account).
@@ -853,7 +879,7 @@ static struct helpserv_request * smart_get_request(struct helpserv_bot *hs, stru
 
 static struct helpserv_request * create_request(struct userNode *user, struct helpserv_bot *hs, int from_join) {
     struct helpserv_request *req = calloc(1, sizeof(struct helpserv_request));
-    char lbuf[3][MAX_LINE_SIZE], unh[INTERVALLEN], abuf[1][MAX_LINE_SIZE];
+    char lbuf[3][MAX_LINE_SIZE], req_id[INTERVALLEN], abuf[1][MAX_LINE_SIZE];
     struct helpserv_reqlist *reqlist, *hand_reqlist;
     struct helpserv_user *hs_user;
     struct userNode *target, *next_un = NULL;
@@ -864,8 +890,8 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
     assert(req);
 
     req->id = ++hs->last_requestid;
-    sprintf(unh, "%lu", req->id);
-    dict_insert(hs->requests, strdup(unh), req);
+    sprintf(req_id, "%lu", req->id);
+    dict_insert(hs->requests, strdup(req_id), req);
 
     if (hs->id_wrap) {
         unsigned long i;
@@ -960,12 +986,12 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
     }
 
     if (req != hs->unhandled) {
-        intervalString(unh, now - hs->unhandled->opened, user->handle_info);
+        intervalString(req_id, now - hs->unhandled->opened, user->handle_info);
         fmt = user_find_message(user, "HSMSG_REQ_UNHANDLED_TIME");
-        sprintf(lbuf[1], fmt, unh);
+        sprintf(lbuf[1], fmt, req_id);
     } else {
         fmt = user_find_message(user, "HSMSG_REQ_NO_UNHANDLED");
-        sprintf(lbuf[1], fmt);
+        sprintf(lbuf[1], "%s", fmt);
     }
 
     if (hs->alert_new) {
@@ -988,18 +1014,17 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
             break;
         case PERSIST_QUIT:
             fmt = user_find_message(user, "HSMSG_REQ_PERSIST_QUIT");
-            sprintf(lbuf[2], fmt);
+            sprintf(lbuf[2], "%s", fmt);
             break;
         default:
             log_module(HS_LOG, LOG_ERROR, "%s has an invalid req_persist.", hs->helpserv->nick);
         case PERSIST_CLOSE:
             if (user->handle_info) {
                 fmt = user_find_message(user, "HSMSG_REQ_PERSIST_HANDLE");
-                sprintf(lbuf[2], fmt);
             } else {
                 fmt = user_find_message(user, "HSMSG_REQ_PERSIST_QUIT");
-                sprintf(lbuf[2], fmt);
             }
+            sprintf(lbuf[2], "%s", fmt);
             break;
     }
     helpserv_message(hs, user, MSGTYPE_REQ_OPENED);
@@ -1017,7 +1042,7 @@ static struct helpserv_request * create_request(struct userNode *user, struct he
 }
 
 /* Handle a message from a user to a HelpServ bot. */
-static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, char *text, char *argv[], int argc) {
+static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, const char *text, char *argv[], int argc) {
     const int from_opserv = 0; /* for helpserv_notice */
     struct helpserv_request *req=NULL, *newest=NULL;
     struct helpserv_reqlist *reqlist, *hand_reqlist;
@@ -1171,12 +1196,12 @@ static void helpserv_usermsg(struct userNode *user, struct helpserv_bot *hs, cha
 }
 
 /* Handle messages direct to a HelpServ bot. */
-static void helpserv_botmsg(struct userNode *user, struct userNode *target, char *text, UNUSED_ARG(int server_qualified)) {
+static void helpserv_botmsg(struct userNode *user, struct userNode *target, const char *text, UNUSED_ARG(int server_qualified)) {
     struct helpserv_bot *hs;
     struct helpserv_cmd *cmd;
     struct helpserv_user *hs_user = NULL;
     char *argv[MAXNUMPARAMS];
-    char *stext = strdup(text);
+    char tmpline[MAXLEN];
     int argc, argv_shift;
     const int from_opserv = 0; /* for helpserv_notice */
 
@@ -1191,7 +1216,8 @@ static void helpserv_botmsg(struct userNode *user, struct userNode *target, char
      * was the first argument later on and addressing random memory, were going to make argv[0] null. This whole thing is pretty unacceptable and needs fixed, though.*/
     argv[0] = NULL;
     argv_shift = 1;
-    argc = split_line(stext, false, ArrayLength(argv)-argv_shift, argv+argv_shift);
+    safestrncpy(tmpline, text, sizeof(tmpline));
+    argc = split_line(tmpline, false, ArrayLength(argv)-argv_shift, argv+argv_shift);
     if (!argc)
         return;
 
@@ -1229,8 +1255,8 @@ static void helpserv_botmsg(struct userNode *user, struct userNode *target, char
     if (!cmd->func) {
         helpserv_notice(user, "HSMSG_INTERNAL_COMMAND", argv[argv_shift]);
     } else if (cmd->func(user, hs, 0, argc, argv+argv_shift)) {
-        char *buf = unsplit_string(argv+argv_shift, argc, NULL);
-        log_audit(HS_LOG, LOG_COMMAND, user, hs->helpserv, hs->helpchan->name, 0, buf);
+        unsplit_string(argv+argv_shift, argc, tmpline);
+        log_audit(HS_LOG, LOG_COMMAND, user, hs->helpserv, hs->helpchan->name, 0, tmpline);
     }
 }
 
@@ -2662,7 +2688,7 @@ static void run_whine_interval(void *data) {
                 tbl.contents[i][3] = strdup(unh_time);
             }
 
-            helpserv_page(PGSRC_ALERT, "HSMSG_PAGE_WHINE_HEADER", reqlist.used, strwhinedelay, queuesize);
+            helpserv_page(PGSRC_ALERT, "HSMSG_PAGE_WHINE_HEADER", reqlist.used, strwhinedelay, queuesize, dict_size(hs->requests));
             table_send(hs->helpserv, hs->page_targets[PGSRC_ALERT]->name, 0, page_type_funcs[hs->page_types[PGSRC_ALERT]], tbl);
 
             for (i=1; i <= reqlist.used; i++) {
@@ -2670,7 +2696,7 @@ static void run_whine_interval(void *data) {
                 free((char *)tbl.contents[i][3]);
             }
 #else
-            helpserv_page(PGSRC_ALERT, "HSMSG_PAGE_WHINE_HEADER", reqlist.used, strwhinedelay, queuesize);
+            helpserv_page(PGSRC_ALERT, "HSMSG_PAGE_WHINE_HEADER", reqlist.used, strwhinedelay, queuesize, dict_size(hs->requests));
 #endif
         }
 
@@ -2841,7 +2867,7 @@ static struct helpserv_bot *register_helpserv(const char *nick, const char *help
      * it's a harmless default */
     hs = calloc(1, sizeof(struct helpserv_bot));
 
-    if (!(hs->helpserv = AddService(nick, "+iok", helpserv_conf.description, NULL))) {
+    if (!(hs->helpserv = AddLocalUser(nick, nick, NULL, helpserv_conf.description, NULL))) {
         free(hs);
         return NULL;
     }
@@ -4091,10 +4117,10 @@ static void helpserv_conf_read(void) {
 }
 
 static struct helpserv_cmd *
-helpserv_define_func(const char *name, helpserv_func_t *func, enum helpserv_level access, long flags) {
+helpserv_define_func(const char *name, helpserv_func_t *func, enum helpserv_level level, long flags) {
     struct helpserv_cmd *cmd = calloc(1, sizeof(struct helpserv_cmd));
 
-    cmd->access = access;
+    cmd->access = level;
     cmd->weight = 1.0;
     cmd->func = func;
     cmd->flags = flags;
@@ -4163,9 +4189,9 @@ static void handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason)) {
 
                 if ((hs->persist_types[PERSIST_T_HELPER] == PERSIST_PART)
                     && (req->helper == hs_user)) {
-                    char reason[CHANNELLEN + 8];
-                    sprintf(reason, "parted %s", mn->channel->name);
-                    helpserv_page_helper_gone(hs, req, reason);
+                    char our_reason[CHANNELLEN + 8];
+                    sprintf(our_reason, "parted %s", mn->channel->name);
+                    helpserv_page_helper_gone(hs, req, our_reason);
                 }
             }
 

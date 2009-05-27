@@ -1,5 +1,5 @@
-/* timeq.h - time-based event queue
- * Copyright 2000-2002 srvx Development Team
+/* srvx event loop implementation details
+ * Copyright 2006 srvx Development Team
  *
  * This file is part of srvx.
  *
@@ -18,19 +18,25 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-#ifndef TIMEQ_H
-#define TIMEQ_H
+#if !defined(IOSET_IMPL_H)
+#define IOSET_IMPL_H
 
-typedef void (*timeq_func)(void *data);
+#include "ioset.h"
 
-#define TIMEQ_IGNORE_WHEN    0x01
-#define TIMEQ_IGNORE_FUNC    0x02
-#define TIMEQ_IGNORE_DATA    0x04
+struct timeval;
 
-void timeq_add(unsigned long when, timeq_func func, void *data);
-void timeq_del(unsigned long when, timeq_func func, void *data, int mask);
-unsigned long timeq_next(void);
-unsigned int timeq_size(void);
-void timeq_run(void);
+#define fd_wants_writes(FD) (((FD)->send.get != (FD)->send.put) || (FD)->state == IO_CONNECTING)
 
-#endif /* ndef TIMEQ_H */
+struct io_engine {
+    const char *name;
+    int (*init)(void);
+    void (*add)(struct io_fd *fd);
+    void (*remove)(struct io_fd *fd, int os_closed);
+    void (*update)(struct io_fd *fd);
+    int (*loop)(struct timeval *timeout);
+    void (*cleanup)(void);
+};
+
+void ioset_events(struct io_fd *fd, int readable, int writable);
+
+#endif /* !defined(IOSET_IMPL_H) */

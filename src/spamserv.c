@@ -2896,7 +2896,7 @@ spamserv_channel_message(struct chanNode *channel, struct userNode *user, char *
 		int size = strlen(user->hostname) + 3;
 		char *mask = alloca(size);
 		snprintf(mask, size, "*@%s", user->hostname);
-		gline_add(spamserv->nick, mask, spamserv_conf.gline_duration, reason, now, 1, 0);
+		gline_add(spamserv->nick, mask, spamserv_conf.gline_duration, reason, now, now, 1, 0);
 		spamserv_debug(SSMSG_DEBUG_GLINE, user->nick, user->hostname, channel->name);
 	}
 	else if(CHECK_KILL(uInfo))
@@ -3218,7 +3218,7 @@ init_spamserv(const char *nick)
 		return;
 
         const char *modes = conf_get_data("services/spamserv/modes", RECDB_QSTRING);
-	spamserv = AddService(nick, modes ? modes : NULL, "Anti Spam Services", NULL);
+        spamserv = AddLocalUser(nick, nick, "Anti Spam Services", NULL, modes);
 	spamserv_service = service_register(spamserv);
 
 	conf_register_reload(spamserv_conf_read);

@@ -123,6 +123,7 @@
             " $bREGISTER$b    Register a new channel with $C.",
             " $bNOREGISTER$b  Add a channel to the do-not-register list.",
             " $bALLOWREGISTER$b Remove a channel from the do-not-register list.",
+            " $bDNRSEARCH$b   Search the do-not-register list.",
             " $bUNREGISTER$b  Remove $C from a registered channel.",
             " $bMOVE$b        Transition one channel's registration to a new channel name.",
             " $bMERGE$b       Merges a source and target channels' registration, ",
@@ -250,7 +251,7 @@
         "$uSee Also:$u addlamer, lamers, dellamer, durations");
 "ALLOWREGISTER" ("/msg $C ALLOWREGISTER <#channel|*Account>",
         "Removes the named channel (or channel mask) from the do-not-register list.",
-        "$uSee Also:$u register, noregister, unregister");
+        "$uSee Also:$u register, noregister, dnrsearch, unregister");
 "BAN" ("/msg $C BAN <#channel> <mask|nick>",
         "This command will temporarily add a ban for the user specified as the parameter. Masks are to be supplied in the format <Nick>!<Ident>@<Host> and usually contain wildcards. If a nick is specified, a mask is automatically generated (though not completely foolproof). This ban is removed either by removing it from the channel ban list using any irc client, or sending the UNBAN or UNBANALL commands. If you are banned with this method, the UNBANME command can be used.",
         "$uFor assistance, please join #Help$u",
@@ -259,6 +260,9 @@
 "LAMERS" ("/msg $C LAMERS <#channel> [mask]",
         "This command lists all permanent and timed lamers in the channel matching an optional mask.",
         "Lamers are nick!user@host masks which $C watches for, and keeps out of your channel.",
+        "If a nickname is specified, lists any bans that visibly match that user.",
+        "If a hostmask with no wildcards is specified, lists any bans that match that hostmask.",
+        "If a hostmask with wildcards is specified, lists any bans included in that mask.",
         "$uSee Also:$u addlamer, dellamer, addtimedlamer");
 "CALC" ("/msg $C CALC <expression>",
         "CALC calculates a mathematical expression, and returns the answer.  It",
@@ -333,6 +337,25 @@
 "DEVOICE" ("/msg $C DEVOICE <#channel> <nick> [nick]...",
         "This command will make $C devoice the selected user[s].",
         "$uSee Also:$u addpal, delpal, deop, voice");
+"DNRSEARCH" ("/msg $C DNRSEARCH <action> <criteria> <value> [<criteria> <value> ...]",
+        "Searches through the current do-not-register list for those matching the specified criteria, and applies the specified action to them.  A list of actions can be found in $bhelp dnrsearch action$b and a list of criteria in $bhelp dnrsearch criteria$b.",
+        "$uSee Also:$u allowregister, dnrsearch action, dnrsearch criteria, noregister");
+"DNRSEARCH ACTION" ("$bDNRSEARCH ACTION$b",
+	"Options for the action in $bdnrsearch$b are:",
+        "$bPRINT: $b      Display the do-not-register entry.",
+        "$bREMOVE:$b      Remove the do-not-register entry.",
+        "$bCOUNT: $b      Count the number of matching do-not-register entries.",
+        "$uSee Also:$u dnrsearch, dnrsearch criteria");
+"DNRSEARCH CRITERIA" ("$bDNRSEARCH CRITERIA$b",
+        "Options for the criteria in $bdnrsearch$b are:",
+        "$bCHANNEL:$b     Channel name, channel mask, or \*account (note the backslash).",
+        "$bSETTER: $b     Staff member who issued the do-not-register.",
+        "$bREASON: $b     Mask for the do-not-register reason or note.",
+        "$bLIMIT:  $b     Maximum entries to operate upon (default 50).",
+        "$bSET:    $b     Age limit for entry (defaults to minimum age).",
+        "$bEXPIRES:$b     Expiration limit for entry (defaults to minimum time).",
+        "Note: If you use the $blimit$b criteria, the full count of matching do-not-register entries will be shown at the end of the $bdnrsearch$b output, but only the first $blimit$b entries will be affected by the action.",
+        "$uSee Also:$u dnrsearch, dnrsearch action");
 "DOWN" ("/msg $C DOWN <#channel>",
         "This command will devoice/dehalfop/deop you in the selected channel.",
         "$uSee Also:$u downall, up, upall");
@@ -357,8 +380,8 @@
         "$b1d1h$b is 1 day and 1 hour (25 hours.)",
         "$b1h25m30s$b is 1 hour, 25 minutes and 30 seconds."
         );
-"EMOTE" ("/msg $C EMOTE <#channel> <text>",
-        "Makes $b$C$b send a CTCP ACTION message to the specified channel.",
+"EMOTE" ("/msg $C EMOTE <#channel|nick|*account> <text>",
+        "Makes $b$C$b send a CTCP ACTION message to the specified channel/nick or all users on the account.",
         "$uSee Also:$u say");
 "EVENTS" ("/msg $C EVENTS <#channel> [limit [pattern]]",
         "Allows channel coowners to view a list of events related to their channel. If a pattern is provided, only events with a matching description will be displayed.",
@@ -422,10 +445,11 @@
 "NETINFO" ("/msg $C NETINFO",
         "Displays some assorted pieces of information about network-wide $b$C$b statistics.",
         "$uSee Also:$u info, staff");
-"NOREGISTER" ("/msg $C NOREGISTER <#channel|*Account> <reason>",
+"NOREGISTER" ("/msg $C NOREGISTER <#channel|*Account> <duration> <reason>",
         "With no arguments, lists the current do-not-register channels.",
         "With arguments, adds a do-not-register channel (or account) with the specified reason.  In this case, the channel name may include * or ? wildcards.",
-        "$uSee Also:$u allowregister, register, unregister");
+        "The duration may be \"0\" to make it never expire; otherwise, the do-not-register entry will be automatically removed after $uduration$u.",
+        "$uSee Also:$u allowregister, register, dnrsearch, unregister");
 "NOTE" ("/msg $C NOTE <#channel> [<type> [new-note-text]]",
         "With no arguments, lists all visible notes on the specified channel.",
         "With one argument, lists the note type you name (if it is visible to you).",
@@ -474,8 +498,8 @@
         "It will give and take ops, halfops, and voice modes to users to make the channel match the userlist and automode setting.",
         "$uSee Also:$u set automode, up, op, hop, voice");
 
-"SAY" ("/msg $C SAY <#channel> <text>",
-        "Makes $b$C$b send a message to the specified channel.",
+"SAY" ("/msg $C SAY <#channel|nick|*account> <text>",
+        "Makes $b$C$b send a message to the specified channel/nick or all users on the account.",
         "$uSee Also:$u emote");
 "SEARCH CRITERIA" ("$bSEARCH CRITERIA$b",
         "The following criteria may be used:",
@@ -485,7 +509,7 @@
         "  REGISTERED  Channels that have been registered for less than the given duration",
         "  FLAGS       Matches channels with the specified flag set",
         "  LIMIT       Limit the number of channels returned by the search",
-        "Flags that can be matched against are: nodelete and suspended.",
+        "Flags that can be matched against are: nodelete, suspended and unreviewed.",
         "$uSee Also:$u search, search actions");
 "SEARCH ACTIONS" ("$bSEARCH ACTIONS$b",
 	"The following are valid $bsearch$b actions:",
@@ -525,6 +549,7 @@
 	"MAXSETINFO:   Maximum amount of characters in a SETINFO line.",
         "$bIRCOP ONLY$b:",
         "NODELETE:  Prevents channel deletion.",
+        "UNREVIEWED:   Indicates channels that have not been manually reviewed.",
         "If you wish to reset your channel to the default settings, you can use the $bSET DEFAULTS$b command.",
         "$uSee Also:$u set pubcmd, set enfops, set enfhalfops, set enfmodes, set enftopic, set protect, set toys, set setters, set topicrefresh, set resync, set ctcpreaction, set maxsetinfo, set defaults");
 

@@ -44,7 +44,7 @@
 #include "nickserv.h"
 #include "opserv.h"
 #include "saxdb.h"
-#include "sendmail.h"
+#include "mail.h"
 #include "timeq.h"
 
 #define KEY_MAIN_ACCOUNTS "accounts"
@@ -147,9 +147,9 @@ struct userNode *memoserv;
                                      return 0; }
 
 DECLARE_LIST(memoList, struct memo*);
-DEFINE_LIST(memoList, struct memo*);
+DEFINE_LIST(memoList, struct memo*)
 DECLARE_LIST(historyList, struct history*);
-DEFINE_LIST(historyList, struct history*);
+DEFINE_LIST(historyList, struct history*)
 
 /* memo_account.flags fields */
 #define MEMO_NOTIFY_NEW      0x00000001
@@ -185,7 +185,9 @@ extern struct string_list *autojoin_channels;
 const char *memoserv_module_deps[] = { NULL };
 static struct module *memoserv_module;
 static struct log_type *MS_LOG;
-static unsigned long memosSent, memosExpired;
+static unsigned long memoCount;
+static unsigned long memosSent;
+static unsigned long memosExpired;
 static struct dict *memos; /* memo_account->handle->handle -> memo_account */
 static struct dict *historys;
 static dict_t memoserv_opt_dict; /* contains option_func_t* */
@@ -217,6 +219,7 @@ delete_memo(struct memo *memo)
     memoList_remove(&memo->sender->sent, memo);
     free(memo->message);
     free(memo);
+    memoCount--;
 }
 
 static void
@@ -253,10 +256,10 @@ do_expire(void)
 {
     dict_iterator_t it;
     for (it = dict_first(memos); it; it = iter_next(it)) {
-        struct memo_account *acct = iter_data(it);
+        struct memo_account *account = iter_data(it);
         unsigned int ii;
-        for (ii = 0; ii < acct->sent.used; ++ii) {
-            struct memo *memo = acct->sent.list[ii];
+        for (ii = 0; ii < account->sent.used; ++ii) {
+            struct memo *memo = account->sent.list[ii];
             if ((now - memo->sent) > memoserv_conf.message_expiry) {
                 delete_memo(memo);
                 memosExpired++;
@@ -266,10 +269,10 @@ do_expire(void)
     }
 
     for (it = dict_first(historys); it; it = iter_next(it)) {
-        struct memo_account *acct = iter_data(it);
+        struct memo_account *account = iter_data(it);
         unsigned int ii;
-        for (ii = 0; ii < acct->hsent.used; ++ii) {
-            struct history *history = acct->hsent.list[ii];
+        for (ii = 0; ii < account->hsent.used; ++ii) {
+            struct history *history = account->hsent.list[ii];
             if ((now - history->sent) > memoserv_conf.message_expiry) {
                 delete_history(history);
                 memosExpired++;
@@ -330,6 +333,7 @@ add_memo(time_t sent, struct memo_account *recipient, struct memo_account *sende
     memo->sent = sent;
     memo->message = strdup(message);
     memosSent++;
+    memoCount++;
 
     if (nfrom_read)
         history = add_history(sent, recipient, sender, memo->id);
@@ -473,7 +477,7 @@ static MODCMD_FUNC(cmd_send)
         fmt = handle_find_message(hi, "MSEMAIL_NEWMEMO_BODY");
         snprintf(body, sizeof(body), fmt, user->nick, memoserv->nick, message, memoserv->nick, memo_id, netname);
 
-        sendmail(memoserv, hi, subject, body, 0);
+        mail_send(memoserv, hi, subject, body, 0);
     }
 
     reply("MSMSG_MEMO_SENT", ma->handle->handle, memo_id);
@@ -778,7 +782,7 @@ static MODCMD_FUNC(cmd_oset)
 
     MEMOSERV_MIN_PARAMS(2);
 
-    if (!(hi = get_victim_oper(cmd, user, argv[1])))
+    if (!(hi = get_victim_oper(user, argv[1])))
         return 0;
 
     if (argc < 3) {
@@ -976,7 +980,7 @@ static MODCMD_FUNC(cmd_status)
     }
 
     reply("MSMSG_STATUS_HIST_TOTAL", hc);
-    reply("MSMSG_STATUS_TOTAL", mc);
+    reply("MSMSG_STATUS_TOTAL", memoCount);
     reply("MSMSG_STATUS_EXPIRED", memosExpired);
     reply("MSMSG_STATUS_SENT", memosSent);
     return 1;
@@ -1377,8 +1381,7 @@ memoserv_finalize(void) {
     if (str) {
         memoserv = memoserv_conf.bot;
         const char *modes = conf_get_data("modules/memoserv/modes", RECDB_QSTRING);
-        memoserv = AddService(str, modes ? modes : NULL, "User-User Memorandum Services", NULL);
-
+        memoserv = AddLocalUser(str, str, NULL, "User-User Memorandum Services", modes);
     } else {
         log_module(MS_LOG, LOG_ERROR, "database_get_data for memoserv_conf.bot failed!");
         exit(1);

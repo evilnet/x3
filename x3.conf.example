@@ -191,6 +191,12 @@
         // how long until an account with no access to any channels expires?
         "nochan_account_expire_delay" "365d";
 
+        // how long must an account be inactive so it can be ounregistered without force?
+        "ounregister_inactive" "1M";
+
+        // which flags on an account require the ounregister to be used with force?
+        "ounregister_flags" "ShgsfnHbu";
+
         // If somebody keeps guessing passwords incorrectly, do we gag them?
         "autogag_enabled" "1";
         "autogag_duration" "30m";
@@ -448,6 +454,9 @@
         // How long is a channel unvisited (by masters or above) before it can be expired?
         "chan_expire_delay" "30d";
 
+        // How often to look for dnrs that have expired?
+        "dnr_expire_freq" "1h";
+
         // what !set options should we show when user calls "!set" with no arguments?
         "set_shows" ("DefaultTopic", "TopicMask", "Greeting", "UserGreeting", "Modes", "PubCmd", "InviteMe", "UserInfo", "EnfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", "CtcpReaction", "BanTimeout", "Protect", "Toys", "DynLimit", "NoDelete");
 
@@ -623,7 +632,7 @@
         "max_read" "1024"; // don't read more than 1024 bytes from any client
         "gline_duration" "1d"; // issue G-lines lasting one hour
         "max_cache_age" "60"; // only cache results for 60 seconds
-        "address" "192.168.1.10"; // do proxy tests from this address
+        "bind_address" "192.168.0.10"; // do proxy tests from this address
     };
     /* Snoop sends connect, quit, join, and part messages for every user
      * on the network, and helps in finding drones. Put it somewhere secure
@@ -660,6 +669,49 @@
         "message_expiry" "30d"; // age when messages are deleted; set
                                 // to 0 to disable message expiration
         "limit" "30"; // Max amount of messages a person can get.
+    };
+    "qserver" {
+        "bind_address" "127.0.0.1";
+        "port" "7702";
+        "password" "hello";
+    };
+    "blacklist" {
+        // File containing blacklisted client addresses.
+        // "file" "blacklist.txt";
+        // Each line in the file should start with an IP or hostname.
+        // If there is whitespace and a message after that, the
+        // message will override this one:
+        "file_reason" "client is blacklisted";
+        // How long should a blacklist G-line last?
+        "gline_duration" "1h";
+        // If you want to use DNS blacklists, add them here:
+        "dnsbl" {
+             // This DNSBL zone does not exist - you'll have to pick your own.
+             "dnsbl.example.org" {
+                "description" "Example DNSBL entry";
+                "reason" "busted by a dns blacklist";
+                "duration" "1h";
+                // You can stick the client's IP in the G-line message.
+                "reason_2" "Example DNSBL reported %ip%'s address as 127.0.0.2";
+                // .. or the contents of a DNS TXT.
+                "reason_3" "%txt%";
+            };
+        };
+    };
+    "sar" {
+        // You generally will not want to override these defaults.
+        // "resolv_conf" "/etc/resolv.conf";
+        // "services" "/etc/services";
+        // "bind_address" "0.0.0.0";
+        // "bind_port" "0";
+        // The defaults for these are derived from the system config files (above).
+        // "domain" "example.org";
+        // "timeout" "3"; // base timeout for a DNS reply
+        // "retries" "3"; // number of times to retry on different servers or longer timeouts
+        // "ndots" "1";   // number of dots needed in a hostname to bypass search path
+        // "edns0" "0";   // if set, enable EDNS0 extended message sizes
+        // "search" ("example.org", "example.net");
+        // "nameservers" ("127.0.0.1");
     };
     /* WebTV allows webtv clients to use common IRC commands.
      */
@@ -702,6 +754,10 @@
     "body_prefix" ("AfterNET Support - User and Channel registration system");
     "body_suffix_first" ("", "AfterNET IRC Network", "http://www.afternet.org");
     "body_suffix" ("", "AfterNET IRC Network", "http://www.afternet.org", "support@afternet.org","irc://irc.afternet.org/afternet");
+    // If you are using the smtp mail back-end, you may need to set these:
+    "smtp_server" "localhost";
+    "smtp_service" "smtp";
+    // "smtp_myname" "localhost.domain";
 };
 
 /* DBS (Databases) *************************************************

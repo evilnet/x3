@@ -33,6 +33,9 @@
 /* Define to 1 if you have the <dmalloc.h> header file. */
 #undef HAVE_DMALLOC_H
 
+/* Define to 1 if you have the `epoll_create' function. */
+#undef HAVE_EPOLL_CREATE
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
@@ -41,6 +44,9 @@
 
 /* Define to 1 if you have the `ftime' function. */
 #undef HAVE_FTIME
+
+/* Define to 1 if you have the `gai_strerror' function. */
+#undef HAVE_GAI_STRERROR
 
 /* Define to 1 if you have the <gc/gc.h> header file. */
 #undef HAVE_GC_GC_H
@@ -69,14 +75,26 @@
 /* Define to 1 if you have the `getpagesize' function. */
 #undef HAVE_GETPAGESIZE
 
+/* Define to 1 if you have the `GetProcessTimes' function. */
+#undef HAVE_GETPROCESSTIMES
+
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 
 /* Define this if you are using mod-helpserv */
 #undef HAVE_HELPSERV
 
+/* Define to 1 if you have the `inet_aton' function. */
+#undef HAVE_INET_ATON
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the `kevent' function. */
+#undef HAVE_KEVENT
+
+/* Define to 1 if you have the `kqueue' function. */
+#undef HAVE_KQUEUE
 
 /* Define to 1 if you have the <ldap.h> header file. */
 #undef HAVE_LDAP_H
@@ -138,6 +156,9 @@
 /* Define to 1 if you have the <mpatrol.h> header file. */
 #undef HAVE_MPATROL_H
 
+/* Define to 1 if you have the `mprotect' function. */
+#undef HAVE_MPROTECT
+
 /* Define to 1 if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
 
@@ -146,6 +167,15 @@
 
 /* Define to 1 if you have the <openssl/bio.h> header file. */
 #undef HAVE_OPENSSL_BIO_H
+
+/* Define to 1 if you have the `regcomp' function. */
+#undef HAVE_REGCOMP
+
+/* Define to 1 if you have the `regexec' function. */
+#undef HAVE_REGEXEC
+
+/* Define to 1 if you have the `regfree' function. */
+#undef HAVE_REGFREE
 
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
@@ -201,6 +231,12 @@
 /* Define to 1 if you have the `sysconf' function. */
 #undef HAVE_SYSCONF
 
+/* Define to 1 if you have the <sys/epoll.h> header file. */
+#undef HAVE_SYS_EPOLL_H
+
+/* Define to 1 if you have the <sys/event.h> header file. */
+#undef HAVE_SYS_EVENT_H
+
 /* Define to 1 if you have the <sys/mman.h> header file. */
 #undef HAVE_SYS_MMAN_H
 
@@ -233,6 +269,9 @@
 
 /* Define to 1 if you have the <tgmath.h> header file. */
 #undef HAVE_TGMATH_H
+
+/* Define to 1 if you have the `times' function. */
+#undef HAVE_TIMES
 
 /* Define this if you are using mod-track */
 #undef HAVE_TRACK
@@ -289,6 +328,15 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Define if using the epoll I/O backend */
+#undef WITH_IOSET_EPOLL
+
+/* Define if using the kevent I/O backend */
+#undef WITH_IOSET_KEVENT
+
+/* Define if using the select() I/O backend */
+#undef WITH_IOSET_SELECT
 
 /* Define if LDAP libs are linked */
 #undef WITH_LDAP
