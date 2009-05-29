@@ -1,6 +1,13 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-05-30  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Fixed a crash with setting a .set option with an invalid
+	option.
+
+	* src/mail-smtp.c: Added missing file.
+
 2009-05-27  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* Major update to bring X3 in line with the latest SRVX commit.  Please see
