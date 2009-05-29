@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-05-30  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: Small fix with CSMSG_SET_UNREVIEWED.
+
+2009-05-30  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/hash.c: Couple of tweaks.
 
 	* src/proto-common.c: Fix for triggers not working with forwards as well as
