@@ -444,8 +444,8 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
 
     /* Never send a NOTICE to a channel to one of the services */
     cf = &chanmsg_funcs[(unsigned char)pd->text[0]];
-    if (cf->func && !pd->is_notice
-        && GetUserMode(cn, cf->service) && !IsDeaf(cf->service))
+    if (!pd->is_notice && cf->func
+        && ((cn->modes & MODE_REGISTERED) || GetUserMode(cn, cf->service)))
         cf->func(pd->user, cn, pd->text+1, cf->service, pd->is_notice);
     else
         spamserv_channel_message(cn, pd->user, pd->text);

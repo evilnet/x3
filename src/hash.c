@@ -619,14 +619,16 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
 
         if (channel->members.used == 1
             && !(channel->modes & MODE_REGISTERED)
-            && !(channel->modes & MODE_APASS))
+            && !(channel->modes & MODE_APASS)) {
             mNode->modes |= MODE_CHANOP;
+            log_module(MAIN_LOG, LOG_DEBUG, "setting op");
+        }
 
         if (IsLocal(user)) {
             irc_join(user, channel);
         }
 
-        for (n=0; n<jf_used; n++) {
+        for (n=0; (n<jf_used) && !user->dead; n++) {
             /* Callbacks return true if they kick or kill the user,
              * and we can continue without removing mNode. */
             if (jf_list[n](mNode))
