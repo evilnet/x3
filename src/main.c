@@ -34,6 +34,7 @@
 #include "global.h"
 #include "modules.h"
 #include "opserv.h"
+#include "spamserv.h"
 
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>

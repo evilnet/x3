@@ -3218,7 +3218,7 @@ init_spamserv(const char *nick)
 		return;
 
         const char *modes = conf_get_data("services/spamserv/modes", RECDB_QSTRING);
-        spamserv = AddLocalUser(nick, nick, "Anti Spam Services", NULL, modes);
+        spamserv = AddLocalUser(nick, nick, NULL, "Anti Spam Services", modes);
 	spamserv_service = service_register(spamserv);
 
 	conf_register_reload(spamserv_conf_read);
