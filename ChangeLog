@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-05-31  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* GPL 3 and svn propset updates.
+
+2009-05-31  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/main.c: Added spamserv.h #include.
 
 	* src/main-common.c: Woops forgot to init spamserv.
