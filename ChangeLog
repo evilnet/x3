@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/tools.c: Extended account ban support.
+
+2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/chanserv.c: Basic extended ban support.
 
 	* src/tools.c: Basic extended ban support.

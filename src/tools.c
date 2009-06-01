@@ -604,16 +604,60 @@ int is_overmask(char *mask)
 int
 user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
 {
-    char *glob, *marker;
+    char *tmpglob, *glob, *marker;
+    char exttype = 0;
+    int extreverse = 0, is_extended = 0;
 
     /* Make a writable copy of the glob */
     glob = alloca(strlen(orig_glob)+1);
     strcpy(glob, orig_glob);
+
+    /* Extended bans */
+    tmpglob = alloca(strlen(orig_glob)+1);
+    tmpglob = strdup(orig_glob);
+
+    if (*tmpglob == '~') {
+        tmpglob++; /* get rid of the ~ */
+
+        if (*tmpglob == '!') {
+            extreverse = 1;
+            tmpglob++; /* get rid of the ! */
+        }
+
+        exttype = *tmpglob;
+        tmpglob++; /* get rid of the type */
+
+        if (*tmpglob == ':') {
+            is_extended = 1;
+            tmpglob++; /* get rid of the : */
+            glob = strdup(tmpglob);
+        }
+    }
+
+    if (is_extended) {
+        log_module(MAIN_LOG, LOG_DEBUG, "Extended ban. T (%c) R (%d) M (%s)", exttype, extreverse, glob);
+        switch (exttype) {
+            case 'a':
+                if (user->handle_info) {
+                    if (extreverse) {
+                        if (0 != strcasecmp(glob, user->handle_info->handle))
+                            return 1;
+                    } else {
+                        if (0 == strcasecmp(glob, user->handle_info->handle))
+                            return 1;
+                    }
+                } else {
+                    if (extreverse)
+                        return 1;
+                }
+                return match_ircglob(user->hostname, glob);
+            default:
+                return 0;
+        }
+    }
+
     /* Check the nick, if it's present */
     if (flags & MATCH_USENICK) {
-        if (*glob == '~') /* small hack for extended bans */
-            return match_ircglob(user->hostname, glob);
-
         if (!(marker = strchr(glob, '!'))) {
             log_module(MAIN_LOG, LOG_ERROR, "user_matches_glob(\"%s\", \"%s\", %d) called, and glob doesn't include a '!'", user->nick, orig_glob, flags);
             return 0;
