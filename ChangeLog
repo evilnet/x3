@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/tools.c: Re done the extended channel ban code so that it works
+	like the ircd code.
+
+2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/tools.c: Return -1 with invalid extended bans.
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>

@@ -604,7 +604,7 @@ int is_overmask(char *mask)
 int
 user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int shared)
 {
-    char *tmpglob, *glob, *marker, *echannel, *emodes;
+    char *tmpglob, *glob, *marker;
     char exttype = 0;
     int extreverse = 0, is_extended = 0, match = 0, banned = 0;
     unsigned int count, n;
@@ -659,36 +659,23 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
                 if (!strstr(glob, "#"))
                     return -1;
 
-                tmpglob = strdup(glob);
-                if (*glob != '#') {
-                    echannel = strstr(glob, "#");
-                    emodes = strtok(tmpglob, "#");
-                } else {
-                    echannel = strdup(glob);
-                    emodes = "";
-                }
-
                 if (extreverse) {
                     for (n=count=0; n<user->channels.used; n++) {
                         mn = user->channels.list[n];
                         match = 0;
 
-                        if (0 == strcasecmp(echannel, mn->channel->name)) {
-                            if (strlen(emodes) > 0) {
-                                if (mn->modes & MODE_CHANOP) {
-                                    if (strstr(emodes, "@"))
-                                        match = 1;
-                                }
-                                if (mn->modes & MODE_HALFOP) {
-                                    if (strstr(emodes, "%"))
-                                        match = 1;
-                                }
-                                if (mn->modes & MODE_VOICE) {
-                                    if (strstr(emodes, "+"))
-                                        match = 1;
-                                }
-                            } else
+                        if (*glob == '#') {
+                            if (0 == strcasecmp(glob, mn->channel->name))
                                 match = 1;
+                        } else {
+                            if (0 == strcasecmp(glob+1, mn->channel->name)) {
+                                if ((*glob == '@') && (mn->modes & MODE_CHANOP))
+                                    match = 1;
+                                else if ((*glob == '%') && (mn->modes & MODE_HALFOP))
+                                    match = 1;
+                                else if ((*glob == '+') && (mn->modes & MODE_VOICE))
+                                    match = 1;
+                             }
                         }
 
                         if (match == 0)
@@ -703,23 +690,20 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
                         mn = user->channels.list[n];
                         match = 0;
 
-                        if (0 == strcasecmp(echannel, mn->channel->name)) {
-                            if (strlen(emodes) > 0) {
-                                if (mn->modes & MODE_CHANOP) {
-                                    if (strstr(emodes, "@"))
-                                        match = 1;
-                                }
-                                if (mn->modes & MODE_HALFOP) {
-                                    if (strstr(emodes, "%"))
-                                        match = 1;
-                                }
-                                if (mn->modes & MODE_VOICE) {
-                                    if (strstr(emodes, "+"))
-                                        match = 1;
-                                }
-                            } else
+                        if (*glob == '#') {
+                            if (0 == strcasecmp(glob, mn->channel->name))
                                 match = 1;
+                        } else {
+                            if (0 == strcasecmp(glob+1, mn->channel->name)) {
+                                if ((*glob == '@') && (mn->modes & MODE_CHANOP))
+                                    match = 1;
+                                else if ((*glob == '%') && (mn->modes & MODE_HALFOP))
+                                    match = 1;
+                                else if ((*glob == '+') && (mn->modes & MODE_VOICE))
+                                    match = 1;
+                             }
                         }
+
                         if (match == 1)
                             banned = 1;
                     }
