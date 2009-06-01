@@ -183,7 +183,7 @@ int mmatch(const char *glob, const char *newglob);
 int match_ircglob(const char *text, const char *glob);
 #define MATCH_USENICK 1
 #define MATCH_VISIBLE 2
-int user_matches_glob(struct userNode *user, const char *glob, int flags);
+int user_matches_glob(struct userNode *user, const char *glob, int flags, int shared);
 int is_overmask(char *mask);
 
 

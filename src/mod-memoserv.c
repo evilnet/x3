@@ -364,7 +364,7 @@ memoserv_can_send(struct userNode *bot, struct userNode *user, struct memo_accou
 
     if (acct->handle->ignores->used) {
         for (i=0; i < acct->handle->ignores->used; i++) {
-            if (user_matches_glob(user, acct->handle->ignores->list[i], MATCH_USENICK)) {
+            if (user_matches_glob(user, acct->handle->ignores->list[i], MATCH_USENICK, 0)) {
                 match = 1;
                 break;
             }

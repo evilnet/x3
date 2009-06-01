@@ -602,13 +602,15 @@ int is_overmask(char *mask)
 }
 
 int
-user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
+user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int shared)
 {
     char *tmpglob, *glob, *marker, *echannel, *emodes;
     char exttype = 0;
     int extreverse = 0, is_extended = 0, match = 0, banned = 0;
     unsigned int count, n;
     struct modeNode *mn;
+    struct chanNode *channel;
+    struct banNode *ban;
 
     /* Make a writable copy of the glob */
     glob = alloca(strlen(orig_glob)+1);
@@ -727,7 +729,20 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
                     return 1;
                 else
                     return match_ircglob(user->hostname, glob);
+            case 'j':
+                 if (shared == 0) {
+                     if ((channel = GetChannel(glob))) {
+                         for (n = 0; n < channel->banlist.used; n++) {
+                             ban = channel->banlist.list[n];
+                             if (user_matches_glob(user, ban->ban, flags, 1))
+                                 return 1;
+                         }
+                     }
+                 }
+                 return match_ircglob(user->hostname, glob);
             case 'n': /* this is handled ircd side */
+                return match_ircglob(user->hostname, glob);
+            case 'q': /* this is handled ircd side */
                 return match_ircglob(user->hostname, glob);
             case 't': /* this is handled ircd side */
                 return match_ircglob(user->hostname, glob);

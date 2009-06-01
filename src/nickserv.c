@@ -812,7 +812,7 @@ valid_user_for(struct userNode *user, struct handle_info *hi)
         return 1;
     /* If any hostmask matches, allow it. */
     for (ii=0; ii<hi->masks->used; ii++)
-        if (user_matches_glob(user, hi->masks->list[ii], 0))
+        if (user_matches_glob(user, hi->masks->list[ii], 0, 0))
             return 1;
     /* If they are allowauthed to this account, allow it (removing the aa). */
     if (dict_find(nickserv_allow_auth_dict, user->nick, NULL) == hi) {

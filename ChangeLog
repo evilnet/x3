@@ -3,6 +3,21 @@ X3 ChangeLog
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: Updated user_matches_glob.
+
+	* src/common.h: Updated user_matches_glob.
+
+	* src/mod-memoserv.c: Updated user_matches_glob.
+
+	* src/nickserv.c: Updated user_matches_glob.
+
+	* src/opserv.c Updated user_matches_glob.
+
+	* src/tools.c: Added support for shared channel bans (j). As well as
+	quiet bans. Although these are handled ircd side.
+
+2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/tools.c: Extended channel ban support. As well as text and
 	nick change bans, however these 2 are just ignored as they are
 	handled ircd side.

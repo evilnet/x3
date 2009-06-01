@@ -3790,7 +3790,7 @@ bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban
         if(IsService(mn->user))
             continue;
 
-        if(!user_matches_glob(mn->user, ban, MATCH_USENICK | MATCH_VISIBLE))
+        if(!user_matches_glob(mn->user, ban, MATCH_USENICK | MATCH_VISIBLE, 0))
             continue;
 
         if(protect_user(mn->user, user, channel->channel_info, false))
@@ -4193,7 +4193,7 @@ find_matching_bans(struct banList *bans, struct userNode *actee, const char *mas
         for(ii = count = 0; ii < bans->used; ++ii)
         {
             match[ii] = user_matches_glob(actee, bans->list[ii]->ban,
-                                          MATCH_USENICK | MATCH_VISIBLE);
+                                          MATCH_USENICK | MATCH_VISIBLE, 0);
             if(match[ii])
                 count++;
         }
@@ -4340,7 +4340,7 @@ unban_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 	while(ban)
 	{
 	    if(actee)
-               for( ; ban && !user_matches_glob(actee, ban->mask, MATCH_USENICK | MATCH_VISIBLE);
+               for( ; ban && !user_matches_glob(actee, ban->mask, MATCH_USENICK | MATCH_VISIBLE, 0);
 		     ban = ban->next);
 	    else
 		for( ; ban && !match_ircglobs(mask, ban->mask);
@@ -4998,7 +4998,7 @@ static CHANSERV_FUNC(cmd_lamers)
     {
         if(search_u)
         {
-            if(!user_matches_glob(search_u, ban->mask, MATCH_USENICK | MATCH_VISIBLE))
+            if(!user_matches_glob(search_u, ban->mask, MATCH_USENICK | MATCH_VISIBLE, 0))
                 continue;
         }
 	else if(search)
@@ -5302,7 +5302,7 @@ static CHANSERV_FUNC(cmd_invite)
     if (invite->handle_info && invite->handle_info->ignores->used && (argc > 1)) {
         unsigned int i;
         for (i=0; i < invite->handle_info->ignores->used; i++) {
-            if (user_matches_glob(user, invite->handle_info->ignores->list[i], MATCH_USENICK)) {
+            if (user_matches_glob(user, invite->handle_info->ignores->list[i], MATCH_USENICK, 0)) {
               reply("CSMSG_CANNOT_INVITE", argv[1], channel->name);
               return 0;
             }
@@ -8251,7 +8251,7 @@ trace_check_bans(struct userNode *user, struct chanNode *chan)
     if (chan->channel_info) {
         for(bData = chan->channel_info->bans; bData; bData = bData->next) {
 
-            if(!user_matches_glob(user, bData->mask, MATCH_USENICK))
+            if(!user_matches_glob(user, bData->mask, MATCH_USENICK, 0))
                 continue;
 
             if(bData)
@@ -8283,7 +8283,7 @@ check_bans(struct userNode *user, const char *channel)
     {
         /* Not joining through a ban. */
         for(bData = cData->bans;
-            bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
+            bData && !user_matches_glob(user, bData->mask, MATCH_USENICK, 0);
             bData = bData->next);
 
         if(bData)
@@ -8325,7 +8325,7 @@ channel_user_is_exempt(struct userNode *user, struct chanNode *channel)
    unsigned int ii;
    for(ii = 0; ii < channel->exemptlist.used; ii++)
    {
-       if(user_matches_glob(user, channel->exemptlist.list[ii]->exempt, MATCH_USENICK))
+       if(user_matches_glob(user, channel->exemptlist.list[ii]->exempt, MATCH_USENICK, 0))
            return true;
    }
    return false;
@@ -8370,7 +8370,7 @@ handle_join(struct modeNode *mNode)
         unsigned int ii;
         for(ii = 0; ii < channel->banlist.used; ii++)
         {
-            if(user_matches_glob(user, channel->banlist.list[ii]->ban, MATCH_USENICK))
+            if(user_matches_glob(user, channel->banlist.list[ii]->ban, MATCH_USENICK, 0))
             {
                 /* Riding a netburst.  Naughty. */
                 KickChannelUser(user, channel, chanserv, "User from far side of netsplit should have been banned - bye.");
@@ -8401,7 +8401,7 @@ handle_join(struct modeNode *mNode)
         {
             /* Not joining through a ban. */
             for(bData = cData->bans;
-                bData && !user_matches_glob(user, bData->mask, MATCH_USENICK);
+                bData && !user_matches_glob(user, bData->mask, MATCH_USENICK, 0);
                 bData = bData->next);
 
             if(bData)
@@ -8634,14 +8634,14 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
         if(protect_user(user, chanserv, chan->channel_info, true))
             continue;
         for(jj = 0; jj < chan->banlist.used; ++jj)
-            if(user_matches_glob(user, chan->banlist.list[jj]->ban, MATCH_USENICK))
+            if(user_matches_glob(user, chan->banlist.list[jj]->ban, MATCH_USENICK, 0))
                 break;
         if(jj < chan->banlist.used)
             continue;
         for(ban = chan->channel_info->bans; ban; ban = ban->next)
         {
             char kick_reason[MAXLEN];
-            if(!user_matches_glob(user, ban->mask,MATCH_USENICK | MATCH_VISIBLE))
+            if(!user_matches_glob(user, ban->mask,MATCH_USENICK | MATCH_VISIBLE, 0))
                 continue;
             change.args[0].mode = MODE_BAN;
             change.args[0].u.hostmask = ban->mask;
@@ -8883,7 +8883,7 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
             continue;
         /* Look for a matching ban already on the channel. */
         for(jj = 0; jj < channel->banlist.used; ++jj)
-            if(user_matches_glob(user, channel->banlist.list[jj]->ban, MATCH_USENICK))
+            if(user_matches_glob(user, channel->banlist.list[jj]->ban, MATCH_USENICK, 0))
                 break;
         /* Need not act if we found one. */
         if(jj < channel->banlist.used)
@@ -8894,7 +8894,7 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
         /* Look for a matching ban in this channel. */
         for(bData = channel->channel_info->bans; bData; bData = bData->next)
         {
-            if(!user_matches_glob(user, bData->mask, MATCH_USENICK | MATCH_VISIBLE))
+            if(!user_matches_glob(user, bData->mask, MATCH_USENICK | MATCH_VISIBLE, 0))
                 continue;
             change.args[0].u.hostmask = bData->mask;
             mod_chanmode_announce(chanserv, channel, &change);
