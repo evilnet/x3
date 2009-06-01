@@ -731,6 +731,8 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
                     return match_ircglob(user->hostname, glob);
             case 'j':
                  if (shared == 0) {
+                     if (*glob != '#')
+                         return -1;
                      if ((channel = GetChannel(glob))) {
                          for (n = 0; n < channel->banlist.used; n++) {
                              ban = channel->banlist.list[n];

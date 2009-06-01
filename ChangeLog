@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/tools.c: Return -1 with invalid extended bans.
+
+2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/chanserv.c: Tweak the ban functions to allow invalid bans to
 	be picked up.
 
