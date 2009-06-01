@@ -604,9 +604,11 @@ int is_overmask(char *mask)
 int
 user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
 {
-    char *tmpglob, *glob, *marker;
+    char *tmpglob, *glob, *marker, *echannel, *emodes;
     char exttype = 0;
-    int extreverse = 0, is_extended = 0;
+    int extreverse = 0, is_extended = 0, match = 0, banned = 0;
+    unsigned int count, n;
+    struct modeNode *mn;
 
     /* Make a writable copy of the glob */
     glob = alloca(strlen(orig_glob)+1);
@@ -650,6 +652,84 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
                     if (extreverse)
                         return 1;
                 }
+                return match_ircglob(user->hostname, glob);
+            case 'c':
+                if (!strstr(glob, "#"))
+                    return 0;
+
+                tmpglob = strdup(glob);
+                if (*glob != '#') {
+                    echannel = strstr(glob, "#");
+                    emodes = strtok(tmpglob, "#");
+                } else {
+                    echannel = strdup(glob);
+                    emodes = "";
+                }
+
+                if (extreverse) {
+                    for (n=count=0; n<user->channels.used; n++) {
+                        mn = user->channels.list[n];
+                        match = 0;
+
+                        if (0 == strcasecmp(echannel, mn->channel->name)) {
+                            if (strlen(emodes) > 0) {
+                                if (mn->modes & MODE_CHANOP) {
+                                    if (strstr(emodes, "@"))
+                                        match = 1;
+                                }
+                                if (mn->modes & MODE_HALFOP) {
+                                    if (strstr(emodes, "%"))
+                                        match = 1;
+                                }
+                                if (mn->modes & MODE_VOICE) {
+                                    if (strstr(emodes, "+"))
+                                        match = 1;
+                                }
+                            } else
+                                match = 1;
+                        }
+
+                        if (match == 0)
+                            banned = 1;
+                        else {
+                            banned = 0;
+                            break;
+                        }
+                    }
+                } else {
+                    for (n=count=0; n<user->channels.used; n++) {
+                        mn = user->channels.list[n];
+                        match = 0;
+
+                        if (0 == strcasecmp(echannel, mn->channel->name)) {
+                            if (strlen(emodes) > 0) {
+                                if (mn->modes & MODE_CHANOP) {
+                                    if (strstr(emodes, "@"))
+                                        match = 1;
+                                }
+                                if (mn->modes & MODE_HALFOP) {
+                                    if (strstr(emodes, "%"))
+                                        match = 1;
+                                }
+                                if (mn->modes & MODE_VOICE) {
+                                    if (strstr(emodes, "+"))
+                                        match = 1;
+                                }
+                            } else
+                                match = 1;
+                        }
+                        if (match == 1)
+                            banned = 1;
+                    }
+                }
+
+                if (banned)
+                    return 1;
+                else
+                    return match_ircglob(user->hostname, glob);
+            case 'n': /* this is handled ircd side */
+                return match_ircglob(user->hostname, glob);
+            case 't': /* this is handled ircd side */
                 return match_ircglob(user->hostname, glob);
             default:
                 return 0;

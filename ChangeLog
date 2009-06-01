@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/tools.c: Extended channel ban support. As well as text and
+	nick change bans, however these 2 are just ignored as they are
+	handled ircd side.
+
+2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/tools.c: Extended account ban support.
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
