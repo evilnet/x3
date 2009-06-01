@@ -611,6 +611,9 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
     strcpy(glob, orig_glob);
     /* Check the nick, if it's present */
     if (flags & MATCH_USENICK) {
+        if (*glob == '~') /* small hack for extended bans */
+            return match_ircglob(user->hostname, glob);
+
         if (!(marker = strchr(glob, '!'))) {
             log_module(MAIN_LOG, LOG_ERROR, "user_matches_glob(\"%s\", \"%s\", %d) called, and glob doesn't include a '!'", user->nick, orig_glob, flags);
             return 0;
@@ -667,6 +670,27 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags)
 int
 is_ircmask(const char *text)
 {
+    char *tmptext;
+
+    if (*text == '~') {
+        tmptext = alloca(strlen(text)+1);
+        tmptext = strdup(text);
+
+	tmptext++; /* get rid of the ~ */
+
+        if (*tmptext == '!')
+            tmptext++; /* get rid of the ! if it exists */
+
+        tmptext++; /* get rid of the ext ban type */
+
+        if (*tmptext == ':') {
+            tmptext++; /* get rid of the : */
+            while (*tmptext && !isspace((char)*tmptext))
+                tmptext++;  /* get rid of the rest */
+            return !*tmptext;
+        }
+    }
+
     while (*text && (isalnum((char)*text) || strchr("-_[]|\\`^{}?*", *text)))
         text++;
     if (*text++ != '!')

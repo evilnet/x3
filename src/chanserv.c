@@ -3933,7 +3933,8 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 
     /* Truncate the ban in place if necessary; we must ensure
        that 'ban' is a valid ban mask before sanitizing it. */
-    sanitize_ircmask(ban);
+    if (*ban != '~')
+        sanitize_ircmask(ban);
 
     if(action & ACTION_ADD_LAMER)
     {

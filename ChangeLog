@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/chanserv.c: Basic extended ban support.
+
+	* src/tools.c: Basic extended ban support.
+
+2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/chanserv.c: Fixed up SF bug #2799155.
 
 	* src/modcmd.c: Fixed up an issue where missing args was coming up
