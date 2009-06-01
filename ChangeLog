@@ -1,6 +1,13 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Fixed up SF bug #2799155.
+
+	* src/modcmd.c: Fixed up an issue where missing args was coming up
+	when it shouldnt.
+
 2009-05-31  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* GPL 3 and svn propset updates.

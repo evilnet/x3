@@ -3153,7 +3153,7 @@ static CHANSERV_FUNC(cmd_adduser)
     if (!real_actor || real_actor->access <= access_level)
         override = CMD_LOG_OVERRIDE;
 
-    if((actee = GetChannelAccess(channel->channel_info, handle)))
+    if(!(handle = modcmd_get_handle_info(user, argv[1])))
     {
         /* 'kevin must first authenticate with AuthServ'. is sent to user */
         struct userNode *unode;
@@ -3198,7 +3198,7 @@ static CHANSERV_FUNC(cmd_adduser)
     if (duration > 0)
         timeq_add(accessexpiry, chanserv_expire_tempuser, actee);
 
-    reply("CSMSG_ADDED_USER", handle->handle, channel->name, user_level_name_from_level(access_level), access);
+    reply("CSMSG_ADDED_USER", handle->handle, channel->name, user_level_name_from_level(access_level), access_level);
     return 1 | override;
 }
 
