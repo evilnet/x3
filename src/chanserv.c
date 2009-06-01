@@ -261,6 +261,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_NO_MATCHING_USERS", "No one in $b%s$b has a hostmask matching $b%s$b." },
     { "CSMSG_BAN_NOT_FOUND", "Sorry, no ban or LAMER found: $b%s$b." },
     { "CSMSG_BANLIST_FULL", "The $b%s$b channel ban list is $bfull$b." },
+    { "CSMSG_BAD_BAN", "The given ban $b%s$b is invalid." },
 
     { "CSMSG_INVALID_TRIM", "$b%s$b isn't a valid trim target." },
 
@@ -3780,6 +3781,7 @@ static int
 bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban, unsigned int *victimCount, struct modeNode **victims)
 {
     unsigned int ii;
+    int b = 0;
 
     if(victimCount)
         *victimCount = 0;
@@ -3790,7 +3792,10 @@ bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban
         if(IsService(mn->user))
             continue;
 
-        if(!user_matches_glob(mn->user, ban, MATCH_USENICK | MATCH_VISIBLE, 0))
+        b = user_matches_glob(mn->user, ban, MATCH_USENICK | MATCH_VISIBLE, 0);
+        if (b == -1)
+            return -1;
+        else if (b == 0)
             continue;
 
         if(protect_user(mn->user, user, channel->channel_info, false))
@@ -3808,6 +3813,7 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
     struct userNode *victim;
     struct modeNode **victims;
     unsigned int offset, n, victimCount, duration = 0;
+    int b = 0;
     char *reason = "Bye.", *ban, *name;
     char interval[INTERVALLEN];
 
@@ -3877,9 +3883,14 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
         snprintf(banmask, sizeof(banmask), "*!*@%s.*", hi->handle);
         victims = alloca(sizeof(victims[0]) * channel->members.used);
 
-        if(bad_channel_ban(channel, user, banmask, &victimCount, victims))
+        b = bad_channel_ban(channel, user, banmask, &victimCount, victims);
+        if(b == 1)
         {
             reply("CSMSG_MASK_PROTECTED", banmask);
+            return 0;
+        }else if(b == -1)
+        {
+            reply("CSMSG_BAD_BAN", banmask);
             return 0;
         }
 
@@ -3902,10 +3913,13 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
 
 	victims = alloca(sizeof(victims[0]) * channel->members.used);
 
-        if(bad_channel_ban(channel, user, argv[1], &victimCount, victims))
-        {
-	    if(cmd)
-	        reply("CSMSG_MASK_PROTECTED", argv[1]);
+        b = bad_channel_ban(channel, user, argv[1], &victimCount, victims);
+        if(cmd && (b == 1)) {
+            reply("CSMSG_MASK_PROTECTED", argv[1]);
+	    return 0;
+	}
+        else if(cmd && (b == -1)) {
+            reply("CSMSG_BAD_BAN", argv[1]);
 	    return 0;
 	}
 /* If i want to ban *.nl and theres 5 of them, what is it to the bot?!? 

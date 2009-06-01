@@ -657,7 +657,7 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
                 return match_ircglob(user->hostname, glob);
             case 'c':
                 if (!strstr(glob, "#"))
-                    return 0;
+                    return -1;
 
                 tmpglob = strdup(glob);
                 if (*glob != '#') {
@@ -747,7 +747,7 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
             case 't': /* this is handled ircd side */
                 return match_ircglob(user->hostname, glob);
             default:
-                return 0;
+                return -1;
         }
     }
 
