@@ -1676,7 +1676,8 @@ static struct {
   P(FORCE_LOCAL_OPMODE), P(REMOTEREHASH), P(CHECK), P(SEE_SECRET_CHAN),
   P(SHUN),           P(LOCAL_SHUN),     P(WIDE_SHUN),     P(ZLINE),
   P(LOCAL_ZLINE),    P(WIDE_ZLINE),     P(LIST_CHAN),     P(WHOIS_NOTICE),
-  P(HIDE_IDLE),      P(XTRAOP),         P(HIDE_CHANNELS),
+  P(HIDE_IDLE),      P(XTRAOP),         P(HIDE_CHANNELS), P(DISPLAY_MODE),
+  P(FREEFORM),       P(REMOVE),         P(SPAMFILTER),
 #undef P
   { 0, 0 }
 };

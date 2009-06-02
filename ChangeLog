@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-06-02  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/hash.h: Updated client PRIVS.
+
+	* src/proto-p10.c: Updated client PRIVS.
+
 2009-06-01  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/tools.c: Re done the extended channel ban code so that it works

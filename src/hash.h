@@ -151,6 +151,7 @@ enum Priv {
   PRIV_SEE_CHAN,        /**< oper can see in secret chans */
   PRIV_PROPAGATE,       /**< propagate oper status */
   PRIV_DISPLAY,         /**< "Is an oper" displayed */
+  PRIV_DISPLAY_MODE,    /**< oper can set +H hide oper */
   PRIV_SEE_OPERS,       /**< display hidden opers */
   PRIV_WIDE_GLINE,      /**< oper can set wider G-lines */
   PRIV_WIDE_ZLINE,      /**< oper can set wider Z-Lines */
@@ -164,6 +165,11 @@ enum Priv {
   PRIV_HIDE_IDLE,       /**< oper can set/unset user mode +I */
   PRIV_XTRAOP,          /**< oper can set/unset user mode +X */
   PRIV_HIDE_CHANNELS,   /**< oper can set/unset user mode +n */
+  PRIV_FREEFORM,        /**< oper can set any host on themseves using set host
+                              as long as its a valid host */
+  PRIV_REMOVE,          /**< oper can force remove deactivated glines,
+                             shuns and zlines. */
+  PRIV_SPAMFILTER,      /**< oper can set spamfilters via SPAMFILTER */
   PRIV_LAST_PRIV        /**< number of privileges */
 };
 
