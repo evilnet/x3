@@ -1320,7 +1320,6 @@ static CMD_FUNC(cmd_whois)
         }
         if (buf[0] != '\0')
             irc_numeric(from, RPL_WHOISCHANNELS, "%s :%s", who->nick, buf);
-        return 1;
     }
 
     if (his_servername && his_servercomment && !IsOper(from) && from != who)
