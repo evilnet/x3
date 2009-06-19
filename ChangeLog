@@ -1,6 +1,36 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-06-20  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Removed lastmod from gline and shun. (from the
+	srvx merge)
+
+	* src/gline.c: Removed lastmod from gline and shun. (from the srvx 
+	merge)
+
+	* src/gline.h: Removed lastmod from gline and shun. (from the srvx
+	merge)
+
+	* src/mod-blacklist.c: Removed lastmod from gline and shun. (from
+	the srvx merge)
+
+	* src/mod-sockcheck.c: Removed lastmod from gline and shun. (from
+	the srvx merge)
+
+	* src/opserv.c: Removed lastmod from gline and shun. (from the srvx 
+	erge)
+
+	* src/proto-p10.c: Removed lastmod from gline and shun. (from the srvx
+	merge)
+
+	* src/shun.c: Removed lastmod from gline and shun. (from the srvx merge)
+
+	* src/shun.h: Removed lastmod from gline and shun. (from the srvx merge)
+
+	* src/spamserv.c: Removed lastmod from gline and shun. (from the srvx
+	merge)
+
 2009-06-05  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/proto-p10.c: Bug fix for SF Bug #2801434.

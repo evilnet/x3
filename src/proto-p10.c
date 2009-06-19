@@ -847,23 +847,15 @@ irc_introduce(const char *passwd)
 void
 irc_gline(struct server *srv, struct gline *gline, int silent)
 {
-    if (gline->lastmod)
-        putsock("%s " P10_GLINE " %s +%s " FMT_TIME_T " " FMT_TIME_T " :%s<%s> %s",
-                self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, gline->lastmod, silent ? "AUTO " : "", gline->issuer, gline->reason);
-    else
-        putsock("%s " P10_GLINE " %s +%s " FMT_TIME_T " :%s<%s> %s",
-                self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, silent ? "AUTO " : "", gline->issuer, gline->reason);
+    putsock("%s " P10_GLINE " %s +%s " FMT_TIME_T " " FMT_TIME_T " :%s<%s> %s",
+            self->numeric, (srv ? srv->numeric : "*"), gline->target, gline->expires-now, now, silent ? "AUTO " : "", gline->issuer, gline->reason);
 }
 
 void
 irc_shun(struct server *srv, struct shun *shun)
 {
-    if (shun->lastmod)
-        putsock("%s " P10_SHUN " %s +%s %ld %ld :%s",
-                self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->lastmod, shun->reason);
-    else
-        putsock("%s " P10_SHUN " %s +%s %ld :%s",
-                self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->reason);
+    putsock("%s " P10_SHUN " %s +%s " FMT_TIME_T " :<%s> %s",
+            self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->issuer, shun->reason);
 }
 
 void
@@ -2178,37 +2170,28 @@ static CMD_FUNC(cmd_num_topic)
 
 static CMD_FUNC(cmd_num_gline)
 {
-    time_t lastmod;
     if (argc < 7) {
         if (argc < 6)
             return 0;
-        else {
-            lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
-            gline_add(origin, argv[3], atoi(argv[4])-now, argv[argc - 1], now, lastmod, 0, 0);
-        }
+        else
+            gline_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0, 0);
     } else {
-        if (!strcmp(argv[5], "+")) {
-          lastmod = (argc > 6) ? strtoul(argv[5], NULL, 0) : 0;
-          gline_add(origin, argv[3], atoi(argv[4])-now, argv[argc - 1], now, now, 0, 0);
-        }
+        if (!strcmp(argv[5], "+"))
+          gline_add(origin, argv[3], atoi(argv[4])-now, argv[6], now, 0, 0);
     }
     return 1;
 }
 
 static CMD_FUNC(cmd_num_shun)
 {
-    time_t lastmod;
-
     if (argc < 7) {
         if (argc < 6)
             return 0;
         else
-            lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
-            shun_add(origin, argv[3], atoi(argv[4])-now, argv[argc - 1], now, now, 0);
+            shun_add(origin, argv[3], atoi(argv[4])-now, argv[5], now, 0);
     } else {
         if (!strcmp(argv[5], "+"))
-            lastmod = (argc > 6) ? strtoul(argv[5], NULL, 0) : 0;
-            shun_add(origin, argv[3], atoi(argv[4])-now, argv[argc - 1], now, now, 0);
+            shun_add(origin, argv[3], atoi(argv[4])-now, argv[6], now, 0);
     }
     return 1;
 }
@@ -2432,15 +2415,12 @@ static CMD_FUNC(cmd_away)
 
 static CMD_FUNC(cmd_gline)
 {
-    time_t lastmod;
-
     if (argc < 3)
         return 0;
     if (argv[2][0] == '+') {
         if (argc < 5)
             return 0;
-        lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
-        gline_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, lastmod, 0, 0);
+        gline_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, 0, 0);
         return 1;
     } else if (argv[2][0] == '-') {
         gline_remove(argv[2]+1, 0);
@@ -2459,7 +2439,7 @@ static CMD_FUNC(cmd_sgline)
     if (!(sender = GetServerH(origin)))
         return 0;
 
-    gline_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, now, 1, 0);
+    gline_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 1, 0);
     return 1;
 }
 
@@ -2473,21 +2453,18 @@ static CMD_FUNC(cmd_sshun)
     if (!(sender = GetServerH(origin)))
         return 0;
 
-    shun_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, now, 1);
+    shun_add(origin, argv[1], strtoul(argv[2], NULL, 0), argv[argc-1], now, 1);
     return 1;
 }
 
 static CMD_FUNC(cmd_shun)
 {
-    time_t lastmod;
-
     if (argc < 3)
         return 0;
     if (argv[2][0] == '+') {
         if (argc < 5)
             return 0;
-        lastmod = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
-        shun_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, now, 0);
+        shun_add(origin, argv[2]+1, strtoul(argv[3], NULL, 0), argv[argc-1], now, 0);
         return 1;
     } else if (argv[2][0] == '-') {
         shun_remove(argv[2]+1, 0);

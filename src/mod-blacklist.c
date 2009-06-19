@@ -152,7 +152,7 @@ dnsbl_hit(struct sar_request *req, struct dns_header *hdr, struct dns_rr *rr, un
             target[0] = '*';
             target[1] = '@';
             strcpy(target + 2, data->client_ip);
-            gline_add(self->name, target, zone->duration, reason, now, now, 1, 0);
+            gline_add(self->name, target, zone->duration, reason, now, 1, 0);
         }
     }
     free(txt);
@@ -190,7 +190,7 @@ blacklist_check_user(struct userNode *user)
         target[0] = '*';
         target[1] = '@';
         strcpy(target + 2, host);
-        gline_add(self->name, target, conf.gline_duration, reason, now, now, 1, 0);
+        gline_add(self->name, target, conf.gline_duration, reason, now, 1, 0);
     }
 
     /* Figure out the base part of a DNS blacklist hostname. */
