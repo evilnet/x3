@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-06-27  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/modcmd.c: Fix for bug #2813183
+
 2009-06-20  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/chanserv.c: Removed lastmod from gline and shun. (from the

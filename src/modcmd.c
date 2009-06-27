@@ -650,8 +650,6 @@ svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_
                     log_module(MAIN_LOG, LOG_ERROR, "Alias expansion: I do not know how to handle %s (%s.%s arg %d).", arg, cmd->parent->bot->nick, cmd->name, ii);
                     return 0;
             }
-            log_module(MAIN_LOG, LOG_ERROR, "Alias expansion: I do not know how to handle %s (%s.%s arg %d).", arg, cmd->parent->bot->nick, cmd->name, ii);
-            return 0;
         }
     }
     return new_argc;
