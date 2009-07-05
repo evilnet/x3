@@ -7474,6 +7474,7 @@ static CHANSERV_FUNC(cmd_unsuspend)
 
     REQUIRE_PARAMS(2);
     if(!(hi = modcmd_get_handle_info(user, argv[1]))) return 0;
+    actor = GetChannelUser(channel->channel_info, user->handle_info);
     real_actor = GetChannelAccess(channel->channel_info, user->handle_info);
     if(!(target = GetTrueChannelAccess(channel->channel_info, hi)))
     {

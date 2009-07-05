@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-07-05  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Fix for crash on ChanServ.UNSUSPEND
+
 2009-06-27  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/modcmd.c: Fix for bug #2813183
