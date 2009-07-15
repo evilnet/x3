@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-07-15  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: Crash fix with the spin command for hosts with
+	a long length.
+
 2009-07-05  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Fix for crash on ChanServ.UNSUSPEND

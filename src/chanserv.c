@@ -7739,7 +7739,7 @@ static CHANSERV_FUNC(cmd_spin)
     }
     /* random time gline */
     else if (!strcasecmp(wheel, "gline")) {
-         char target[IRC_NTOP_MAX_SIZE + 3];
+         char target[HOSTLEN + 3];
          int wtime = 120 + rand() % 600;
 
          strcpy(target, "*@");
@@ -7751,7 +7751,7 @@ static CHANSERV_FUNC(cmd_spin)
     }
     /* random shun */
     else if (!strcasecmp(wheel, "shun")) {
-         char target[IRC_NTOP_MAX_SIZE + 3];
+         char target[HOSTLEN + 3];
          int wtime = 120 + rand() % 600;
 
          strcpy(target, "*@");
@@ -7850,7 +7850,7 @@ static CHANSERV_FUNC(cmd_spin)
     /* service ignore */
     else if (!strcasecmp(wheel, "svsignore")) {
          int gagged, ignoretime = 0;
-         char target[IRC_NTOP_MAX_SIZE + 13];
+         char target[HOSTLEN + 13];
 
          if(IsOper(user)) {
             /* we cant gag opers, so just verbally abuse them */
@@ -7869,7 +7869,7 @@ static CHANSERV_FUNC(cmd_spin)
     else if (!strcasecmp(wheel, "kickbanall")) {
          unsigned int count, n;
          struct modeNode *mn;
-         //char ban[IRC_NTOP_MAX_SIZE + 1];
+         //char ban[HOSTLEN + 1];
 
          send_target_message(1, channel->name, chanserv, "CSMSG_SPIN_KICKBANALL");
 
