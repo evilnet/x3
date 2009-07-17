@@ -2123,6 +2123,7 @@ static NICKSERV_FUNC(cmd_auth)
     int pw_arg, used, maxlogins;
     struct handle_info *hi;
     const char *passwd;
+    const char *handle;
     struct userNode *other;
 #ifdef WITH_LDAP
     int ldap_result = LDAP_OTHER;
@@ -2141,44 +2142,13 @@ static NICKSERV_FUNC(cmd_auth)
         return 0;
     }
     if (argc == 3) {
-#ifdef WITH_LDAP
-        if(strchr(argv[1], '<') || strchr(argv[1], '>')) {
-            reply("NSMSG_NO_ANGLEBRACKETS");
-            return 0;
-        }
-        if (!is_valid_handle(argv[1])) {
-                reply("NSMSG_BAD_HANDLE", argv[1]);
-                return 0;
-        }
-
-        if(nickserv_conf.ldap_enable) {
-            ldap_result = ldap_check_auth(argv[1], argv[2]);
-            /* Get the users email address and update it */
-            if(ldap_result == LDAP_SUCCESS) {
-               int rc;
-               if((rc = ldap_get_user_info(argv[1], &email) != LDAP_SUCCESS))
-               {
-                    if(nickserv_conf.email_required) {
-                        reply("NSMSG_LDAP_FAIL_GET_EMAIL", ldap_err2string(rc));
-                        return 0;
-                    }
-               }
-            }
-            else if(ldap_result != LDAP_INVALID_CREDENTIALS) {
-               reply("NSMSG_LDAP_FAIL", ldap_err2string(ldap_result));
-               return 0;
-            }
-        }
-           
-#endif
+        passwd = argv[2];
+        handle = argv[1];
         hi = dict_find(nickserv_handle_dict, argv[1], NULL);
-        pw_arg = 2;
-    } else if (argc == 2 && !nickserv_conf.ldap_enable) {
+    } else if (argc == 2) {
+        passwd = argv[1];
         if (nickserv_conf.disable_nicks) {
-            if (!(hi = get_handle_info(user->nick))) {
-                reply("NSMSG_HANDLE_NOT_FOUND");
-                return 0;
-            }
+            hi = get_handle_info(user->nick);
         } else {
             /* try to look up their handle from their nick */
             /* TODO: handle ldap auth on nickserv style networks, too */
@@ -2190,12 +2160,47 @@ static NICKSERV_FUNC(cmd_auth)
             }
             hi = ni->owner;
         }
-        pw_arg = 1;
+        if (hi) {
+            handle = hi->handle;
+        } else {
+            handle = user->nick;
+        }
     } else {
         reply("MSG_MISSING_PARAMS", argv[0]);
         svccmd_send_help_brief(user, nickserv, cmd);
         return 0;
     }
+    
+#ifdef WITH_LDAP
+    if(strchr(argv[1], '<') || strchr(handle, '>')) {
+        reply("NSMSG_NO_ANGLEBRACKETS");
+        return 0;
+    }
+    if (!is_valid_handle(argv[1])) {
+        reply("NSMSG_BAD_HANDLE", handle);
+        return 0;
+    }
+
+    if(nickserv_conf.ldap_enable) {
+        ldap_result = ldap_check_auth(handle, passwd);
+        /* Get the users email address and update it */
+        if(ldap_result == LDAP_SUCCESS) {
+           int rc;
+           if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
+           {
+                if(nickserv_conf.email_required) {
+                    reply("NSMSG_LDAP_FAIL_GET_EMAIL", ldap_err2string(rc));
+                    return 0;
+                }
+           }
+        }
+        else if(ldap_result != LDAP_INVALID_CREDENTIALS) {
+           reply("NSMSG_LDAP_FAIL", ldap_err2string(ldap_result));
+           return 0;
+        }
+    }
+#endif
+
     if (!hi) {
 #ifdef WITH_LDAP
         if(nickserv_conf.ldap_enable && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
@@ -2233,7 +2238,6 @@ static NICKSERV_FUNC(cmd_auth)
 #endif
     }
     /* Responses from here on look up the language used by the handle they asked about. */
-    passwd = argv[pw_arg];
     if (!valid_user_for(user, hi)) {
         if (hi->email_addr && nickserv_conf.email_enabled)
             send_message_type(4, user, cmd->parent->bot,
