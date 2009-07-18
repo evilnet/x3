@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-07-18  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fix for NickServ AUTH bug with only password
+	being supplied
+
 2009-07-16  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Added support for NickServ with LDAP enabled

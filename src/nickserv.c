@@ -2176,7 +2176,7 @@ static NICKSERV_FUNC(cmd_auth)
         reply("NSMSG_NO_ANGLEBRACKETS");
         return 0;
     }
-    if (!is_valid_handle(argv[1])) {
+    if (!is_valid_handle(handle)) {
         reply("NSMSG_BAD_HANDLE", handle);
         return 0;
     }
