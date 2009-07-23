@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-07-23  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.help: Minor spelling correction
+
 2009-07-18  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fix for NickServ AUTH bug with only password
