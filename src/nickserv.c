@@ -2144,9 +2144,11 @@ static NICKSERV_FUNC(cmd_auth)
     if (argc == 3) {
         passwd = argv[2];
         handle = argv[1];
+        pw_arg = 2;
         hi = dict_find(nickserv_handle_dict, argv[1], NULL);
     } else if (argc == 2) {
         passwd = argv[1];
+        pw_arg = 1;
         if (nickserv_conf.disable_nicks) {
             hi = get_handle_info(user->nick);
         } else {
