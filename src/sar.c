@@ -1035,7 +1035,7 @@ sar_services_load_file(const char *etc_services)
         /* Set up canonical name-indexed service entry. */
         canon = sar_service_byname(name, 1);
         if (canon->protos[proto].valid) {
-            / *log_module(sar_log, LOG_ERROR, "Service %s/%s listed twice.", name, port); who cares? */
+            /* log_module(sar_log, LOG_ERROR, "Service %s/%s listed twice.", name, port); who cares? */
             continue;
         }
         canon->protos[proto].canon = NULL;
