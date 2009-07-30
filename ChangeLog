@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-07-30  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/sar.c: Commented out an warning message.
+
 2009-07-29  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fix for minor auth bug
