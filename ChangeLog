@@ -19,7 +19,7 @@ X3 ChangeLog
 	* src/sar.c (ipv4_pton): Set the sockaddr length field when it exists.
 	(ipv6_pton): Likewise.
 
-2009-07-11  Matthew Beeching  <jobe@mdbnet.co.uk>
+2009-08-11  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-common.c: Fix to allow trigger (in channel) commands
 	to work in unregistered channels
