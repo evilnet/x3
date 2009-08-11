@@ -76,11 +76,11 @@ AC_CHECK_HEADERS(GeoIP.h GeoIPCity.h arpa/inet.h fcntl.h math.h tgmath.h malloc.
 
 dnl portability stuff, hurray! -Jedi
 AC_CHECK_MEMBER([struct sockaddr.sa_len],
-                [AC_DEFINE([HAVE_SOCKADDR_SA_LEN],,[Define if struct sockaddr has sa_len field])],
+                [AC_DEFINE([HAVE_SOCKADDR_SA_LEN],[1],[Define if struct sockaddr has sa_len field])],
                 [],[#include <sys/types.h>
 #include <sys/socket.h>])
 AC_CHECK_MEMBER([struct addrinfo.ai_flags],
-                [AC_DEFINE([HAVE_STRUCT_ADDRINFO],,[Define if struct addrinfo declared])],
+                [AC_DEFINE([HAVE_STRUCT_ADDRINFO],[1],[Define if struct addrinfo declared])],
                 [],[#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>])
