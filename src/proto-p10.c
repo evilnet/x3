@@ -95,6 +95,7 @@
 #define CMD_SMO                 "SMO"
 #define CMD_SNO                 "SNO"
 #define CMD_SSHUN		"SSHUN"
+#define CMD_SPAMFILTER          "SPAMFILTER"
 #define CMD_SQUERY              "SQUERY"
 #define CMD_SQUIT               "SQUIT"
 #define CMD_STATS               "STATS"
@@ -191,6 +192,7 @@
 #define TOK_SMO                 "SMO"
 #define TOK_SNO                 "SNO"
 #define TOK_SSHUN		"SSU"
+#define TOK_SPAMFILTER          "SF"
 #define TOK_SQUERY              "SQUERY"
 #define TOK_SQUIT               "SQ"
 #define TOK_STATS               "R"
@@ -296,6 +298,7 @@
 #define P10_SMO                 TYPE(SMO)
 #define P10_SNO                 TYPE(SNO)
 #define P10_SSHUN		TYPE(SSHUN)
+#define P10_SPAMFILTER          TYPE(SPAMFILTER)
 #define P10_SQUERY              TYPE(SQUERY)
 #define P10_SQUIT               TYPE(SQUIT)
 #define P10_STATS               TYPE(STATS)
@@ -2682,6 +2685,9 @@ init_parse(void)
     /* ignore ALIST for now */
     dict_insert(irc_func_dict, TOK_ALIST, cmd_dummy);
     dict_insert(irc_func_dict, CMD_ALIST, cmd_dummy);
+    /* ignore SPAMFILTER */
+    dict_insert(irc_func_dict, TOK_SPAMFILTER, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_SPAMFILTER, cmd_dummy);
     /* Ignore remote luser */
     dict_insert(irc_func_dict, TOK_LUSERS, cmd_dummy);
     /* We have reliable clock!  Always!  Wraaa! */

@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-09-11  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: ignore SPAMFILTER messages
+
 2009-08-11  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* Srvx sync. Author: Michael Poole.
