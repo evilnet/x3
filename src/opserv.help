@@ -285,7 +285,7 @@
         
 "TRACE" ("/msg $O TRACE <action> <criteria> <value> [<criteria> <value>]...",
         "Searches through the current users for those matching the specified criteria, and applies the specified action to them. A detailed list of actions can be found in $bhelp trace action$b and a list of criteria in $bhelp trace criteria$b.",
-        "Quick Ref ACTIONS: PRINT, COUNT, KILL, GLINE, SHUN, GAG, DOMAINS, SVSJOIN, SVSPART, VERSION",
+        "Quick Ref ACTIONS: PRINT, COUNT, PRIVMSG, NOTICE, KILL, GLINE, SHUN, GAG, DOMAINS, SVSJOIN, SVSPART, VERSION",
         "Quick Ref CRITERIA: MASK, NICK, IDENT, HOST, INFO, SERVER, IP, ACCOUNT, AUTHED, CHANNEL, NUMCHANNELS, LIMIT, NICKAGE, ACCESS, REASON, DEPTH, DURATION, CLONES, INFO_SPACE, CHECKRESTRICTIONS ABUSE OPERS, LOG, REGEX, CHANTARGET, SILENT, VERSION, MARKED",
         "Access level: $b${level/trace}$b",
         "$uSee Also:$u trace action, trace criteria"
@@ -295,6 +295,8 @@
         "Options for action in $btrace$b are:",
         "$bPRINT$b:   Display the hostmask to you.",
         "$bCOUNT$b:   Count all matching users.",
+        "$bPRIVMSG$b: Send a PRIVMSG to all matching users containing REASON.",
+        "$bNOTICE$b:  Send a NOTICE to all matching users containing REASON.",
         "$bKILL$b:    Kill matching clients.",
         "$bGLINE$b:   Issue a gline for the client's host (by default, 1 hour long).",
         "$bSHUN$b:    Issue a shun for the client's host (by default, 1 hour long).",

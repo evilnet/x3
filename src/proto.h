@@ -126,6 +126,7 @@ void irc_connect(struct userNode *user, char *server, unsigned int port, struct 
 
 /* messages */
 void irc_privmsg(struct userNode *from, const char *to, const char *message);
+void irc_privmsg_user(struct userNode *from, struct userNode *to, const char *message);
 void irc_notice(struct userNode *from, const char *to, const char *message);
 void irc_notice_user(struct userNode *from, struct userNode *to, const char *message);
 void irc_version_user(struct userNode *from, struct userNode *to);

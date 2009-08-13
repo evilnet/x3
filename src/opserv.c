@@ -5884,6 +5884,30 @@ trace_print_func(struct userNode *match, void *extra)
 }
 
 static int
+trace_privmsg_func(struct userNode *match, void *extra)
+{
+    struct discrim_and_source *das = extra;
+    char *reason;
+    if (das->discrim->reason) {
+        reason = das->discrim->reason;
+        irc_privmsg_user(opserv, match, reason);
+    }
+    return 0;
+}
+
+static int
+trace_notice_func(struct userNode *match, void *extra)
+{
+    struct discrim_and_source *das = extra;
+    char *reason;
+    if (das->discrim->reason) {
+        reason = das->discrim->reason;
+        irc_notice_user(opserv, match, reason);
+    }
+    return 0;
+}
+
+static int
 trace_count_func(UNUSED_ARG(struct userNode *match), UNUSED_ARG(void *extra))
 {
     return 0;
@@ -6170,6 +6194,10 @@ static MODCMD_FUNC(cmd_trace)
         action = trace_print_func;
     else if (!irccasecmp(argv[1], "count"))
         action = trace_count_func;
+    else if (!irccasecmp(argv[1], "privmsg"))
+        action = trace_privmsg_func;
+    else if (!irccasecmp(argv[1], "notice"))
+        action = trace_notice_func;
     else if (!irccasecmp(argv[1], "domains"))
         action = trace_domains_func;
     else if (!irccasecmp(argv[1], "gline"))
@@ -7349,6 +7377,8 @@ init_opserv(const char *nick)
     opserv_define_func("TRACE", cmd_trace, 100, 0, 3);
     opserv_define_func("TRACE PRINT", NULL, 0, 0, 0);
     opserv_define_func("TRACE COUNT", NULL, 0, 0, 0);
+    opserv_define_func("TRACE PRIVMSG", NULL, 0, 0, 0);
+    opserv_define_func("TRACE NOTICE", NULL, 0, 0, 0);
     opserv_define_func("TRACE DOMAINS", NULL, 0, 0, 0);
     opserv_define_func("TRACE GLINE", NULL, 600, 0, 0);
     opserv_define_func("TRACE SHUN", NULL, 600, 0, 0);

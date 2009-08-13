@@ -1,7 +1,15 @@
 /***********************************************************************
 X3 ChangeLog
 
-2009-09-11  Matthew Beeching  <jobe@mdbnet.co.uk>
+2009-08-11  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto.h: Added declaration fo irc_privmsg_user
+
+	* src/opserv.c: Added privmsg and notice trace actions
+
+	* src/opserv.help: Added privmsg and notice trace actions
+
+2009-08-11  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: ignore SPAMFILTER messages
 
