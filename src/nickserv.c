@@ -322,6 +322,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_CANNOT_MERGE_SELF", "You cannot merge account $b%s$b with itself." },
     { "NSMSG_HANDLES_MERGED", "Merged account $b%s$b into $b%s$b." },
     { "NSMSG_RECLAIM_WARN", "%s is a registered nick - you must auth to account %s or change your nick." },
+    { "NSMSG_RECLAIM_HOWTO", "To auth to account %s you must use /msg %s@%s AUTH %s <password>" },
     { "NSMSG_RECLAIM_KILL", "Unauthenticated user of nick." },
     { "NSMSG_RECLAIMED_NONE", "You cannot manually reclaim a nick." },
     { "NSMSG_RECLAIMED_WARN", "Sent a request for %s to change their nick." },
@@ -4980,6 +4981,7 @@ nickserv_reclaim(struct userNode *user, struct nick_info *ni, enum reclaim_actio
         break;
     case RECLAIM_WARN:
         send_message(user, nickserv, "NSMSG_RECLAIM_WARN", ni->nick, ni->owner->handle);
+        send_message(user, nickserv, "NSMSG_RECLAIM_HOWTO", ni->owner->handle, nickserv->nick, self->name, ni->owner->handle);
         break;
     case RECLAIM_SVSNICK:
         do {
@@ -5015,6 +5017,7 @@ check_user_nick(struct userNode *user) {
     }
     if (nickserv_conf.warn_nick_owned)
         send_message(user, nickserv, "NSMSG_RECLAIM_WARN", ni->nick, ni->owner->handle);
+        send_message(user, nickserv, "NSMSG_RECLAIM_HOWTO", ni->owner->handle, nickserv->nick, self->name, ni->owner->handle);
     if (nickserv_conf.auto_reclaim_action == RECLAIM_NONE)
         return 0;
     if (nickserv_conf.auto_reclaim_delay)

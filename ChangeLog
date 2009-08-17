@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-08-17  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Added NSMSG_RECLAIM_HOWTO describing how to
+	AUTH when warned that the nick being used is registered
+
 2009-08-11  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto.h: Added declaration fo irc_privmsg_user
