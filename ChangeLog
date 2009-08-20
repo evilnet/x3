@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-08-21  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fix for a crash bug when using LOC with LDAP
+	where LDAP account exists and AuthServ account does not
+
 2009-08-20  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/opserv.help: Fixed a typo in ROUTING EXAMPLE

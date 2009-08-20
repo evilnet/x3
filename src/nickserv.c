@@ -1125,7 +1125,7 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
         send_message(user, nickserv, "NSMSG_REGISTER_H_SUCCESS");
       }
     }
-    else if ((ni = dict_find(nickserv_nick_dict, user->nick, NULL))) {
+    else if (user && (ni = dict_find(nickserv_nick_dict, user->nick, NULL))) {
       if(user) {
         send_message(user, nickserv, "NSMSG_PARTIAL_REGISTER");
       }
