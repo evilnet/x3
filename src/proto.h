@@ -198,6 +198,8 @@ void DelUser(struct userNode* user, struct userNode *killer, int announce, const
 
 /* User modes */
 void mod_usermode(struct userNode *user, const char *modes);
+extern const char irc_user_mode_chars[];
+unsigned int irc_user_modes(const struct userNode *user, char modes[], size_t length); 
 
 /* Channel mode manipulation */
 #define KEYLEN          23

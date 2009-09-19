@@ -343,6 +343,9 @@ static const char *his_servername;
 static const char *his_servercomment;
 static int extended_accounts;
 
+/* These correspond to 1 << X:      012345678901234567 */
+const char irc_user_mode_chars[] = "o iw dkgn        I";
+
 static struct userNode *AddUser(struct server* uplink, const char *nick, const char *ident, const char *hostname, const char *modes, const char *numeric, const char *userinfo, time_t timestamp, const char *realip);
 
 extern int off_channel;
@@ -578,41 +581,9 @@ irc_user(struct userNode *user)
         return;
     irc_p10_ntop(b64ip, &user->ip);
     if (user->modes) {
-        int modelen;
         char modes[32];
 
-        modelen = 0;
-        if (IsOper(user))
-            modes[modelen++] = 'o';
-        if (IsInvisible(user))
-            modes[modelen++] = 'i';
-        if (IsWallOp(user))
-            modes[modelen++] = 'w';
-        if (IsService(user))
-            modes[modelen++] = 'k';
-        if (IsDeaf(user))
-            modes[modelen++] = 'd';
-        if (IsGlobal(user))
-            modes[modelen++] = 'g';
-        // sethost - reed/apples
-        // if (IsHelperIrcu(user))
-        if (IsSetHost(user))
-            modes[modelen++] = 'h';
-        if (IsFakeHost(user))
-            modes[modelen++] = 'f';
-        if (IsHiddenHost(user))
-            modes[modelen++] = 'x';
-        if (IsBotM(user))
-            modes[modelen++] = 'B';
-        if (IsHideChans(user))
-            modes[modelen++] = 'n';
-        if (IsHideIdle(user))
-            modes[modelen++] = 'I';
-        if (IsXtraOp(user))
-            modes[modelen++] = 'X';
-
-        modes[modelen] = 0;
-
+        irc_user_modes(user, modes, sizeof(modes));
         /* we don't need to put the + in modes because it's in the format string. */
         putsock("%s " P10_NICK " %s %d " FMT_TIME_T " %s %s +%s %s %s :%s",
                 user->uplink->numeric, user->nick, user->uplink->hops+1, user->timestamp, user->ident, user->hostname, modes, b64ip, user->numeric, user->info);

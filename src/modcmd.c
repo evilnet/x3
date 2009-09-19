@@ -2146,6 +2146,8 @@ modcmd_saxdb_write(struct saxdb_context *ctx) {
     saxdb_start_record(ctx, "bots", 1);
     for (it = dict_first(services); it; it = iter_next(it)) {
         char buff[16];
+        char modes[32];
+
         service = iter_data(it);
         saxdb_start_record(ctx, service->bot->nick, 1);
         if (service->trigger) {
@@ -2155,6 +2157,10 @@ modcmd_saxdb_write(struct saxdb_context *ctx) {
         }
         saxdb_write_string(ctx, "description", service->bot->info);
         saxdb_write_string(ctx, "hostname", service->bot->hostname);
+        if (service->bot->modes) {
+            irc_user_modes(service->bot, modes, sizeof(modes));
+            saxdb_write_string(ctx, "modes", modes);
+        }
         if (service->privileged)
             saxdb_write_string(ctx, "privileged", "1");
         saxdb_end_record(ctx);
@@ -2239,7 +2245,7 @@ modcmd_load_bots(struct dict *db, int default_nick) {
     for (it = dict_first(db); it; it = iter_next(it)) {
         struct record_data *rd;
         struct service *svc;
-        const char *nick, *desc, *hostname;
+        const char *nick, *desc, *hostname, *modes;
 
         rd = iter_data(it);
         if (rd->type != RECDB_OBJECT) {
@@ -2256,9 +2262,10 @@ modcmd_load_bots(struct dict *db, int default_nick) {
         svc = service_find(nick);
         desc = database_get_data(rd->d.object, "description", RECDB_QSTRING);
         hostname = database_get_data(rd->d.object, "hostname", RECDB_QSTRING);
+        modes = database_get_data(rd->d.object, "modes", RECDB_QSTRING);
         if (desc) {
             if (!svc)
-                svc = service_register(AddLocalUser(nick, nick, hostname, desc, NULL));
+                svc = service_register(AddLocalUser(nick, nick, hostname, desc, modes));
             else if (hostname)
                 strcpy(svc->bot->hostname, hostname);
             desc = database_get_data(rd->d.object, "trigger", RECDB_QSTRING);

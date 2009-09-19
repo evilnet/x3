@@ -1,6 +1,28 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-09-19  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* Srvx sync. Author: Michael Poole.
+
+	* src/chanserv.c (handle_part): Allow the current user to be considered for
+	channels other than the channel being /part'ed.
+
+	* src/modcmd.c (modcmd_saxdb_write): Write bot modes to the database.
+	(modcmd_load_bots): Read them out and use them.
+
+	* src/opserv.c (cmd_whois): Use irc_user_mode_chars() here too.
+
+	* src/opserv.help (INVITE): Document this command.
+
+	* src/proto.h (irc_user_modes): Declare.
+	(irc_user_mode_chars): Likewise.
+
+	* src/proto-common.c (irc_user_modes): Define.
+
+	* src/proto-p10.c (irc_user_mode_chars): Define.
+	(irc_user): Use irc_user_mode_chars() instead of open-coding it.
+
 2009-08-21  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fix for a crash bug when using LOC with LDAP

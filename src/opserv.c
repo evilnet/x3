@@ -2173,25 +2173,8 @@ static MODCMD_FUNC(cmd_whois)
     reply("OSMSG_WHOIS_NO_NOTICE", target->no_notice ? "YES":"NO");
   
     if (target->modes) {
-        bpos = 0;
+        bpos = irc_user_modes(target, buffer, sizeof(buffer));
 #define buffer_cat(str) (herelen = strlen(str), memcpy(buffer+bpos, str, herelen), bpos += herelen)
-        if (IsInvisible(target)) buffer[bpos++] = 'i';
-        if (IsWallOp(target)) buffer[bpos++] = 'w';
-        if (IsOper(target)) buffer[bpos++] = 'o';
-        if (IsGlobal(target)) buffer[bpos++] = 'g';
-
-        // sethost - reed/apples
-        // if (IsHelperIrcu(target)) buffer[bpos++] = 'h';
-        if (IsSetHost(target)) buffer[bpos++] = 'h';
-
-        if (IsService(target)) buffer[bpos++] = 'k';
-        if (IsDeaf(target)) buffer[bpos++] = 'd';
-        if (target->handle_info) buffer[bpos++] = 'r';
-        if (IsHiddenHost(target)) buffer[bpos++] = 'x';
-	if (IsBotM(target)) buffer[bpos++] = 'B';
-	if (IsHideChans(target)) buffer[bpos++] = 'n';
-	if (IsHideIdle(target)) buffer[bpos++] = 'I';
-	if (IsXtraOp(target)) buffer[bpos++] = 'X';
         if (IsGagged(target)) buffer_cat(" (gagged)");
         if (IsRegistering(target)) buffer_cat(" (registered account)");
         buffer[bpos] = 0;
