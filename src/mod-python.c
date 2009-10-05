@@ -147,6 +147,56 @@ emb_send_target_notice(UNUSED_ARG(PyObject *self), PyObject *args)
 }
 
 static PyObject*
+pyobj_from_usernode(struct userNode* user) {
+    unsigned int n;
+    struct modeNode *mn;
+    PyObject* pChanList = PyTuple_New(user->channels.used);
+
+    for (n=0; n < user->channels.used; n++) {
+        mn = user->channels.list[n];
+        PyTuple_SetItem(pChanList, n, Py_BuildValue("s", mn->channel->name));
+    }
+
+    return Py_BuildValue("{"
+            "s: s, " /* nick */
+            "s: s, " /* ident */
+            "s: s, " /* info */
+            "s: s, " /* hostname */
+            "s: s, " /* ip */
+            "s: s, " /* fakehost */
+            "s: s, " /* sethost */
+            "s: s, " /* crypthost */
+            "s: s, " /* cryptip */
+#ifdef WITH_PROTOCOL_P10
+            "s: s, " /* numeric */
+#endif /* WITH_PROTOCOL_P10 */
+            "s: i, " /* loc */
+            "s: i, " /* no_notice */
+            "s: s, " /* mark */
+            "s: s, " /* version_reply */
+            "s: s, " /* account */
+            "s: O}", /* channels */
+            "nick", user->nick,
+            "ident", user->ident,
+            "info", user->info,
+            "hostname", user->hostname,
+            "ip", irc_ntoa(&user->ip),
+            "fakehost", user->fakehost,
+            "sethost", user->sethost,
+            "crypthost", user->crypthost,
+            "cryptip", user->cryptip,
+#ifdef WITH_PROTOCOL_P10
+            "numeric", user->numeric,
+#endif /* WITH_PROTOCOL_P10 */
+            "loc", user->loc,
+            "no_notice", user->no_notice,
+            "mark", user->mark,
+            "version_reply", user->version_reply,
+            "account", user->handle_info ? user->handle_info->handle : NULL,
+            "channels", pChanList);
+}
+
+static PyObject*
 emb_get_user(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Get a python object containing everything x3 knows about a user, by nick.
@@ -154,45 +204,16 @@ emb_get_user(UNUSED_ARG(PyObject *self), PyObject *args)
     */
     char *nick;
     struct userNode *user;
-    struct modeNode *mn;
-    unsigned int n;
-    PyObject* pChanList;
-
 
     if(!PyArg_ParseTuple(args, "s", &nick))
         return NULL;
+
     if(!(user = GetUserH(nick))) {
         /* TODO: generate python exception here */
         return NULL;
     }
-    pChanList = PyTuple_New(user->channels.used);
-    for(n=0;n<user->channels.used;n++) {
-        mn = user->channels.list[n];
-        PyTuple_SetItem(pChanList, n, Py_BuildValue("s", mn->channel->name));
-    }
-    return Py_BuildValue("{s:s,s:s,s:s,s:s,s:s"   /* format strings. s=string, i=int */
-                         ",s:s,s:s,s:s,s:s,s:s"   /* (format is key:value)  O=object */
-                         ",s:i,s:i,s:s,s:s,s:s"   /* blocks of 5 for readability     */
-                         "s:O}", 
 
-                         "nick", user->nick,
-                         "ident", user->ident,
-                         "info", user->info,
-                         "hostname", user->hostname,
-                         "ip", irc_ntoa(&user->ip),
-
-                         "fakehost", user->fakehost,
-                         "sethost", user->sethost,
-                         "crypthost", user->crypthost,
-                         "cryptip", user->cryptip,
-                         "numeric", user->numeric, /* TODO: only ifdef WITH_PROTOCOL_P10 */
-
-                         "loc", user->loc,
-                         "no_notice", user->no_notice,
-                         "mark", user->mark,
-                         "version_reply", user->version_reply,
-                         "account", user->handle_info?user->handle_info->handle:NULL,
-                         "channels", pChanList);
+    return pyobj_from_usernode(user);
 }
 
 static PyObject*

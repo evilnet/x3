@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: extract userNode to Python dictionary conversion for
+	future use in handlers.
+
+2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: do not leak handler objects
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
