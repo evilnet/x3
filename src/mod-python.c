@@ -825,40 +825,6 @@ cleanup:
     return strdup("unknown exception");
 }
 
-static int python_run_statements(char const* msg, char** err) {
-    PyObject* o;
-    char* exmsg = NULL;
-    PyObject* py_main_module = NULL;
-    PyObject* py_globals;
-
-    py_main_module = PyImport_AddModule("__main__");
-    if (!py_main_module) {
-        exmsg = format_python_error(1);
-        if (exmsg)
-            *err = exmsg;
-        else
-            *err = strdup("unknown exception");
-        return 1;
-    }
-
-    py_globals = PyModule_GetDict(py_main_module);
-
-    o = PyRun_String(msg, Py_file_input, py_globals, py_globals);
-    if (o == NULL) {
-        exmsg = format_python_error(1);
-        if (exmsg)
-            *err = exmsg;
-        else
-            *err = strdup("unknown exception");
-        return 1;
-    }
-    else {
-        Py_DECREF(o);
-    }
-
-    return 0;
-}
-
 static MODCMD_FUNC(cmd_run) {
     /* this method allows running arbitrary python commands.
      * use with care.
