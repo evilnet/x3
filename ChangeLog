@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: raise exception on unknown channel in emb_get_channel
+
+2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: make emb_send_target_notice more resilient toward
 	erroneous input and raise exceptions on failures.
 

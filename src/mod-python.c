@@ -252,8 +252,9 @@ emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
 
     if(!PyArg_ParseTuple(args, "s", &name))
         return NULL;
+
     if(!(channel = GetChannel(name))) {
-        /* TODO: generate py exception here */
+        PyErr_SetString(PyExc_Exception, "unknown channel");
         return NULL;
     }
 
