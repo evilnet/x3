@@ -77,6 +77,41 @@ extern struct userNode *global, *chanserv, *opserv, *nickserv, *spamserv;
     in python.
  */
 
+struct _tuple_dict_extra {
+    PyObject* data;
+    size_t* extra;
+};
+
+static int _dict_iter_get_users(char const* key, UNUSED_ARG(void* data), void* extra) {
+    struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
+
+    PyTuple_SetItem(real_extra->data, *(int*)real_extra->extra,
+            PyString_FromString(key));
+    *real_extra->extra = *real_extra->extra + 1;
+    return 0;
+}
+
+/* get a tuple with all users in it */
+static PyObject*
+emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
+    PyObject* retval;
+    size_t num_clients, n = 0;
+    struct _tuple_dict_extra extra;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    num_clients = dict_size(clients);
+    retval = PyTuple_New(num_clients);
+
+    extra.extra = &n;
+    extra.data = retval;
+
+    dict_foreach(clients, _dict_iter_get_users, (void*)&extra);
+
+    return retval;
+}
+
 static PyObject*
 emb_dump(UNUSED_ARG(PyObject *self), PyObject *args)
 {
@@ -388,6 +423,7 @@ emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
 
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
+    {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
     {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
     {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
