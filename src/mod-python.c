@@ -72,7 +72,7 @@ extern struct userNode *global, *chanserv, *opserv, *nickserv, *spamserv;
 
 /* ---------------------------------------------------------------------- * 
     Some hooks you can call from modpython.py to interact with the   
-    service, and IRC.  These emb_* functions are available as svc.*
+    service, and IRC.  These emb_* functions are available as _svc.*
     in python.
  */
 
@@ -80,7 +80,7 @@ static PyObject*
 emb_dump(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Dump a raw string into the socket 
-        usage: svc.dump(<P10 string>)
+        usage: _svc.dump(<P10 string>)
     */
     char *buf;
     int ret = 0;
@@ -101,7 +101,7 @@ static PyObject*
 emb_send_target_privmsg(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Send a privmsg 
-        usage: svc.send_target_privmsg(<servicenick_from>, <nick_to>, <message>)
+        usage: _svc.send_target_privmsg(<servicenick_from>, <nick_to>, <message>)
     */
     int ret = 0;
     char *servicenick;
@@ -125,7 +125,7 @@ static PyObject*
 emb_send_target_notice(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* send a notice
-        usage: svc.send_target_notice(<servicenick_from>, <nick_to>, <message>)
+        usage: _svc.send_target_notice(<servicenick_from>, <nick_to>, <message>)
     */
     int ret = 0;
     char *servicenick;
@@ -149,7 +149,7 @@ static PyObject*
 emb_get_user(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Get a python object containing everything x3 knows about a user, by nick.
-        usage: svc.get_user(<nick>)
+        usage: _svc.get_user(<nick>)
     */
     char *nick;
     struct userNode *user;
@@ -198,7 +198,7 @@ static PyObject*
 emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Returns a python dict object with all sorts of info about a channel.
-          usage: svc.get_channel(<name>)
+          usage: _svc.get_channel(<name>)
     */
     char *name;
     struct chanNode *channel;
@@ -266,7 +266,7 @@ static PyObject*
 emb_get_account(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Returns a python dict object with all sorts of info about an account.
-        usage: svc.get_account(<account name>)
+        usage: _svc.get_account(<account name>)
     */
     char *name;
     struct handle_info *hi;
@@ -702,7 +702,7 @@ int python_load() {
     }
 
     Py_Initialize();
-    Py_InitModule("svc", EmbMethods);
+    Py_InitModule("_svc", EmbMethods);
     /* TODO: get "modpython" from x3.conf */
     pName = PyString_FromString("modpython");
     base_module = PyImport_Import(pName);

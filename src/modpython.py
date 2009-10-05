@@ -11,7 +11,7 @@
 # - provide helper functions for scripts to do common things like msg a person or a channel,
 #   reply, etc.
 
-import svc
+import _svc
 
 import math
 
@@ -33,7 +33,7 @@ class irc:
         self.target = target   #the channel message was in (if public)
 
     def send_target_privmsg(self, source, target, message):
-        svc.send_target_privmsg(source, target,  "%s "%(message))
+        _svc.send_target_privmsg(source, target,  "%s "%(message))
 
     def reply(self, message):
         """ Send a private reply to the user using convenience values"""
@@ -60,7 +60,7 @@ class handler:
         return 0
 
     def join(self, irc, channel, nick):
-        #user = svc.get_user(nick)
+        #user = _svc.get_user(nick)
         #print "DEBUG: handler.join()"
         return self.plugins.callhandler("join", irc, [channel, nick], [channel, nick])
 

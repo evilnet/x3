@@ -1,6 +1,6 @@
 # anoy module
 
-import svc
+import _svc
 import re
 import fileinput
 import random
@@ -200,7 +200,7 @@ class Hangman:
 
     def dance(self, irc, args):
         nick = irc.caller
-        user = svc.get_user(nick)
+        user = _svc.get_user(nick)
 
         reply = "Ok,"
         if(user and "account" in user):
@@ -215,7 +215,7 @@ class Hangman:
         irc.reply(reply)
 
     def nickof(self, irc, bot):
-        info = svc.get_info()
+        info = _svc.get_info()
 
         if(bot and bot in info.keys()):
             irc.reply("%s has nick %s"%(bot, info[bot]))

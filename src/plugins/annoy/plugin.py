@@ -1,6 +1,6 @@
 # anoy module
 
-import svc
+import _svc
 
 class Annoy:
 
@@ -21,13 +21,13 @@ class Annoy:
 #        irc.send_target_privmsg("x3", channel, "%s joined %s:%s "%(nick, channel, self.test))
 
     def nick_change(self, irc, nick, old_nick):
-        svcinfo = svc.get_info()
+        svcinfo = _svc.get_info()
         # opserv pm #theops that someones nick changed
         irc.send_target_privmsg(svcinfo["opserv"], "#theops", "%s changed nick to %s"%(old_nick, nick) )
 
     def dance(self, irc, args):
         nick = irc.caller
-        user = svc.get_user(nick)
+        user = _svc.get_user(nick)
 
         reply = "Ok,"
         if(user and "account" in user):
@@ -42,7 +42,7 @@ class Annoy:
         irc.reply(reply)
 
     def nickof(self, irc, bot):
-        info = svc.get_info()
+        info = _svc.get_info()
 
         if(bot and bot in info.keys()):
             irc.reply("%s has nick %s"%(bot, info[bot]))
