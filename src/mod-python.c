@@ -91,6 +91,15 @@ static int _dict_iter_get_users(char const* key, UNUSED_ARG(void* data), void* e
     return 0;
 }
 
+static int _dict_iter_get_channels(char const* key, UNUSED_ARG(void* data), void* extra) {
+    struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
+
+    PyTuple_SetItem(real_extra->data, *(int*)real_extra->extra,
+            PyString_FromString(key));
+    *real_extra->extra = *real_extra->extra + 1;
+    return 0;
+}
+
 /* get a tuple with all users in it */
 static PyObject*
 emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
@@ -108,6 +117,27 @@ emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
     extra.data = retval;
 
     dict_foreach(clients, _dict_iter_get_users, (void*)&extra);
+
+    return retval;
+}
+
+/* get a tuple with all channels in it */
+static PyObject*
+emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
+    PyObject* retval;
+    size_t num_channels, n = 0;
+    struct _tuple_dict_extra extra;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    num_channels = dict_size(channels);
+    retval = PyTuple_New(num_channels);
+
+    extra.extra = &n;
+    extra.data = retval;
+
+    dict_foreach(channels, _dict_iter_get_channels, (void*)&extra);
 
     return retval;
 }
@@ -424,6 +454,7 @@ emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
+    {"get_channels", emb_get_channels, METH_VARARGS, "Get all channels"},
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
     {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
     {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
