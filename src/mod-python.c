@@ -90,11 +90,17 @@ emb_dump(UNUSED_ARG(PyObject *self), PyObject *args)
 
     if(!PyArg_ParseTuple(args, "s:dump", &buf ))
         return NULL;
+
     safestrncpy(linedup, buf, sizeof(linedup));
+
     if(parse_line(linedup, 1)) {
         irc_raw(buf);
         ret = 1;
+    } else {
+        PyErr_SetString(PyExc_Exception, "invalid protocol message");
+        return NULL;
     }
+
     return Py_BuildValue("i", ret);
 }
 

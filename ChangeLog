@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: make emb_dump raise exception on failure.
+
+2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: set exception on error path in emb_get_user.
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
