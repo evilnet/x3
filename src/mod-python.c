@@ -707,6 +707,10 @@ int python_load() {
     pName = PyString_FromString(modpython_conf.main_module);
     base_module = PyImport_Import(pName);
     Py_DECREF(pName);
+
+    Py_XDECREF(handler_object);
+    handler_object = NULL;
+
     if(base_module != NULL) {
         handler_object = python_new_handler_object();
         if(handler_object) {
