@@ -49,7 +49,7 @@ static const struct message_entry msgtab[] = {
     { "PYMSG_RELOAD_SUCCESS", "Reloaded Python scripts successfully." },
     { "PYMSG_RELOAD_FAILED", "Error reloading Python scripts." },
     { "PYMSG_RUN_UNKNOWN_EXCEPTION", "Error running python: unknown exception." },
-    { "PYMSG_RUN_EXCEPTION", "Error running python: %s." },
+    { "PYMSG_RUN_EXCEPTION", "Error running python: %s: %s." },
     { NULL, NULL } /* sentenal */
 };
 
@@ -864,16 +864,49 @@ static MODCMD_FUNC(cmd_run) {
      * use with care.
      */
     char* msg;
-    char* exmsg = NULL;
+    PyObject* py_main_module;
+    PyObject* py_globals;
+    PyObject* py_locals;
+    PyObject* py_retval;
+    PyObject* extype, *exvalue, *extraceback;
+    PyObject* exvaluestr = NULL;
+    char* exmsg = NULL, *exmsgptr;
+
+    py_main_module = PyImport_AddModule("__main__");
+    py_globals = py_locals = PyModule_GetDict(py_main_module);
 
     msg = unsplit_string(argv + 1, argc - 1, NULL);
 
-    if (python_run_statements(msg, &exmsg)) {
-        if (exmsg) {
-            reply("PYMSG_RUN_EXCEPTION", exmsg);
-            free(exmsg);
+    py_retval = PyRun_String(msg, Py_file_input, py_globals, py_locals);
+    if (py_retval == NULL) {
+        PyErr_Fetch(&extype, &exvalue, &extraceback);
+        if (exvalue != NULL) {
+            exvaluestr = PyObject_Str(exvalue);
+            exmsg = strdup(PyString_AS_STRING(exvaluestr));
+            exmsgptr = exmsg;
+            while (exmsgptr && *exmsgptr) {
+                if (*exmsgptr == '\n' || *exmsgptr == '\r' || *exmsgptr == '\t')
+                    *exmsgptr = ' ';
+                exmsgptr++;
+            }
+        }
+        if (extype != NULL && exvalue != NULL && PyType_Check(extype)) {
+            reply("PYMSG_RUN_EXCEPTION", ((PyTypeObject*)extype)->tp_name, exmsg);
         } else
             reply("PYMSG_RUN_UNKNOWN_EXCEPTION");
+
+        if (extype != NULL)
+            Py_DECREF(extype);
+        if (exvalue != NULL)
+            Py_DECREF(exvalue);
+        if (extraceback != NULL)
+            Py_DECREF(extraceback);
+        if (exvaluestr != NULL)
+            Py_DECREF(exvaluestr);
+        if (exmsg)
+            free(exmsg);
+    } else {
+        Py_DECREF(py_retval);
     }
 
     return 1;
