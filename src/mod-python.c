@@ -148,14 +148,21 @@ emb_send_target_notice(UNUSED_ARG(PyObject *self), PyObject *args)
 
     struct service *service;
 
-
     if(!PyArg_ParseTuple(args, "sss:reply", &servicenick, &target, &buf ))
         return NULL;
-    if(!(service = service_find(servicenick))) {
-        /* TODO: generate python exception here */
+
+    if (buf == NULL || strlen(buf) == 0) {
+        PyErr_SetString(PyExc_Exception, "invalid empty message");
         return NULL;
     }
-    send_target_message(4, target, service->bot, "%s", buf);
+
+    if(!(service = service_find(servicenick))) {
+        PyErr_SetString(PyExc_Exception, "no such service nick");
+        return NULL;
+    }
+
+    ret = send_target_message(4, target, service->bot, "%s", buf);
+
     return Py_BuildValue("i", ret);
 }
 

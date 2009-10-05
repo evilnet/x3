@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: make emb_send_target_notice more resilient toward
+	erroneous input and raise exceptions on failures.
+
+2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: make emb_send_target_privmsg more resilient toward
 	erroneous input and raise exceptions on failures.
 
