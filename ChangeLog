@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: add support for specifying main module in x3.conf
+
+2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: Expose Python services module as _svc to follow normal
 	Python naming conventions for C extensions.
 

@@ -58,6 +58,7 @@ static const struct message_entry msgtab[] = {
 static
 struct {
     char const* scripts_dir;
+    char const* main_module;
 } modpython_conf;
 
 static struct log_type *PY_LOG;
@@ -703,8 +704,7 @@ int python_load() {
 
     Py_Initialize();
     Py_InitModule("_svc", EmbMethods);
-    /* TODO: get "modpython" from x3.conf */
-    pName = PyString_FromString("modpython");
+    pName = PyString_FromString(modpython_conf.main_module);
     base_module = PyImport_Import(pName);
     Py_DECREF(pName);
     if(base_module != NULL) {
@@ -905,6 +905,9 @@ static void modpython_conf_read(void) {
 
     str = database_get_data(conf_node, "scripts_dir", RECDB_QSTRING);
     modpython_conf.scripts_dir = str ? str : "./";
+
+    str = database_get_data(conf_node, "main_module", RECDB_QSTRING);
+    modpython_conf.main_module = str ? str : "modpython";
 }
 
 int python_init(void) {
