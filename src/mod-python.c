@@ -751,7 +751,6 @@ python_cleanup(void) {
     if (PyErr_Occurred())
         PyErr_Clear();
     Py_Finalize(); /* Shut down python enterpriter */
-    return;
 }
 
 /* ---------------------------------------------------------------------------------- *
