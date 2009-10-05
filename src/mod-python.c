@@ -202,14 +202,14 @@ emb_get_user(UNUSED_ARG(PyObject *self), PyObject *args)
     /* Get a python object containing everything x3 knows about a user, by nick.
         usage: _svc.get_user(<nick>)
     */
-    char *nick;
+    char const* nick;
     struct userNode *user;
 
     if(!PyArg_ParseTuple(args, "s", &nick))
         return NULL;
 
     if(!(user = GetUserH(nick))) {
-        /* TODO: generate python exception here */
+        PyErr_SetString(PyExc_Exception, "no such user");
         return NULL;
     }
 
