@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: raise exception on failure in emb_get_account.
+
+2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: raise exception on unknown channel in emb_get_channel
 
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>

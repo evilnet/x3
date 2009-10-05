@@ -319,9 +319,12 @@ emb_get_account(UNUSED_ARG(PyObject *self), PyObject *args)
         return NULL;
 
     hi = get_handle_info(name);
+
     if(!hi) {
+        PyErr_SetString(PyExc_Exception, "unknown account name");
         return NULL;
     }
+
     return Py_BuildValue("{s:s,s:i,s:s,s:s,s:s"
                          ",s:s,s:s}",
                             
