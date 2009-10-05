@@ -120,11 +120,18 @@ emb_send_target_privmsg(UNUSED_ARG(PyObject *self), PyObject *args)
 
     if(!PyArg_ParseTuple(args, "sss:reply", &servicenick, &channel, &buf ))
         return NULL;
-    if(!(service = service_find(servicenick))) {
-        /* TODO: generate python exception here */
+
+    if (buf == NULL || strlen(buf) == 0) {
+        PyErr_SetString(PyExc_Exception, "invalid empty message");
         return NULL;
     }
-    send_target_message(5, channel, service->bot, "%s", buf);
+
+    if(!(service = service_find(servicenick))) {
+        PyErr_SetString(PyExc_Exception, "no such service nick");
+        return NULL;
+    }
+
+    ret = send_target_message(5, channel, service->bot, "%s", buf);
     return Py_BuildValue("i", ret);
 }
 
