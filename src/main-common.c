@@ -431,6 +431,11 @@ conf_globals(void)
     const char *info;
     dict_t dict;
 
+    info = conf_get_data("services/opserv/nick", RECDB_QSTRING);
+    if (info && (info[0] == '.'))
+        info = NULL;
+    init_opserv(info);
+
     info = conf_get_data("services/global/nick", RECDB_QSTRING);
     if (info && (info[0] == '.'))
         info = NULL;
@@ -467,11 +472,6 @@ conf_globals(void)
         policer_params_set(luser_policer_params, "size", "5");
         policer_params_set(luser_policer_params, "drain-rate", "0.50");
     }
-
-    info = conf_get_data("services/opserv/nick", RECDB_QSTRING);
-    if (info && (info[0] == '.'))
-        info = NULL;
-    init_opserv(info);
 
     info = conf_get_data("services/spamserv/nick", RECDB_QSTRING);
     if (info && (info[0] == '.'))
