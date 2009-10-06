@@ -642,6 +642,30 @@ emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
     return Py_BuildValue("i", ret);
 }
 
+static PyObject*
+emb_kill(UNUSED_ARG(PyObject* self), PyObject* args) {
+    char const* from_nick, *target_nick, *message;
+    struct userNode *target;
+    struct service *service;
+
+    if (!PyArg_ParseTuple(args, "sss", &from_nick, &target_nick, &message))
+        return NULL;
+
+    if(!(service = service_find(from_nick))) {
+        PyErr_SetString(PyExc_Exception, "unknown service user specified as from user");
+        return NULL;
+    }
+
+    if ((target = GetUserH(target_nick)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown target user");
+        return NULL;
+    }
+
+    irc_kill(service->bot, target, message);
+
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -650,7 +674,7 @@ static PyMethodDef EmbMethods[] = {
     {"log_module", emb_log_module, METH_VARARGS, "Log something using the X3 log subsystem"},
 //TODO:    {"exec_cmd", emb_exec_cmd, METH_VARARGS, "execute x3 command provided"},
 //          This should use environment from "python command" call to pass in, if available
-//TODO:    {"kill"
+    {"kill", emb_kill, METH_VARARGS, "Kill someone"},
 //TODO:    {"shun"
 //TODO:    {"unshun"
 //TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
