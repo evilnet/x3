@@ -98,6 +98,15 @@ static int _dict_iter_get_channels(char const* key, UNUSED_ARG(void* data), void
     return 0;
 }
 
+static int _dict_iter_get_servers(char const* key, UNUSED_ARG(void* data), void* extra) {
+    struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
+
+    PyTuple_SetItem(real_extra->data, *(int*)real_extra->extra,
+            PyString_FromString(key));
+    *real_extra->extra = *real_extra->extra + 1;
+    return 0;
+}
+
 /* get a tuple with all users in it */
 static PyObject*
 emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
@@ -136,6 +145,25 @@ emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
     extra.data = retval;
 
     dict_foreach(channels, _dict_iter_get_channels, (void*)&extra);
+
+    return retval;
+}
+
+static PyObject*
+emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
+    PyObject* retval;
+    size_t n = 0;
+    struct _tuple_dict_extra extra;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    retval = PyTuple_New(dict_size(servers));
+
+    extra.extra = &n;
+    extra.data = retval;
+
+    dict_foreach(servers, _dict_iter_get_servers, (void*)&extra);
 
     return retval;
 }
@@ -475,6 +503,7 @@ static PyMethodDef EmbMethods[] = {
     {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
     {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
     {"get_channels", emb_get_channels, METH_VARARGS, "Get all channels"},
+    {"get_servers", emb_get_servers, METH_VARARGS, "Get all server names"},
     {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
     {"get_info", emb_get_info, METH_VARARGS, "Get various misc info about x3"},
     /* null terminator */
