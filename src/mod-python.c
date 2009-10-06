@@ -36,12 +36,12 @@
 
 /* TODO notes
  *
- * - Impliment most of proto-p10 irc_* commands for calling from scripts
- * - Impliment functions to look up whois, channel, account, and reg-channel info for scripts
- * - Impliment x3.conf settings for python variables like include path, etc.
+ * - Implement most of proto-p10 irc_* commands for calling from scripts
+ * - Implement functions to look up whois, channel, account, and reg-channel info for scripts
+ * - Implement x3.conf settings for python variables like include path, etc.
  * - modpython.py calls for everything you can reg_ a handler for in x3
  * - Some kind of system for getting needed binds bound automagicaly to make it easier
- *   to run peoples scripts and mod-python in general.
+ *   to run peoples' scripts and mod-python in general.
  * - An interface to reading/writing data to x3.db. Maybe generic, or attached to account or channel reg records?
  */
 
@@ -50,7 +50,7 @@ static const struct message_entry msgtab[] = {
     { "PYMSG_RELOAD_FAILED", "Error reloading Python scripts." },
     { "PYMSG_RUN_UNKNOWN_EXCEPTION", "Error running python: unknown exception." },
     { "PYMSG_RUN_EXCEPTION", "Error running python: %s: %s." },
-    { NULL, NULL } /* sentenal */
+    { NULL, NULL } /* sentinel */
 };
 
 #define MODPYTHON_CONF_NAME "modules/python"
@@ -66,16 +66,14 @@ const char *python_module_deps[] = { NULL };
 static struct module *python_module;
 
 PyObject *base_module = NULL; /* Base python handling library */
-PyObject *handler_object = NULL; /* instanciation of handler class */
+PyObject *handler_object = NULL; /* instance of handler class */
 
 
 extern struct userNode *global, *chanserv, *opserv, *nickserv, *spamserv;
 
-/* ---------------------------------------------------------------------- * 
-    Some hooks you can call from modpython.py to interact with the   
-    service, and IRC.  These emb_* functions are available as _svc.*
-    in python.
- */
+/*
+Some hooks you can call from modpython.py to interact with the   
+service. These emb_* functions are available as _svc.* in python. */
 
 struct _tuple_dict_extra {
     PyObject* data;
@@ -434,7 +432,6 @@ emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* a gateway to standard X3 logging subsystem.
      * level is a value 0 to 9 as defined by the log_severity enum in log.h.
-     * LOG_INFO is 3, LOG_WARNING is 6, LOG_ERROR is 7.
      *
      * for now, all logs go to the PY_LOG log. In the future this will change.
      */
@@ -453,8 +450,6 @@ emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
 
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
-    {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
-    {"get_channels", emb_get_channels, METH_VARARGS, "Get all channels"},
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
     {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
     {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
@@ -477,7 +472,9 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"timeq_del", emb_timeq_new, METH_VARARGS, "some kind of interface to the timed event system."},
     /* Information gathering methods */
     {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
+    {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
     {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
+    {"get_channels", emb_get_channels, METH_VARARGS, "Get all channels"},
     {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
     {"get_info", emb_get_info, METH_VARARGS, "Get various misc info about x3"},
     /* null terminator */
@@ -485,9 +482,9 @@ static PyMethodDef EmbMethods[] = {
 };
 
 
-/* ------------------------------------------------------------------------------------------------ *
-     Thes functions set up the embedded environment for us to call out to modpython.py class 
-     methods.  
+/*
+These functions set up the embedded environment for us to call out to
+modpython.py class methods.  
  */
 
 void python_log_module() {
@@ -527,7 +524,7 @@ void python_log_module() {
 
 PyObject *python_build_handler_args(size_t argc, char *args[], PyObject *pIrcObj) {
     /* Sets up a python tuple with passed in arguments, prefixed by the Irc instance
-       which handlers use to interact with c.
+       which handlers use to interact with C.
         argc = number of args
         args = array of args
         pIrcObj = instance of the irc class
@@ -866,7 +863,7 @@ python_cleanup(void) {
     log_module(PY_LOG, LOG_INFO, "python module cleanup");
     if (PyErr_Occurred())
         PyErr_Clear();
-    Py_Finalize(); /* Shut down python enterpriter */
+    Py_Finalize(); /* Shut down python enterpreter */
 }
 
 /* ---------------------------------------------------------------------------------- *
@@ -1049,8 +1046,8 @@ int python_init(void) {
     modcmd_register(python_module, "run",  cmd_run,  2,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     modcmd_register(python_module, "command", cmd_command, 3, MODCMD_REQUIRE_STAFF, NULL);
 
-//  Please help us by implimenting any of the callbacks listed as TODO below. They already exist
-//  in x3, they just need handle_ bridges implimented. (see python_handle_join for an example)
+//  Please help us by implementing any of the callbacks listed as TODO below. They already exist
+//  in x3, they just need handle_ bridges implemented. (see python_handle_join for an example)
     reg_server_link_func(python_handle_server_link);
     reg_new_user_func(python_handle_new_user);
     reg_nick_change_func(python_handle_nick_change);

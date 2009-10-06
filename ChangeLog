@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
+
+	* src/mod-python.c: fix a bunch of typos
+
 2009-10-05  Henrik Stuart <evilnet@hstuart.dk>
 
 	* src/mod-python.c: add emb_get_channels function.
