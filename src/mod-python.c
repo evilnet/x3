@@ -315,16 +315,21 @@ emb_send_target_notice(UNUSED_ARG(PyObject *self), PyObject *args)
 
 static PyObject*
 pyobj_from_usernode(struct userNode* user) {
-    unsigned int n;
+    unsigned int n, i;
     struct modeNode *mn;
+    PyObject* retval = NULL;
     PyObject* pChanList = PyTuple_New(user->channels.used);
+
+    if (pChanList == NULL)
+        return NULL;
 
     for (n=0; n < user->channels.used; n++) {
         mn = user->channels.list[n];
-        PyTuple_SetItem(pChanList, n, Py_BuildValue("s", mn->channel->name));
+        if (PyTuple_SetItem(pChanList, n, Py_BuildValue("s", mn->channel->name)))
+            goto cleanup;
     }
 
-    return Py_BuildValue("{"
+    retval = Py_BuildValue("{"
             "s: s, " /* nick */
             "s: s, " /* ident */
             "s: s, " /* info */
@@ -357,6 +362,22 @@ pyobj_from_usernode(struct userNode* user) {
             "version_reply", user->version_reply,
             "account", user->handle_info ? user->handle_info->handle : NULL,
             "channels", pChanList);
+
+    if (retval == NULL)
+        goto cleanup;
+
+    return retval;
+
+cleanup:
+    Py_XDECREF(retval);
+    for (i = 0; i < n; ++i) {
+        retval = PyTuple_GetItem(pChanList, i);
+        PyTuple_SET_ITEM(pChanList, i, NULL);
+        Py_XDECREF(retval);
+    }
+    Py_DECREF(pChanList);
+
+    return NULL;
 }
 
 static PyObject*
