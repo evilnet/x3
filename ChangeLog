@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: add emb_get_server function and require P10.
+
+2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: add emb_get_servers function.
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>

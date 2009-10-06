@@ -22,6 +22,9 @@
 #include "config.h"
 #ifdef WITH_PYTHON /* just disable this file if python doesnt exist */
 
+#ifndef WITH_PROTOCOL_P10
+#error mod-python is only supported with p10 protocol enabled
+#endif /* WITH_PROTOCOL_P10 */
 
 #include <Python.h>
 #include "chanserv.h"
@@ -278,9 +281,7 @@ pyobj_from_usernode(struct userNode* user) {
             "s: s, " /* sethost */
             "s: s, " /* crypthost */
             "s: s, " /* cryptip */
-#ifdef WITH_PROTOCOL_P10
             "s: s, " /* numeric */
-#endif /* WITH_PROTOCOL_P10 */
             "s: i, " /* loc */
             "s: i, " /* no_notice */
             "s: s, " /* mark */
@@ -296,9 +297,7 @@ pyobj_from_usernode(struct userNode* user) {
             "sethost", user->sethost,
             "crypthost", user->crypthost,
             "cryptip", user->cryptip,
-#ifdef WITH_PROTOCOL_P10
             "numeric", user->numeric,
-#endif /* WITH_PROTOCOL_P10 */
             "loc", user->loc,
             "no_notice", user->no_notice,
             "mark", user->mark,
@@ -325,6 +324,99 @@ emb_get_user(UNUSED_ARG(PyObject *self), PyObject *args)
     }
 
     return pyobj_from_usernode(user);
+}
+
+static PyObject*
+pyobj_from_server(struct server* srv) {
+    size_t n, idx;
+    PyObject* tmp = NULL;
+    PyObject* retval = NULL;
+    PyObject* users = PyTuple_New(srv->clients);
+
+    if (users == NULL)
+        return NULL;
+
+    idx = 0;
+    for (n = 0; n < srv->num_mask; ++n) {
+        if (srv->users[n] == NULL)
+            continue;
+
+        tmp = PyString_FromString(srv->users[n]->nick);
+        if (tmp == NULL)
+            goto cleanup;
+
+        if (PyTuple_SetItem(users, idx++, tmp))
+            goto cleanup;
+    }
+
+    retval = Py_BuildValue("{"
+            "s:s," /* name */
+            "s:l," /* boot */
+            "s:l," /* link_time */
+            "s:s," /* description */
+            "s:s," /* numeric */
+            "s:I," /* num_mask */
+            "s:I," /* hops */
+            "s:I," /* clients */
+            "s:I," /* max_clients */
+            "s:I," /* burst */
+            "s:I," /* self_burst */
+            "s:s" /* uplink */
+            "s:O" /* users */
+            /* TODO: Children */
+            "}",
+            "name", srv->name,
+            "boot", srv->boot,
+            "link_time", srv->link_time,
+            "description", srv->description,
+            "numeric", srv->numeric,
+            "num_mask", srv->num_mask,
+            "hops", srv->hops,
+            "clients", srv->clients,
+            "max_clients", srv->max_clients,
+            "burst", srv->burst,
+            "self_burst", srv->self_burst,
+            "uplink", srv->uplink ? srv->uplink->name : NULL,
+            "users", users
+            );
+
+    if (retval == NULL)
+        goto cleanup;
+
+    return retval;
+
+cleanup:
+    Py_XDECREF(retval);
+
+    for (n = 0; n < idx; ++n) {
+        tmp = PyTuple_GetItem(users, n);
+        PyTuple_SetItem(users, n, NULL);
+        Py_DECREF(tmp);
+    }
+    Py_DECREF(users);
+
+    return NULL;
+}
+
+static PyObject*
+emb_get_server(UNUSED_ARG(PyObject* self), PyObject* args) {
+    struct server* srv;
+    char const* name;
+
+    if (!PyArg_ParseTuple(args, "s", &name))
+        return NULL;
+
+    if (name == NULL || strlen(name) == 0) {
+        PyErr_SetString(PyExc_Exception, "invalid server name");
+        return NULL;
+    }
+
+    if ((srv = GetServerH(name)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown server");
+        return NULL;
+    }
+
+    return pyobj_from_server(srv);
 }
 
 static PyObject*
@@ -503,6 +595,7 @@ static PyMethodDef EmbMethods[] = {
     {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
     {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
     {"get_channels", emb_get_channels, METH_VARARGS, "Get all channels"},
+    {"get_server", emb_get_server, METH_VARARGS, "Get details about a server"},
     {"get_servers", emb_get_servers, METH_VARARGS, "Get all server names"},
     {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
     {"get_info", emb_get_info, METH_VARARGS, "Get various misc info about x3"},
