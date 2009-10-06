@@ -471,6 +471,32 @@ emb_get_server(UNUSED_ARG(PyObject* self), PyObject* args) {
 }
 
 static PyObject*
+pyobj_from_modelist(struct modeList* mode) {
+    size_t n;
+    PyObject* tmp;
+    PyObject* retval = PyTuple_New(mode->used);
+
+    if (retval == NULL)
+        return NULL;
+
+    for (n = 0; n < mode->used; ++n) {
+        struct modeNode* mn = mode->list[n];
+        tmp = PyString_FromString(mn->user->nick);
+        if (tmp == NULL) {
+            pyobj_release_tuple(retval, n);
+            return NULL;
+        }
+
+        if (PyTuple_SetItem(retval, n, tmp)) {
+            pyobj_release_tuple(retval, n);
+            return NULL;
+        }
+    }
+
+    return retval;
+}
+
+static PyObject*
 emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Returns a python dict object with all sorts of info about a channel.
@@ -493,11 +519,7 @@ emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
     }
 
     /* build tuple of nicks in channel */
-    pChannelMembers = PyTuple_New(channel->members.used);
-    for(n=0;n < channel->members.used;n++) {
-        struct modeNode *mn = channel->members.list[n];
-        PyTuple_SetItem(pChannelMembers, n, Py_BuildValue("s", mn->user->nick));
-    }
+    pChannelMembers = pyobj_from_modelist(&channel->members);
 
     /* build tuple of bans */
     pChannelBans = PyTuple_New(channel->banlist.used);

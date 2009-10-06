@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: refactor modeList conversion into separate function.
+
+2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: refactor out common error cleanup logic.
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
