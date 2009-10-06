@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: add emb_get_accounts function and refactor some
+	common logic into a single routine.
+
+	* src/nickserv.h src/nickserv.c: make nickserv_handle_dict externally
+	available.
+
+2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: add emb_kill function.
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>

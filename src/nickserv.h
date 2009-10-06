@@ -22,6 +22,7 @@
 #define _nickserv_h
 
 #include "hash.h"   /* for NICKLEN, etc., and common.h */
+#include "dict.h"
 #include <tre/regex.h> /* for regex in nickserv_config */
 struct svccmd;
 
@@ -255,5 +256,7 @@ typedef void (*failpw_func_t)(struct userNode *user, struct handle_info *handle)
 void reg_failpw_func(failpw_func_t func);
 
 void send_func_list(struct userNode *user);
+
+extern dict_t nickserv_handle_dict;
 
 #endif

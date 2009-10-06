@@ -36,6 +36,7 @@
 #include "mail.h"
 #include "timeq.h"
 #include "compat.h"
+#include "nickserv.h"
 
 /* TODO notes
  *
@@ -83,40 +84,7 @@ struct _tuple_dict_extra {
     size_t* extra;
 };
 
-static int _dict_iter_get_users(char const* key, UNUSED_ARG(void* data), void* extra) {
-    PyObject* tmp;
-    struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
-
-    if ((tmp = PyString_FromString(key)) == NULL)
-        return 1;
-
-    if (PyTuple_SetItem(real_extra->data, *(int*)real_extra->extra, tmp)) {
-        Py_DECREF(tmp);
-        return 1;
-    }
-
-    *real_extra->extra = *real_extra->extra + 1;
-
-    return 0;
-}
-
-static int _dict_iter_get_channels(char const* key, UNUSED_ARG(void* data), void* extra) {
-    PyObject* tmp;
-    struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
-
-    if ((tmp = PyString_FromString(key)) == NULL)
-        return 1;
-
-    if (PyTuple_SetItem(real_extra->data, *(int*)real_extra->extra, tmp)) {
-        Py_DECREF(tmp);
-        return 1;
-    }
-
-    *real_extra->extra = *real_extra->extra + 1;
-    return 0;
-}
-
-static int _dict_iter_get_servers(char const* key, UNUSED_ARG(void* data), void* extra) {
+static int _dict_iter_fill_tuple(char const* key, UNUSED_ARG(void* data), void* extra) {
     PyObject* tmp;
     struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
 
@@ -151,7 +119,7 @@ emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
     extra.extra = &n;
     extra.data = retval;
 
-    if (dict_foreach(clients, _dict_iter_get_users, (void*)&extra) != NULL) {
+    if (dict_foreach(clients, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
         for (i = 0; i < n; ++i) {
             tmp = PyTuple_GetItem(retval, i);
             PyTuple_SET_ITEM(retval, i, NULL);
@@ -183,7 +151,7 @@ emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
     extra.extra = &n;
     extra.data = retval;
 
-    if (dict_foreach(channels, _dict_iter_get_channels, (void*)&extra) != NULL) {
+    if (dict_foreach(channels, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
         for (i = 0; i < n; ++i) {
             tmp = PyTuple_GetItem(retval, i);
             PyTuple_SET_ITEM(retval, i, NULL);
@@ -207,11 +175,43 @@ emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
         return NULL;
 
     retval = PyTuple_New(dict_size(servers));
+    if (retval == NULL)
+        return NULL;
 
     extra.extra = &n;
     extra.data = retval;
 
-    if (dict_foreach(servers, _dict_iter_get_servers, (void*)&extra) != NULL) {
+    if (dict_foreach(servers, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
+        for (i = 0; i < n; ++i) {
+            tmp = PyTuple_GetItem(retval, i);
+            PyTuple_SET_ITEM(retval, i, NULL);
+            Py_DECREF(tmp);
+        }
+        Py_DECREF(retval);
+        return NULL;
+    }
+
+    return retval;
+}
+
+static PyObject*
+emb_get_accounts(UNUSED_ARG(PyObject* self), PyObject* args) {
+    PyObject* retval;
+    PyObject* tmp;
+    size_t n = 0, i;
+    struct _tuple_dict_extra extra;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    retval = PyTuple_New(dict_size(nickserv_handle_dict));
+    if (retval == NULL)
+        return NULL;
+
+    extra.extra = &n;
+    extra.data = retval;
+
+    if (dict_foreach(nickserv_handle_dict, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
         for (i = 0; i < n; ++i) {
             tmp = PyTuple_GetItem(retval, i);
             PyTuple_SET_ITEM(retval, i, NULL);
@@ -696,6 +696,7 @@ static PyMethodDef EmbMethods[] = {
     {"get_server", emb_get_server, METH_VARARGS, "Get details about a server"},
     {"get_servers", emb_get_servers, METH_VARARGS, "Get all server names"},
     {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
+    {"get_accounts", emb_get_accounts, METH_VARARGS, "Get all nickserv accounts"},
     {"get_info", emb_get_info, METH_VARARGS, "Get various misc info about x3"},
     /* null terminator */
     {NULL, NULL, 0, NULL}

@@ -159,7 +159,7 @@ extern struct string_list *autojoin_channels;
 static struct module *nickserv_module;
 static struct service *nickserv_service;
 static struct log_type *NS_LOG;
-static dict_t nickserv_handle_dict; /* contains struct handle_info* */
+dict_t nickserv_handle_dict; /* contains struct handle_info* */
 static dict_t nickserv_id_dict; /* contains struct handle_info* */
 static dict_t nickserv_nick_dict; /* contains struct nick_info* */
 static dict_t nickserv_opt_dict; /* contains option_func_t* */
