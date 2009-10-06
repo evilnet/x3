@@ -84,6 +84,18 @@ struct _tuple_dict_extra {
     size_t* extra;
 };
 
+static void pyobj_release_tuple(PyObject* tuple, size_t n) {
+    size_t i;
+
+    if (tuple == NULL)
+        return;
+
+    for (i = 0; i < n; ++i)
+        Py_XDECREF(PyTuple_GET_ITEM(tuple, i));
+
+    Py_XDECREF(tuple);
+}
+
 static int _dict_iter_fill_tuple(char const* key, UNUSED_ARG(void* data), void* extra) {
     PyObject* tmp;
     struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
@@ -104,8 +116,7 @@ static int _dict_iter_fill_tuple(char const* key, UNUSED_ARG(void* data), void* 
 static PyObject*
 emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
     PyObject* retval;
-    PyObject* tmp;
-    size_t num_clients, n = 0, i;
+    size_t num_clients, n = 0;
     struct _tuple_dict_extra extra;
 
     if (!PyArg_ParseTuple(args, ""))
@@ -120,12 +131,7 @@ emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
     extra.data = retval;
 
     if (dict_foreach(clients, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
-        for (i = 0; i < n; ++i) {
-            tmp = PyTuple_GetItem(retval, i);
-            PyTuple_SET_ITEM(retval, i, NULL);
-            Py_DECREF(tmp);
-        }
-        Py_DECREF(retval);
+        pyobj_release_tuple(retval, n);
         return NULL;
     }
 
@@ -136,8 +142,7 @@ emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
 static PyObject*
 emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
     PyObject* retval;
-    PyObject* tmp;
-    size_t num_channels, n = 0, i;
+    size_t num_channels, n = 0;
     struct _tuple_dict_extra extra;
 
     if (!PyArg_ParseTuple(args, ""))
@@ -152,12 +157,7 @@ emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
     extra.data = retval;
 
     if (dict_foreach(channels, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
-        for (i = 0; i < n; ++i) {
-            tmp = PyTuple_GetItem(retval, i);
-            PyTuple_SET_ITEM(retval, i, NULL);
-            Py_DECREF(tmp);
-        }
-        Py_DECREF(retval);
+        pyobj_release_tuple(retval, n);
         return NULL;
     }
 
@@ -167,8 +167,7 @@ emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
 static PyObject*
 emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
     PyObject* retval;
-    PyObject* tmp;
-    size_t n = 0, i;
+    size_t n = 0;
     struct _tuple_dict_extra extra;
 
     if (!PyArg_ParseTuple(args, ""))
@@ -182,12 +181,7 @@ emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
     extra.data = retval;
 
     if (dict_foreach(servers, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
-        for (i = 0; i < n; ++i) {
-            tmp = PyTuple_GetItem(retval, i);
-            PyTuple_SET_ITEM(retval, i, NULL);
-            Py_DECREF(tmp);
-        }
-        Py_DECREF(retval);
+        pyobj_release_tuple(retval, n);
         return NULL;
     }
 
@@ -197,8 +191,7 @@ emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
 static PyObject*
 emb_get_accounts(UNUSED_ARG(PyObject* self), PyObject* args) {
     PyObject* retval;
-    PyObject* tmp;
-    size_t n = 0, i;
+    size_t n = 0;
     struct _tuple_dict_extra extra;
 
     if (!PyArg_ParseTuple(args, ""))
@@ -212,12 +205,7 @@ emb_get_accounts(UNUSED_ARG(PyObject* self), PyObject* args) {
     extra.data = retval;
 
     if (dict_foreach(nickserv_handle_dict, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
-        for (i = 0; i < n; ++i) {
-            tmp = PyTuple_GetItem(retval, i);
-            PyTuple_SET_ITEM(retval, i, NULL);
-            Py_DECREF(tmp);
-        }
-        Py_DECREF(retval);
+        pyobj_release_tuple(retval, n);
         return NULL;
     }
 
@@ -315,7 +303,7 @@ emb_send_target_notice(UNUSED_ARG(PyObject *self), PyObject *args)
 
 static PyObject*
 pyobj_from_usernode(struct userNode* user) {
-    unsigned int n, i;
+    unsigned int n;
     struct modeNode *mn;
     PyObject* retval = NULL;
     PyObject* pChanList = PyTuple_New(user->channels.used);
@@ -370,12 +358,7 @@ pyobj_from_usernode(struct userNode* user) {
 
 cleanup:
     Py_XDECREF(retval);
-    for (i = 0; i < n; ++i) {
-        retval = PyTuple_GetItem(pChanList, i);
-        PyTuple_SET_ITEM(pChanList, i, NULL);
-        Py_XDECREF(retval);
-    }
-    Py_DECREF(pChanList);
+    pyobj_release_tuple(pChanList, n);
 
     return NULL;
 }
@@ -461,13 +444,7 @@ pyobj_from_server(struct server* srv) {
 
 cleanup:
     Py_XDECREF(retval);
-
-    for (n = 0; n < idx; ++n) {
-        tmp = PyTuple_GetItem(users, n);
-        PyTuple_SetItem(users, n, NULL);
-        Py_DECREF(tmp);
-    }
-    Py_DECREF(users);
+    pyobj_release_tuple(users, idx);
 
     return NULL;
 }
