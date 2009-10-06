@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: improve error logic for emb_get_channels.
+
+2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: improve error logic for emb_get_users.
 
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>

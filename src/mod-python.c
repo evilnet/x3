@@ -99,10 +99,15 @@ static int _dict_iter_get_users(char const* key, UNUSED_ARG(void* data), void* e
 }
 
 static int _dict_iter_get_channels(char const* key, UNUSED_ARG(void* data), void* extra) {
+    PyObject* tmp;
     struct _tuple_dict_extra* real_extra = (struct _tuple_dict_extra*)extra;
 
-    PyTuple_SetItem(real_extra->data, *(int*)real_extra->extra,
-            PyString_FromString(key));
+    if ((tmp = PyString_FromString(key)) == NULL)
+        return 1;
+
+    if (PyTuple_SetItem(real_extra->data, *(int*)real_extra->extra, tmp))
+        return 1;
+
     *real_extra->extra = *real_extra->extra + 1;
     return 0;
 }
@@ -152,7 +157,8 @@ emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
 static PyObject*
 emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
     PyObject* retval;
-    size_t num_channels, n = 0;
+    PyObject* tmp;
+    size_t num_channels, n = 0, i;
     struct _tuple_dict_extra extra;
 
     if (!PyArg_ParseTuple(args, ""))
@@ -160,11 +166,21 @@ emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     num_channels = dict_size(channels);
     retval = PyTuple_New(num_channels);
+    if (retval == NULL)
+        return NULL;
 
     extra.extra = &n;
     extra.data = retval;
 
-    dict_foreach(channels, _dict_iter_get_channels, (void*)&extra);
+    if (dict_foreach(channels, _dict_iter_get_channels, (void*)&extra) != NULL) {
+        for (i = 0; i < n; ++i) {
+            tmp = PyTuple_GetItem(retval, i);
+            PyTuple_SET_ITEM(retval, i, NULL);
+            Py_DECREF(tmp);
+        }
+        Py_DECREF(retval);
+        return NULL;
+    }
 
     return retval;
 }
