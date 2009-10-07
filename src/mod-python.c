@@ -112,104 +112,58 @@ static int _dict_iter_fill_tuple(char const* key, UNUSED_ARG(void* data), void* 
     return 0;
 }
 
-/* get a tuple with all users in it */
 static PyObject*
-emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
+pyobj_from_dict_t(dict_t d) {
     PyObject* retval;
-    size_t num_clients, n = 0;
+    size_t n = 0;
     struct _tuple_dict_extra extra;
 
-    if (!PyArg_ParseTuple(args, ""))
-        return NULL;
-
-    num_clients = dict_size(clients);
-    retval = PyTuple_New(num_clients);
-    if (retval == NULL)
+    if ((retval = PyTuple_New(dict_size(d))) == NULL)
         return NULL;
 
     extra.extra = &n;
     extra.data = retval;
 
-    if (dict_foreach(clients, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
+    if (dict_foreach(d, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
         pyobj_release_tuple(retval, n);
         return NULL;
     }
 
     return retval;
+}
+
+/* get a tuple with all users in it */
+static PyObject*
+emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    return pyobj_from_dict_t(clients);
 }
 
 /* get a tuple with all channels in it */
 static PyObject*
 emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
-    PyObject* retval;
-    size_t num_channels, n = 0;
-    struct _tuple_dict_extra extra;
-
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
-    num_channels = dict_size(channels);
-    retval = PyTuple_New(num_channels);
-    if (retval == NULL)
-        return NULL;
-
-    extra.extra = &n;
-    extra.data = retval;
-
-    if (dict_foreach(channels, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
-        pyobj_release_tuple(retval, n);
-        return NULL;
-    }
-
-    return retval;
+    return pyobj_from_dict_t(channels);
 }
 
 static PyObject*
 emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
-    PyObject* retval;
-    size_t n = 0;
-    struct _tuple_dict_extra extra;
-
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
-    retval = PyTuple_New(dict_size(servers));
-    if (retval == NULL)
-        return NULL;
-
-    extra.extra = &n;
-    extra.data = retval;
-
-    if (dict_foreach(servers, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
-        pyobj_release_tuple(retval, n);
-        return NULL;
-    }
-
-    return retval;
+    return pyobj_from_dict_t(servers);
 }
 
 static PyObject*
 emb_get_accounts(UNUSED_ARG(PyObject* self), PyObject* args) {
-    PyObject* retval;
-    size_t n = 0;
-    struct _tuple_dict_extra extra;
-
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
-    retval = PyTuple_New(dict_size(nickserv_handle_dict));
-    if (retval == NULL)
-        return NULL;
-
-    extra.extra = &n;
-    extra.data = retval;
-
-    if (dict_foreach(nickserv_handle_dict, _dict_iter_fill_tuple, (void*)&extra) != NULL) {
-        pyobj_release_tuple(retval, n);
-        return NULL;
-    }
-
-    return retval;
+    return pyobj_from_dict_t(nickserv_handle_dict);
 }
 
 static PyObject*
