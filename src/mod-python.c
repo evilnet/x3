@@ -497,6 +497,56 @@ pyobj_from_modelist(struct modeList* mode) {
 }
 
 static PyObject*
+pyobj_from_banlist(struct banList* bans) {
+    size_t n;
+    struct banNode* bn;
+    PyObject* tmp;
+    PyObject* retval = PyTuple_New(bans->used);
+
+    if (retval == NULL)
+        return NULL;
+
+    for (n = 0; n < bans->used; ++n) {
+        bn = bans->list[n];
+
+        tmp = Py_BuildValue("{s:s,s:s,s:l}",
+                "ban", bn->ban, "who", bn->who, "set", bn->set);
+
+        if (tmp == NULL || PyTuple_SetItem(retval, n, tmp)) {
+            pyobj_release_tuple(retval, n);
+            return NULL;
+        }
+     }
+
+    return retval;
+}
+
+static PyObject*
+pyobj_from_exemptlist(struct exemptList* exmp) {
+    size_t n;
+    struct exemptNode* en;
+    PyObject* tmp;
+    PyObject* retval = PyTuple_New(exmp->used);
+
+    if (retval == NULL)
+        return NULL;
+
+    for (n = 0; n < exmp->used; ++n) {
+        en = exmp->list[n];
+
+        tmp = Py_BuildValue("{s:s,s:s,s:l}",
+                "ban", en->exempt, "who", en->who, "set", en->set);
+
+        if (tmp == NULL || PyTuple_SetItem(retval, n, tmp)) {
+            pyobj_release_tuple(retval, n);
+            return NULL;
+        }
+    }
+
+    return retval;
+}
+
+static PyObject*
 emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
 {
     /* Returns a python dict object with all sorts of info about a channel.
@@ -504,10 +554,10 @@ emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
     */
     char *name;
     struct chanNode *channel;
-    unsigned int n;
-    PyObject *pChannelMembers;
-    PyObject *pChannelBans;
-    PyObject *pChannelExempts;
+    PyObject *pChannelMembers = NULL;
+    PyObject *pChannelBans = NULL;
+    PyObject *pChannelExempts = NULL;
+    PyObject *retval = NULL;
 
 
     if(!PyArg_ParseTuple(args, "s", &name))
@@ -520,32 +570,20 @@ emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
 
     /* build tuple of nicks in channel */
     pChannelMembers = pyobj_from_modelist(&channel->members);
+    if (pChannelMembers == NULL)
+        goto cleanup;
 
     /* build tuple of bans */
-    pChannelBans = PyTuple_New(channel->banlist.used);
-    for(n=0; n < channel->banlist.used;n++) {
-        struct banNode *bn = channel->banlist.list[n];
-        PyTuple_SetItem(pChannelBans, n, 
-                        Py_BuildValue("{s:s,s:s,s:i}",
-                            "ban", bn->ban,
-                            "who", bn->who,
-                            "set", bn->set)
-                );
-    }
+    pChannelBans = pyobj_from_banlist(&channel->banlist);
+    if (pChannelBans == NULL)
+        goto cleanup;
 
     /* build tuple of exempts */
-    pChannelExempts = PyTuple_New(channel->exemptlist.used);
-    for(n=0; n < channel->exemptlist.used;n++) {
-        struct exemptNode *en = channel->exemptlist.list[n];
-        PyTuple_SetItem(pChannelExempts, n, 
-                        Py_BuildValue("{s:s,s:s,s:i}",
-                            "ban", en->exempt,
-                            "who", en->who,
-                            "set", en->set)
-                );
-    }
+    pChannelExempts = pyobj_from_exemptlist(&channel->exemptlist);
+    if (pChannelExempts == NULL)
+        goto cleanup;
 
-    return Py_BuildValue("{s:s,s:s,s:s,s:i"
+    retval = Py_BuildValue("{s:s,s:s,s:s,s:i"
                          ",s:i,s:i,s:O,s:O,s:O}",
 
                          "name", channel->name,
@@ -559,6 +597,18 @@ emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
                          "bans", pChannelBans,
                          "exempts", pChannelExempts
             );
+    if (retval == NULL)
+        goto cleanup;
+
+    return retval;
+
+cleanup:
+    Py_XDECREF(retval);
+    pyobj_release_tuple(pChannelExempts, channel->exemptlist.used);
+    pyobj_release_tuple(pChannelBans, channel->banlist.used);
+    pyobj_release_tuple(pChannelMembers, channel->members.used);
+
+    return NULL;
 }
 
 static PyObject*

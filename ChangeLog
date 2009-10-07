@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-07  Henrik Stuart <evilnet@hstuart.dk>
+
+	* src/mod-python.c: improve error logic for emb_get_channel.
+
 2009-10-06  Henrik Stuart <evilnet@hstuart.dk>
 
 	* src/mod-python.c: refactor modeList conversion into separate function.
