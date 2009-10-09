@@ -669,6 +669,58 @@ emb_kill(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+struct py_timeq_extra {
+    PyObject* func;
+    PyObject* arg;
+};
+
+static 
+void py_timeq_callback(void* data) {
+    struct py_timeq_extra* extra = (struct py_timeq_extra*)data;
+
+    PyObject* retval = PyObject_Call(extra->func, extra->arg, NULL);
+    Py_XDECREF(retval);
+
+    Py_DECREF(extra->func);
+    Py_DECREF(extra->arg);
+}
+
+static PyObject*
+emb_timeq_add(UNUSED_ARG(PyObject* self), PyObject* args) {
+    time_t when;
+    PyObject* func, *arg;
+    struct py_timeq_extra* extra;
+
+    if (!PyArg_ParseTuple(args, "lOO", &when, &func, &arg))
+        return NULL;
+
+    if (!PyFunction_Check(func)) {
+        PyErr_SetString(PyExc_Exception, "first argument must be a function");
+        return NULL;
+    }
+
+    if (!PyTuple_Check(arg)) {
+        PyErr_SetString(PyExc_Exception, "second argument must be a tuple");
+        return NULL;
+    }
+
+    extra = malloc(sizeof(struct py_timeq_extra));
+    if (extra == NULL) {
+        PyErr_SetString(PyExc_Exception, "out of memory");
+        return NULL;
+    }
+
+    Py_INCREF(func);
+    Py_INCREF(arg);
+
+    extra->func = func;
+    extra->arg = arg;
+
+    timeq_add(when, py_timeq_callback, (void*)extra);
+
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -689,7 +741,7 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"get_config", emb_get_config, METH_VARARGS, "get x3.conf settings into a nested dict"},
 //TODO:    {"config_set", emb_config_set, METH_VARARGS, "change a config setting 'on-the-fly'."},
 //
-//TODO:    {"timeq_add", emb_timeq_new, METH_VARARGS, "some kind of interface to the timed event system."},
+    {"timeq_add", emb_timeq_add, METH_VARARGS, "add function to callback to the event system"},
 //TODO:    {"timeq_del", emb_timeq_new, METH_VARARGS, "some kind of interface to the timed event system."},
     /* Information gathering methods */
     {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},

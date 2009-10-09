@@ -1,7 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
-1009-10-07  Henrik Stuart <evilnet@hstuart.dk>
+2009-10-09  Henrik Stuart <evilnet@hstuart.dk>
+
+	* src/mod-python.c: add emb_timeq_add function.
+
+2009-10-07  Henrik Stuart <evilnet@hstuart.dk>
 
 	* src/mod-python.c: refactor dict_t construction logic.
 
