@@ -721,6 +721,24 @@ emb_timeq_add(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+static PyObject*
+emb_timeq_del(UNUSED_ARG(PyObject* self), PyObject* args) {
+    /* NOTE:
+     * This function will delete all python-added callbacks registered
+     * to run at the given time, regardless of their data. This is due to
+     * the unnecessary extra burden it would require to get the same data for
+     * multiple runs.
+     */
+    time_t when;
+
+    if (!PyArg_ParseTuple(args, "l", &when))
+        return NULL;
+
+    timeq_del(when, py_timeq_callback, NULL, TIMEQ_IGNORE_DATA);
+
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -742,7 +760,8 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"config_set", emb_config_set, METH_VARARGS, "change a config setting 'on-the-fly'."},
 //
     {"timeq_add", emb_timeq_add, METH_VARARGS, "add function to callback to the event system"},
-//TODO:    {"timeq_del", emb_timeq_new, METH_VARARGS, "some kind of interface to the timed event system."},
+    {"timeq_del", emb_timeq_del, METH_VARARGS, "remove function to callback from the event system"},
+
     /* Information gathering methods */
     {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
     {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
