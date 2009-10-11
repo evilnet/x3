@@ -739,6 +739,94 @@ emb_timeq_del(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+static int pyobj_config_make_dict(char const* key, void* data_, void* extra) {
+    struct record_data* data = (struct record_data*)data_;
+    PyObject* dict = (PyObject*)extra;
+    PyObject* value = NULL, *tmp;
+    size_t n, idx;
+    int success;
+
+    switch (data->type) {
+        case RECDB_QSTRING:
+            value = PyString_FromString(data->d.qstring);
+            break;
+
+        case RECDB_STRING_LIST:
+            value = PyList_New(data->d.slist->used);
+            if (value == NULL)
+                break;
+
+            success = 1;
+            for (n = 0; n < data->d.slist->used; ++n) {
+                tmp = PyString_FromString(data->d.slist->list[n]);
+                if (tmp == NULL) {
+                    success = 0;
+                    break;
+                }
+
+                if (PyList_SetItem(value, n, tmp)) {
+                    Py_DECREF(tmp);
+                    success = 0;
+                    break;
+                }
+            }
+            if (!success) {
+                for (idx = 0; idx < n; ++idx) {
+                    tmp = PyList_GET_ITEM(value, idx);
+                    Py_DECREF(tmp);
+                    PyList_SET_ITEM(value, idx, NULL);
+                }
+                Py_DECREF(value);
+                value = NULL;
+            }
+            break;
+
+        case RECDB_OBJECT:
+            value = PyDict_New();
+            if (value == NULL)
+                break;
+
+            if (dict_foreach(data->d.object, pyobj_config_make_dict, (void*)value) != NULL) {
+                PyDict_Clear(value);
+                value = NULL;
+                break;
+            }
+
+            break;
+
+        default:
+            value = Py_None;
+    }
+
+    if (value == NULL)
+        return 1;
+
+    if (PyDict_SetItemString(dict, key, value))
+        return 1;
+
+    return 0;
+}
+
+static PyObject*
+emb_get_config(UNUSED_ARG(PyObject* self), PyObject* args) {
+    PyObject* dict;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    dict = PyDict_New();
+    if (dict == NULL)
+        return NULL;
+
+    if (conf_enum_root(pyobj_config_make_dict, (void*)dict) != NULL) {
+        PyDict_Clear(dict);
+        PyErr_SetString(PyExc_Exception, "unable to iterate config");
+        return NULL;
+    }
+
+    return dict;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -756,7 +844,7 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"channel_mode", emb_channel_mode, METH_VARARGS, "set modes on a channel"},
 //TODO:    {"user_mode", emb_user_mode, METH_VARARGS, "Have x3 set usermodes on one of its own nicks"},
 //
-//TODO:    {"get_config", emb_get_config, METH_VARARGS, "get x3.conf settings into a nested dict"},
+    {"get_config", emb_get_config, METH_VARARGS, "get x3.conf settings into a nested dict"},
 //TODO:    {"config_set", emb_config_set, METH_VARARGS, "change a config setting 'on-the-fly'."},
 //
     {"timeq_add", emb_timeq_add, METH_VARARGS, "add function to callback to the event system"},
