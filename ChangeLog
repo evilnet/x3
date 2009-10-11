@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-11  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: remember to increase reference count of Py_None.
+
+2009-10-11  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: add emb_kick function.
 
 2009-10-11  Henrik Stuart <evilnet@hstuart.dk>

@@ -666,6 +666,7 @@ emb_kill(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     irc_kill(service->bot, target, message);
 
+    Py_INCREF(Py_None);
     return Py_None;
 }
 
@@ -718,6 +719,7 @@ emb_timeq_add(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     timeq_add(when, py_timeq_callback, (void*)extra);
 
+    Py_INCREF(Py_None);
     return Py_None;
 }
 
@@ -736,6 +738,7 @@ emb_timeq_del(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     timeq_del(when, py_timeq_callback, NULL, TIMEQ_IGNORE_DATA);
 
+    Py_INCREF(Py_None);
     return Py_None;
 }
 
@@ -795,6 +798,7 @@ static int pyobj_config_make_dict(char const* key, void* data_, void* extra) {
             break;
 
         default:
+            Py_INCREF(Py_None);
             value = Py_None;
     }
 
@@ -854,6 +858,7 @@ static PyObject* emb_kick(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     irc_kick(who, target, channel, msg);
 
+    Py_INCREF(Py_None);
     return Py_None;
 }
 
