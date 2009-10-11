@@ -827,6 +827,36 @@ emb_get_config(UNUSED_ARG(PyObject* self), PyObject* args) {
     return dict;
 }
 
+static PyObject* emb_kick(UNUSED_ARG(PyObject* self), PyObject* args) {
+    struct userNode* who, *target;
+    struct chanNode* channel;
+    char const* msg;
+
+    char const* who_s, *target_s, *channel_s;
+
+    if (!PyArg_ParseTuple(args, "ssss", &who_s, &target_s, &channel_s, &msg))
+        return NULL;
+
+    if ((who = GetUserH(who_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "no such user");
+        return NULL;
+    }
+
+    if ((target = GetUserH(target_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "no such target");
+        return NULL;
+    }
+
+    if ((channel = GetChannel(channel_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "no such channel");
+        return NULL;
+    }
+
+    irc_kick(who, target, channel, msg);
+
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -840,7 +870,7 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"unshun"
 //TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
 //TODO:    {"ungline", emb_ungline, METH_VARARGS, "remove a gline"},
-//TODO:    {"kick", emb_kick, METH_VARARGS, "kick someone from a channel"},
+    {"kick", emb_kick, METH_VARARGS, "kick someone from a channel"},
 //TODO:    {"channel_mode", emb_channel_mode, METH_VARARGS, "set modes on a channel"},
 //TODO:    {"user_mode", emb_user_mode, METH_VARARGS, "Have x3 set usermodes on one of its own nicks"},
 //
