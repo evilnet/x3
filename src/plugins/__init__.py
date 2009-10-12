@@ -5,6 +5,9 @@ class Plugin(object):
     def server_link(self, server):
         pass
 
+    def new_user(self, user):
+        pass
+
 def load_path(path, prefix):
     mods = []
 

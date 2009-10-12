@@ -72,10 +72,11 @@ class handler:
                 return 1
         return 0
 
-    def new_user(self, irc, nick, ident, hostname, info):
-        # we may filter on all the user fields, but we only pass the nick because
-        # the plugin can get the rest itself
-        return self.plugins.callhandler("new_user", irc, [nick, ident, hostname, info], [nick])
+    def new_user(self, user):
+        for plugin in self.newplugins:
+            if plugin.new_user(user):
+                return 1
+        return 0
 
     def nick_change(self, irc, nick, old_nick):
         return self.plugins.callhandler("nick_change", irc, [nick, old_nick], [nick, old_nick])

@@ -1552,15 +1552,46 @@ cleanup:
 static int
 python_handle_new_user(struct userNode *user)
 {
-    log_module(PY_LOG, LOG_INFO, "Python module handle_new_user");
+    PyObject* name = NULL;
+    PyObject* usr = NULL;
+    PyObject* retval = NULL;
+    int i = 0;
+    const char* err = NULL;
+
     if(!user) {
         log_module(PY_LOG, LOG_WARNING, "Python code got new_user without the user");
         return 0;
     }
-    else {
-        char *args[] = {user->nick, user->ident, user->hostname, user->info};
-        return python_call_handler("new_user", args, 4, "", "", "");
+
+    if ((usr = pyobj_from_usernode(user)) == NULL) {
+        err = "unable to allocate python user information";
+        goto cleanup;
     }
+
+    name = PyString_FromString("new_user");
+    if (name == NULL) {
+        err = "unable to allocate memory for handler function name";
+        goto cleanup;
+    }
+
+    if ((retval = PyObject_CallMethodObjArgs(handler_object, name, usr, NULL)) == NULL) {
+        err = "error calling new_user handler";
+        goto cleanup;
+    }
+
+cleanup:
+    Py_XDECREF(usr);
+    Py_XDECREF(name);
+
+    if (retval != NULL && PyInt_Check(retval))
+        i = (int)PyInt_AsLong(retval);
+
+    Py_XDECREF(retval);
+
+    if (err != NULL)
+        log_module(PY_LOG, LOG_WARNING, "%s", err);
+
+    return i;
 }
 
 static void
