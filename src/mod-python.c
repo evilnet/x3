@@ -132,7 +132,9 @@ pyobj_from_dict_t(dict_t d) {
     return retval;
 }
 
-/* get a tuple with all users in it */
+PyDoc_STRVAR(emb_get_users__doc__,
+        "get_users() -> tuple with user nicks");
+
 static PyObject*
 emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
     if (!PyArg_ParseTuple(args, ""))
@@ -141,7 +143,9 @@ emb_get_users(UNUSED_ARG(PyObject *self), PyObject *args) {
     return pyobj_from_dict_t(clients);
 }
 
-/* get a tuple with all channels in it */
+PyDoc_STRVAR(emb_get_channels__doc__,
+        "get_channels() -> tuple with channel names");
+
 static PyObject*
 emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
     if (!PyArg_ParseTuple(args, ""))
@@ -149,6 +153,9 @@ emb_get_channels(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     return pyobj_from_dict_t(channels);
 }
+
+PyDoc_STRVAR(emb_get_servers__doc__,
+        "get_servers() -> tuple with server names");
 
 static PyObject*
 emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
@@ -158,6 +165,9 @@ emb_get_servers(UNUSED_ARG(PyObject* self), PyObject* args) {
     return pyobj_from_dict_t(servers);
 }
 
+PyDoc_STRVAR(emb_get_accounts__doc__,
+        "get_accounts() -> tuple with all nickserv account names");
+
 static PyObject*
 emb_get_accounts(UNUSED_ARG(PyObject* self), PyObject* args) {
     if (!PyArg_ParseTuple(args, ""))
@@ -165,6 +175,11 @@ emb_get_accounts(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     return pyobj_from_dict_t(nickserv_handle_dict);
 }
+
+PyDoc_STRVAR(emb_dump__doc__,
+        "dump(dump) -> an integer detailing success\n\n"
+        "Dumps a string to the server socket for propagation to other servers.\n\n"
+        "Return value is 1 on success and 0 on failure.\n");
 
 static PyObject*
 emb_dump(UNUSED_ARG(PyObject *self), PyObject *args)
@@ -192,6 +207,9 @@ emb_dump(UNUSED_ARG(PyObject *self), PyObject *args)
 
     return Py_BuildValue("i", ret);
 }
+
+PyDoc_STRVAR(emb_send_target_privmsg__doc__,
+        "send_target_privmsg(servicenick, target, message) -> amount of message sent");
 
 static PyObject*
 emb_send_target_privmsg(UNUSED_ARG(PyObject *self), PyObject *args)
@@ -223,6 +241,9 @@ emb_send_target_privmsg(UNUSED_ARG(PyObject *self), PyObject *args)
     ret = send_target_message(5, channel, service->bot, "%s", buf);
     return Py_BuildValue("i", ret);
 }
+
+PyDoc_STRVAR(emb_send_target_notice__doc__,
+        "send_target_notice(servicenick, target, message) -> amount of message sent");
 
 static PyObject*
 emb_send_target_notice(UNUSED_ARG(PyObject *self), PyObject *args)
@@ -317,6 +338,11 @@ cleanup:
     return NULL;
 }
 
+PyDoc_STRVAR(emb_get_user__doc__,
+        "get_user(nick) -> dict with user information\n\n"
+        "Updating the returned dictionary will not be reflected in the user's\n"
+        "information.");
+
 static PyObject*
 emb_get_user(UNUSED_ARG(PyObject *self), PyObject *args)
 {
@@ -402,6 +428,11 @@ cleanup:
 
     return NULL;
 }
+
+PyDoc_STRVAR(emb_get_server__doc__,
+        "get_server(name) -> dict with information\n\n"
+        "Changes made to the returned dictionary will not reflect in the server's\n"
+        "information.");
 
 static PyObject*
 emb_get_server(UNUSED_ARG(PyObject* self), PyObject* args) {
@@ -500,6 +531,11 @@ pyobj_from_exemptlist(struct exemptList* exmp) {
     return retval;
 }
 
+PyDoc_STRVAR(emb_get_channel__doc__,
+        "get_channel(channel) -> dict with channel information\n\n"
+        "Updates made to the returned dictionary does not reflect in the channel\n"
+        "information.");
+
 static PyObject*
 emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
 {
@@ -565,6 +601,11 @@ cleanup:
     return NULL;
 }
 
+PyDoc_STRVAR(emb_get_account__doc__,
+        "get_account(account) -> dict with account information\n\n"
+        "Changes made to the returned dictionary will not be reflected in the\n"
+        "account's information.");
+
 static PyObject*
 emb_get_account(UNUSED_ARG(PyObject *self), PyObject *args)
 {
@@ -607,6 +648,10 @@ emb_get_account(UNUSED_ARG(PyObject *self), PyObject *args)
                            );
 }
 
+PyDoc_STRVAR(emb_get_info__doc__,
+        "get_info() -> dict with general service setup information\n\n"
+        "The dictionary contains the nicks of the different services.");
+
 static PyObject*
 emb_get_info(UNUSED_ARG(PyObject *self), UNUSED_ARG(PyObject *args))
 {
@@ -624,6 +669,10 @@ emb_get_info(UNUSED_ARG(PyObject *self), UNUSED_ARG(PyObject *args))
                           "spamserv", spamserv?spamserv->nick : "SpamServ");
 }
 
+PyDoc_STRVAR(emb_log_module__doc__,
+        "log_module(level, message)\n\n"
+        "Logs a message in the PY_LOG subsystem given a severity level and a message.");
+
 static PyObject*
 emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
 {
@@ -633,17 +682,20 @@ emb_log_module(UNUSED_ARG(PyObject *self), PyObject *args)
      * for now, all logs go to the PY_LOG log. In the future this will change.
      */
     char *message;
-    int ret = 0;
     int level;
-
 
     if(!PyArg_ParseTuple(args, "is", &level, &message))
         return NULL;
 
     log_module(PY_LOG, level, "%s", message);
 
-    return Py_BuildValue("i", ret);
+    Py_INCREF(Py_None);
+    return Py_None;
 }
+
+PyDoc_STRVAR(emb_kill__doc__,
+        "kill(servicenick, target, message)\n\n"
+        "Kills a given user.");
 
 static PyObject*
 emb_kill(UNUSED_ARG(PyObject* self), PyObject* args) {
@@ -686,6 +738,12 @@ void py_timeq_callback(void* data) {
     Py_DECREF(extra->arg);
 }
 
+PyDoc_STRVAR(emb_timeq_add__doc__,
+        "timeq_add(when, function, args)\n\n"
+        "Adds a callback to the service timer system.\n\n"
+        "The specific function must be callable, and the specified arguments must be\n"
+        "a tuple with the arguments that the function expects.");
+
 static PyObject*
 emb_timeq_add(UNUSED_ARG(PyObject* self), PyObject* args) {
     time_t when;
@@ -723,14 +781,14 @@ emb_timeq_add(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+PyDoc_STRVAR(emb_timeq_del__doc__,
+        "timeq_del(when)\n\n"
+        "This function deletes all python-added callbacks registered to run at the\n"
+        "given time, regardless of their data. This is due to the unnecessary extra\n"
+        "burden it would require to get the same data for multiple runs.");
+
 static PyObject*
 emb_timeq_del(UNUSED_ARG(PyObject* self), PyObject* args) {
-    /* NOTE:
-     * This function will delete all python-added callbacks registered
-     * to run at the given time, regardless of their data. This is due to
-     * the unnecessary extra burden it would require to get the same data for
-     * multiple runs.
-     */
     time_t when;
 
     if (!PyArg_ParseTuple(args, "l", &when))
@@ -811,6 +869,11 @@ static int pyobj_config_make_dict(char const* key, void* data_, void* extra) {
     return 0;
 }
 
+PyDoc_STRVAR(emb_get_config__doc__,
+        "get_config() -> dict with config elements and values\n\n"
+        "Updates to the returned dictionary will not reflect in the service's\n"
+        "configuration.");
+
 static PyObject*
 emb_get_config(UNUSED_ARG(PyObject* self), PyObject* args) {
     PyObject* dict;
@@ -830,6 +893,10 @@ emb_get_config(UNUSED_ARG(PyObject* self), PyObject* args) {
 
     return dict;
 }
+
+PyDoc_STRVAR(emb_kick__doc__,
+        "kick(who, target, message)\n\n"
+        "Kicks a given target as if the who user kicked them using the given message.");
 
 static PyObject* emb_kick(UNUSED_ARG(PyObject* self), PyObject* args) {
     struct userNode* who, *target;
@@ -862,6 +929,10 @@ static PyObject* emb_kick(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+PyDoc_STRVAR(emb_channel_mode__doc__,
+        "channel_mode(who, channel, modes)\n\n"
+        "Lets a current server's user set a specified channel's modes as specified.");
+
 static PyObject* emb_channel_mode(UNUSED_ARG(PyObject* self_), PyObject* args) {
     struct userNode* who;
     struct chanNode* channel;
@@ -893,6 +964,10 @@ static PyObject* emb_channel_mode(UNUSED_ARG(PyObject* self_), PyObject* args) {
     return Py_None;
 }
 
+PyDoc_STRVAR(emb_user_mode__doc__,
+        "user_mode(target, modes)\n\n"
+        "Sets target's modes as specified. The modes are in normal +f-n syntax.");
+
 static PyObject* emb_user_mode(UNUSED_ARG(PyObject* self), PyObject* args) {
     struct userNode* target;
     char const* modes;
@@ -912,6 +987,10 @@ static PyObject* emb_user_mode(UNUSED_ARG(PyObject* self), PyObject* args) {
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+PyDoc_STRVAR(emb_fakehost__doc__,
+        "fakehost(target, host)\n\n"
+        "Sets the fakehost of a given user to the specified host.");
 
 static PyObject* emb_fakehost(UNUSED_ARG(PyObject* self), PyObject* args) {
     struct userNode* target;
@@ -935,39 +1014,39 @@ static PyObject* emb_fakehost(UNUSED_ARG(PyObject* self), PyObject* args) {
 
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
-    {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
-    {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, "Send a message to somewhere"},
-    {"send_target_notice", emb_send_target_notice, METH_VARARGS, "Send a notice to somewhere"},
-    {"log_module", emb_log_module, METH_VARARGS, "Log something using the X3 log subsystem"},
+    {"dump", emb_dump, METH_VARARGS, emb_dump__doc__},
+    {"send_target_privmsg", emb_send_target_privmsg, METH_VARARGS, emb_send_target_privmsg__doc__},
+    {"send_target_notice", emb_send_target_notice, METH_VARARGS, emb_send_target_notice__doc__},
+    {"log_module", emb_log_module, METH_VARARGS, emb_log_module__doc__},
 //TODO:    {"exec_cmd", emb_exec_cmd, METH_VARARGS, "execute x3 command provided"},
 //          This should use environment from "python command" call to pass in, if available
-    {"kill", emb_kill, METH_VARARGS, "Kill someone"},
-    {"fakehost", emb_fakehost, METH_VARARGS, "Set a user's fakehost"},
+    {"kill", emb_kill, METH_VARARGS, emb_kill__doc__},
+    {"fakehost", emb_fakehost, METH_VARARGS, emb_fakehost__doc__},
 //TODO: svsnick, svsquit, svsjoin, svsmode, svsident, nick, quit, join, part, ident, vhost
 //TODO:    {"shun"
 //TODO:    {"unshun"
 //TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
 //TODO:    {"ungline", emb_ungline, METH_VARARGS, "remove a gline"},
-    {"kick", emb_kick, METH_VARARGS, "kick someone from a channel"},
-    {"channel_mode", emb_channel_mode, METH_VARARGS, "set modes on a channel"},
-    {"user_mode", emb_user_mode, METH_VARARGS, "Have x3 set usermodes on one of its own nicks"},
+    {"kick", emb_kick, METH_VARARGS, emb_kick__doc__},
+    {"channel_mode", emb_channel_mode, METH_VARARGS, emb_channel_mode__doc__},
+    {"user_mode", emb_user_mode, METH_VARARGS, emb_user_mode__doc__},
 //
-    {"get_config", emb_get_config, METH_VARARGS, "get x3.conf settings into a nested dict"},
+    {"get_config", emb_get_config, METH_VARARGS, emb_get_config__doc__},
 //TODO:    {"config_set", emb_config_set, METH_VARARGS, "change a config setting 'on-the-fly'."},
 //
-    {"timeq_add", emb_timeq_add, METH_VARARGS, "add function to callback to the event system"},
-    {"timeq_del", emb_timeq_del, METH_VARARGS, "remove function to callback from the event system"},
+    {"timeq_add", emb_timeq_add, METH_VARARGS, emb_timeq_add__doc__},
+    {"timeq_del", emb_timeq_del, METH_VARARGS, emb_timeq_del__doc__},
 
     /* Information gathering methods */
-    {"get_user", emb_get_user, METH_VARARGS, "Get details about a nickname"},
-    {"get_users", emb_get_users, METH_VARARGS, "Get all connected users"},
-    {"get_channel", emb_get_channel, METH_VARARGS, "Get details about a channel"},
-    {"get_channels", emb_get_channels, METH_VARARGS, "Get all channels"},
-    {"get_server", emb_get_server, METH_VARARGS, "Get details about a server"},
-    {"get_servers", emb_get_servers, METH_VARARGS, "Get all server names"},
-    {"get_account", emb_get_account, METH_VARARGS, "Get details about an account"},
-    {"get_accounts", emb_get_accounts, METH_VARARGS, "Get all nickserv accounts"},
-    {"get_info", emb_get_info, METH_VARARGS, "Get various misc info about x3"},
+    {"get_user", emb_get_user, METH_VARARGS, emb_get_user__doc__},
+    {"get_users", emb_get_users, METH_VARARGS, emb_get_users__doc__},
+    {"get_channel", emb_get_channel, METH_VARARGS, emb_get_channel__doc__},
+    {"get_channels", emb_get_channels, METH_VARARGS, emb_get_channels__doc__},
+    {"get_server", emb_get_server, METH_VARARGS, emb_get_server__doc__},
+    {"get_servers", emb_get_servers, METH_VARARGS, emb_get_servers__doc__},
+    {"get_account", emb_get_account, METH_VARARGS, emb_get_account__doc__},
+    {"get_accounts", emb_get_accounts, METH_VARARGS, emb_get_accounts__doc__},
+    {"get_info", emb_get_info, METH_VARARGS, emb_get_info__doc__},
     /* null terminator */
     {NULL, NULL, 0, NULL}
 };
