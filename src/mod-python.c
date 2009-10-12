@@ -1501,15 +1501,52 @@ python_handle_join(struct modeNode *mNode)
 static int
 python_handle_server_link(struct server *server)
 {
-    log_module(PY_LOG, LOG_INFO, "python module handle_server_link");
-    if(!server) {
-        log_module(PY_LOG, LOG_WARNING, "Python code got server link without server!");
-        return 0;
+    PyObject* srv = NULL;
+    PyObject* funcname = NULL;
+    PyObject* retval = NULL;
+    char const* err = NULL;
+    int i = 0;
+
+    if (handler_object == NULL) {
+        err = "No Python handler is allocated. Ignoring python_handle_server_link.";
+        goto cleanup;
     }
-    else {
-        char *args[] = {server->name, server->description};
-        return python_call_handler("server_link", args, 2, "", "", "");
+
+    if (server == NULL) {
+        err = "Python code got server link without server!";
+        goto cleanup;
     }
+
+    if ((srv = pyobj_from_server(server)) == NULL) {
+        err = "Python code unable to get PyObject with server!";
+        goto cleanup;
+    }
+
+    funcname = PyString_FromString("server_link");
+    if (funcname == NULL) {
+        err = "Unable to allocate memory";
+        goto cleanup;
+    }
+
+    retval = PyObject_CallMethodObjArgs(handler_object, funcname, srv, NULL);
+    if (retval == NULL) {
+        err = "Error calling server_link handler";
+        goto cleanup;
+    }        
+
+cleanup:
+    Py_XDECREF(srv);
+    Py_XDECREF(funcname);
+
+    if (retval != NULL && PyInt_Check(retval))
+        i = (int)PyInt_AsLong(retval);
+
+    Py_XDECREF(retval);
+
+    if (err != NULL)
+        log_module(PY_LOG, LOG_WARNING, "%s", err);
+
+    return i;
 }
 
 static int

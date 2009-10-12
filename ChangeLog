@@ -3,6 +3,17 @@ X3 ChangeLog
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: refactor python_handle_server_link to be more
+	Pythonic.
+
+	* src/modpython.py: rename old plugins class to plugins_ and use a
+	more general plugin system.
+
+	* src/plugins/__init__.py: extend with plugin base-class and
+	recursive plugin load logic.
+
+2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: add emb_service_register function.
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>

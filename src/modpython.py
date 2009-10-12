@@ -12,6 +12,7 @@
 #   reply, etc.
 
 import _svc
+import plugins
 
 import math
 
@@ -48,9 +49,10 @@ class handler:
 
     def __init__(self):
         #print "DEBUG: constructor for handler initing"
-        self.plugins = plugins(self)
+        self.plugins = plugins_(self)
         if(not self.plugins):
             print "DEBUG: unable to make self.plugins!?!"
+        self.newplugins = plugins.load()
 
     def init(self, irc): # not to be confused with __init__!
         """ This gets called once all the objects are up and running. Otherwise,
@@ -64,8 +66,11 @@ class handler:
         #print "DEBUG: handler.join()"
         return self.plugins.callhandler("join", irc, [channel, nick], [channel, nick])
 
-    def server_link(self, irc, name, desc):
-        return self.plugins.callhandler("server_link", irc, [name, desc], [name, desc])
+    def server_link(self, server):
+        for plugin in self.newplugins:
+            if plugin.server_link(server):
+                return 1
+        return 0
 
     def new_user(self, irc, nick, ident, hostname, info):
         # we may filter on all the user fields, but we only pass the nick because
@@ -94,7 +99,7 @@ class handler:
     def load(self, irc, plugin):
         return self.plugins.load(plugin)
 
-class plugins:
+class plugins_:
     """Class to handle loading/unloading of plugins"""
     loaded_plugins = {}
     hooks = []
@@ -161,7 +166,7 @@ class plugins:
         mod_name = "plugins.%s"%name
         need_reload = False
         if(sys.modules.has_key(mod_name)):
-            need_reload = true
+            need_reload = True
         #TODO: try to catch compile errors etc.
 
         if(need_reload == False):
