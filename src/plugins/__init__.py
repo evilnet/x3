@@ -11,6 +11,9 @@ class Plugin(object):
     def nick_change(self, user, oldnick):
         pass
 
+    def del_user(self, user, killer, why):
+        pass
+
 def load_path(path, prefix):
     mods = []
 

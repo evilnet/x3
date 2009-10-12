@@ -1558,6 +1558,11 @@ python_handle_new_user(struct userNode *user)
     int i = 0;
     const char* err = NULL;
 
+    if (handler_object == NULL) {
+        err = "No Python handler is allocated. Ignoring python_handle_server_link.";
+        goto cleanup;
+    }
+
     if(!user) {
         log_module(PY_LOG, LOG_WARNING, "Python code got new_user without the user");
         return 0;
@@ -1603,6 +1608,11 @@ python_handle_nick_change(struct userNode *user, const char *old_nick)
     PyObject* retval = NULL;
     char const* err = NULL;
 
+    if (handler_object == NULL) {
+        err = "No Python handler is allocated. Ignoring python_handle_server_link.";
+        goto cleanup;
+    }
+
     if (user == NULL) {
         err = "Python code got nick_change without the user!";
         goto cleanup;
@@ -1631,6 +1641,72 @@ cleanup:
     Py_XDECREF(usr);
     Py_XDECREF(name);
     Py_XDECREF(oldnick);
+    Py_XDECREF(retval);
+
+    if (err != NULL)
+        log_module(PY_LOG, LOG_WARNING, "%s", err);
+}
+
+void python_handle_del_user(struct userNode *user, struct userNode *killer, const char *why) {
+    PyObject *usr = NULL, *killr = NULL, *name = NULL;
+    PyObject *reason = NULL, *retval = NULL;
+    char const* err = NULL;
+
+    if (handler_object == NULL) {
+        err = "No Python handler is allocated. Ignoring python_handle_server_link.";
+        goto cleanup;
+    }
+
+    if (user == NULL) {
+        Py_INCREF(Py_None);
+        usr = Py_None;
+    } else {
+        usr = pyobj_from_usernode(user);
+        if (usr == NULL) {
+            err = "unable to allocate usernode for user";
+            goto cleanup;
+        }
+    }
+
+    if (killer == NULL) {
+        Py_INCREF(Py_None);
+        killr = Py_None;
+    } else {
+        killr = pyobj_from_usernode(killer);
+        if (killr == NULL) {
+            err = "unable to allocate usernode for killer";
+            goto cleanup;
+        }
+    }
+
+    if (why == NULL) {
+        Py_INCREF(Py_None);
+        reason = Py_None;
+    } else {
+        reason = PyString_FromString(why);
+        if (reason == NULL) {
+            err = "unable to allocate memory for reason";
+            goto cleanup;
+        }
+    }
+
+    name = PyString_FromString("del_user");
+    if (name == NULL) {
+        err = "unable to allocate memory for handler function name";
+        goto cleanup;
+    }
+
+    retval = PyObject_CallMethodObjArgs(handler_object, name, usr, killr, reason, NULL);
+    if (retval == NULL) {
+        err = "error calling del_user handler";
+        goto cleanup;
+    }
+
+cleanup:
+    Py_XDECREF(usr);
+    Py_XDECREF(killr);
+    Py_XDECREF(name);
+    Py_XDECREF(reason);
     Py_XDECREF(retval);
 
     if (err != NULL)
@@ -1711,9 +1787,15 @@ python_cleanup(void) {
     */
 
     log_module(PY_LOG, LOG_INFO, "python module cleanup");
+
+    Py_XDECREF(handler_object);
+    handler_object = NULL;
+
     if (PyErr_Occurred())
         PyErr_Clear();
     Py_Finalize(); /* Shut down python enterpreter */
+
+    log_module(PY_LOG, LOG_INFO, "python module cleanup done");
 }
 
 /* ---------------------------------------------------------------------------------- *
@@ -1901,7 +1983,7 @@ int python_init(void) {
     reg_server_link_func(python_handle_server_link);
     reg_new_user_func(python_handle_new_user);
     reg_nick_change_func(python_handle_nick_change);
-//TODO:    reg_del_user_func(python_handle_del_user);
+    reg_del_user_func(python_handle_del_user);
 //TODO:    reg_account_func(python_handle_account); /* stamping of account name to the ircd */
 //TODO:    reg_handle_rename_func(python_handle_handle_rename); /* handle used to ALSO mean account name */
 //TODO:    reg_failpw_func(python_handle_failpw);

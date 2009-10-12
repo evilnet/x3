@@ -3,6 +3,15 @@ X3 ChangeLog
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: add python_handle_del_user.
+
+	* src/plugins/__init__.py: add empty del_user handler function to
+	Plugin class.
+
+	* src/modpython.py: add del_user handler function.
+
+2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: refactor python_handle_nick_change.
 
 	* src/plugins/__init__.py: add empty nick_change handler function to

@@ -81,7 +81,11 @@ class handler:
     def nick_change(self, user, oldnick):
         for plugin in self.newplugins:
             plugin.nick_change(user, oldnick)
-        
+
+    def del_user(self, user, killer, why):
+        for plugin in self.newplugins:
+            plugin.del_user(user, killer, why)
+
     def cmd_run(self, irc, cmd):
         #print "DEBUG: handler.cmd_run: %s"%cmd
         eval(cmd)
