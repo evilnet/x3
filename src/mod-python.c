@@ -862,6 +862,37 @@ static PyObject* emb_kick(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+static PyObject* emb_channel_mode(UNUSED_ARG(PyObject* self_), PyObject* args) {
+    struct userNode* who;
+    struct chanNode* channel;
+    char const* modes;
+
+    char const* who_s, *channel_s;
+
+    if (!PyArg_ParseTuple(args, "sss", &who_s, &channel_s, &modes))
+        return NULL;
+
+    if ((who = GetUserH(who_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown user");
+        return NULL;
+    }
+
+    if (who->uplink != self) {
+        PyErr_SetString(PyExc_Exception, "user not on current server");
+        return NULL;
+    }
+
+    if ((channel = GetChannel(channel_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown channel");
+        return NULL;
+    }
+
+    irc_mode(who, channel, modes);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -876,7 +907,7 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
 //TODO:    {"ungline", emb_ungline, METH_VARARGS, "remove a gline"},
     {"kick", emb_kick, METH_VARARGS, "kick someone from a channel"},
-//TODO:    {"channel_mode", emb_channel_mode, METH_VARARGS, "set modes on a channel"},
+    {"channel_mode", emb_channel_mode, METH_VARARGS, "set modes on a channel"},
 //TODO:    {"user_mode", emb_user_mode, METH_VARARGS, "Have x3 set usermodes on one of its own nicks"},
 //
     {"get_config", emb_get_config, METH_VARARGS, "get x3.conf settings into a nested dict"},
