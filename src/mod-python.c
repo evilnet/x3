@@ -1121,6 +1121,26 @@ emb_svsjoin(UNUSED_ARG(PyObject* self_), PyObject* args) {
     return Py_None;
 }
 
+PyDoc_STRVAR(emb_adduser__doc__,
+        "adduser(nick, ident, hostname, description, modes) -> dict with user information\n\n"
+        "Adds a new local user with the given information.");
+
+static PyObject*
+emb_adduser(UNUSED_ARG(PyObject* self_), PyObject* args) {
+    char const* nick, *ident, *hostname, *desc, *modes;
+    struct userNode* user;
+    PyObject* retval;
+
+    if (!PyArg_ParseTuple(args, "sssss", &nick, &ident, &hostname, &desc, &modes))
+        return NULL;
+
+    user = AddLocalUser(nick, ident, hostname, desc, modes);
+
+    retval = pyobj_from_usernode(user);
+
+    return retval;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, emb_dump__doc__},
@@ -1134,6 +1154,7 @@ static PyMethodDef EmbMethods[] = {
     {"svsnick", emb_svsnick, METH_VARARGS, emb_svsnick__doc__},
     {"svsquit", emb_svsquit, METH_VARARGS, emb_svsquit__doc__},
     {"svsjoin", emb_svsjoin, METH_VARARGS, emb_svsjoin__doc__},
+    {"adduser", emb_adduser, METH_VARARGS, emb_adduser__doc__},
 //TODO: svsmode, svsident, nick, quit, join, part, ident, vhost
 //TODO:    {"shun"
 //TODO:    {"unshun"
