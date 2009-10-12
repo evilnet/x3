@@ -1082,6 +1082,45 @@ emb_svsquit(UNUSED_ARG(PyObject* self_), PyObject* args) {
     return Py_None;
 }
 
+PyDoc_STRVAR(emb_svsjoin__doc__,
+        "svsjoin(from, target, to)\n\n"
+        "From user from must a user on the service server.\n"
+        "To must be an existing channel name.");
+
+static PyObject*
+emb_svsjoin(UNUSED_ARG(PyObject* self_), PyObject* args) {
+    struct userNode* from, *target;
+    struct chanNode* to;
+
+    const char* from_s, *target_s, *to_s;
+
+    if (!PyArg_ParseTuple(args, "sss", &from_s, &target_s, &to_s))
+        return NULL;
+
+    if ((from = GetUserH(from_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown from user");
+        return NULL;
+    }
+
+    if (from->uplink != self) {
+        PyErr_SetString(PyExc_Exception, "from user is not on service server");
+        return NULL;
+    }
+
+    if ((target = GetUserH(target_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown target user");
+        return NULL;
+    }
+
+    if ((to = GetChannel(to_s)) == NULL)
+        to = AddChannel(to_s, now, NULL, NULL, NULL);
+
+    irc_svsjoin(from, target, to);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, emb_dump__doc__},
@@ -1094,7 +1133,8 @@ static PyMethodDef EmbMethods[] = {
     {"fakehost", emb_fakehost, METH_VARARGS, emb_fakehost__doc__},
     {"svsnick", emb_svsnick, METH_VARARGS, emb_svsnick__doc__},
     {"svsquit", emb_svsquit, METH_VARARGS, emb_svsquit__doc__},
-//TODO: svsjoin, svsmode, svsident, nick, quit, join, part, ident, vhost
+    {"svsjoin", emb_svsjoin, METH_VARARGS, emb_svsjoin__doc__},
+//TODO: svsmode, svsident, nick, quit, join, part, ident, vhost
 //TODO:    {"shun"
 //TODO:    {"unshun"
 //TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
