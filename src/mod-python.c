@@ -913,6 +913,26 @@ static PyObject* emb_user_mode(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+static PyObject* emb_fakehost(UNUSED_ARG(PyObject* self), PyObject* args) {
+    struct userNode* target;
+    char const* host;
+
+    char const* target_s;
+
+    if (!PyArg_ParseTuple(args, "ss", &target_s, &host))
+        return NULL;
+
+    if ((target = GetUserH(target_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown user");
+        return NULL;
+    }
+
+    irc_fakehost(target, host);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -922,6 +942,8 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"exec_cmd", emb_exec_cmd, METH_VARARGS, "execute x3 command provided"},
 //          This should use environment from "python command" call to pass in, if available
     {"kill", emb_kill, METH_VARARGS, "Kill someone"},
+    {"fakehost", emb_fakehost, METH_VARARGS, "Set a user's fakehost"},
+//TODO: svsnick, svsquit, svsjoin, svsmode, svsident, nick, quit, join, part, ident, vhost
 //TODO:    {"shun"
 //TODO:    {"unshun"
 //TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
