@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: add emb_service_register function.
+
+2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: add emb_adduser function.
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>

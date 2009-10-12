@@ -1141,6 +1141,54 @@ emb_adduser(UNUSED_ARG(PyObject* self_), PyObject* args) {
     return retval;
 }
 
+/* TODO: Add the rest of the service members to the dict */
+static PyObject*
+pyobj_from_service(struct service* serv) {
+    PyObject* bot, *retval;
+   
+    bot = pyobj_from_usernode(serv->bot);
+    if (bot == NULL)
+        goto cleanup;
+
+    retval = Py_BuildValue("{s:O,s:c,s:I}",
+            "bot", bot,
+            "trigger", serv->trigger,
+            "privileged", serv->privileged);
+    if (retval == NULL)
+        goto cleanup;
+
+    return retval;
+
+cleanup:
+    Py_XDECREF(bot);
+    return NULL;
+}
+
+PyDoc_STRVAR(emb_service_register__doc__,
+        "service_register(nick)\n\n"
+        "Registers nick as a service. The specified nick must be on the local server.");
+
+static PyObject*
+emb_service_register(UNUSED_ARG(PyObject* self_), PyObject* args) {
+    struct userNode* user;
+    char const* user_s;
+
+    if (!PyArg_ParseTuple(args, "s", &user_s))
+        return NULL;
+
+    if ((user = GetUserH(user_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown user");
+        return NULL;
+    }
+
+    if (user->uplink != self) {
+        PyErr_SetString(PyExc_Exception, "user is not on service server");
+        return NULL;
+    }
+
+    return pyobj_from_service(service_register(user));
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, emb_dump__doc__},
@@ -1155,6 +1203,7 @@ static PyMethodDef EmbMethods[] = {
     {"svsquit", emb_svsquit, METH_VARARGS, emb_svsquit__doc__},
     {"svsjoin", emb_svsjoin, METH_VARARGS, emb_svsjoin__doc__},
     {"adduser", emb_adduser, METH_VARARGS, emb_adduser__doc__},
+    {"service_register", emb_service_register, METH_VARARGS, emb_service_register__doc__},
 //TODO: svsmode, svsident, nick, quit, join, part, ident, vhost
 //TODO:    {"shun"
 //TODO:    {"unshun"
