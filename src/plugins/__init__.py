@@ -43,6 +43,7 @@ def load():
     # for some reason this returns multiple instances of the same plugin types
     candidates = Plugin.__subclasses__()
     for plg in candidates:
-        plugins[plg.__name__] = plg()
+        if plg.__name__ not in plugins:
+            plugins[plg.__name__] = plg()
 
     return plugins.values()

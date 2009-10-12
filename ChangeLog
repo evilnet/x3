@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/plugins/__init__.py: refactor plugin instantiation logic.
+
+2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: refactor python_handle_new_user.
 
 	* src/modpython.py: refactor new_user handler to use new plugin
