@@ -1039,7 +1039,7 @@ irc_svspart(struct userNode *from, struct userNode *who, struct chanNode *to)
 }
 
 void
-irc_svsquit(struct userNode *from, struct userNode *who, char *reason)
+irc_svsquit(struct userNode *from, struct userNode *who, char const *reason)
 {
     putsock("%s " P10_SVSQUIT " %s :%s", from->uplink->numeric, who->numeric, reason);
 }
