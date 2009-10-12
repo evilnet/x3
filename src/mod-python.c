@@ -531,32 +531,12 @@ pyobj_from_exemptlist(struct exemptList* exmp) {
     return retval;
 }
 
-PyDoc_STRVAR(emb_get_channel__doc__,
-        "get_channel(channel) -> dict with channel information\n\n"
-        "Updates made to the returned dictionary does not reflect in the channel\n"
-        "information.");
-
 static PyObject*
-emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
-{
-    /* Returns a python dict object with all sorts of info about a channel.
-          usage: _svc.get_channel(<name>)
-    */
-    char *name;
-    struct chanNode *channel;
+pyobj_from_channode(struct chanNode* channel) {
     PyObject *pChannelMembers = NULL;
     PyObject *pChannelBans = NULL;
     PyObject *pChannelExempts = NULL;
     PyObject *retval = NULL;
-
-
-    if(!PyArg_ParseTuple(args, "s", &name))
-        return NULL;
-
-    if(!(channel = GetChannel(name))) {
-        PyErr_SetString(PyExc_Exception, "unknown channel");
-        return NULL;
-    }
 
     /* build tuple of nicks in channel */
     pChannelMembers = pyobj_from_modelist(&channel->members);
@@ -599,6 +579,31 @@ cleanup:
     pyobj_release_tuple(pChannelMembers, channel->members.used);
 
     return NULL;
+}
+
+PyDoc_STRVAR(emb_get_channel__doc__,
+        "get_channel(channel) -> dict with channel information\n\n"
+        "Updates made to the returned dictionary does not reflect in the channel\n"
+        "information.");
+
+static PyObject*
+emb_get_channel(UNUSED_ARG(PyObject *self), PyObject *args)
+{
+    /* Returns a python dict object with all sorts of info about a channel.
+          usage: _svc.get_channel(<name>)
+    */
+    char *name;
+    struct chanNode *channel;
+
+    if(!PyArg_ParseTuple(args, "s", &name))
+        return NULL;
+
+    if(!(channel = GetChannel(name))) {
+        PyErr_SetString(PyExc_Exception, "unknown channel");
+        return NULL;
+    }
+
+    return pyobj_from_channode(channel);
 }
 
 PyDoc_STRVAR(emb_get_account__doc__,
@@ -1713,6 +1718,66 @@ cleanup:
         log_module(PY_LOG, LOG_WARNING, "%s", err);
 }
 
+int python_handle_topic(struct userNode *who, struct chanNode *chan, const char *old_topic) {
+    PyObject* pwho = NULL, *pchan = NULL, *oldtopic = NULL;
+    PyObject* name = NULL, *retval = NULL;
+    const char* err = NULL;
+    int i = 0;
+
+    if (who == NULL) {
+        Py_INCREF(Py_None);
+        pwho = Py_None;
+    } else {
+        if ((pwho = pyobj_from_usernode(who)) == NULL) {
+            err = "unable to allocate usernode";
+            goto cleanup;
+        }
+    }
+
+    if ((pchan = pyobj_from_channode(chan)) == NULL) {
+        err = "unable to allocate channode";
+        goto cleanup;
+    }
+
+    if (old_topic == NULL) {
+        Py_INCREF(Py_None);
+        oldtopic = Py_None;
+    } else {
+        oldtopic = PyString_FromString(old_topic);
+        if (oldtopic == NULL) {
+            err = "unable to allocate memory for old topic string";
+            goto cleanup;
+        }
+    }
+
+    name = PyString_FromString("topic");
+    if (name == NULL) {
+        err = "unable to allocate memory for topic handler function name";
+        goto cleanup;
+    }
+
+    retval = PyObject_CallMethodObjArgs(handler_object, name, pwho, pchan, oldtopic, NULL);
+    if (retval == NULL) {
+        err = "error calling topic handler";
+        goto cleanup;
+    }
+
+cleanup:
+    Py_XDECREF(pwho);
+    Py_XDECREF(pchan);
+    Py_XDECREF(oldtopic);
+    Py_XDECREF(name);
+
+    if (retval != NULL && PyInt_Check(retval))
+        i = (int)PyInt_AsLong(retval);
+
+    Py_XDECREF(retval);
+
+    if (err != NULL)
+        log_module(PY_LOG, LOG_WARNING, "%s", err);
+
+    return i;
+}
 /* ----------------------------------------------------------------------------- */
    
 
@@ -1996,7 +2061,7 @@ int python_init(void) {
 //TODO:    reg_del_channel_func(python_handle_del_channel);
 //TODO:    reg_part_func(python_handle_part);
 //TODO:    reg_kick_func(python_handle_kick);
-//TODO:    reg_topic_func(python_handle_topic);
+    reg_topic_func(python_handle_topic);
 //TODO:    reg_channel_mode_func(python_handle_channel_mode);
 
 //TODO:    reg_privmsg_func(python_handle_privmsg);

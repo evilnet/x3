@@ -14,6 +14,9 @@ class Plugin(object):
     def del_user(self, user, killer, why):
         pass
 
+    def topic(self, who, chan, old_topic):
+        pass
+
 def load_path(path, prefix):
     mods = []
 

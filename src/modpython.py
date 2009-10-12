@@ -86,6 +86,12 @@ class handler:
         for plugin in self.newplugins:
             plugin.del_user(user, killer, why)
 
+    def topic(self, who, chan, old_topic):
+        for plugin in self.newplugins:
+            if plugin.topic(who, chan, old_topic):
+                return 1
+        return 0
+
     def cmd_run(self, irc, cmd):
         #print "DEBUG: handler.cmd_run: %s"%cmd
         eval(cmd)
