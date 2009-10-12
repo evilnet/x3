@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: add emb_user_mode function.
+
+2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: add emb_channel_mode function.
 
 2009-10-11  Henrik Stuart <evilnet@hstuart.dk>

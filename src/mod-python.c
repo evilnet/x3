@@ -893,6 +893,26 @@ static PyObject* emb_channel_mode(UNUSED_ARG(PyObject* self_), PyObject* args) {
     return Py_None;
 }
 
+static PyObject* emb_user_mode(UNUSED_ARG(PyObject* self), PyObject* args) {
+    struct userNode* target;
+    char const* modes;
+
+    char const* target_s;
+
+    if (!PyArg_ParseTuple(args, "ss", &target_s, &modes))
+        return NULL;
+
+    if ((target = GetUserH(target_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown user");
+        return NULL;
+    }
+
+    irc_umode(target, modes);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, "Dump raw P10 line to server"},
@@ -908,7 +928,7 @@ static PyMethodDef EmbMethods[] = {
 //TODO:    {"ungline", emb_ungline, METH_VARARGS, "remove a gline"},
     {"kick", emb_kick, METH_VARARGS, "kick someone from a channel"},
     {"channel_mode", emb_channel_mode, METH_VARARGS, "set modes on a channel"},
-//TODO:    {"user_mode", emb_user_mode, METH_VARARGS, "Have x3 set usermodes on one of its own nicks"},
+    {"user_mode", emb_user_mode, METH_VARARGS, "Have x3 set usermodes on one of its own nicks"},
 //
     {"get_config", emb_get_config, METH_VARARGS, "get x3.conf settings into a nested dict"},
 //TODO:    {"config_set", emb_config_set, METH_VARARGS, "change a config setting 'on-the-fly'."},
