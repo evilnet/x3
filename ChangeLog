@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
 
+	* src/mod-python.c: add emb_svsnick function.
+
+2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
+
 	* src/mod-python.c: refactor doc-strings for extension methods to separate
 	variables. Minor code changes that modify function return values/types to
 	be more uniform.

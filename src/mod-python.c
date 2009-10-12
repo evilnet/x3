@@ -1012,6 +1012,41 @@ static PyObject* emb_fakehost(UNUSED_ARG(PyObject* self), PyObject* args) {
     return Py_None;
 }
 
+PyDoc_STRVAR(emb_svsnick__doc__,
+        "svsnick(from, target, newnick)\n\n"
+        "The from nick must be on the service server.");
+
+static PyObject*
+emb_svsnick(UNUSED_ARG(PyObject* self_), PyObject* args) {
+    struct userNode* from, *target;
+    const char* newnick;
+
+    const char* from_s, *target_s;
+
+    if (!PyArg_ParseTuple(args, "sss", &from_s, &target_s, &newnick))
+        return NULL;
+
+    if ((from = GetUserH(from_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown from user");
+        return NULL;
+    }
+
+    if ((target = GetUserH(target_s)) == NULL) {
+        PyErr_SetString(PyExc_Exception, "unknown target user");
+        return NULL;
+    }
+
+    if (from->uplink != self) {
+        PyErr_SetString(PyExc_Exception, "from user is not on service server");
+        return NULL;
+    }
+
+    irc_svsnick(from, target, newnick);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, emb_dump__doc__},
@@ -1022,7 +1057,8 @@ static PyMethodDef EmbMethods[] = {
 //          This should use environment from "python command" call to pass in, if available
     {"kill", emb_kill, METH_VARARGS, emb_kill__doc__},
     {"fakehost", emb_fakehost, METH_VARARGS, emb_fakehost__doc__},
-//TODO: svsnick, svsquit, svsjoin, svsmode, svsident, nick, quit, join, part, ident, vhost
+    {"svsnick", emb_svsnick, METH_VARARGS, emb_svsnick__doc__},
+//TODO: svsquit, svsjoin, svsmode, svsident, nick, quit, join, part, ident, vhost
 //TODO:    {"shun"
 //TODO:    {"unshun"
 //TODO:    {"gline", emb_gline, METH_VARARGS, "gline a mask"},
