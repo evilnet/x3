@@ -8,6 +8,9 @@ class Plugin(object):
     def new_user(self, user):
         pass
 
+    def nick_change(self, user, oldnick):
+        pass
+
 def load_path(path, prefix):
     mods = []
 

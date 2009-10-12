@@ -1597,14 +1597,44 @@ cleanup:
 static void
 python_handle_nick_change(struct userNode *user, const char *old_nick)
 {
-    log_module(PY_LOG, LOG_INFO, "Python module handle_nick_change");
-    if(!user) {
-        log_module(PY_LOG, LOG_WARNING, "Python code got nick_change without the user!");
+    PyObject* usr = NULL;
+    PyObject* name = NULL;
+    PyObject* oldnick = NULL;
+    PyObject* retval = NULL;
+    char const* err = NULL;
+
+    if (user == NULL) {
+        err = "Python code got nick_change without the user!";
+        goto cleanup;
     }
-    else {
-        char *args[] = {user->nick, (char *)old_nick};
-        python_call_handler("nick_change", args, 2, "", "", "");
+
+    if ((usr = pyobj_from_usernode(user)) == NULL) {
+        err = "unable to allocate Python usernode";
+        goto cleanup;
     }
+
+    name = PyString_FromString("nick_change");
+    if (name == NULL) {
+        err = "unable to allocate memory for handler function name";
+        goto cleanup;
+    }
+
+    oldnick = PyString_FromString(old_nick);
+
+    retval = PyObject_CallMethodObjArgs(handler_object, name, usr, oldnick, NULL);
+    if (retval == NULL) {
+        err = "error calling nick_change handler";
+        goto cleanup;
+    }
+
+cleanup:
+    Py_XDECREF(usr);
+    Py_XDECREF(name);
+    Py_XDECREF(oldnick);
+    Py_XDECREF(retval);
+
+    if (err != NULL)
+        log_module(PY_LOG, LOG_WARNING, "%s", err);
 }
 
 /* ----------------------------------------------------------------------------- */

@@ -78,8 +78,9 @@ class handler:
                 return 1
         return 0
 
-    def nick_change(self, irc, nick, old_nick):
-        return self.plugins.callhandler("nick_change", irc, [nick, old_nick], [nick, old_nick])
+    def nick_change(self, user, oldnick):
+        for plugin in self.newplugins:
+            plugin.nick_change(user, oldnick)
         
     def cmd_run(self, irc, cmd):
         #print "DEBUG: handler.cmd_run: %s"%cmd
