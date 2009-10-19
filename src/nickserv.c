@@ -58,6 +58,8 @@
 #define KEY_TITLEHOST_SUFFIX "titlehost_suffix"
 #define KEY_AUTO_OPER "auto_oper"
 #define KEY_AUTO_ADMIN "auto_admin"
+#define KEY_AUTO_OPER_PRIVS "auto_oper_privs"
+#define KEY_AUTO_ADMIN_PRIVS "auto_admin_privs"
 #define KEY_FLAG_LEVELS "flag_levels"
 #define KEY_HANDLE_EXPIRE_FREQ	"handle_expire_freq"
 #define KEY_ACCOUNT_EXPIRE_FREQ "account_expire_freq"
@@ -2121,6 +2123,8 @@ struct handle_info *loc_auth(char *handle, char *password, char *userhost)
 
 static NICKSERV_FUNC(cmd_auth)
 {
+    char *privv[MAXNUMPARAMS];
+    int privc, i;
     int pw_arg, used, maxlogins;
     struct handle_info *hi;
     const char *passwd;
@@ -2321,11 +2325,25 @@ static NICKSERV_FUNC(cmd_auth)
         /* Auto Oper users with Opserv access -Life4Christ 8-10-2005  */
         if( nickserv_conf.auto_admin[0] && hi->opserv_level >= opserv_conf_admin_level())
         {
+            if (nickserv_conf.auto_admin_privs[0]) {
+                irc_raw_privs(user, nickserv_conf.auto_admin_privs);
+                privc = split_line(strdup(nickserv_conf.auto_admin_privs), false, MAXNUMPARAMS, privv);
+                for (i = 0; i < privc; i++) {
+                    client_modify_priv_by_name(user, privv[i], 1);
+                }
+            }
             irc_umode(user,nickserv_conf.auto_admin);
             reply("NSMSG_AUTO_OPER_ADMIN");
         }
         else if (nickserv_conf.auto_oper[0] && hi->opserv_level > 0)
         {
+            if (nickserv_conf.auto_oper_privs[0]) {
+                irc_raw_privs(user, nickserv_conf.auto_oper_privs);
+                privc = split_line(strdup(nickserv_conf.auto_oper_privs), false, MAXNUMPARAMS, privv);
+                for (i = 0; i < privc; i++) {
+                    client_modify_priv_by_name(user, privv[i], 1);
+                }
+            }
             irc_umode(user,nickserv_conf.auto_oper);
             reply("NSMSG_AUTO_OPER");
         }
@@ -4884,6 +4902,12 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_AUTO_ADMIN, RECDB_QSTRING);
     nickserv_conf.auto_admin = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_AUTO_OPER_PRIVS, RECDB_QSTRING);
+    nickserv_conf.auto_oper_privs = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_AUTO_ADMIN_PRIVS, RECDB_QSTRING);
+    nickserv_conf.auto_admin_privs = str ? str : "";
 
     str = conf_get_data("server/network", RECDB_QSTRING);
     nickserv_conf.network_name = str ? str : "some IRC network";

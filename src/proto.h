@@ -160,6 +160,7 @@ void irc_stats(struct userNode *from, struct server *target, char type);
 void irc_svsnick(struct userNode *from, struct userNode *target, const char *newnick);
 void irc_swhois(struct userNode *from, struct userNode *target, const char *message);
 void irc_privs(struct userNode *target, char *flag, int add);
+void irc_raw_privs(struct userNode *target, char *privs);
 
 /* account maintenance */
 void irc_rename(struct userNode *user, const char *new_handle);
@@ -251,6 +252,7 @@ int mod_chanmode(struct userNode *who, struct chanNode *channel, char **modes, u
 typedef void (*mode_change_func_t) (struct chanNode *channel, struct userNode *user, const struct mod_chanmode *change);
 void reg_mode_change_func(mode_change_func_t handler);
 int irc_make_chanmode(struct chanNode *chan, char *out);
+int client_modify_priv_by_name(struct userNode *who, char *priv, int what);
 
 /* The "default" for generate_hostmask is to have all of these options off. */
 #define GENMASK_STRICT_HOST   1

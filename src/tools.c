@@ -732,6 +732,8 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
                 return match_ircglob(user->hostname, glob);
             case 't': /* this is handled ircd side */
                 return match_ircglob(user->hostname, glob);
+            case 'R': /* this is handled ircd side */
+                return match_ircglob(user->hostname, glob);
             default:
                 return -1;
         }

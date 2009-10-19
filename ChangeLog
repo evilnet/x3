@@ -1,6 +1,19 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-19  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/nickserv.c: Send privs out when auto opering clients. These are
+	controlled for now via auto_oper_privs/auto_admin_privs in the nickserv
+	section within x3.conf. In the future we will look at account specific
+	privs.
+
+	* src/proto.h: Added irc_raw_privs and client_modify_priv_by_name.
+
+	* src/proto-p10.c: Added irc_raw_privs.
+
+	* src/tools.c: Added R extended ban.
+
 2009-10-12  Henrik Stuart <evilnet@hstuart.dk>
 
 	* src/mod-python.c: add python_handle_topic and refactor

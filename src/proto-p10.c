@@ -1710,6 +1710,12 @@ irc_privs(struct userNode *target, char *flag, int add)
     putsock("%s " P10_PRIVS " %s %s%s", self->numeric, target->numeric, (add == PRIV_ADD) ? "+" : "-", flag);
 }
 
+void
+irc_raw_privs(struct userNode *target, char *privs)
+{
+    putsock("%s " P10_PRIVS " %s %s", self->numeric, target->numeric,  privs);
+}
+
 static CMD_FUNC(cmd_privs)
 {
     char *tstr = NULL;
