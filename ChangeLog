@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-27	Henrik Stuart	<evilnet@hstuart.dk>
+
+	* src/global.c: remove unused code.
+
 2009-10-19  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/nickserv.c: Send privs out when auto opering clients. These are

@@ -351,16 +351,6 @@ notice_target(const char *target, struct globalMessage *message)
     send_target_message(4, target, global, "%s", message->message);
 }
 
-static int
-notice_channel(const char *key, void *data, void *extra)
-{
-    struct chanNode *channel = data;
-    /* It should be safe to assume channel is not NULL. */
-    if(channel->channel_info)
- 	notice_target(key, extra);
-    return 0;
-}
-
 static void
 message_send(struct globalMessage *message)
 {
