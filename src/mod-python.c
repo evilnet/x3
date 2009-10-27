@@ -1881,59 +1881,6 @@ static MODCMD_FUNC(cmd_reload) {
     return 1;
 }
 
-static char* format_python_error(int space_nls) {
-    PyObject* extype = NULL, *exvalue = NULL, *extraceback = NULL;
-    PyObject* pextypestr = NULL, *pexvaluestr = NULL;
-    char* extypestr = NULL, *exvaluestr = NULL;
-    size_t retvallen = 0;
-    char* retval = NULL, *tmp;
-
-    PyErr_Fetch(&extype, &exvalue, &extraceback);
-    if (!extype)
-        goto cleanup;
-
-    pextypestr = PyObject_Str(extype);
-    if (!pextypestr)
-        goto cleanup;
-    extypestr = PyString_AsString(pextypestr);
-    if (!extypestr)
-        goto cleanup;
-
-    pexvaluestr = PyObject_Str(exvalue);
-    if (pexvaluestr)
-        exvaluestr = PyString_AsString(pexvaluestr);
-
-    retvallen = strlen(extypestr) + (exvaluestr ? strlen(exvaluestr) + 2 : 0) + 1;
-    retval = (char*)malloc(retvallen);
-    if (exvaluestr)
-        snprintf(retval, retvallen, "%s: %s", extypestr, exvaluestr);
-    else
-        strncpy(retval, extypestr, retvallen);
-
-    if (space_nls) {
-        tmp = retval;
-        while (*tmp) {
-            if (*tmp == '\n')
-                *tmp = ' ';
-            ++tmp;
-        }
-    }
-
-cleanup:
-    if (PyErr_Occurred())
-        PyErr_Clear(); /* ignore errors caused by formatting */
-    Py_XDECREF(extype);
-    Py_XDECREF(exvalue);
-    Py_XDECREF(extraceback);
-    Py_XDECREF(pextypestr);
-    Py_XDECREF(pexvaluestr);
-
-    if (retval)
-        return retval;
-
-    return strdup("unknown exception");
-}
-
 static MODCMD_FUNC(cmd_run) {
     /* this method allows running arbitrary python commands.
      * use with care.

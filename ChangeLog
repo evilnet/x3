@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-10-27  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/mod-python.c: remove unused code.
+
+2009-10-27  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/nickserv.c: marked cmd possibly unused to silence warning.
 
 2009-10-27  Henrik Stuart  <evilnet@hstuart.dk>
