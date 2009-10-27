@@ -1504,7 +1504,7 @@ python_handle_join(struct modeNode *mNode)
 }
 
 static int
-python_handle_server_link(struct server *server)
+python_handle_server_link(struct server *server, UNUSED_ARG(void *extra))
 {
     PyObject* srv = NULL;
     PyObject* funcname = NULL;
@@ -1992,7 +1992,7 @@ int python_init(void) {
 
 //  Please help us by implementing any of the callbacks listed as TODO below. They already exist
 //  in x3, they just need handle_ bridges implemented. (see python_handle_join for an example)
-    reg_server_link_func(python_handle_server_link);
+    reg_server_link_func(python_handle_server_link, NULL);
     reg_new_user_func(python_handle_new_user);
     reg_nick_change_func(python_handle_nick_change);
     reg_del_user_func(python_handle_del_user);

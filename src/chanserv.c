@@ -8958,7 +8958,7 @@ handle_unreg(UNUSED_ARG(struct userNode *user), struct handle_info *handle)
 }
 
 static int 
-handle_server_link(UNUSED_ARG(struct server *server))
+handle_server_link(UNUSED_ARG(struct server *server), UNUSED_ARG(void *extra))
 {
     struct chanData *cData;
 
@@ -9959,7 +9959,7 @@ init_chanserv(const char *nick)
     conf_register_reload(chanserv_conf_read);
 
     if (nick) {
-        reg_server_link_func(handle_server_link);
+        reg_server_link_func(handle_server_link, NULL);
         reg_new_channel_func(handle_new_channel);
         reg_join_func(handle_join);
         reg_part_func(handle_part);

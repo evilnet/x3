@@ -53,8 +53,6 @@ extern struct cManagerNode cManager;
 extern unsigned long burst_length;
 extern struct cManagerNode cManager;
 extern struct policer_params *oper_policer_params, *luser_policer_params;
-extern server_link_func_t *slf_list;
-extern unsigned int slf_size, slf_used;
 extern new_user_func_t *nuf_list;
 extern unsigned int nuf_size, nuf_used;
 extern del_user_func_t *duf_list;

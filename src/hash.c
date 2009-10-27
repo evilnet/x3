@@ -63,21 +63,36 @@ int userList_contains(struct userList *list, struct userNode *user)
 }
 
 server_link_func_t *slf_list;
+void **slf_list_extra;
 unsigned int slf_size = 0, slf_used = 0;
 
 void
-reg_server_link_func(server_link_func_t handler)
+reg_server_link_func(server_link_func_t handler, void *extra)
 {
     if (slf_used == slf_size) {
-	if (slf_size) {
-	    slf_size <<= 1;
-	    slf_list = realloc(slf_list, slf_size*sizeof(server_link_func_t));
-	} else {
-	    slf_size = 8;
-	    slf_list = malloc(slf_size*sizeof(server_link_func_t));
-	}
+        if (slf_size) {
+            slf_size <<= 1;
+            slf_list = realloc(slf_list, slf_size*sizeof(server_link_func_t));
+            slf_list_extra = realloc(slf_list_extra, slf_size*sizeof(void*));
+        } else {
+            slf_size = 8;
+            slf_list = malloc(slf_size*sizeof(server_link_func_t));
+            slf_list_extra = malloc(slf_size*sizeof(void*));
+        }
     }
-    slf_list[slf_used++] = handler;
+    slf_list[slf_used] = handler;
+    slf_list_extra[slf_used++] = extra;
+}
+
+void
+call_server_link_funcs(struct server *server)
+{
+    unsigned int i;
+
+    for (i = 0; i < slf_used; ++i)
+    {
+        slf_list[i](server, slf_list_extra[i]);
+    }
 }
 
 struct server*

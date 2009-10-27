@@ -374,8 +374,9 @@ struct modeNode* GetUserMode(struct chanNode* channel, struct userNode* user);
 int userList_contains(struct userList *list, struct userNode *user);
 unsigned int IsUserP(struct userNode *user);
 
-typedef int (*server_link_func_t) (struct server *server);
-void reg_server_link_func(server_link_func_t handler);
+typedef int (*server_link_func_t) (struct server *server, void *extra);
+void reg_server_link_func(server_link_func_t handler, void *extra);
+void call_server_link_funcs(struct server *server);
 
 typedef int (*new_user_func_t) (struct userNode *user);
 void reg_new_user_func(new_user_func_t handler);

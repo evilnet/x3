@@ -1366,7 +1366,6 @@ static CMD_FUNC(cmd_eob)
 {
     struct server *sender;
     dict_iterator_t it;
-    unsigned int ii;
 
     if (!(sender = GetServerH(origin)))
         return 0;
@@ -1387,8 +1386,7 @@ static CMD_FUNC(cmd_eob)
     }
     sender->self_burst = 0;
     recalc_bursts(sender);
-    for (ii=0; ii<slf_used; ii++)
-        slf_list[ii](sender);
+    call_server_link_funcs(sender);
     /* let auto-routing figure out if we were
      * wating on this server to link a child to it */
     /* DONT call this if uplink is _US_ */
