@@ -184,8 +184,8 @@ struct nickserv_config {
     unsigned long ounregister_flags;
     const char *auto_oper;
     const char *auto_admin;
-    char *auto_oper_privs;
-    char *auto_admin_privs;
+    const char *auto_oper_privs;
+    const char *auto_admin_privs;
     char default_style;
     struct string_list *denied_fakehost_words;
     unsigned int force_handles_lowercase;

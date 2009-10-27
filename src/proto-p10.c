@@ -1711,7 +1711,7 @@ irc_privs(struct userNode *target, char *flag, int add)
 }
 
 void
-irc_raw_privs(struct userNode *target, char *privs)
+irc_raw_privs(struct userNode *target, const char *privs)
 {
     putsock("%s " P10_PRIVS " %s %s", self->numeric, target->numeric,  privs);
 }

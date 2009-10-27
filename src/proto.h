@@ -160,7 +160,7 @@ void irc_stats(struct userNode *from, struct server *target, char type);
 void irc_svsnick(struct userNode *from, struct userNode *target, const char *newnick);
 void irc_swhois(struct userNode *from, struct userNode *target, const char *message);
 void irc_privs(struct userNode *target, char *flag, int add);
-void irc_raw_privs(struct userNode *target, char *privs);
+void irc_raw_privs(struct userNode *target, const char *privs);
 
 /* account maintenance */
 void irc_rename(struct userNode *user, const char *new_handle);
