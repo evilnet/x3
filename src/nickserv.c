@@ -5029,7 +5029,7 @@ nickserv_reclaim_p(void *data) {
 }
 
 static int
-check_user_nick(struct userNode *user) {
+check_user_nick(struct userNode *user, UNUSED_ARG(void *extra)) {
     struct nick_info *ni;
     user->modes &= ~FLAGS_REGNICK;
     if (!(ni = get_nick_info(user->nick)))
@@ -5099,7 +5099,7 @@ handle_nick_change(struct userNode *user, const char *old_nick)
         dict_insert(nickserv_allow_auth_dict, user->nick, hi);
     }
     timeq_del(0, nickserv_reclaim_p, user, TIMEQ_IGNORE_WHEN);
-    check_user_nick(user);
+    check_user_nick(user, NULL);
 }
 
 void
@@ -5184,7 +5184,7 @@ init_nickserv(const char *nick)
     struct chanNode *chan;
     unsigned int i;
     NS_LOG = log_register_type("NickServ", "file:nickserv.log");
-    reg_new_user_func(check_user_nick);
+    reg_new_user_func(check_user_nick, NULL);
     reg_nick_change_func(handle_nick_change);
     reg_del_user_func(nickserv_remove_user);
     reg_account_func(handle_account);

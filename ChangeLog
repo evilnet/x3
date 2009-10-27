@@ -3,8 +3,23 @@ X3 ChangeLog
 
 2009-10-27  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/hash.h src/hash.c: add extra parameter to new_user_func_t and
+	reg_new_user_func. Add new call_new_user_funcs function to abstract hash
+	internals from outside callers.
+
+	* src/proto-p10.c: use call_new_user_funcs instead of interfacing with
+	hash.c internals directly. Remove unused code due to this change.
+
+	* src/global.c src/opserv.c src/mod-python.c src/spamserv.c
+	src/nickserv.c: add extra NULL argument/parameter to reflect change in
+	hash.
+
+	* src/proto-common.c: remove reference to hash internals.
+
+2009-10-27  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/hash.h: add extra parameter to server_link_func_t and
-	reg_server_link_func. Add new call_server_link_func function to abstract
+	reg_server_link_func. Add new call_server_link_funcs function to abstract
 	hash internals from outside callers.
 
 	* src/proto-p10.c: call call_server_link_funcs rather than interfacing

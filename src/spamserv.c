@@ -624,7 +624,7 @@ spamserv_delete_user(struct userInfo *uInfo)
 }
 
 static int
-spamserv_new_user_func(struct userNode *user)
+spamserv_new_user_func(struct userNode *user, UNUSED_ARG(void *extra))
 {
 	if(!IsLocal(user))
 		spamserv_create_user(user);
@@ -3241,7 +3241,7 @@ init_spamserv(const char *nick)
 
 	saxdb_register("SpamServ", spamserv_saxdb_read, spamserv_saxdb_write);
 
-	reg_new_user_func(spamserv_new_user_func);
+	reg_new_user_func(spamserv_new_user_func, NULL);
 	reg_del_user_func(spamserv_del_user_func);
 	reg_nick_change_func(spamserv_nick_change_func);
 	reg_join_func(spamserv_user_join);

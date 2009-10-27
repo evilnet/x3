@@ -102,21 +102,36 @@ GetServerH(const char *name)
 }
 
 new_user_func_t *nuf_list;
+void **nuf_list_extra;
 unsigned int nuf_size = 0, nuf_used = 0;
 
 void
-reg_new_user_func(new_user_func_t handler)
+reg_new_user_func(new_user_func_t handler, void *extra)
 {
     if (nuf_used == nuf_size) {
-	if (nuf_size) {
-	    nuf_size <<= 1;
-	    nuf_list = realloc(nuf_list, nuf_size*sizeof(new_user_func_t));
-	} else {
-	    nuf_size = 8;
-	    nuf_list = malloc(nuf_size*sizeof(new_user_func_t));
-	}
+        if (nuf_size) {
+            nuf_size <<= 1;
+            nuf_list = realloc(nuf_list, nuf_size*sizeof(new_user_func_t));
+            nuf_list_extra = realloc(nuf_list_extra, nuf_size*sizeof(void*));
+        } else {
+            nuf_size = 8;
+            nuf_list = malloc(nuf_size*sizeof(new_user_func_t));
+            nuf_list_extra = malloc(nuf_size*sizeof(void*));
+        }
     }
-    nuf_list[nuf_used++] = handler;
+    nuf_list[nuf_used] = handler;
+    nuf_list_extra[nuf_used++] = extra;
+}
+
+void
+call_new_user_funcs(struct userNode* user)
+{
+    unsigned int i;
+
+    for (i = 0; i < nuf_used; ++i)
+    {
+        nuf_list[i](user, nuf_list_extra[i]);
+    }
 }
 
 static nick_change_func_t *ncf2_list;

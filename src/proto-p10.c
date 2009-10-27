@@ -2983,7 +2983,7 @@ static struct userNode*
 AddUser(struct server* uplink, const char *nick, const char *ident, const char *hostname, const char *modes, const char *numeric, const char *userinfo, time_t timestamp, const char *realip)
 {
     struct userNode *oldUser, *uNode;
-    unsigned int n, ignore_user, dummy;
+    unsigned int ignore_user, dummy;
     char *tstr;
     int type;
 
@@ -3081,8 +3081,8 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     }
     if (IsLocal(uNode))
         irc_user(uNode);
-    for (n=0; (n<nuf_used) && !uNode->dead; n++)
-        nuf_list[n](uNode);
+    if (!uNode->dead)
+        call_new_user_funcs(uNode);
 
     if ((uNode->loc == 1) && (uNode->handle_info))
         send_func_list(uNode);

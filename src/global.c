@@ -718,7 +718,7 @@ static GLOBAL_FUNC(cmd_messages)
 }
 
 static int
-global_process_user(struct userNode *user)
+global_process_user(struct userNode *user, UNUSED_ARG(void *extra))
 {
     if(IsLocal(user) || self->uplink->burst || user->uplink->burst)
         return 0;
@@ -843,7 +843,7 @@ init_global(const char *nick)
     struct chanNode *chan;
     unsigned int i;
     G_LOG = log_register_type("Global", "file:global.log");
-    reg_new_user_func(global_process_user);
+    reg_new_user_func(global_process_user, NULL);
     reg_auth_func(global_process_auth);
     reg_oper_func(global_process_oper);
 

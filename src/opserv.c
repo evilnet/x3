@@ -2741,7 +2741,7 @@ opserv_part_channel(void *data)
 static int alert_check_user(const char *key, void *data, void *extra);
 
 static int
-opserv_new_user_check(struct userNode *user)
+opserv_new_user_check(struct userNode *user, UNUSED_ARG(void *extra))
 {
     struct opserv_hostinfo *ohi;
     struct gag_entry *gag;
@@ -7393,7 +7393,7 @@ init_opserv(const char *nick)
     opserv_waiting_connections = dict_new();
     dict_set_free_data(opserv_waiting_connections, opserv_free_waiting_connection);
 
-    reg_new_user_func(opserv_new_user_check);
+    reg_new_user_func(opserv_new_user_check, NULL);
     reg_nick_change_func(opserv_alert_check_nick);
     reg_del_user_func(opserv_user_cleanup);
     reg_new_channel_func(opserv_channel_check); 
