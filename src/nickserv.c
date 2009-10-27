@@ -141,7 +141,7 @@
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
 #define NICKSERV_FUNC(NAME) MODCMD_FUNC(NAME)
-#define OPTION_FUNC(NAME) int NAME(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
+#define OPTION_FUNC(NAME) int NAME(UNUSED_ARG(struct svccmd *cmd), struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
 typedef OPTION_FUNC(option_func_t);
 
 DEFINE_LIST(handle_info_list, struct handle_info*)
