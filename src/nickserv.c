@@ -131,6 +131,7 @@
 #define KEY_LDAP_FIELD_ACCOUNT "ldap_field_account"
 #define KEY_LDAP_FIELD_PASSWORD "ldap_field_password"
 #define KEY_LDAP_FIELD_EMAIL "ldap_field_email"
+#define KEY_LDAP_FIELD_OSLEVEL "ldap_field_oslevel"
 #define KEY_LDAP_OBJECT_CLASSES "ldap_object_classes"
 #define KEY_LDAP_OPER_GROUP_DN "ldap_oper_group_dn"
 #define KEY_LDAP_OPER_GROUP_LEVEL "ldap_oper_group_level"
@@ -3362,6 +3363,13 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
            return 0;
         }
     }
+    if(nickserv_conf.ldap_enable && *(nickserv_conf.ldap_field_oslevel) && *(nickserv_conf.ldap_admin_dn)) {
+      int rc;
+      if((rc = ldap_do_oslevel(target->handle, new_level)) != LDAP_SUCCESS) {
+        send_message(user, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
+        return 0;
+      }
+    }
 #endif
     if (target->opserv_level == new_level)
         return 0;
@@ -4968,6 +4976,9 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_FIELD_EMAIL, RECDB_QSTRING);
     nickserv_conf.ldap_field_email = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_FIELD_OSLEVEL, RECDB_QSTRING);
+    nickserv_conf.ldap_field_oslevel = str ? str : "";
 
     str = database_get_data(conf_node, KEY_LDAP_OPER_GROUP_DN, RECDB_QSTRING);
     nickserv_conf.ldap_oper_group_dn = str ? str : "";

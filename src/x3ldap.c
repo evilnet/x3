@@ -518,6 +518,56 @@ LDAPMod **make_mods_modify(const char *password, const char *email, int *num_mod
     return mods;
 }
 
+/* Save OpServ level to LDAP
+ *
+ * level    - OpServ level
+ *
+ * A level of <0 will be treated as 0
+ */
+int ldap_do_oslevel(const char *account, int level)
+{
+  LDAPMod **mods;
+  static char *oslevel_vals[] = { NULL, NULL };
+  char dn[MAXLEN], temp[MAXLEN];
+  int rc;
+
+  if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
+    log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
+    return rc;
+  }
+
+  if (level < 0) {
+    level = 0;
+  }
+
+  snprintf(temp, MAXLEN-1, "%d", level);
+  oslevel_vals[0] = (char *) temp;
+
+  if(!(nickserv_conf.ldap_field_oslevel && *nickserv_conf.ldap_field_oslevel))
+    return 0;
+
+  snprintf(dn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
+
+  mods = ( LDAPMod ** ) malloc(( 1 ) * sizeof( LDAPMod * ));
+  mods[0] = (LDAPMod *) malloc(sizeof(LDAPMod));
+  memset(mods[0], 0, sizeof(LDAPMod));
+
+  mods[0]->mod_op = LDAP_MOD_REPLACE;
+  mods[0]->mod_type = strdup(nickserv_conf.ldap_field_oslevel);
+  mods[0]->mod_values = oslevel_vals;
+  mods[1] = NULL;
+
+  rc = ldap_modify_s(ld, dn, mods);
+  if(rc != LDAP_SUCCESS) {
+    log_module(MAIN_LOG, LOG_ERROR, "Error modifying ldap OpServ level: %s -- %s", account, ldap_err2string(rc));
+    //return rc;
+  }
+  free(mods[0]->mod_type);
+  free(mods[0]);
+  free(mods);
+
+  return rc;
+}
 
 /* Save email or password to server
  *

@@ -1,6 +1,24 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-28  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/x3ldap.c: Added ldap_do_oslevel() to set OpServ access level in
+	LDAP.
+
+	* src/x3ldap.h: Added ldap_do_oslevel() to set OpServ access level in
+	LDAP.
+
+	* src/nickserv.c: Added configuration option for OpServ access level
+	LDAP attribute name and call to ldap_do_oslevel() on access level
+	change.
+
+	* src/nickserv.h: Added configuration option for OpServ access level
+	LDAP attribute name.
+
+	* x3.conf.example: Added configuration option for OpServ access level
+	LDAP attribute name.
+
 2009-10-27  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/hash.h src/hash.c: add extra parameter to new_user_func_t and
