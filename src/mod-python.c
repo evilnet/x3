@@ -1652,7 +1652,7 @@ cleanup:
         log_module(PY_LOG, LOG_WARNING, "%s", err);
 }
 
-void python_handle_del_user(struct userNode *user, struct userNode *killer, const char *why) {
+void python_handle_del_user(struct userNode *user, struct userNode *killer, const char *why, UNUSED_ARG(void *extra)) {
     PyObject *usr = NULL, *killr = NULL, *name = NULL;
     PyObject *reason = NULL, *retval = NULL;
     char const* err = NULL;
@@ -1995,7 +1995,7 @@ int python_init(void) {
     reg_server_link_func(python_handle_server_link, NULL);
     reg_new_user_func(python_handle_new_user, NULL);
     reg_nick_change_func(python_handle_nick_change);
-    reg_del_user_func(python_handle_del_user);
+    reg_del_user_func(python_handle_del_user, NULL);
 //TODO:    reg_account_func(python_handle_account); /* stamping of account name to the ircd */
 //TODO:    reg_handle_rename_func(python_handle_handle_rename); /* handle used to ALSO mean account name */
 //TODO:    reg_failpw_func(python_handle_failpw);

@@ -1,6 +1,20 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-28  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/hash.h src/hash.c: add extra parameter to del_user_func_t,
+	reg_del_user_func, and unreg_del_user_func. Add new call_del_user_funcs
+	function to abstract hash internals from outside callers.
+
+	* src/opserv.c src/mod-python.c src/spamserv.c src/nickserv.c: add extra
+	NULL argument(parameter to reflect change in hash.
+
+	* src/proto-p10.c: use call_del_user_funcs instead of interfacing with
+	hash.c internals directly. Remove unused code due to this change.
+
+	* src/proto-common.c: remove reference to hash internals.
+
 2009-10-28  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/x3ldap.c: Added ldap_do_oslevel() to set OpServ access level in

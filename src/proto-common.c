@@ -53,8 +53,6 @@ extern struct cManagerNode cManager;
 extern unsigned long burst_length;
 extern struct cManagerNode cManager;
 extern struct policer_params *oper_policer_params, *luser_policer_params;
-extern del_user_func_t *duf_list;
-extern unsigned int duf_size, duf_used;
 extern time_t boot_time;
 
 void received_ping(void);

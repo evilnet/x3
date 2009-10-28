@@ -154,32 +154,48 @@ reg_nick_change_func(nick_change_func_t handler)
 
 
 del_user_func_t *duf_list;
+void **duf_list_extra;
 unsigned int duf_size = 0, duf_used = 0;
 
 void
-reg_del_user_func(del_user_func_t handler)
+reg_del_user_func(del_user_func_t handler, void *extra)
 {
     if (duf_used == duf_size) {
-	if (duf_size) {
-	    duf_size <<= 1;
-	    duf_list = realloc(duf_list, duf_size*sizeof(del_user_func_t));
-	} else {
-	    duf_size = 8;
-	    duf_list = malloc(duf_size*sizeof(del_user_func_t));
-	}
+        if (duf_size) {
+            duf_size <<= 1;
+            duf_list = realloc(duf_list, duf_size*sizeof(del_user_func_t));
+            duf_list_extra = realloc(duf_list_extra, duf_size*sizeof(void*));
+        } else {
+            duf_size = 8;
+            duf_list = malloc(duf_size*sizeof(del_user_func_t));
+            duf_list_extra = malloc(duf_size*sizeof(void*));
+        }
     }
-    duf_list[duf_used++] = handler;
+    duf_list[duf_used] = handler;
+    duf_list_extra[duf_used++] = extra;
 }
 
 void
-unreg_del_user_func(del_user_func_t handler)
+call_del_user_funcs(struct userNode *user, struct userNode *killer, const char *why)
+{
+    unsigned int i;
+
+    for (i = 0; i < duf_used; ++i)
+    {
+        duf_list[i](user, killer, why, duf_list_extra[i]);
+    }
+}
+
+void
+unreg_del_user_func(del_user_func_t handler, void *extra)
 {
     unsigned int i;
     for (i=0; i<duf_used; i++) {
-        if (duf_list[i] == handler) break;
+        if (duf_list[i] == handler && duf_list_extra[i] == extra) break;
     }
     if (i == duf_used) return;
     memmove(duf_list+i, duf_list+i+1, (duf_used-i-1)*sizeof(duf_list[0]));
+    memmove(duf_list_extra+i, duf_list_extra+i+1, (duf_used-i-1)*sizeof(duf_list_extra[0]));
     duf_used--;
 }
 

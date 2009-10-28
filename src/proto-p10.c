@@ -3094,7 +3094,6 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
 void
 DelUser(struct userNode* user, struct userNode *killer, int announce, const char *why)
 {
-    unsigned int n;
 
     verify(user);
 
@@ -3110,8 +3109,7 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
 
     /* Call these in reverse order so ChanServ can update presence
        information before NickServ nukes the handle_info. */
-    for (n = duf_used; n > 0; )
-        duf_list[--n](user, killer, why);
+    call_del_user_funcs(user, killer, why);
 
     user->uplink->clients--;
     user->uplink->users[user->num_local] = NULL;

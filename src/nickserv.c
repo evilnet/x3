@@ -5114,7 +5114,7 @@ handle_nick_change(struct userNode *user, const char *old_nick)
 }
 
 void
-nickserv_remove_user(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why))
+nickserv_remove_user(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why), UNUSED_ARG(void *extra))
 {
     dict_remove(nickserv_allow_auth_dict, user->nick);
     timeq_del(0, nickserv_reclaim_p, user, TIMEQ_IGNORE_WHEN);
@@ -5150,7 +5150,7 @@ nickserv_define_func(const char *name, modcmd_func_t func, int min_level, int mu
 static void
 nickserv_db_cleanup(void)
 {
-    unreg_del_user_func(nickserv_remove_user);
+    unreg_del_user_func(nickserv_remove_user, NULL);
     userList_clean(&curr_helpers);
     policer_params_delete(nickserv_conf.auth_policer_params);
     dict_delete(nickserv_handle_dict);
@@ -5197,7 +5197,7 @@ init_nickserv(const char *nick)
     NS_LOG = log_register_type("NickServ", "file:nickserv.log");
     reg_new_user_func(check_user_nick, NULL);
     reg_nick_change_func(handle_nick_change);
-    reg_del_user_func(nickserv_remove_user);
+    reg_del_user_func(nickserv_remove_user, NULL);
     reg_account_func(handle_account);
     reg_auth_func(handle_loc_auth_oper);
 

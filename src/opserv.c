@@ -2828,7 +2828,7 @@ opserv_new_user_check(struct userNode *user, UNUSED_ARG(void *extra))
 }
 
 static void
-opserv_user_cleanup(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why))
+opserv_user_cleanup(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why), UNUSED_ARG(void *extra))
 {
     struct opserv_hostinfo *ohi;
     char addr[IRC_NTOP_MAX_SIZE];
@@ -7220,7 +7220,7 @@ opserv_db_cleanup(void)
     free_string_list(opserv_bad_words);
     dict_delete(opserv_exempt_channels);
     dict_delete(opserv_trusted_hosts);
-    unreg_del_user_func(opserv_user_cleanup);
+    unreg_del_user_func(opserv_user_cleanup, NULL);
     dict_delete(opserv_hostinfo_dict);
     dict_delete(opserv_nick_based_alerts);
     dict_delete(opserv_account_based_alerts);
@@ -7395,7 +7395,7 @@ init_opserv(const char *nick)
 
     reg_new_user_func(opserv_new_user_check, NULL);
     reg_nick_change_func(opserv_alert_check_nick);
-    reg_del_user_func(opserv_user_cleanup);
+    reg_del_user_func(opserv_user_cleanup, NULL);
     reg_new_channel_func(opserv_channel_check); 
     reg_del_channel_func(opserv_channel_delete);
     reg_join_func(opserv_join_check);
