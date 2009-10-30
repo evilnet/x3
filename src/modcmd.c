@@ -2066,7 +2066,7 @@ static MODCMD_FUNC(cmd_tell) {
 }
 
 void
-modcmd_nick_change(struct userNode *user, const char *old_nick) {
+modcmd_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void *extra)) {
     struct service *svc;
     if (!(svc = dict_find(services, old_nick, NULL)))
         return;
@@ -2290,7 +2290,7 @@ modcmd_init(void) {
     dict_set_free_data(modules, free_module);
     services = dict_new();
     dict_set_free_data(services, free_service);
-    reg_nick_change_func(modcmd_nick_change);
+    reg_nick_change_func(modcmd_nick_change, NULL);
     reg_exit_func(modcmd_cleanup);
     conf_register_reload(modcmd_conf_read);
 

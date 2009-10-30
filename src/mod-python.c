@@ -1605,7 +1605,7 @@ cleanup:
 }
 
 static void
-python_handle_nick_change(struct userNode *user, const char *old_nick)
+python_handle_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void *extra))
 {
     PyObject* usr = NULL;
     PyObject* name = NULL;
@@ -1994,7 +1994,7 @@ int python_init(void) {
 //  in x3, they just need handle_ bridges implemented. (see python_handle_join for an example)
     reg_server_link_func(python_handle_server_link, NULL);
     reg_new_user_func(python_handle_new_user, NULL);
-    reg_nick_change_func(python_handle_nick_change);
+    reg_nick_change_func(python_handle_nick_change, NULL);
     reg_del_user_func(python_handle_del_user, NULL);
 //TODO:    reg_account_func(python_handle_account); /* stamping of account name to the ircd */
 //TODO:    reg_handle_rename_func(python_handle_handle_rename); /* handle used to ALSO mean account name */

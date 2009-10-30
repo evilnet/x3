@@ -128,28 +128,32 @@ call_new_user_funcs(struct userNode* user)
 {
     unsigned int i;
 
-    for (i = 0; i < nuf_used; ++i)
+    for (i = 0; i < nuf_used && !(user->dead); ++i)
     {
         nuf_list[i](user, nuf_list_extra[i]);
     }
 }
 
 static nick_change_func_t *ncf2_list;
+static void **ncf2_list_extra;
 static unsigned int ncf2_size = 0, ncf2_used = 0;
 
 void
-reg_nick_change_func(nick_change_func_t handler)
+reg_nick_change_func(nick_change_func_t handler, void *extra)
 {
     if (ncf2_used == ncf2_size) {
         if (ncf2_size) {
             ncf2_size <<= 1;
             ncf2_list = realloc(ncf2_list, ncf2_size*sizeof(nick_change_func_t));
+            ncf2_list_extra = realloc(ncf2_list_extra, ncf2_size*sizeof(void*));
         } else {
             ncf2_size = 8;
             ncf2_list = malloc(ncf2_size*sizeof(nick_change_func_t));
+            ncf2_list_extra = malloc(ncf2_size*sizeof(void*));
         }
     }
-    ncf2_list[ncf2_used++] = handler;
+    ncf2_list[ncf2_used] = handler;
+    ncf2_list[ncf2_used++] = extra;
 }
 
 
@@ -248,7 +252,7 @@ NickChange(struct userNode* user, const char *new_nick, int no_announce)
      * place because that is slightly more useful.
      */
     for (nn=0; (nn<ncf2_used) && !user->dead; nn++)
-        ncf2_list[nn](user, old_nick);
+        ncf2_list[nn](user, old_nick, ncf2_list_extra[nn]);
     user->timestamp = now;
     if (IsLocal(user) && !no_announce)
         irc_nick(user, old_nick);
@@ -283,7 +287,7 @@ SVSNickChange(struct userNode* user, const char *new_nick)
      * place because that is slightly more useful.
      */
     for (nn=0; (nn<ncf2_used) && !user->dead; nn++)
-        ncf2_list[nn](user, old_nick);
+        ncf2_list[nn](user, old_nick, ncf2_list_extra[nn]);
     user->timestamp = now;
 
     free(old_nick);
@@ -983,9 +987,13 @@ hash_cleanup(void)
     userList_clean(&curr_opers);
 
     free(slf_list);
+    free(slf_list_extra);
     free(nuf_list);
+    free(nuf_list_extra);
     free(ncf2_list);
+    free(ncf2_list_extra);
     free(duf_list);
+    free(duf_list_extra);
     free(ncf_list);
     free(jf_list);
     free(dcf_list);

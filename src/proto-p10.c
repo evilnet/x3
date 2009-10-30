@@ -3082,8 +3082,7 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     }
     if (IsLocal(uNode))
         irc_user(uNode);
-    if (!uNode->dead)
-        call_new_user_funcs(uNode);
+    call_new_user_funcs(uNode);
 
     if ((uNode->loc == 1) && (uNode->handle_info))
         send_func_list(uNode);

@@ -8883,7 +8883,7 @@ handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_ch
 }
 
 static void
-handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick))
+handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick), UNUSED_ARG(void *extra))
 {
     struct chanNode *channel;
     struct banData *bData;
@@ -9966,7 +9966,7 @@ init_chanserv(const char *nick)
         reg_kick_func(handle_kick);
         reg_topic_func(handle_topic);
         reg_mode_change_func(handle_mode);
-        reg_nick_change_func(handle_nick_change);
+        reg_nick_change_func(handle_nick_change, NULL);
         reg_auth_func(handle_auth);
     }
 

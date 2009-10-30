@@ -386,8 +386,8 @@ void reg_del_user_func(del_user_func_t handler, void *extra);
 void call_del_user_funcs(struct userNode *user, struct userNode *killer, const char *why);
 void unreg_del_user_func(del_user_func_t handler, void *extra);
 void ReintroduceUser(struct userNode* user);
-typedef void (*nick_change_func_t)(struct userNode *user, const char *old_nick);
-void reg_nick_change_func(nick_change_func_t handler);
+typedef void (*nick_change_func_t)(struct userNode *user, const char *old_nick, void *extra);
+void reg_nick_change_func(nick_change_func_t handler, void *extra);
 void NickChange(struct userNode* user, const char *new_nick, int no_announce);
 void SVSNickChange(struct userNode* user, const char *new_nick);
 

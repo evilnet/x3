@@ -6791,7 +6791,7 @@ opserv_alert_check_account(struct userNode *user, UNUSED_ARG(struct handle_info 
 }
 
 static void
-opserv_alert_check_nick(struct userNode *user, UNUSED_ARG(const char *old_nick))
+opserv_alert_check_nick(struct userNode *user, UNUSED_ARG(const char *old_nick), UNUSED_ARG(void *extra))
 {
     struct gag_entry *gag;
 
@@ -7394,7 +7394,7 @@ init_opserv(const char *nick)
     dict_set_free_data(opserv_waiting_connections, opserv_free_waiting_connection);
 
     reg_new_user_func(opserv_new_user_check, NULL);
-    reg_nick_change_func(opserv_alert_check_nick);
+    reg_nick_change_func(opserv_alert_check_nick, NULL);
     reg_del_user_func(opserv_user_cleanup, NULL);
     reg_new_channel_func(opserv_channel_check); 
     reg_del_channel_func(opserv_channel_delete);

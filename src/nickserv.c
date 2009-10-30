@@ -5101,7 +5101,7 @@ ctime(&hi->registered));
 }
 
 void
-handle_nick_change(struct userNode *user, const char *old_nick)
+handle_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void *extra))
 {
     struct handle_info *hi;
 
@@ -5196,7 +5196,7 @@ init_nickserv(const char *nick)
     unsigned int i;
     NS_LOG = log_register_type("NickServ", "file:nickserv.log");
     reg_new_user_func(check_user_nick, NULL);
-    reg_nick_change_func(handle_nick_change);
+    reg_nick_change_func(handle_nick_change, NULL);
     reg_del_user_func(nickserv_remove_user, NULL);
     reg_account_func(handle_account);
     reg_auth_func(handle_loc_auth_oper);

@@ -663,7 +663,7 @@ spamserv_del_user_func(struct userNode *user, struct userNode *killer, UNUSED_AR
 }
 
 static void
-spamserv_nick_change_func(struct userNode *user, const char *old_nick)
+spamserv_nick_change_func(struct userNode *user, const char *old_nick, UNUSED_ARG(void *extra))
 {
 	struct userInfo *uInfo = get_userInfo(old_nick);
 
@@ -3243,7 +3243,7 @@ init_spamserv(const char *nick)
 
 	reg_new_user_func(spamserv_new_user_func, NULL);
 	reg_del_user_func(spamserv_del_user_func, NULL);
-	reg_nick_change_func(spamserv_nick_change_func);
+	reg_nick_change_func(spamserv_nick_change_func, NULL);
 	reg_join_func(spamserv_user_join);
 	reg_part_func(spamserv_user_part);
 
