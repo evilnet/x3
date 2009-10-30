@@ -8350,7 +8350,7 @@ channel_user_is_exempt(struct userNode *user, struct chanNode *channel)
 /* Welcome to my worst nightmare. Warning: Read (or modify)
    the code below at your own risk. */
 static int
-handle_join(struct modeNode *mNode)
+handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
 {
     struct mod_chanmode change;
     struct userNode *user = mNode->user;
@@ -9961,7 +9961,7 @@ init_chanserv(const char *nick)
     if (nick) {
         reg_server_link_func(handle_server_link, NULL);
         reg_new_channel_func(handle_new_channel);
-        reg_join_func(handle_join);
+        reg_join_func(handle_join, NULL);
         reg_part_func(handle_part);
         reg_kick_func(handle_kick);
         reg_topic_func(handle_topic);

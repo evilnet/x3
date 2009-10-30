@@ -400,8 +400,8 @@ void set_geoip_info(struct userNode *user);
 
 typedef void (*new_channel_func_t) (struct chanNode *chan);
 void reg_new_channel_func(new_channel_func_t handler);
-typedef int (*join_func_t) (struct modeNode *mNode);
-void reg_join_func(join_func_t handler);
+typedef int (*join_func_t) (struct modeNode *mNode, void *extra);
+void reg_join_func(join_func_t handler, void *extra);
 typedef void (*del_channel_func_t) (struct chanNode *chan);
 void reg_del_channel_func(del_channel_func_t handler);
 

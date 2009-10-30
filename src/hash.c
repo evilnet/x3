@@ -421,21 +421,25 @@ reg_new_channel_func(new_channel_func_t handler)
 }
 
 static join_func_t *jf_list;
+static void **jf_list_extra;
 static unsigned int jf_size = 0, jf_used = 0;
 
 void
-reg_join_func(join_func_t handler)
+reg_join_func(join_func_t handler, void *extra)
 {
     if (jf_used == jf_size) {
 	if (jf_size) {
 	    jf_size <<= 1;
 	    jf_list = realloc(jf_list, jf_size*sizeof(join_func_t));
+        jf_list_extra = realloc(jf_list_extra, jf_size*sizeof(void*));
 	} else {
 	    jf_size = 8;
 	    jf_list = malloc(jf_size*sizeof(join_func_t));
+        jf_list_extra = malloc(jf_size*sizeof(void*));
 	}
     }
-    jf_list[jf_used++] = handler;
+    jf_list[jf_used] = handler;
+    jf_list_extra[jf_used++] = extra;
 }
 
 int rel_age;
@@ -681,7 +685,7 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
         for (n=0; (n<jf_used) && !user->dead; n++) {
             /* Callbacks return true if they kick or kill the user,
              * and we can continue without removing mNode. */
-            if (jf_list[n](mNode))
+            if (jf_list[n](mNode, jf_list_extra[n]))
                 return NULL;
         }
 
@@ -996,6 +1000,7 @@ hash_cleanup(void)
     free(duf_list_extra);
     free(ncf_list);
     free(jf_list);
+    free(jf_list_extra);
     free(dcf_list);
     free(pf_list);
     free(kf_list);

@@ -674,7 +674,7 @@ spamserv_nick_change_func(struct userNode *user, const char *old_nick, UNUSED_AR
 }
 
 static int
-spamserv_user_join(struct modeNode *mNode)
+spamserv_user_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
 {
 	struct chanNode	*channel = mNode->channel;
 	struct userNode	*user = mNode->user;    
@@ -3244,7 +3244,7 @@ init_spamserv(const char *nick)
 	reg_new_user_func(spamserv_new_user_func, NULL);
 	reg_del_user_func(spamserv_del_user_func, NULL);
 	reg_nick_change_func(spamserv_nick_change_func, NULL);
-	reg_join_func(spamserv_user_join);
+	reg_join_func(spamserv_user_join, NULL);
 	reg_part_func(spamserv_user_part);
 
 	timeq_add(now + FLOOD_TIMEQ_FREQ, timeq_flood, NULL);

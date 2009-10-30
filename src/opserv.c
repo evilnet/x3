@@ -2942,7 +2942,7 @@ opserv_notice_handler(struct userNode *user, struct userNode *bot, const char *t
 }
 
 static int
-opserv_join_check(struct modeNode *mNode)
+opserv_join_check(struct modeNode *mNode, UNUSED_ARG(void *extra))
 {
     struct userNode *user = mNode->user;
     struct chanNode *channel = mNode->channel;
@@ -7398,7 +7398,7 @@ init_opserv(const char *nick)
     reg_del_user_func(opserv_user_cleanup, NULL);
     reg_new_channel_func(opserv_channel_check); 
     reg_del_channel_func(opserv_channel_delete);
-    reg_join_func(opserv_join_check);
+    reg_join_func(opserv_join_check, NULL);
     reg_auth_func(opserv_staff_alert);
     reg_auth_func(opserv_alert_check_account);
     reg_notice_func(opserv, opserv_notice_handler);

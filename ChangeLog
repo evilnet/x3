@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-10-30  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/hash.h src/hash.c: add extra parameter to join_func_t and
+	reg_join_func.
+
+	* src/chanserv.c src/opserv.c src/mod-python.c src/spamserv.c: add extra
+	NULL argument/parameter to reflect change in hash.
+
+2009-10-30  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/hash.h src/hash.c: add extra parameter to nick_change_func_t and
 	reg_nick_change_func. Also fix memory leaks from not freeing extras lists
 	for some callback routines.

@@ -1484,7 +1484,7 @@ PyObject *python_new_handler_object() {
    it first? We will start by doing it every time.
  */
 static int
-python_handle_join(struct modeNode *mNode)
+python_handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
 {
     /* callback for handle_join events. 
     */
@@ -2004,7 +2004,7 @@ int python_init(void) {
 //
 //TODO:    reg_oper_func(python_handle_oper);
 //TODO:    reg_new_channel_func(python_handle_new_channel);
-    reg_join_func(python_handle_join);
+    reg_join_func(python_handle_join, NULL);
 //TODO:    reg_del_channel_func(python_handle_del_channel);
 //TODO:    reg_part_func(python_handle_part);
 //TODO:    reg_kick_func(python_handle_kick);
