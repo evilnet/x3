@@ -63,14 +63,14 @@ int snoop_finalize(void);
 #define UPDATE_TIMESTAMP() strftime(timestamp, sizeof(timestamp), "[%H:%M:%S]", localtime(&now))
 
 static void
-snoop_nick_change(struct userNode *user, const char *old_nick) {
+snoop_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void *extra)) {
     if (!snoop_cfg.enabled) return;
     UPDATE_TIMESTAMP();
     SNOOP("$bNICK$b change %s -> %s", old_nick, user->nick);
 }
 
 static int
-snoop_join(struct modeNode *mNode) {
+snoop_join(struct modeNode *mNode, UNUSED_ARG(void *extra)) {
     struct userNode *user = mNode->user;
     struct chanNode *chan = mNode->channel;
     if (!snoop_cfg.enabled) return 0;
@@ -100,7 +100,7 @@ snoop_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *ch
 }
 
 static int
-snoop_new_user(struct userNode *user) {
+snoop_new_user(struct userNode *user, UNUSED_ARG(void *extra)) {
     if (!snoop_cfg.enabled) return 0;
     if (user->uplink->burst && !snoop_cfg.show_bursts) return 0;
     UPDATE_TIMESTAMP();
@@ -109,7 +109,7 @@ snoop_new_user(struct userNode *user) {
 }
 
 static void
-snoop_del_user(struct userNode *user, struct userNode *killer, const char *why) {
+snoop_del_user(struct userNode *user, struct userNode *killer, const char *why, UNUSED_ARG(void *extra)) {
     if (!snoop_cfg.enabled) return;
     UPDATE_TIMESTAMP();
     if (killer) {
@@ -142,7 +142,7 @@ snoop_user_mode(struct userNode *user, const char *mode_change) {
 }
 
 static void
-snoop_oper(struct userNode *user) {
+snoop_oper(struct userNode *user, UNUSED_ARG(void *extra)) {
     if (!snoop_cfg.enabled) return;
     if (user->uplink->burst && !snoop_cfg.show_bursts) return;
     UPDATE_TIMESTAMP();
@@ -307,23 +307,23 @@ snoop_conf_read(void) {
 void
 snoop_cleanup(void) {
     snoop_cfg.enabled = 0;
-    unreg_del_user_func(snoop_del_user);
+    unreg_del_user_func(snoop_del_user, NULL);
 }
 
 int
 snoop_init(void) {
     reg_exit_func(snoop_cleanup);
     conf_register_reload(snoop_conf_read);
-    reg_nick_change_func(snoop_nick_change);
-    reg_join_func(snoop_join);
+    reg_nick_change_func(snoop_nick_change, NULL);
+    reg_join_func(snoop_join, NULL);
     reg_part_func(snoop_part);
     reg_kick_func(snoop_kick);
-    reg_new_user_func(snoop_new_user);
-    reg_del_user_func(snoop_del_user);
+    reg_new_user_func(snoop_new_user, NULL);
+    reg_del_user_func(snoop_del_user, NULL);
     reg_auth_func(snoop_auth);
     reg_channel_mode_func(snoop_channel_mode);
     reg_user_mode_func(snoop_user_mode);
-    reg_oper_func(snoop_oper);
+    reg_oper_func(snoop_oper, NULL);
 
     return 1;
 }

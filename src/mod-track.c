@@ -190,7 +190,7 @@ parse_track_conf(char *line)
 }
 
 static void
-track_nick_change(struct userNode *user, const char *old_nick) {
+track_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void *extra)) {
     if (!track_cfg.enabled) return;
 
     if(check_track_user(old_nick)) {
@@ -205,7 +205,7 @@ track_nick_change(struct userNode *user, const char *old_nick) {
 }
 
 static int
-track_join(struct modeNode *mNode) {
+track_join(struct modeNode *mNode, UNUSED_ARG(void *extra)) {
     struct userNode *user = mNode->user;
     struct chanNode *chan = mNode->channel;
     if (!track_cfg.enabled) return 0;
@@ -244,7 +244,7 @@ track_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *ch
 }
 
 static int
-track_new_user(struct userNode *user) {
+track_new_user(struct userNode *user, UNUSED_ARG(void *extra)) {
 
     if (!track_cfg.enabled) return 0;
     if (user->uplink->burst && !track_cfg.show_bursts) return 0;
@@ -257,7 +257,7 @@ track_new_user(struct userNode *user) {
 }
 
 static void
-track_del_user(struct userNode *user, struct userNode *killer, const char *why) {
+track_del_user(struct userNode *user, struct userNode *killer, const char *why, UNUSED_ARG(void *extra)) {
     if (!track_cfg.enabled) return;
     if (check_track_del(track_cfg) && (check_track_user(user->nick) || (killer && check_track_user(killer->nick))))
     {
@@ -295,7 +295,7 @@ track_user_mode(struct userNode *user, const char *mode_change) {
 }
 
 static void
-track_oper(struct userNode *user) {
+track_oper(struct userNode *user, UNUSED_ARG(void *extra)) {
        if (!track_cfg.enabled) return;
        if (user->uplink->burst && !track_cfg.show_bursts) return;
        UPDATE_TIMESTAMP();
@@ -646,7 +646,7 @@ track_conf_read(void) {
 void
 track_cleanup(void) {
     track_cfg.enabled = 0;
-    unreg_del_user_func(track_del_user);
+    unreg_del_user_func(track_del_user, NULL);
     dict_delete(track_db);
 }
 
@@ -657,16 +657,16 @@ track_init(void) {
 
     reg_exit_func(track_cleanup);
     conf_register_reload(track_conf_read);
-    reg_nick_change_func(track_nick_change);
-    reg_join_func(track_join);
+    reg_nick_change_func(track_nick_change, NULL);
+    reg_join_func(track_join, NULL);
     reg_part_func(track_part);
     reg_kick_func(track_kick);
-    reg_new_user_func(track_new_user);
-    reg_del_user_func(track_del_user);
+    reg_new_user_func(track_new_user, NULL);
+    reg_del_user_func(track_del_user, NULL);
     reg_auth_func(track_auth);
     reg_channel_mode_func(track_channel_mode);
     reg_user_mode_func(track_user_mode);
-    reg_oper_func(track_oper);
+    reg_oper_func(track_oper, NULL);
     opserv_define_func("TRACK", cmd_track, 800, 0, 0);
     opserv_define_func("DELTRACK", cmd_deltrack, 800, 0, 0);
     opserv_define_func("ADDTRACK", cmd_addtrack, 800, 0, 0);

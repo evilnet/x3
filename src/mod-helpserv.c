@@ -4226,7 +4226,7 @@ static void handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason)) {
  *
  * Unassign requests where req->helper persists until the helper parts or
  * quits. */
-static void handle_quit(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why)) {
+static void handle_quit(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why), UNUSED_ARG(void *extra)) {
     struct helpserv_reqlist *reqlist;
     struct helpserv_userlist *userlist;
     unsigned int i, n;
@@ -4374,7 +4374,7 @@ static void associate_requests_bychan(struct chanNode *chan, struct userNode *us
 /* Greet users upon joining a helpserv channel (if greeting is set) and set
  * req->user to the user joining for all requests owned by the user's handle
  * (if any) with a req->user == NULL */
-static int handle_join(struct modeNode *mNode) {
+static int handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra)) {
     struct userNode *user = mNode->user;
     struct chanNode *chan = mNode->channel;
     struct helpserv_botlist *botlist;
@@ -4445,7 +4445,7 @@ static int handle_join(struct modeNode *mNode) {
 }
 
 /* Update helpserv_reqs_bynick_dict upon nick change */
-static void handle_nickchange(struct userNode *user, const char *old_nick) {
+static void handle_nickchange(struct userNode *user, const char *old_nick, UNUSED_ARG(void *extra)) {
     struct helpserv_reqlist *reqlist;
     unsigned int i;
 
@@ -4900,7 +4900,7 @@ helpserv_define_option(const char *name, helpserv_option_func_t *func) {
 static void helpserv_db_cleanup(void) {
     shutting_down=1;
     unreg_part_func(handle_part);
-    unreg_del_user_func(handle_quit);
+    unreg_del_user_func(handle_quit, NULL);
     close_helpfile(helpserv_helpfile);
     dict_delete(helpserv_func_dict);
     dict_delete(helpserv_option_dict);
@@ -5018,10 +5018,10 @@ int helpserv_init() {
     }
     timeq_add(helpserv_next_stats(now), helpserv_timed_run_stats, NULL);
 
-    reg_join_func(handle_join);
+    reg_join_func(handle_join, NULL);
     reg_part_func(handle_part); /* also deals with kick */
-    reg_nick_change_func(handle_nickchange);
-    reg_del_user_func(handle_quit);
+    reg_nick_change_func(handle_nickchange, NULL);
+    reg_del_user_func(handle_quit, NULL);
 
     reg_auth_func(handle_nickserv_auth);
     reg_handle_rename_func(handle_nickserv_rename);

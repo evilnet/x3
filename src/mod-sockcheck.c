@@ -1098,7 +1098,7 @@ static MODCMD_FUNC(cmd_stats_proxycheck)
 }
 
 static int
-sockcheck_new_user(struct userNode *user) {
+sockcheck_new_user(struct userNode *user, UNUSED_ARG(void *extra)) {
     /* If they have a bum IP, or are bursting in, don't proxy-check or G-line them. */
     if (irc_in_addr_is_valid(user->ip)
         && !irc_in_addr_is_loopback(user->ip)
@@ -1179,7 +1179,7 @@ sockcheck_init(void)
     modcmd_register(sockcheck_module, "hostscan", cmd_hostscan, 2, 0, "level", "650", NULL);
     modcmd_register(sockcheck_module, "clearhost", cmd_clearhost, 2, 0, "level", "650", NULL);
     modcmd_register(sockcheck_module, "stats proxycheck", cmd_stats_proxycheck, 0, 0, NULL);
-    reg_new_user_func(sockcheck_new_user);
+    reg_new_user_func(sockcheck_new_user, NULL);
     return 1;
 }
 

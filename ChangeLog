@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2009-10-30  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/mod-snoop.c src/mod-helpserv.c src/mod-sockcheck.c src/mod-track.c:
+	fix missed NULL argument/parameter additions from earlier commits.
+
+2009-10-30  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/hash.h src/hash.c: add extra parameter to join_func_t and
 	reg_join_func.
 
