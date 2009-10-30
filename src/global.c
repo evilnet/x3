@@ -747,7 +747,7 @@ global_process_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_ha
 }
 
 static void
-global_process_oper(struct userNode *user)
+global_process_oper(struct userNode *user, UNUSED_ARG(void *extra))
 {
     if(user->uplink->burst)
         return;
@@ -845,7 +845,7 @@ init_global(const char *nick)
     G_LOG = log_register_type("Global", "file:global.log");
     reg_new_user_func(global_process_user, NULL);
     reg_auth_func(global_process_auth);
-    reg_oper_func(global_process_oper);
+    reg_oper_func(global_process_oper, NULL);
 
     conf_register_reload(global_conf_read);
 

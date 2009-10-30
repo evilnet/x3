@@ -536,22 +536,25 @@ reg_mode_change_func(mode_change_func_t handler)
 }
 
 static oper_func_t *of_list;
-
+static void **of_list_extra;
 static unsigned int of_size = 0, of_used = 0;
 
 void
-reg_oper_func(oper_func_t handler)
+reg_oper_func(oper_func_t handler, void *extra)
 {
     if (of_used == of_size) {
         if (of_size) {
             of_size <<= 1;
             of_list = realloc(of_list, of_size*sizeof(oper_func_t));
+            of_list_extra = realloc(of_list_extra, of_size*sizeof(void*));
         } else {
             of_size = 8;
             of_list = malloc(of_size*sizeof(oper_func_t));
+            of_list_extra = malloc(of_size*sizeof(void*));
         }
     }
-    of_list[of_used++] = handler;
+    of_list[of_used] = handler;
+    of_list_extra[of_used++] = extra;
 }
 
 static void
@@ -562,7 +565,7 @@ call_oper_funcs(struct userNode *user)
         return;
     for (n=0; (n<of_used) && !user->dead; n++)
     {
-        of_list[n](user);
+        of_list[n](user, of_list_extra[n]);
     }
 }
 

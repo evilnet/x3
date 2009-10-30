@@ -1,6 +1,17 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-30  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/proto.h: add extra parameter to reg_oper_func and oper_func_t.
+
+	* src/global.c: add extra NULL argument parameter to reflect changes.
+
+	* src/proto-common.c: add extra parameter to implementation of
+	reg_oper_func and reflect the extra parameter in call_oper_funcs.
+
+	* src/proto-p10.c: free storage for extra parameters.
+
 2009-10-28  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/hash.h src/hash.c: add extra parameter to del_user_func_t,

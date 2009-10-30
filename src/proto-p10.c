@@ -2475,6 +2475,7 @@ parse_cleanup(void)
 {
     unsigned int nn;
     free(of_list);
+    free(of_list_extra);
     free(privmsg_funcs);
     num_privmsg_funcs = 0;
     free(notice_funcs);
