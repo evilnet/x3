@@ -8930,7 +8930,7 @@ handle_nick_change(struct userNode *user, UNUSED_ARG(const char *old_nick), UNUS
     }
 }
 
-static void handle_rename(struct handle_info *handle, const char *old_handle)
+static void handle_rename(struct handle_info *handle, const char *old_handle, UNUSED_ARG(void *extra))
 {
     struct do_not_register *dnr = dict_find(handle_dnrs, old_handle, NULL);
 
@@ -9970,7 +9970,7 @@ init_chanserv(const char *nick)
         reg_auth_func(handle_auth);
     }
 
-    reg_handle_rename_func(handle_rename);
+    reg_handle_rename_func(handle_rename, NULL);
     reg_unreg_func(handle_unreg);
 
     handle_dnrs = dict_new();

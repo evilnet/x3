@@ -888,21 +888,25 @@ reg_auth_func(auth_func_t func)
 }
 
 static handle_rename_func_t *rf_list;
+static void **rf_list_extra;
 static unsigned int rf_list_size, rf_list_used;
 
 void
-reg_handle_rename_func(handle_rename_func_t func)
+reg_handle_rename_func(handle_rename_func_t func, void *extra)
 {
     if (rf_list_used == rf_list_size) {
         if (rf_list_size) {
             rf_list_size <<= 1;
             rf_list = realloc(rf_list, rf_list_size*sizeof(rf_list[0]));
+            rf_list_extra = realloc(rf_list_extra, rf_list_size*sizeof(void*));
         } else {
             rf_list_size = 8;
             rf_list = malloc(rf_list_size*sizeof(rf_list[0]));
+            rf_list_extra = malloc(rf_list_size*sizeof(void*));
         }
     }
-    rf_list[rf_list_used++] = func;
+    rf_list[rf_list_used] = func;
+    rf_list_extra[rf_list_used++] = extra;
 }
 
 static char *
@@ -1931,7 +1935,7 @@ static NICKSERV_FUNC(cmd_rename_handle)
     hi->handle = strdup(argv[2]);
     dict_insert(nickserv_handle_dict, hi->handle, hi);
     for (nn=0; nn<rf_list_used; nn++)
-        rf_list[nn](hi, old_handle);
+        rf_list[nn](hi, old_handle, rf_list_extra[nn]);
 
     if (nickserv_conf.sync_log) {
         for (uNode = hi->users; uNode; uNode = uNode->next_authed)
@@ -5163,6 +5167,7 @@ nickserv_db_cleanup(void)
     free(auth_func_list);
     free(unreg_func_list);
     free(rf_list);
+    free(rf_list_extra);
     free(allowauth_func_list);
     free(handle_merge_func_list);
     free(failpw_func_list);

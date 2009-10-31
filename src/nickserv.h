@@ -236,8 +236,8 @@ typedef void (*auth_func_t)(struct userNode *user, struct handle_info *old_handl
 void reg_auth_func(auth_func_t func);
 
 /* Called just after a handle is renamed. */
-typedef void (*handle_rename_func_t)(struct handle_info *handle, const char *old_handle);
-void reg_handle_rename_func(handle_rename_func_t func);
+typedef void (*handle_rename_func_t)(struct handle_info *handle, const char *old_handle, void *extra);
+void reg_handle_rename_func(handle_rename_func_t func, void *extra);
 
 /* unreg_funcs are called right before a handle is unregistered.
  * `user' is the person who caused the handle to be unregistered (either a

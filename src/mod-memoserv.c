@@ -1301,7 +1301,7 @@ memoserv_check_messages(struct userNode *user, UNUSED_ARG(struct handle_info *ol
 }
 
 static void
-memoserv_rename_account(struct handle_info *hi, const char *old_handle)
+memoserv_rename_account(struct handle_info *hi, const char *old_handle, UNUSED_ARG(void *extra))
 {
     struct memo_account *ma;
     if (!(ma = dict_find(memos, old_handle, NULL)))
@@ -1328,7 +1328,7 @@ memoserv_init(void)
     historys = dict_new();
     dict_set_free_data(memos, delete_memo_account);
     reg_auth_func(memoserv_check_messages);
-    reg_handle_rename_func(memoserv_rename_account);
+    reg_handle_rename_func(memoserv_rename_account, NULL);
     reg_unreg_func(memoserv_unreg_account);
     conf_register_reload(memoserv_conf_read);
     reg_exit_func(memoserv_cleanup);

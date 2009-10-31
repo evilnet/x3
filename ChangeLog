@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-10-31  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/nickserv.h src/nickserv.c: add extra parameter to
+	handle_rename_func_t and reg_handle_rename func.
+
+	* src/chanserv.c src/mod-helpserv.c src/mod-memoserv.c: add extra NULL
+	argument/parameter to reflect change in nickserv.
+
 2009-10-30  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/mod-snoop.c src/mod-helpserv.c src/mod-sockcheck.c src/mod-track.c:

@@ -4465,7 +4465,7 @@ static void handle_nickchange(struct userNode *user, const char *old_nick, UNUSE
 }
 
 /* Also update helpserv_reqs_byhand_dict upon handle rename */
-static void handle_nickserv_rename(struct handle_info *handle, const char *old_handle) {
+static void handle_nickserv_rename(struct handle_info *handle, const char *old_handle, UNUSED_ARG(void *extra)) {
     struct helpserv_reqlist *reqlist;
     struct helpserv_userlist *userlist;
     unsigned int i;
@@ -5024,7 +5024,7 @@ int helpserv_init() {
     reg_del_user_func(handle_quit, NULL);
 
     reg_auth_func(handle_nickserv_auth);
-    reg_handle_rename_func(handle_nickserv_rename);
+    reg_handle_rename_func(handle_nickserv_rename, NULL);
     reg_unreg_func(handle_nickserv_unreg);
     reg_allowauth_func(handle_nickserv_allowauth);
     reg_failpw_func(handle_nickserv_failpw);
