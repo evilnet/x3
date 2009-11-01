@@ -255,8 +255,8 @@ typedef void (*allowauth_func_t)(struct userNode *user, struct userNode *target,
 void reg_allowauth_func(allowauth_func_t func);
 
 /* Called when an auth attempt fails because of a bad password */
-typedef void (*failpw_func_t)(struct userNode *user, struct handle_info *handle);
-void reg_failpw_func(failpw_func_t func);
+typedef void (*failpw_func_t)(struct userNode *user, struct handle_info *handle, void *extra);
+void reg_failpw_func(failpw_func_t func, void *extra);
 
 void send_func_list(struct userNode *user);
 

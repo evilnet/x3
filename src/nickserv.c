@@ -1953,21 +1953,25 @@ static NICKSERV_FUNC(cmd_rename_handle)
 }
 
 static failpw_func_t *failpw_func_list;
+static void **failpw_func_list_extra;
 static unsigned int failpw_func_size = 0, failpw_func_used = 0;
 
 void
-reg_failpw_func(failpw_func_t func)
+reg_failpw_func(failpw_func_t func, void *extra)
 {
     if (failpw_func_used == failpw_func_size) {
         if (failpw_func_size) {
             failpw_func_size <<= 1;
             failpw_func_list = realloc(failpw_func_list, failpw_func_size*sizeof(failpw_func_t));
+            failpw_func_list_extra = realloc(failpw_func_list_extra, failpw_func_size*sizeof(void*));
         } else {
             failpw_func_size = 8;
             failpw_func_list = malloc(failpw_func_size*sizeof(failpw_func_t));
+            failpw_func_list_extra = malloc(failpw_func_size*sizeof(void*));
         }
     }
-    failpw_func_list[failpw_func_used++] = func;
+    failpw_func_list[failpw_func_used] = func;
+    failpw_func_list_extra[failpw_func_used++] = extra;
 }
 
 /*
@@ -2272,7 +2276,8 @@ static NICKSERV_FUNC(cmd_auth)
         send_message_type(4, user, cmd->parent->bot,
                           handle_find_message(hi, "NSMSG_PASSWORD_INVALID"));
         argv[pw_arg] = "BADPASS";
-        for (n=0; n<failpw_func_used; n++) failpw_func_list[n](user, hi);
+        for (n=0; n<failpw_func_used; n++)
+            failpw_func_list[n](user, hi, failpw_func_list_extra[n]);
         if (nickserv_conf.autogag_enabled) {
             if (!user->auth_policer.params) {
                 user->auth_policer.last_req = now;
@@ -5171,6 +5176,7 @@ nickserv_db_cleanup(void)
     free(allowauth_func_list);
     free(handle_merge_func_list);
     free(failpw_func_list);
+    free(failpw_func_list_extra);
     if (nickserv_conf.valid_handle_regex_set)
         regfree(&nickserv_conf.valid_handle_regex);
     if (nickserv_conf.valid_nick_regex_set)
