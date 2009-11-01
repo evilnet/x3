@@ -251,8 +251,8 @@ void reg_handle_merge_func(handle_merge_func_t);
 
 /* Called after an allowauth. handle is null if allowauth authorization was
  * removed */
-typedef void (*allowauth_func_t)(struct userNode *user, struct userNode *target, struct handle_info *handle);
-void reg_allowauth_func(allowauth_func_t func);
+typedef void (*allowauth_func_t)(struct userNode *user, struct userNode *target, struct handle_info *handle, void *extra);
+void reg_allowauth_func(allowauth_func_t func, void *extra);
 
 /* Called when an auth attempt fails because of a bad password */
 typedef void (*failpw_func_t)(struct userNode *user, struct handle_info *handle, void *extra);

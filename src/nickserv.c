@@ -2373,21 +2373,25 @@ static NICKSERV_FUNC(cmd_auth)
 }
 
 static allowauth_func_t *allowauth_func_list;
+static void **allowauth_func_list_extra;
 static unsigned int allowauth_func_size = 0, allowauth_func_used = 0;
 
 void
-reg_allowauth_func(allowauth_func_t func)
+reg_allowauth_func(allowauth_func_t func, void *extra)
 {
     if (allowauth_func_used == allowauth_func_size) {
         if (allowauth_func_size) {
             allowauth_func_size <<= 1;
             allowauth_func_list = realloc(allowauth_func_list, allowauth_func_size*sizeof(allowauth_func_t));
+            allowauth_func_list_extra = realloc(allowauth_func_list_extra, allowauth_func_size*sizeof(void*));
         } else {
             allowauth_func_size = 8;
             allowauth_func_list = malloc(allowauth_func_size*sizeof(allowauth_func_t));
+            allowauth_func_list_extra = malloc(allowauth_func_size*sizeof(void*));
         }
     }
-    allowauth_func_list[allowauth_func_used++] = func;
+    allowauth_func_list[allowauth_func_used] = func;
+    allowauth_func_list_extra[allowauth_func_used++] = extra;
 }
 
 static NICKSERV_FUNC(cmd_allowauth)
@@ -2441,7 +2445,7 @@ static NICKSERV_FUNC(cmd_allowauth)
             reply("NSMSG_AUTH_UNSPECIAL", target->nick);
     }
     for (n=0; n<allowauth_func_used; n++)
-        allowauth_func_list[n](user, target, hi);
+        allowauth_func_list[n](user, target, hi, allowauth_func_list_extra[n]);
     return 1;
 }
 
@@ -5174,6 +5178,7 @@ nickserv_db_cleanup(void)
     free(rf_list);
     free(rf_list_extra);
     free(allowauth_func_list);
+    free(allowauth_func_list_extra);
     free(handle_merge_func_list);
     free(failpw_func_list);
     free(failpw_func_list_extra);

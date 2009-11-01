@@ -4800,7 +4800,7 @@ static void handle_nickserv_merge(struct userNode *user, struct handle_info *han
     }
 }
 
-static void handle_nickserv_allowauth(struct userNode *user, struct userNode *target, struct handle_info *handle) {
+static void handle_nickserv_allowauth(struct userNode *user, struct userNode *target, struct handle_info *handle, UNUSED_ARG(void *extra)) {
     struct helpserv_reqlist *reqlist;
     unsigned int i;
 
@@ -5026,7 +5026,7 @@ int helpserv_init() {
     reg_auth_func(handle_nickserv_auth);
     reg_handle_rename_func(handle_nickserv_rename, NULL);
     reg_unreg_func(handle_nickserv_unreg);
-    reg_allowauth_func(handle_nickserv_allowauth);
+    reg_allowauth_func(handle_nickserv_allowauth, NULL);
     reg_failpw_func(handle_nickserv_failpw, NULL);
     reg_handle_merge_func(handle_nickserv_merge);
 
