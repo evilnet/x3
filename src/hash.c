@@ -403,21 +403,25 @@ set_geoip_info(struct userNode *user)
 }
 
 static new_channel_func_t *ncf_list;
+static void **ncf_list_extra;
 static unsigned int ncf_size = 0, ncf_used = 0;
 
 void
-reg_new_channel_func(new_channel_func_t handler)
+reg_new_channel_func(new_channel_func_t handler, void *extra)
 {
     if (ncf_used == ncf_size) {
 	if (ncf_size) {
 	    ncf_size <<= 1;
 	    ncf_list = realloc(ncf_list, ncf_size*sizeof(ncf_list[0]));
+        ncf_list_extra = realloc(ncf_list_extra, ncf_size*sizeof(void*));
 	} else {
 	    ncf_size = 8;
 	    ncf_list = malloc(ncf_size*sizeof(ncf_list[0]));
+        ncf_list_extra = malloc(ncf_size*sizeof(void*));
 	}
     }
-    ncf_list[ncf_used++] = handler;
+    ncf_list[ncf_used] = handler;
+    ncf_list_extra[ncf_used++] = extra;
 }
 
 static join_func_t *jf_list;
@@ -553,7 +557,7 @@ AddChannel(const char *name, time_t time_, const char *modes, char *banlist, cha
     /* if it's a new or updated channel, make callbacks */
     if (rel_age > 0)
         for (nn=0; nn<ncf_used; nn++)
-            ncf_list[nn](cNode);
+            ncf_list[nn](cNode, ncf_list_extra[nn]);
 
     /* go through list of bans and add each one */
     if (banlist && (rel_age >= 0)) {
@@ -1003,6 +1007,7 @@ hash_cleanup(void)
     free(duf_list);
     free(duf_list_extra);
     free(ncf_list);
+    free(ncf_list_extra);
     free(jf_list);
     free(jf_list_extra);
     free(dcf_list);

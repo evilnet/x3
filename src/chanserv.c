@@ -8238,7 +8238,7 @@ chanserv_adjust_limit(void *data)
 }
 
 static void
-handle_new_channel(struct chanNode *channel)
+handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
 {
     struct chanData *cData;
 
@@ -9960,7 +9960,7 @@ init_chanserv(const char *nick)
 
     if (nick) {
         reg_server_link_func(handle_server_link, NULL);
-        reg_new_channel_func(handle_new_channel);
+        reg_new_channel_func(handle_new_channel, NULL);
         reg_join_func(handle_join, NULL);
         reg_part_func(handle_part);
         reg_kick_func(handle_kick);

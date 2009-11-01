@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-11-01  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/hash.h src/hash.c: add extra parameter to new_channel_func_t and
+	reg_new_channel_func.
+
+	* src/chanserv.c src/opserv.c: add extra NULL argument/parameter to
+	reflect change in hash.
+
+2009-11-01  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/nickserv.h src/nickserv.c: add extra parameter to
 	handle_merge_func_t and reg_handle_merge_func.
 

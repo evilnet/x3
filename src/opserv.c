@@ -2892,7 +2892,7 @@ opserv_shutdown_channel(struct chanNode *channel, const char *reason)
 }
 
 static void
-opserv_channel_check(struct chanNode *newchan)
+opserv_channel_check(struct chanNode *newchan, UNUSED_ARG(void *extra))
 {
     /*char *warning; */
 
@@ -7396,7 +7396,7 @@ init_opserv(const char *nick)
     reg_new_user_func(opserv_new_user_check, NULL);
     reg_nick_change_func(opserv_alert_check_nick, NULL);
     reg_del_user_func(opserv_user_cleanup, NULL);
-    reg_new_channel_func(opserv_channel_check); 
+    reg_new_channel_func(opserv_channel_check, NULL); 
     reg_del_channel_func(opserv_channel_delete);
     reg_join_func(opserv_join_check, NULL);
     reg_auth_func(opserv_staff_alert);
