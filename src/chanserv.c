@@ -8765,7 +8765,7 @@ handle_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *c
 }
 
 static int
-handle_topic(struct userNode *user, struct chanNode *channel, const char *old_topic)
+handle_topic(struct userNode *user, struct chanNode *channel, const char *old_topic, UNUSED_ARG(void *extra))
 {
     struct chanData *cData;
 
@@ -9964,7 +9964,7 @@ init_chanserv(const char *nick)
         reg_join_func(handle_join, NULL);
         reg_part_func(handle_part);
         reg_kick_func(handle_kick);
-        reg_topic_func(handle_topic);
+        reg_topic_func(handle_topic, NULL);
         reg_mode_change_func(handle_mode);
         reg_nick_change_func(handle_nick_change, NULL);
         reg_auth_func(handle_auth);

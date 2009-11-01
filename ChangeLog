@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-11-01  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/hash.h src/hash.c: add extra parameter to topic_func_t and
+	reg_topic_func.
+
+	* src/chanserv.c src/mod-python.c: add extra NULL argument/parameter to
+	reflect change in hash.
+
+2009-11-01  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/proto.h src/proto-common.c: add extra parameter to chanmsg_func_t
 	and reg_chanmsg_func.
 

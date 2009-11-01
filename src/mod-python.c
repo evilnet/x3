@@ -1718,7 +1718,7 @@ cleanup:
         log_module(PY_LOG, LOG_WARNING, "%s", err);
 }
 
-int python_handle_topic(struct userNode *who, struct chanNode *chan, const char *old_topic) {
+int python_handle_topic(struct userNode *who, struct chanNode *chan, const char *old_topic, UNUSED_ARG(void *extra)) {
     PyObject* pwho = NULL, *pchan = NULL, *oldtopic = NULL;
     PyObject* name = NULL, *retval = NULL;
     const char* err = NULL;
@@ -2008,7 +2008,7 @@ int python_init(void) {
 //TODO:    reg_del_channel_func(python_handle_del_channel);
 //TODO:    reg_part_func(python_handle_part);
 //TODO:    reg_kick_func(python_handle_kick);
-    reg_topic_func(python_handle_topic);
+    reg_topic_func(python_handle_topic, NULL);
 //TODO:    reg_channel_mode_func(python_handle_channel_mode);
 
 //TODO:    reg_privmsg_func(python_handle_privmsg);

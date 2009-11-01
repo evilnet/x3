@@ -855,21 +855,25 @@ int ChannelExemptExists(struct chanNode *channel, const char *exempt)
 }
 
 static topic_func_t *tf_list;
+static void **tf_list_extra;
 static unsigned int tf_size = 0, tf_used = 0;
 
 void
-reg_topic_func(topic_func_t handler)
+reg_topic_func(topic_func_t handler, void *extra)
 {
     if (tf_used == tf_size) {
 	if (tf_size) {
 	    tf_size <<= 1;
 	    tf_list = realloc(tf_list, tf_size*sizeof(topic_func_t));
+        tf_list_extra = realloc(tf_list_extra, tf_size*sizeof(void*));
 	} else {
 	    tf_size = 8;
 	    tf_list = malloc(tf_size*sizeof(topic_func_t));
+        tf_list_extra = malloc(tf_size*sizeof(void*));
 	}
     }
-    tf_list[tf_used++] = handler;
+    tf_list[tf_used] = handler;
+    tf_list_extra[tf_used++] = extra;
 }
 
 void
@@ -901,7 +905,7 @@ SetChannelTopic(struct chanNode *channel, struct userNode *service, struct userN
              * that it has reverted the topic change, and that further
              * hooks should not be called.
              */
-	    if (tf_list[n](user, channel, old_topic))
+	    if (tf_list[n](user, channel, old_topic, tf_list_extra[n]))
                 break;
     }
 }
@@ -1005,4 +1009,5 @@ hash_cleanup(void)
     free(pf_list);
     free(kf_list);
     free(tf_list);
+    free(tf_list_extra);
 }
