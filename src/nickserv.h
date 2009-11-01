@@ -246,8 +246,8 @@ typedef void (*unreg_func_t)(struct userNode *user, struct handle_info *handle);
 void reg_unreg_func(unreg_func_t func);
 
 /* Called just before a handle is merged */
-typedef void (*handle_merge_func_t)(struct userNode *user, struct handle_info *handle_to, struct handle_info *handle_from);
-void reg_handle_merge_func(handle_merge_func_t);
+typedef void (*handle_merge_func_t)(struct userNode *user, struct handle_info *handle_to, struct handle_info *handle_from, void *extra);
+void reg_handle_merge_func(handle_merge_func_t, void *extra);
 
 /* Called after an allowauth. handle is null if allowauth authorization was
  * removed */

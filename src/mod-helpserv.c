@@ -4768,7 +4768,7 @@ static void handle_nickserv_unreg(struct userNode *user, struct handle_info *han
     dict_remove(helpserv_reqs_byhand_dict, handle->handle);
 }
 
-static void handle_nickserv_merge(struct userNode *user, struct handle_info *handle_to, struct handle_info *handle_from) {
+static void handle_nickserv_merge(struct userNode *user, struct handle_info *handle_to, struct handle_info *handle_from, UNUSED_ARG(void *extra)) {
     struct helpserv_reqlist *reqlist_from, *reqlist_to;
     unsigned int i;
 
@@ -5028,7 +5028,7 @@ int helpserv_init() {
     reg_unreg_func(handle_nickserv_unreg);
     reg_allowauth_func(handle_nickserv_allowauth, NULL);
     reg_failpw_func(handle_nickserv_failpw, NULL);
-    reg_handle_merge_func(handle_nickserv_merge);
+    reg_handle_merge_func(handle_nickserv_merge, NULL);
 
     reg_exit_func(helpserv_db_cleanup);
 

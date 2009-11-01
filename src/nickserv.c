@@ -3923,21 +3923,25 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
 }
 
 static handle_merge_func_t *handle_merge_func_list;
+static void **handle_merge_func_list_extra;
 static unsigned int handle_merge_func_size = 0, handle_merge_func_used = 0;
 
 void
-reg_handle_merge_func(handle_merge_func_t func)
+reg_handle_merge_func(handle_merge_func_t func, void *extra)
 {
     if (handle_merge_func_used == handle_merge_func_size) {
         if (handle_merge_func_size) {
             handle_merge_func_size <<= 1;
             handle_merge_func_list = realloc(handle_merge_func_list, handle_merge_func_size*sizeof(handle_merge_func_t));
+            handle_merge_func_list_extra = realloc(handle_merge_func_list_extra, handle_merge_func_size*sizeof(void*));
         } else {
             handle_merge_func_size = 8;
             handle_merge_func_list = malloc(handle_merge_func_size*sizeof(handle_merge_func_t));
+            handle_merge_func_list_extra = malloc(handle_merge_func_size*sizeof(void*));
         }
     }
-    handle_merge_func_list[handle_merge_func_used++] = func;
+    handle_merge_func_list[handle_merge_func_used] = func;
+    handle_merge_func_list_extra[handle_merge_func_used++] = extra;
 }
 
 static NICKSERV_FUNC(cmd_merge)
@@ -3959,7 +3963,7 @@ static NICKSERV_FUNC(cmd_merge)
     }
 
     for (n=0; n<handle_merge_func_used; n++)
-        handle_merge_func_list[n](user, hi_to, hi_from);
+        handle_merge_func_list[n](user, hi_to, hi_from, handle_merge_func_list_extra[n]);
 
     /* Append "from" handle's nicks to "to" handle's nick list. */
     if (hi_to->nicks) {
@@ -5180,6 +5184,7 @@ nickserv_db_cleanup(void)
     free(allowauth_func_list);
     free(allowauth_func_list_extra);
     free(handle_merge_func_list);
+    free(handle_merge_func_list_extra);
     free(failpw_func_list);
     free(failpw_func_list_extra);
     if (nickserv_conf.valid_handle_regex_set)
