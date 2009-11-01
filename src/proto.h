@@ -94,8 +94,8 @@ char *client_report_privs(struct userNode *client);
 int check_priv(char *priv);
 
 /* Callback notifications for protocol support. */
-typedef void (*chanmsg_func_t) (struct userNode *user, struct chanNode *chan, const char *text, struct userNode *bot, unsigned int is_notice);
-void reg_chanmsg_func(unsigned char prefix, struct userNode *service, chanmsg_func_t handler);
+typedef void (*chanmsg_func_t) (struct userNode *user, struct chanNode *chan, const char *text, struct userNode *bot, unsigned int is_notice, void *extra);
+void reg_chanmsg_func(unsigned char prefix, struct userNode *service, chanmsg_func_t handler, void *extra);
 void reg_allchanmsg_func(struct userNode *service, chanmsg_func_t handler);
 struct userNode *get_chanmsg_bot(unsigned char prefix);
 

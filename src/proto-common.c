@@ -409,6 +409,7 @@ recalc_bursts(struct server *eob_server)
 static struct chanmsg_func {
     chanmsg_func_t func;
     struct userNode *service;
+    void *extra;
 } chanmsg_funcs[256]; /* indexed by trigger character */
 
 static struct allchanmsg_func {
@@ -439,7 +440,7 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
     /* Never send a NOTICE to a channel to one of the services */
     cf = &chanmsg_funcs[(unsigned char)pd->text[0]];
     if (!pd->is_notice && cf->func)
-        cf->func(pd->user, cn, pd->text+1, cf->service, pd->is_notice);
+        cf->func(pd->user, cn, pd->text+1, cf->service, pd->is_notice, cf->extra);
     else
         spamserv_channel_message(cn, pd->user, pd->text);
 
@@ -449,7 +450,7 @@ privmsg_chan_helper(struct chanNode *cn, void *data)
        if (!cf->func)
          break; /* end of list */
        else
-         cf->func(pd->user, cn, pd->text, cf->service, pd->is_notice);
+         cf->func(pd->user, cn, pd->text, cf->service, pd->is_notice, cf->extra);
     }
 }
 
@@ -490,12 +491,13 @@ static CMD_FUNC(cmd_part)
 }
 
 void
-reg_chanmsg_func(unsigned char prefix, struct userNode *service, chanmsg_func_t handler)
+reg_chanmsg_func(unsigned char prefix, struct userNode *service, chanmsg_func_t handler, void *extra)
 {
     if (chanmsg_funcs[prefix].func)
 	log_module(MAIN_LOG, LOG_WARNING, "Re-registering new chanmsg handler for character `%c'.", prefix);
     chanmsg_funcs[prefix].func = handler;
     chanmsg_funcs[prefix].service = service;
+    chanmsg_funcs[prefix].extra = extra;
 }
 
 void

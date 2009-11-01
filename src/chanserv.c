@@ -994,7 +994,7 @@ scan_user_presence(struct userData *uData, struct userNode *user)
 }
 
 static void
-chanserv_ctcp_check(struct userNode *user, struct chanNode *channel, const char *text, UNUSED_ARG(struct userNode *bot), UNUSED_ARG(unsigned int is_notice))
+chanserv_ctcp_check(struct userNode *user, struct chanNode *channel, const char *text, UNUSED_ARG(struct userNode *bot), UNUSED_ARG(unsigned int is_notice), UNUSED_ARG(void *extra))
 {
     unsigned int eflags, argc;
     char *argv[4];
@@ -10151,7 +10151,7 @@ init_chanserv(const char *nick)
         const char *modes = conf_get_data("services/chanserv/modes", RECDB_QSTRING);
         chanserv = AddLocalUser(nick, nick, NULL, "Channel Services", modes);
         service_register(chanserv)->trigger = '!';
-        reg_chanmsg_func('\001', chanserv, chanserv_ctcp_check);
+        reg_chanmsg_func('\001', chanserv, chanserv_ctcp_check, NULL);
     }
 
     saxdb_register("ChanServ", chanserv_saxdb_read, chanserv_saxdb_write);

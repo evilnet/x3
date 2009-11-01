@@ -1031,7 +1031,7 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, const char *text, in
 }
 
 void
-modcmd_chanmsg(struct userNode *user, struct chanNode *chan, const char *text, struct userNode *bot, unsigned int is_notice) {
+modcmd_chanmsg(struct userNode *user, struct chanNode *chan, const char *text, struct userNode *bot, unsigned int is_notice, UNUSED_ARG(void *extra)) {
     struct service *service;
     if (!(service = dict_find(services, bot->nick, NULL)))
         return;
@@ -1937,7 +1937,7 @@ static MODCMD_FUNC(cmd_service_trigger) {
         return 1;
     }
     if (service->trigger)
-        reg_chanmsg_func(service->trigger, NULL, NULL);
+        reg_chanmsg_func(service->trigger, NULL, NULL, NULL);
     if (!irccasecmp(argv[2], "none") || !irccasecmp(argv[2], "remove")) {
         service->trigger = 0;
         reply("MCMSG_REMOVED_TRIGGER", service->bot->nick);
@@ -1946,7 +1946,7 @@ static MODCMD_FUNC(cmd_service_trigger) {
         return 1;
     } else {
         service->trigger = argv[2][0];
-        reg_chanmsg_func(service->trigger, service->bot, modcmd_chanmsg);
+        reg_chanmsg_func(service->trigger, service->bot, modcmd_chanmsg, NULL);
         reply("MCMSG_NEW_TRIGGER", service->bot->nick, service->trigger);
     }
     return 1;
@@ -2602,7 +2602,7 @@ modcmd_finalize(void) {
     for (it = dict_first(services); it; it = iter_next(it)) {
         struct service *svc = iter_data(it);
         if (svc->trigger)
-            reg_chanmsg_func(svc->trigger, svc->bot, modcmd_chanmsg);
+            reg_chanmsg_func(svc->trigger, svc->bot, modcmd_chanmsg, NULL);
     }
 
     /* Resolve command rule-templates. */
