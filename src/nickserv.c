@@ -1491,6 +1491,10 @@ static NICKSERV_FUNC(cmd_oregister)
     pass = argv[2];
     if(nickserv_conf.force_handles_lowercase)
         irc_strtolower(account);
+    if (!is_valid_handle(argv[1])) {
+        reply("NSMSG_BAD_HANDLE", argv[1]);
+        return 0;
+    }
     if (nickserv_conf.email_required) {
         NICKSERV_MIN_PARMS(3);
         email = argv[3];

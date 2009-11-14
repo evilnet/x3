@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-14  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fix for bug #2869968 (*NickServ.oregister allowing
+	invalid handles)
+
 2009-11-01  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/hash.h src/hash.c: add extra parameter to new_channel_func_t and
