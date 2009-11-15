@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-15  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/hosthiding.c: Fix for crash bug in make_virthost() when host
+	name doesnt have a '.' in it.
+
 2009-11-15  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/hash.c: fix variable set for registering nick change functions.

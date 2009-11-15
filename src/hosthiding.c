@@ -227,10 +227,16 @@ make_virthost (char *curr, char *host, char *virt)
       snprintf(mask, HOSTLEN, "%x.%x.%s.%s.%s",
               hash[0], hash[1], parv2[parc2 - 3], parv2[parc2 - 2],
               parv2[parc2 - 1]);
-    } else {
+    } else if (parc2 >= 3) {
        snprintf(mask, HOSTLEN, "%x.%x.%s.%s",
                hash[0], hash[1], parv2[parc2 - 2],
                parv2[parc2 - 1]);
+    } else if (parc2 >= 2) {
+       snprintf(mask, HOSTLEN, "%x.%x.%s",
+               hash[0], hash[1], parv2[parc2 - 1]);
+    } else {
+       snprintf(mask, HOSTLEN, "%x.%x",
+               hash[0], hash[1]);
     }
   }
   safestrncpy (virt, mask, HOSTLEN);
