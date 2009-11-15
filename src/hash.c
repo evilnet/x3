@@ -153,7 +153,7 @@ reg_nick_change_func(nick_change_func_t handler, void *extra)
         }
     }
     ncf2_list[ncf2_used] = handler;
-    ncf2_list[ncf2_used++] = extra;
+    ncf2_list_extra[ncf2_used++] = extra;
 }
 
 

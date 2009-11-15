@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-15  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/hash.c: fix variable set for registering nick change functions.
+
 2009-11-14  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fix for bug #2869968 (*NickServ.oregister allowing
