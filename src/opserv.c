@@ -216,6 +216,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WHOIS_CHANNELS",   "Channels     : %s" },
     { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
     { "OSMSG_WHOIS_VERSION",    "Version      : %s" },  
+    { "OSMSG_WHOIS_SSLFP",      "SSL f/print  : %s" },
     { "OSMSG_WHOIS_MARK",       "Mark         : %s" },  
     { "OSMSG_WHOIS_NO_NOTICE",  "No_notices   : %s" },
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
@@ -2166,6 +2167,9 @@ static MODCMD_FUNC(cmd_whois)
     }
     if(target->version_reply) {
         reply("OSMSG_WHOIS_VERSION", target->version_reply);
+    }
+    if(target->sslfp) {
+        reply("OSMSG_WHOIS_SSLFP", target->sslfp);
     }
     if(target->mark) {
         reply("OSMSG_WHOIS_MARK", target->mark);

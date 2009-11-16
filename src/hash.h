@@ -228,6 +228,7 @@ struct userNode {
     
     char *mark;                   /* only filled if they are marked */
     char *version_reply;          /* only filled in if a version query was triggered */
+    char *sslfp;                  /* only filled in if a mark SSLCLIFP is received */
 
     time_t timestamp;             /* Time of last nick change */
     time_t idle_since;

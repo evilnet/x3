@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
 
+	* src/proto-p10.c: Added support for MARK SSLCLIFP.
+
+	* src/hash.h: Added support for MARK SSLCLIFP.
+
+	* src/opserv.c: Added SSLCLIFP mark to cmd_whois.
+
+2009-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
+
 	* src/nickserv.c: Fix for crash in cmd_oregister due to incorrect
 	parameter counts.
 

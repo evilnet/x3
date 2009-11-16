@@ -1941,7 +1941,7 @@ static CMD_FUNC(cmd_mark)
         
     }
     else if(!strcasecmp(argv[2], "CVERSION")) {
-        /* DNSBL_DATA name */
+        /* CTCP VERSION mark */
         target = GetUserH(argv[1]);
         if(!target) {
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose version mark is changing.", argv[1]);
@@ -1956,6 +1956,22 @@ static CMD_FUNC(cmd_mark)
 
         if(match_ircglob(version, "WebTV;*"))
             target->no_notice = true; /* webbies cant see notices */
+
+        return 1;
+    }
+    else if(!strcasecmp(argv[2], "SSLCLIFP")) {
+        /* SSL fingerprint mark */
+        target = GetUserH(argv[1]);
+        if(!target) {
+            log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose SSL fingerprint mark is changing.", argv[1]);
+            return 0;
+        }
+
+        char *sslfp = unsplit_string(argv + 3, argc - 3, NULL);
+        if(!sslfp)
+            sslfp = "";
+
+        target->sslfp = strdup(sslfp);
 
         return 1;
     }
@@ -3143,6 +3159,12 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
     if(user->version_reply) {
         free(user->version_reply);
         user->version_reply = NULL;
+    }
+
+    /* Clean up SSL fingerprint data */
+    if(user->sslfp) {
+        free(user->sslfp);
+        user->sslfp = NULL;
     }
 
     /* clean up mark */
