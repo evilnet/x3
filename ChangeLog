@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fix for crash in cmd_oregister due to incorrect
+	parameter counts.
+
 2009-11-15  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/hosthiding.c: Fix for crash bug in make_virthost() when host
