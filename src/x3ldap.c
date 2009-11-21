@@ -346,15 +346,19 @@ LDAPMod **make_mods_add(const char *account, const char *password, const char *e
     static char *account_vals[] = { NULL, NULL };
     static char *password_vals[] = { NULL, NULL };
     static char *email_vals[] = { NULL, NULL };
-    int num_mods = 3;
+    int num_mods = 2;
     int i;
+    int mod = 0;
     /* TODO: take this from nickserv_conf.ldap_add_objects */
     LDAPMod **mods;
     static char **object_vals;
     object_vals = make_object_vals();
 
     account_vals[0] = (char *) account;
-    password_vals[0] = (char *) password;
+    if (password != NULL) {
+      password_vals[0] = (char *) password;
+      num_mods++;
+    }
     email_vals[0] = (char *) email;
 
     if(!(nickserv_conf.ldap_field_account && *nickserv_conf.ldap_field_account))
@@ -370,26 +374,30 @@ LDAPMod **make_mods_add(const char *account, const char *password, const char *e
       memset(mods[i], 0, sizeof(LDAPMod));
     }
 
-    mods[0]->mod_op = LDAP_MOD_ADD;
-    mods[0]->mod_type = strdup("objectclass");
-    mods[0]->mod_values = object_vals;
+    mods[mod]->mod_op = LDAP_MOD_ADD;
+    mods[mod]->mod_type = strdup("objectclass");
+    mods[mod]->mod_values = object_vals;
+    mod++;
 
-    mods[1]->mod_op = LDAP_MOD_ADD;
-    mods[1]->mod_type = strdup(nickserv_conf.ldap_field_account);
-    mods[1]->mod_values = account_vals;
+    mods[mod]->mod_op = LDAP_MOD_ADD;
+    mods[mod]->mod_type = strdup(nickserv_conf.ldap_field_account);
+    mods[mod]->mod_values = account_vals;
+    mod++;
 
-    mods[2]->mod_op = LDAP_MOD_ADD;
-    mods[2]->mod_type = strdup(nickserv_conf.ldap_field_password);
-    mods[2]->mod_values = password_vals;
+    if (password != NULL) {
+      mods[mod]->mod_op = LDAP_MOD_ADD;
+      mods[mod]->mod_type = strdup(nickserv_conf.ldap_field_password);
+      mods[mod]->mod_values = password_vals;
+      mod++;
+    }
 
     if(nickserv_conf.ldap_field_email && *nickserv_conf.ldap_field_email && email && *email) {
-        mods[3]->mod_op = LDAP_MOD_ADD;
-        mods[3]->mod_type = strdup(nickserv_conf.ldap_field_email);
-        mods[3]->mod_values = email_vals;
-        mods[4] = NULL;
+      mods[mod]->mod_op = LDAP_MOD_ADD;
+      mods[mod]->mod_type = strdup(nickserv_conf.ldap_field_email);
+      mods[mod]->mod_values = email_vals;
+      mod++;
     }
-    else
-       mods[3] = NULL;
+    mods[mod] = NULL;
     *num_mods_ret = num_mods;
     return mods;
 }
@@ -406,10 +414,11 @@ int ldap_do_add(const char *account, const char *crypted, const char *email)
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
-    
-    passbuf = make_password(crypted);
+
+    if (crypted != NULL)
+      passbuf = make_password(crypted);
     snprintf(newdn, MAXLEN-1, nickserv_conf.ldap_dn_fmt, account);
-    mods = make_mods_add(account, passbuf, email, &num_mods);
+    mods = make_mods_add(account, (crypted != NULL ? passbuf : crypted), email, &num_mods);
     if(!mods) {
        log_module(MAIN_LOG, LOG_ERROR, "Error building mods for ldap_add");
        return LDAP_OTHER;
@@ -425,7 +434,8 @@ int ldap_do_add(const char *account, const char *crypted, const char *email)
        free(mods[i]);
     }
     free(mods);
-    free(passbuf);
+    if (crypted != NULL)
+      free(passbuf);
     return rc;
 }
 

@@ -1104,7 +1104,7 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
-        rc = ldap_do_add(handle, crypted, NULL);
+        rc = ldap_do_add(handle, (no_auth ? NULL : crypted), NULL);
         if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
            if(user)
              send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));

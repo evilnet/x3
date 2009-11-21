@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-21  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/x3ldap.c: Fix for bug allowing accounts in LDAP to
+	authenticate to unactivated accounts.
+
+	* src/nickserv.c: Fix for bug allowing accounts in LDAP to
+	authenticate to unactivated accounts.
+
 2009-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Added support for MARK SSLCLIFP.
