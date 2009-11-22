@@ -2514,11 +2514,33 @@ static NICKSERV_FUNC(cmd_odelcookie)
     switch (hi->cookie->type) {
     case ACTIVATION:
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
+                /* Falied to update password in ldap, but still
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+               return 0;
+            }
+        }
+#endif
         if (nickserv_conf.sync_log)
           SyncLog("ACCOUNTACC %s", hi->handle);
         break;
     case PASSWORD_CHANGE:
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
+#ifdef WITH_LDAP
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            int rc;
+            if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
+                /* Falied to update password in ldap, but still
+                 * updated it here.. what should we do? */
+               reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+               return 0;
+            }
+        }
+#endif
         if (nickserv_conf.sync_log)
           SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
         break;
@@ -2547,6 +2569,8 @@ static NICKSERV_FUNC(cmd_odelcookie)
         if (nickserv_conf.sync_log)
           SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
         break;
+    case ALLOWAUTH:
+	break;
     default:
         reply("NSMSG_BAD_COOKIE_TYPE", hi->cookie->type);
         log_module(NS_LOG, LOG_ERROR, "Bad cookie type %d for account %s.", hi->cookie->type, hi->handle);

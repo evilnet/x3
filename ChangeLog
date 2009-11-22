@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-22  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Added fix for LDAP password not being updated
+	on odelcookie where account password is changed anyway.
+
 2009-11-21  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/x3ldap.c: Updated OpServ level in LDAP feature to remove
