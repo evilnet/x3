@@ -2529,45 +2529,8 @@ static NICKSERV_FUNC(cmd_odelcookie)
           SyncLog("ACCOUNTACC %s", hi->handle);
         break;
     case PASSWORD_CHANGE:
-        safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
-#ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
-            int rc;
-            if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
-                /* Falied to update password in ldap, but still
-                 * updated it here.. what should we do? */
-               reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
-               return 0;
-            }
-        }
-#endif
-        if (nickserv_conf.sync_log)
-          SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
         break;
     case EMAIL_CHANGE:
-        if (!hi->email_addr && nickserv_conf.sync_log) {
-          if (nickserv_conf.sync_log)
-            SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, hi->cookie->data, user->info);
-        }
-#ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
-            int rc;
-            if((rc = ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
-                /* Falied to update email in ldap, but still 
-                 * updated it here.. what should we do? */
-               reply("NSMSG_LDAP_FAIL_SEND_EMAIL", ldap_err2string(rc));
-            } else {
-                nickserv_set_email_addr(hi, hi->cookie->data);
-            }
-        }
-        else {
-            nickserv_set_email_addr(hi, hi->cookie->data);
-        }
-#else
-        nickserv_set_email_addr(hi, hi->cookie->data);
-#endif
-        if (nickserv_conf.sync_log)
-          SyncLog("EMAILCHANGE %s %s", hi->handle, hi->cookie->data);
         break;
     case ALLOWAUTH:
 	break;
