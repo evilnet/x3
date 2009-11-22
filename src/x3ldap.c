@@ -534,7 +534,7 @@ LDAPMod **make_mods_modify(const char *password, const char *email, int *num_mod
  *
  * A level of <0 will be treated as 0
  */
-int ldap_do_oslevel(const char *account, int level)
+int ldap_do_oslevel(const char *account, int level, int oldlevel)
 {
   LDAPMod **mods;
   static char *oslevel_vals[] = { NULL, NULL };
@@ -550,7 +550,7 @@ int ldap_do_oslevel(const char *account, int level)
     level = 0;
   }
 
-  snprintf(temp, MAXLEN-1, "%d", level);
+  snprintf(temp, MAXLEN-1, "%d", (level ? level : oldlevel));
   oslevel_vals[0] = (char *) temp;
 
   if(!(nickserv_conf.ldap_field_oslevel && *nickserv_conf.ldap_field_oslevel))
@@ -562,7 +562,7 @@ int ldap_do_oslevel(const char *account, int level)
   mods[0] = (LDAPMod *) malloc(sizeof(LDAPMod));
   memset(mods[0], 0, sizeof(LDAPMod));
 
-  mods[0]->mod_op = LDAP_MOD_REPLACE;
+  mods[0]->mod_op = (level ? LDAP_MOD_REPLACE : LDAP_MOD_DELETE);
   mods[0]->mod_type = strdup(nickserv_conf.ldap_field_oslevel);
   mods[0]->mod_values = oslevel_vals;
   mods[1] = NULL;

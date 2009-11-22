@@ -3,6 +3,17 @@ X3 ChangeLog
 
 2009-11-21  Matthew Beeching  <jobe@mdbnet.co.uk>
 
+	* src/x3ldap.c: Updated OpServ level in LDAP feature to remove
+	the attribute when 0 instead of setting it to 0
+
+	* src/x3ldap.h: Updated OpServ level in LDAP feature to remove
+	the attribute when 0 instead of setting it to 0
+
+	* src/nickserv.c: Updated OpServ level in LDAP feature to remove
+	the attribute when 0 instead of setting it to 0
+
+2009-11-21  Matthew Beeching  <jobe@mdbnet.co.uk>
+
 	* src/x3ldap.c: Fix for bug allowing accounts in LDAP to
 	authenticate to unactivated accounts.
 

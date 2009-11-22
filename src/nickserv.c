@@ -3376,7 +3376,7 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
     }
     if(nickserv_conf.ldap_enable && *(nickserv_conf.ldap_field_oslevel) && *(nickserv_conf.ldap_admin_dn)) {
       int rc;
-      if((rc = ldap_do_oslevel(target->handle, new_level)) != LDAP_SUCCESS) {
+      if((rc = ldap_do_oslevel(target->handle, new_level, target->opserv_level)) != LDAP_SUCCESS) {
         send_message(user, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
         return 0;
       }
