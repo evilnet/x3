@@ -238,7 +238,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_REGGED", "Registered on: %s" },
     { "NSMSG_HANDLEINFO_LASTSEEN", "Last seen: %s" },
     { "NSMSG_HANDLEINFO_LASTSEEN_NOW", "Last seen: Right now!" },
-    { "NSMSG_HANDLEINFO_KARMA", "  Karma: %d" },
+    { "NSMSG_HANDLEINFO_KARMA", "Karma: %d" },
     { "NSMSG_HANDLEINFO_VACATION", "On vacation." },
     { "NSMSG_HANDLEINFO_EMAIL_ADDR", "Email address: %s" },
     { "NSMSG_HANDLEINFO_COOKIE_ACTIVATION", "Cookie: There is currently an activation cookie issued for this account" },

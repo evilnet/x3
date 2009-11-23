@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-23  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Removed 2 nonsensical spaces in
+	*NickServ.accountinfo output for "Karma"
+
 2009-11-22  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fix for bug allowing the use of odelcookie
