@@ -719,7 +719,7 @@ spamserv_user_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
 }
 
 static void
-spamserv_user_part(struct modeNode *mn, UNUSED_ARG(const char *reason))
+spamserv_user_part(struct modeNode *mn, UNUSED_ARG(const char *reason), UNUSED_ARG(void *extra))
 {
 	struct userNode *user = mn->user;
 	struct chanNode *channel = mn->channel;
@@ -3245,7 +3245,7 @@ init_spamserv(const char *nick)
 	reg_del_user_func(spamserv_del_user_func, NULL);
 	reg_nick_change_func(spamserv_nick_change_func, NULL);
 	reg_join_func(spamserv_user_join, NULL);
-	reg_part_func(spamserv_user_part);
+	reg_part_func(spamserv_user_part, NULL);
 
 	timeq_add(now + FLOOD_TIMEQ_FREQ, timeq_flood, NULL);
 	timeq_add(now + JOINFLOOD_TIMEQ_FREQ, timeq_joinflood, NULL);

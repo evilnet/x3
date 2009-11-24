@@ -8696,7 +8696,7 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
 }
 
 static void
-handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason))
+handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason), UNUSED_ARG(void *extra))
 {
     struct chanData *cData;
     struct userData *uData;
@@ -9917,7 +9917,7 @@ chanserv_saxdb_write(struct saxdb_context *ctx)
 static void
 chanserv_db_cleanup(void) {
     unsigned int ii;
-    unreg_part_func(handle_part);
+    unreg_part_func(handle_part, NULL);
     while(channelList)
         unregister_channel(channelList, "terminating.");
     for(ii = 0; ii < chanserv_conf.support_channels.used; ++ii)
@@ -9962,7 +9962,7 @@ init_chanserv(const char *nick)
         reg_server_link_func(handle_server_link, NULL);
         reg_new_channel_func(handle_new_channel, NULL);
         reg_join_func(handle_join, NULL);
-        reg_part_func(handle_part);
+        reg_part_func(handle_part, NULL);
         reg_kick_func(handle_kick);
         reg_topic_func(handle_topic, NULL);
         reg_mode_change_func(handle_mode);

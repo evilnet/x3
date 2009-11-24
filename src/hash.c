@@ -701,33 +701,38 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
 }
 
 static part_func_t *pf_list;
+static void **pf_list_extra;
 static unsigned int pf_size = 0, pf_used = 0;
 
 void
-reg_part_func(part_func_t handler)
+reg_part_func(part_func_t handler, void *extra)
 {
     if (pf_used == pf_size) {
 	if (pf_size) {
 	    pf_size <<= 1;
 	    pf_list = realloc(pf_list, pf_size*sizeof(part_func_t));
+        pf_list_extra = realloc(pf_list_extra, pf_size*sizeof(void*));
 	} else {
 	    pf_size = 8;
 	    pf_list = malloc(pf_size*sizeof(part_func_t));
+        pf_list_extra = malloc(pf_size*sizeof(void*));
 	}
     }
-    pf_list[pf_used++] = handler;
+    pf_list[pf_used] = handler;
+    pf_list_extra[pf_used++] = extra;
 }
 
 void
-unreg_part_func(part_func_t handler)
+unreg_part_func(part_func_t handler, void *extra)
 {
     unsigned int i;
     for (i=0; i<pf_used; i++)
-        if (pf_list[i] == handler)
+        if (pf_list[i] == handler && pf_list_extra[i] == extra)
             break;
     if (i == pf_used)
         return;
     memmove(pf_list+i, pf_list+i+1, (pf_used-i-1)*sizeof(pf_list[0]));
+    memmove(pf_list_extra+i, pf_list_extra+i+1, (pf_used-i-1)*sizeof(pf_list_extra[0]));
     pf_used--;
 }
 
@@ -768,7 +773,7 @@ DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reas
 
     /* make callbacks */
     for (n=0; n<pf_used; n++)
-	pf_list[n](mNode, reason);
+	pf_list[n](mNode, reason, pf_list_extra[n]);
 
     /* free memory */
     free(mNode);
@@ -1017,6 +1022,7 @@ hash_cleanup(void)
     free(dcf_list);
     free(dcf_list_extra);
     free(pf_list);
+    free(pf_list_extra);
     free(kf_list);
     free(tf_list);
     free(tf_list_extra);

@@ -223,7 +223,7 @@ track_join(struct modeNode *mNode, UNUSED_ARG(void *extra)) {
 }
 
 static void
-track_part(struct modeNode *mn, const char *reason) {
+track_part(struct modeNode *mn, const char *reason, UNUSED_ARG(void *extra)) {
     if (!track_cfg.enabled) return;
     if (mn->user->dead) return;
     if (check_track_part(track_cfg) && check_track_user(mn->user->nick))
@@ -659,7 +659,7 @@ track_init(void) {
     conf_register_reload(track_conf_read);
     reg_nick_change_func(track_nick_change, NULL);
     reg_join_func(track_join, NULL);
-    reg_part_func(track_part);
+    reg_part_func(track_part, NULL);
     reg_kick_func(track_kick);
     reg_new_user_func(track_new_user, NULL);
     reg_del_user_func(track_del_user, NULL);

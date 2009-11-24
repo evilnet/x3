@@ -4130,7 +4130,7 @@ helpserv_define_func(const char *name, helpserv_func_t *func, enum helpserv_leve
 }
 
 /* Drop requests that persist until part when a user leaves the chan */
-static void handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason)) {
+static void handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason), UNUSED_ARG(void *extra)) {
     struct helpserv_botlist *botlist;
     struct helpserv_userlist *userlist;
     const int from_opserv = 0; /* for helpserv_notice */
@@ -4899,7 +4899,7 @@ helpserv_define_option(const char *name, helpserv_option_func_t *func) {
 
 static void helpserv_db_cleanup(void) {
     shutting_down=1;
-    unreg_part_func(handle_part);
+    unreg_part_func(handle_part, NULL);
     unreg_del_user_func(handle_quit, NULL);
     close_helpfile(helpserv_helpfile);
     dict_delete(helpserv_func_dict);
@@ -5019,7 +5019,7 @@ int helpserv_init() {
     timeq_add(helpserv_next_stats(now), helpserv_timed_run_stats, NULL);
 
     reg_join_func(handle_join, NULL);
-    reg_part_func(handle_part); /* also deals with kick */
+    reg_part_func(handle_part, NULL); /* also deals with kick */
     reg_nick_change_func(handle_nickchange, NULL);
     reg_del_user_func(handle_quit, NULL);
 

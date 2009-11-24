@@ -1,7 +1,15 @@
 /***********************************************************************
 X3 ChangeLog
 
-2009-11-24  Henrik Stuart <evilnet@hstuart.dk>
+2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/hash.c src/hash.h: add extra parameter to reg_part_func,
+	unreg_part_func, and part_func_t.
+
+	* src/chanserv.c src/mod-snoop.c src/mod-helpserv.c src/spamserv.c
+	src/mod-track.c: collateral evolution fixes due to part_func change.
+
+2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/hash.c src/hash.h: add extra parameter to reg_del_channel_func and
 	del_channel_func_t.

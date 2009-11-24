@@ -412,9 +412,9 @@ void UnlockChannel(struct chanNode *channel);
 
 struct modeNode* AddChannelUser(struct userNode* user, struct chanNode* channel);
 
-typedef void (*part_func_t) (struct modeNode *mn, const char *reason);
-void reg_part_func(part_func_t handler);
-void unreg_part_func(part_func_t handler);
+typedef void (*part_func_t) (struct modeNode *mn, const char *reason, void *extra);
+void reg_part_func(part_func_t handler, void *extra);
+void unreg_part_func(part_func_t handler, void *extra);
 void DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reason, int deleting);
 void KickChannelUser(struct userNode* target, struct chanNode* channel, struct userNode *kicker, const char *why);
 
