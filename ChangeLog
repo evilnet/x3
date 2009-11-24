@@ -4,6 +4,14 @@ X3 ChangeLog
 2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/nickserv.h src/proto-common.c: add extra parameter to
+	reg_user_mode_func and user_mode_func_t.
+
+	* src/mod-snoop.c src/mod-track.c: collateral evolution fixes due to
+	user_mode_func change.
+
+2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/nickserv.h src/proto-common.c: add extra parameter to
 	reg_channel_mode_func and channel_mode_func_t.
 
 	* src/chanserv.c src/mod-snoop.c src/mod-track.c: collateral evolution

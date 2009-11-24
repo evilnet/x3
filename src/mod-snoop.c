@@ -133,7 +133,7 @@ snoop_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
 }
 
 static void
-snoop_user_mode(struct userNode *user, const char *mode_change) {
+snoop_user_mode(struct userNode *user, const char *mode_change, UNUSED_ARG(void *extra)) {
     if (!snoop_cfg.enabled) return;
     if (user->uplink->burst && !snoop_cfg.show_bursts) return;
     if (!mode_change[1]) return; /* warning there has to be atleast one char in the buffer */
@@ -322,7 +322,7 @@ snoop_init(void) {
     reg_del_user_func(snoop_del_user, NULL);
     reg_auth_func(snoop_auth);
     reg_channel_mode_func(snoop_channel_mode, NULL);
-    reg_user_mode_func(snoop_user_mode);
+    reg_user_mode_func(snoop_user_mode, NULL);
     reg_oper_func(snoop_oper, NULL);
 
     return 1;

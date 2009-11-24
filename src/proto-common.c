@@ -768,21 +768,25 @@ irc_make_chanmode(struct chanNode *chan, char *out)
 }
 
 static user_mode_func_t *um_list;
+static void **um_list_extra;
 static unsigned int um_size = 0, um_used = 0;
 
 void
-reg_user_mode_func(user_mode_func_t handler)
+reg_user_mode_func(user_mode_func_t handler, void *extra)
 {
 	if (um_used == um_size) {
 		if (um_size) {
 			um_size <<= 1;
 			um_list = realloc(um_list, um_size*sizeof(user_mode_func_t));
+            um_list_extra = realloc(um_list_extra, um_size*sizeof(void*));
 		} else {
 			um_size = 8;
 			um_list = malloc(um_size*sizeof(user_mode_func_t));
+            um_list_extra = malloc(um_size*sizeof(void*));
 		}
 	}
-	um_list[um_used++] = handler;
+	um_list[um_used] = handler;
+    um_list_extra[um_used++] = extra;
 }
 
 void
@@ -802,7 +806,7 @@ call_user_mode_funcs(struct userNode *user, const char *mode_change)
 {
 	unsigned int n;
 	for (n=0; n<um_used; n++) {
-		um_list[n](user, mode_change);
+		um_list[n](user, mode_change, um_list_extra[n]);
 	}
 }
 

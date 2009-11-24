@@ -225,8 +225,8 @@ void nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd);
 struct handle_info *get_victim_oper(struct userNode *user, const char *target);
 struct handle_info *loc_auth(char *handle, char *password, char *userhost);
 
-typedef void (*user_mode_func_t)(struct userNode *user, const char *mode_change);
-void reg_user_mode_func(user_mode_func_t func);
+typedef void (*user_mode_func_t)(struct userNode *user, const char *mode_change, void *extra);
+void reg_user_mode_func(user_mode_func_t func, void *extra);
 typedef void (*channel_mode_func_t)(struct userNode *who, struct chanNode *channel, char **mode, unsigned int argc, void *extra);
 void reg_channel_mode_func(channel_mode_func_t func, void *extra);
 
