@@ -807,21 +807,25 @@ call_user_mode_funcs(struct userNode *user, const char *mode_change)
 }
 
 static channel_mode_func_t *cm_list;
+static void **cm_list_extra;
 static unsigned int cm_size = 0, cm_used = 0;
 
 void
-reg_channel_mode_func(channel_mode_func_t handler)
+reg_channel_mode_func(channel_mode_func_t handler, void *extra)
 {
 	if (cm_used == cm_size) {
 		if (cm_size) {
 			cm_size <<= 1;
 			cm_list = realloc(cm_list, cm_size*sizeof(channel_mode_func_t));
+            cm_list_extra = realloc(cm_list_extra, cm_size*sizeof(void*));
 		} else {
 			cm_size = 8;
 			cm_list = malloc(cm_size*sizeof(channel_mode_func_t));
+            cm_list = malloc(cm_size*sizeof(void*));
 		}
 	}
-	cm_list[cm_used++] = handler;
+	cm_list[cm_used] = handler;
+    cm_list_extra[cm_used++] = extra;
 }
 
 void
@@ -841,7 +845,7 @@ call_channel_mode_funcs(struct userNode *who, struct chanNode *channel, char **m
 {
 	unsigned int n;
 	for (n=0; n<cm_used; n++) {
-		cm_list[n](who, channel, modes, argc);
+		cm_list[n](who, channel, modes, argc, cm_list_extra[n]);
 	}
 }
 

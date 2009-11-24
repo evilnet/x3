@@ -150,7 +150,7 @@ snoop_oper(struct userNode *user, UNUSED_ARG(void *extra)) {
 }
 
 static void
-snoop_channel_mode(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc)
+snoop_channel_mode(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc, UNUSED_ARG(void *extra))
 {
        if (!snoop_cfg.enabled) return;
        if(who) {
@@ -317,11 +317,11 @@ snoop_init(void) {
     reg_nick_change_func(snoop_nick_change, NULL);
     reg_join_func(snoop_join, NULL);
     reg_part_func(snoop_part, NULL);
-    reg_kick_func(snoop_kick);
+    reg_kick_func(snoop_kick, NULL);
     reg_new_user_func(snoop_new_user, NULL);
     reg_del_user_func(snoop_del_user, NULL);
     reg_auth_func(snoop_auth);
-    reg_channel_mode_func(snoop_channel_mode);
+    reg_channel_mode_func(snoop_channel_mode, NULL);
     reg_user_mode_func(snoop_user_mode);
     reg_oper_func(snoop_oper, NULL);
 

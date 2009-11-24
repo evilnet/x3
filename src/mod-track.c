@@ -303,7 +303,7 @@ track_oper(struct userNode *user, UNUSED_ARG(void *extra)) {
 }
 
 static void
-track_channel_mode(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc)
+track_channel_mode(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc, UNUSED_ARG(void *extra))
 {
        if (!track_cfg.enabled) return;
        if(who)
@@ -660,11 +660,11 @@ track_init(void) {
     reg_nick_change_func(track_nick_change, NULL);
     reg_join_func(track_join, NULL);
     reg_part_func(track_part, NULL);
-    reg_kick_func(track_kick);
+    reg_kick_func(track_kick, NULL);
     reg_new_user_func(track_new_user, NULL);
     reg_del_user_func(track_del_user, NULL);
     reg_auth_func(track_auth);
-    reg_channel_mode_func(track_channel_mode);
+    reg_channel_mode_func(track_channel_mode, NULL);
     reg_user_mode_func(track_user_mode);
     reg_oper_func(track_oper, NULL);
     opserv_define_func("TRACK", cmd_track, 800, 0, 0);

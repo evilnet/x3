@@ -9963,7 +9963,7 @@ init_chanserv(const char *nick)
         reg_new_channel_func(handle_new_channel, NULL);
         reg_join_func(handle_join, NULL);
         reg_part_func(handle_part, NULL);
-        reg_kick_func(handle_kick);
+        reg_kick_func(handle_kick, NULL);
         reg_topic_func(handle_topic, NULL);
         reg_mode_change_func(handle_mode);
         reg_nick_change_func(handle_nick_change, NULL);
