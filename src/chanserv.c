@@ -8808,7 +8808,7 @@ handle_topic(struct userNode *user, struct chanNode *channel, const char *old_to
 }
 
 static void
-handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_chanmode *change)
+handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_chanmode *change, UNUSED_ARG(void *extra))
 {
     struct mod_chanmode *bounce = NULL;
     unsigned int bnc, ii;
@@ -9965,7 +9965,7 @@ init_chanserv(const char *nick)
         reg_part_func(handle_part, NULL);
         reg_kick_func(handle_kick, NULL);
         reg_topic_func(handle_topic, NULL);
-        reg_mode_change_func(handle_mode);
+        reg_mode_change_func(handle_mode, NULL);
         reg_nick_change_func(handle_nick_change, NULL);
         reg_auth_func(handle_auth, NULL);
     }

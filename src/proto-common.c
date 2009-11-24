@@ -520,21 +520,25 @@ get_chanmsg_bot(unsigned char prefix)
 }
 
 static mode_change_func_t *mcf_list;
+static void **mcf_list_extra;
 static unsigned int mcf_size = 0, mcf_used = 0;
 
 void
-reg_mode_change_func(mode_change_func_t handler)
+reg_mode_change_func(mode_change_func_t handler, void *extra)
 {
     if (mcf_used == mcf_size) {
 	if (mcf_size) {
 		mcf_size <<= 1;
 		mcf_list = realloc(mcf_list, mcf_size*sizeof(mode_change_func_t));
+        mcf_list_extra = realloc(mcf_list_extra, mcf_size*sizeof(void*));
 	} else {
 		mcf_size = 8;
 		mcf_list = malloc(mcf_size*sizeof(mode_change_func_t));
+        mcf_list_extra = malloc(mcf_size*sizeof(void*));
 	}
     }
-    mcf_list[mcf_used++] = handler;
+    mcf_list[mcf_used] = handler;
+    mcf_list_extra[mcf_used++] = extra;
 }
 
 static oper_func_t *of_list;
@@ -749,7 +753,7 @@ mod_chanmode(struct userNode *who, struct chanNode *channel, char **modes, unsig
         mod_chanmode_apply(who, channel, change);
     if (flags & MC_NOTIFY)
         for (ii = 0; ii < mcf_used; ++ii)
-            mcf_list[ii](channel, who, change);
+            mcf_list[ii](channel, who, change, mcf_list_extra[ii]);
     mod_chanmode_free(change);
     return 1;
 }

@@ -249,8 +249,8 @@ void mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struc
 char *mod_chanmode_format(struct mod_chanmode *desc, char *buffer);
 void mod_chanmode_free(struct mod_chanmode *change);
 int mod_chanmode(struct userNode *who, struct chanNode *channel, char **modes, unsigned int argc, unsigned int flags);
-typedef void (*mode_change_func_t) (struct chanNode *channel, struct userNode *user, const struct mod_chanmode *change);
-void reg_mode_change_func(mode_change_func_t handler);
+typedef void (*mode_change_func_t) (struct chanNode *channel, struct userNode *user, const struct mod_chanmode *change, void *extra);
+void reg_mode_change_func(mode_change_func_t handler, void *extra);
 int irc_make_chanmode(struct chanNode *chan, char *out);
 int client_modify_priv_by_name(struct userNode *who, char *priv, int what);
 

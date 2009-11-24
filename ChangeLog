@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/proto.h src/proto-common.c: add extra parameter to
+	reg_mode_change_func and mode_change_func_t.
+
+	* src/chanserv.c: collateral evolution fixes due to mode_change_func
+	change.
+
+2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/nickserv.h src/nickserv.c: add extra parameter to reg_unreg_func and
 	unreg_func_t.
 
