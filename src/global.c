@@ -740,7 +740,7 @@ global_process_user(struct userNode *user, UNUSED_ARG(void *extra))
 }
 
 static void
-global_process_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
+global_process_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra))
 {
     if(IsHelper(user))
 	send_messages(user, MESSAGE_RECIPIENT_HELPERS, 0);
@@ -844,7 +844,7 @@ init_global(const char *nick)
     unsigned int i;
     G_LOG = log_register_type("Global", "file:global.log");
     reg_new_user_func(global_process_user, NULL);
-    reg_auth_func(global_process_auth);
+    reg_auth_func(global_process_auth, NULL);
     reg_oper_func(global_process_oper, NULL);
 
     conf_register_reload(global_conf_read);

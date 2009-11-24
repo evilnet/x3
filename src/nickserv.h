@@ -232,8 +232,8 @@ void reg_channel_mode_func(channel_mode_func_t func, void *extra);
 
 /* auth_funcs are called when a user gets a new handle_info.  They are
  * called *after* user->handle_info has been updated.  */
-typedef void (*auth_func_t)(struct userNode *user, struct handle_info *old_handle);
-void reg_auth_func(auth_func_t func);
+typedef void (*auth_func_t)(struct userNode *user, struct handle_info *old_handle, void *extra);
+void reg_auth_func(auth_func_t func, void *extra);
 
 /* Called just after a handle is renamed. */
 typedef void (*handle_rename_func_t)(struct handle_info *handle, const char *old_handle, void *extra);

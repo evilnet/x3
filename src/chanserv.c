@@ -8581,7 +8581,7 @@ chanserv_autojoin_channels(struct userNode *user)
 }
 
 static void
-handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
+handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra))
 {
     struct mod_chanmode change;
     struct userData *channel;
@@ -9967,7 +9967,7 @@ init_chanserv(const char *nick)
         reg_topic_func(handle_topic, NULL);
         reg_mode_change_func(handle_mode);
         reg_nick_change_func(handle_nick_change, NULL);
-        reg_auth_func(handle_auth);
+        reg_auth_func(handle_auth, NULL);
     }
 
     reg_handle_rename_func(handle_rename, NULL);

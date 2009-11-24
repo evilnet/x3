@@ -1280,7 +1280,7 @@ memoserv_cleanup(void)
 }
 
 static void
-memoserv_check_messages(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
+memoserv_check_messages(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra))
 {
     unsigned int ii, unseen;
     struct memo_account *ma;
@@ -1327,7 +1327,7 @@ memoserv_init(void)
     memos = dict_new();
     historys = dict_new();
     dict_set_free_data(memos, delete_memo_account);
-    reg_auth_func(memoserv_check_messages);
+    reg_auth_func(memoserv_check_messages, NULL);
     reg_handle_rename_func(memoserv_rename_account, NULL);
     reg_unreg_func(memoserv_unreg_account);
     conf_register_reload(memoserv_conf_read);

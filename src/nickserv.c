@@ -870,21 +870,25 @@ is_secure_password(const char *handle, const char *pass, struct userNode *user)
 }
 
 static auth_func_t *auth_func_list;
+static void **auth_func_list_extra;
 static unsigned int auth_func_size = 0, auth_func_used = 0;
 
 void
-reg_auth_func(auth_func_t func)
+reg_auth_func(auth_func_t func, void *extra)
 {
     if (auth_func_used == auth_func_size) {
 	if (auth_func_size) {
 	    auth_func_size <<= 1;
 	    auth_func_list = realloc(auth_func_list, auth_func_size*sizeof(auth_func_t));
+        auth_func_list_extra = realloc(auth_func_list_extra, auth_func_size*sizeof(void*));
 	} else {
 	    auth_func_size = 8;
 	    auth_func_list = malloc(auth_func_size*sizeof(auth_func_t));
+        auth_func_list_extra = malloc(auth_func_size*sizeof(void*));
 	}
     }
-    auth_func_list[auth_func_used++] = func;
+    auth_func_list[auth_func_used] = func;
+    auth_func_list_extra[auth_func_used++] = extra;
 }
 
 static handle_rename_func_t *rf_list;
@@ -964,7 +968,7 @@ void send_func_list(struct userNode *user)
     old_info = user->handle_info;
 
     for (n=0; n<auth_func_used; n++)
-        auth_func_list[n](user, old_info);
+        auth_func_list[n](user, old_info, auth_func_list_extra[n]);
 }
 
 static void
@@ -1070,7 +1074,7 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
     /* Call auth handlers */
     if (GetUserH(user->nick)) {
         for (n=0; n<auth_func_used; n++) {
-            auth_func_list[n](user, old_info);
+            auth_func_list[n](user, old_info, auth_func_list_extra[n]);
             if (user->dead)
                 return;
         }
@@ -5163,6 +5167,7 @@ nickserv_db_cleanup(void)
     dict_delete(nickserv_id_dict);
     dict_delete(nickserv_conf.weak_password_dict);
     free(auth_func_list);
+    free(auth_func_list_extra);
     free(unreg_func_list);
     free(rf_list);
     free(rf_list_extra);
@@ -5178,7 +5183,7 @@ nickserv_db_cleanup(void)
         regfree(&nickserv_conf.valid_nick_regex);
 }
 
-void handle_loc_auth_oper(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
+void handle_loc_auth_oper(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra)) {
     if (!*nickserv_conf.auto_oper || !user->handle_info)
         return;
 
@@ -5205,7 +5210,7 @@ init_nickserv(const char *nick)
     reg_nick_change_func(handle_nick_change, NULL);
     reg_del_user_func(nickserv_remove_user, NULL);
     reg_account_func(handle_account);
-    reg_auth_func(handle_loc_auth_oper);
+    reg_auth_func(handle_loc_auth_oper, NULL);
 
     /* set up handle_inverse_flags */
     memset(handle_inverse_flags, 0, sizeof(handle_inverse_flags));

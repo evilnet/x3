@@ -4518,7 +4518,7 @@ static void handle_nickserv_rename(struct handle_info *handle, const char *old_h
  *      have req->user set).
  * - In either of the above cases, if a user is on a bot's userlist and has
  *   requests assigned to them, it will give them a list. */
-static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_handle) {
+static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_handle, UNUSED_ARG(void* extra)) {
     struct helpserv_reqlist *reqlist, *dellist=NULL, *hand_reqlist, *oldhand_reqlist;
     struct helpserv_userlist *userlist;
     unsigned int i, j;
@@ -5023,7 +5023,7 @@ int helpserv_init() {
     reg_nick_change_func(handle_nickchange, NULL);
     reg_del_user_func(handle_quit, NULL);
 
-    reg_auth_func(handle_nickserv_auth);
+    reg_auth_func(handle_nickserv_auth, NULL);
     reg_handle_rename_func(handle_nickserv_rename, NULL);
     reg_unreg_func(handle_nickserv_unreg);
     reg_allowauth_func(handle_nickserv_allowauth, NULL);

@@ -120,7 +120,7 @@ snoop_del_user(struct userNode *user, struct userNode *killer, const char *why, 
 }
 
 static void
-snoop_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
+snoop_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra)) {
     if (!snoop_cfg.enabled) return;
     if (user->uplink->burst && !snoop_cfg.show_bursts) return;
     if (user->handle_info) {
@@ -320,7 +320,7 @@ snoop_init(void) {
     reg_kick_func(snoop_kick, NULL);
     reg_new_user_func(snoop_new_user, NULL);
     reg_del_user_func(snoop_del_user, NULL);
-    reg_auth_func(snoop_auth);
+    reg_auth_func(snoop_auth, NULL);
     reg_channel_mode_func(snoop_channel_mode, NULL);
     reg_user_mode_func(snoop_user_mode, NULL);
     reg_oper_func(snoop_oper, NULL);

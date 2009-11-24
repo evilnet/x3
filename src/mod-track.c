@@ -272,7 +272,7 @@ track_del_user(struct userNode *user, struct userNode *killer, const char *why, 
 }
 
 static void
-track_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle)) {
+track_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra)) {
     if (!track_cfg.enabled) return;
     if (user->uplink->burst && !track_cfg.show_bursts) return;
     if (user->handle_info && (check_track_auth(track_cfg) && check_track_user(user->nick))) {
@@ -663,7 +663,7 @@ track_init(void) {
     reg_kick_func(track_kick, NULL);
     reg_new_user_func(track_new_user, NULL);
     reg_del_user_func(track_del_user, NULL);
-    reg_auth_func(track_auth);
+    reg_auth_func(track_auth, NULL);
     reg_channel_mode_func(track_channel_mode, NULL);
     reg_user_mode_func(track_user_mode, NULL);
     reg_oper_func(track_oper, NULL);

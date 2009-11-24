@@ -6789,7 +6789,7 @@ alert_check_user(const char *key, void *data, void *extra)
 }
 
 static void
-opserv_alert_check_account(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
+opserv_alert_check_account(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra))
 {
     dict_foreach(opserv_account_based_alerts, alert_check_user, user);
 }
@@ -6812,7 +6812,7 @@ opserv_alert_check_nick(struct userNode *user, UNUSED_ARG(const char *old_nick),
 }
 
 static void
-opserv_staff_alert(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle))
+opserv_staff_alert(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra))
 {
     const char *type;
 
@@ -7403,8 +7403,8 @@ init_opserv(const char *nick)
     reg_new_channel_func(opserv_channel_check, NULL); 
     reg_del_channel_func(opserv_channel_delete, NULL);
     reg_join_func(opserv_join_check, NULL);
-    reg_auth_func(opserv_staff_alert);
-    reg_auth_func(opserv_alert_check_account);
+    reg_auth_func(opserv_staff_alert, NULL);
+    reg_auth_func(opserv_alert_check_account, NULL);
     reg_notice_func(opserv, opserv_notice_handler);
 
     opserv_db_init();
