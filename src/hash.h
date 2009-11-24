@@ -418,8 +418,8 @@ void unreg_part_func(part_func_t handler, void *extra);
 void DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reason, int deleting);
 void KickChannelUser(struct userNode* target, struct chanNode* channel, struct userNode *kicker, const char *why);
 
-typedef void (*kick_func_t) (struct userNode *kicker, struct userNode *user, struct chanNode *chan);
-void reg_kick_func(kick_func_t handler);
+typedef void (*kick_func_t) (struct userNode *kicker, struct userNode *user, struct chanNode *chan, void *extra);
+void reg_kick_func(kick_func_t handler, void *extra);
 void ChannelUserKicked(struct userNode* kicker, struct userNode* victim, struct chanNode* channel);
 
 int ChannelBanExists(struct chanNode *channel, const char *ban);

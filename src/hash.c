@@ -785,6 +785,7 @@ DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reas
 }
 
 static kick_func_t *kf_list;
+static void **kf_list_extra;
 static unsigned int kf_size = 0, kf_used = 0;
 
 void
@@ -797,7 +798,7 @@ KickChannelUser(struct userNode* target, struct chanNode* channel, struct userNo
 
     /* This may break things, but lets see.. -Rubin */
     for (n=0; n<kf_used; n++)
-        kf_list[n](kicker, target, channel);
+        kf_list[n](kicker, target, channel, kf_list_extra[n]);
 
     /* don't remove them from the channel, since the server will send a PART */
     irc_kick(kicker, target, channel, why);
@@ -811,18 +812,21 @@ KickChannelUser(struct userNode* target, struct chanNode* channel, struct userNo
 }
 
 void
-reg_kick_func(kick_func_t handler)
+reg_kick_func(kick_func_t handler, void *extra)
 {
     if (kf_used == kf_size) {
 	if (kf_size) {
 	    kf_size <<= 1;
 	    kf_list = realloc(kf_list, kf_size*sizeof(kick_func_t));
+        kf_list_extra = realloc(kf_list_extra, kf_size*sizeof(void*));
 	} else {
 	    kf_size = 8;
 	    kf_list = malloc(kf_size*sizeof(kick_func_t));
+        kf_list_extra = malloc(kf_size*sizeof(void*));
 	}
     }
-    kf_list[kf_used++] = handler;
+    kf_list[kf_used] = handler;
+    kf_list_extra[kf_used++] = extra;
 }
 
 void
@@ -839,7 +843,7 @@ ChannelUserKicked(struct userNode* kicker, struct userNode* victim, struct chanN
         mn->idle_since = now;
 
     for (n=0; n<kf_used; n++)
-	kf_list[n](kicker, victim, channel);
+	kf_list[n](kicker, victim, channel, kf_list_extra[n]);
 
     DelChannelUser(victim, channel, 0, 0);
 
@@ -1024,6 +1028,7 @@ hash_cleanup(void)
     free(pf_list);
     free(pf_list_extra);
     free(kf_list);
+    free(kf_list_extra);
     free(tf_list);
     free(tf_list_extra);
 }

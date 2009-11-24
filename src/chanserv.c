@@ -8745,7 +8745,7 @@ handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason), UNUSED_ARG(void
 }
 
 static void
-handle_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *channel)
+handle_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *channel, UNUSED_ARG(void *extra))
 {
     struct userData *uData;
 

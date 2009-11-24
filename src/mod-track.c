@@ -234,7 +234,7 @@ track_part(struct modeNode *mn, const char *reason, UNUSED_ARG(void *extra)) {
 }
 
 static void
-track_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *chan) {
+track_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *chan, UNUSED_ARG(void *extra)) {
     if (!track_cfg.enabled) return;
     if (check_track_kick(track_cfg) && ((check_track_user(kicker->nick) || check_track_user(victim->nick))))
     {

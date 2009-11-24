@@ -93,7 +93,7 @@ snoop_part(struct modeNode *mn, const char *reason, UNUSED_ARG(void *extra)) {
 }
 
 static void
-snoop_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *chan) {
+snoop_kick(struct userNode *kicker, struct userNode *victim, struct chanNode *chan, UNUSED_ARG(void *extra)) {
     if (!snoop_cfg.enabled) return;
     UPDATE_TIMESTAMP();
     SNOOP("$bKICK$b %s from %s by %s", victim->nick, chan->name, (kicker ? kicker->nick : "some server"));

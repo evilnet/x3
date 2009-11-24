@@ -3,6 +3,14 @@ X3 ChangeLog
 
 2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/hash.c src/hash.h: add extra parameter to reg_kick_func and
+	kick_func_t.
+
+	* src/chanserv.c src/mod-snoop.c src/mod-track.c: collateral evolution
+	fixes due to kick_func change.
+
+2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/hash.c src/hash.h: add extra parameter to reg_part_func,
 	unreg_part_func, and part_func_t.
 
