@@ -403,8 +403,8 @@ typedef void (*new_channel_func_t) (struct chanNode *chan, void *extra);
 void reg_new_channel_func(new_channel_func_t handler, void *extra);
 typedef int (*join_func_t) (struct modeNode *mNode, void *extra);
 void reg_join_func(join_func_t handler, void *extra);
-typedef void (*del_channel_func_t) (struct chanNode *chan);
-void reg_del_channel_func(del_channel_func_t handler);
+typedef void (*del_channel_func_t) (struct chanNode *chan, void *extra);
+void reg_del_channel_func(del_channel_func_t handler, void *extra);
 
 struct chanNode* AddChannel(const char *name, time_t time_, const char *modes, char *banlist, char *exemptlist);
 void LockChannel(struct chanNode *channel);

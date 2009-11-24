@@ -2511,7 +2511,7 @@ p10_conf_reload(void) {
 }
 
 static void
-remove_unbursted_channel(struct chanNode *cNode) {
+remove_unbursted_channel(struct chanNode *cNode, UNUSED_ARG(void *extra)) {
     if (unbursted_channels)
         dict_remove(unbursted_channels, cNode->name);
 }
@@ -2723,7 +2723,7 @@ init_parse(void)
     memset(notice_funcs, 0, sizeof(privmsg_func_t)*num_notice_funcs);
 
     userList_init(&dead_users);
-    reg_del_channel_func(remove_unbursted_channel);
+    reg_del_channel_func(remove_unbursted_channel, NULL);
     reg_exit_func(parse_cleanup);
     // reg_notice_func(opserv, check_ctcp);
 }

@@ -2915,7 +2915,7 @@ opserv_channel_check(struct chanNode *newchan, UNUSED_ARG(void *extra))
 }
 
 static void
-opserv_channel_delete(struct chanNode *chan)
+opserv_channel_delete(struct chanNode *chan, UNUSED_ARG(void *extra))
 {
     timeq_del(0, opserv_part_channel, chan, TIMEQ_IGNORE_WHEN);
 }
@@ -7401,7 +7401,7 @@ init_opserv(const char *nick)
     reg_nick_change_func(opserv_alert_check_nick, NULL);
     reg_del_user_func(opserv_user_cleanup, NULL);
     reg_new_channel_func(opserv_channel_check, NULL); 
-    reg_del_channel_func(opserv_channel_delete);
+    reg_del_channel_func(opserv_channel_delete, NULL);
     reg_join_func(opserv_join_check, NULL);
     reg_auth_func(opserv_staff_alert);
     reg_auth_func(opserv_alert_check_account);

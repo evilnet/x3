@@ -597,21 +597,25 @@ AddChannel(const char *name, time_t time_, const char *modes, char *banlist, cha
 }
 
 static del_channel_func_t *dcf_list;
+static void **dcf_list_extra;
 static unsigned int dcf_size = 0, dcf_used = 0;
 
 void
-reg_del_channel_func(del_channel_func_t handler)
+reg_del_channel_func(del_channel_func_t handler, void *extra)
 {
     if (dcf_used == dcf_size) {
 	if (dcf_size) {
 	    dcf_size <<= 1;
 	    dcf_list = realloc(dcf_list, dcf_size*sizeof(dcf_list[0]));
+        dcf_list_extra = realloc(dcf_list_extra, dcf_size*sizeof(void*));
 	} else {
 	    dcf_size = 8;
 	    dcf_list = malloc(dcf_size*sizeof(dcf_list[0]));
+        dcf_list_extra = malloc(dcf_size*sizeof(dcf_list_extra[0]));
 	}
     }
-    dcf_list[dcf_used++] = handler;
+    dcf_list[dcf_used] = handler;
+    dcf_list_extra[dcf_used++] = extra;
 }
 
 static void
@@ -641,7 +645,7 @@ DelChannel(struct chanNode *channel)
     channel->exemptlist.used = 0;
 
     for (n=0; n<dcf_used; n++)
-        dcf_list[n](channel);
+        dcf_list[n](channel, dcf_list_extra[n]);
 
     modeList_clean(&channel->members);
     banList_clean(&channel->banlist);
@@ -1011,6 +1015,7 @@ hash_cleanup(void)
     free(jf_list);
     free(jf_list_extra);
     free(dcf_list);
+    free(dcf_list_extra);
     free(pf_list);
     free(kf_list);
     free(tf_list);

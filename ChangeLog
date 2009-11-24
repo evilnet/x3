@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-24  Henrik Stuart <evilnet@hstuart.dk>
+
+	* src/hash.c src/hash.h: add extra parameter to reg_del_channel_func and
+	del_channel_func_t.
+
+	* src/opserv.c src/proto-p10.c: collateral evolution fixes due to
+	del_channel_func change.
+
 2009-11-23  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Removed 2 nonsensical spaces in
