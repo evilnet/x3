@@ -242,8 +242,8 @@ void reg_handle_rename_func(handle_rename_func_t func, void *extra);
 /* unreg_funcs are called right before a handle is unregistered.
  * `user' is the person who caused the handle to be unregistered (either a
  * client authed to the handle, or an oper). */
-typedef void (*unreg_func_t)(struct userNode *user, struct handle_info *handle);
-void reg_unreg_func(unreg_func_t func);
+typedef void (*unreg_func_t)(struct userNode *user, struct handle_info *handle, void *extra);
+void reg_unreg_func(unreg_func_t func, void *extra);
 
 /* Called just before a handle is merged */
 typedef void (*handle_merge_func_t)(struct userNode *user, struct handle_info *handle_to, struct handle_info *handle_from, void *extra);

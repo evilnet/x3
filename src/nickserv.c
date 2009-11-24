@@ -504,21 +504,25 @@ delete_nick(struct nick_info *ni)
 }
 
 static unreg_func_t *unreg_func_list;
+static void **unreg_func_list_extra;
 static unsigned int unreg_func_size = 0, unreg_func_used = 0;
 
 void
-reg_unreg_func(unreg_func_t func)
+reg_unreg_func(unreg_func_t func, void *extra)
 {
     if (unreg_func_used == unreg_func_size) {
 	if (unreg_func_size) {
 	    unreg_func_size <<= 1;
 	    unreg_func_list = realloc(unreg_func_list, unreg_func_size*sizeof(unreg_func_t));
+        unreg_func_list_extra = realloc(unreg_func_list_extra, unreg_func_size*sizeof(void*));
 	} else {
 	    unreg_func_size = 8;
 	    unreg_func_list = malloc(unreg_func_size*sizeof(unreg_func_t));
+        unreg_func_list_extra = malloc(unreg_func_size*sizeof(void*));
 	}
     }
-    unreg_func_list[unreg_func_used++] = func;
+    unreg_func_list[unreg_func_used] = func;
+    unreg_func_list_extra[unreg_func_used++] = extra;
 }
 
 static void
@@ -581,7 +585,7 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, stru
     }
 #endif
     for (n=0; n<unreg_func_used; n++)
-        unreg_func_list[n](notify, hi);
+        unreg_func_list[n](notify, hi, unreg_func_list_extra[n]);
     while (hi->users) {
         if (nickserv_conf.sync_log) {
             uNode = GetUserH(hi->users->nick);
@@ -5169,6 +5173,7 @@ nickserv_db_cleanup(void)
     free(auth_func_list);
     free(auth_func_list_extra);
     free(unreg_func_list);
+    free(unreg_func_list_extra);
     free(rf_list);
     free(rf_list_extra);
     free(allowauth_func_list);

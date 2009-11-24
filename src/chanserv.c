@@ -8943,7 +8943,7 @@ static void handle_rename(struct handle_info *handle, const char *old_handle, UN
 }
 
 static void
-handle_unreg(UNUSED_ARG(struct userNode *user), struct handle_info *handle)
+handle_unreg(UNUSED_ARG(struct userNode *user), struct handle_info *handle, UNUSED_ARG(void *extra))
 {
     struct userNode *h_user;
 
@@ -9971,7 +9971,7 @@ init_chanserv(const char *nick)
     }
 
     reg_handle_rename_func(handle_rename, NULL);
-    reg_unreg_func(handle_unreg);
+    reg_unreg_func(handle_unreg, NULL);
 
     handle_dnrs = dict_new();
     dict_set_free_data(handle_dnrs, free);

@@ -4685,7 +4685,7 @@ static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_
  *
  * Also, remove the user from all bots that it has access in.
  * helpserv_del_user() will take care of unassigning the requests. */
-static void handle_nickserv_unreg(struct userNode *user, struct handle_info *handle) {
+static void handle_nickserv_unreg(struct userNode *user, struct handle_info *handle, UNUSED_ARG(void *extra)) {
     struct helpserv_reqlist *hand_reqlist;
     struct helpserv_userlist *userlist;
     unsigned int i, n;
@@ -5025,7 +5025,7 @@ int helpserv_init() {
 
     reg_auth_func(handle_nickserv_auth, NULL);
     reg_handle_rename_func(handle_nickserv_rename, NULL);
-    reg_unreg_func(handle_nickserv_unreg);
+    reg_unreg_func(handle_nickserv_unreg, NULL);
     reg_allowauth_func(handle_nickserv_allowauth, NULL);
     reg_failpw_func(handle_nickserv_failpw, NULL);
     reg_handle_merge_func(handle_nickserv_merge, NULL);

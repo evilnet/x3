@@ -1314,7 +1314,7 @@ memoserv_rename_account(struct handle_info *hi, const char *old_handle, UNUSED_A
 }
 
 static void
-memoserv_unreg_account(UNUSED_ARG(struct userNode *user), struct handle_info *handle)
+memoserv_unreg_account(UNUSED_ARG(struct userNode *user), struct handle_info *handle, UNUSED_ARG(void *extra))
 {
     dict_remove(memos, handle->handle);
     dict_remove(historys, handle->handle);
@@ -1329,7 +1329,7 @@ memoserv_init(void)
     dict_set_free_data(memos, delete_memo_account);
     reg_auth_func(memoserv_check_messages, NULL);
     reg_handle_rename_func(memoserv_rename_account, NULL);
-    reg_unreg_func(memoserv_unreg_account);
+    reg_unreg_func(memoserv_unreg_account, NULL);
     conf_register_reload(memoserv_conf_read);
     reg_exit_func(memoserv_cleanup);
     saxdb_register("MemoServ", memoserv_saxdb_read, memoserv_saxdb_write);
