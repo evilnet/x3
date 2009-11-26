@@ -298,7 +298,7 @@ shun_saxdb_write(struct saxdb_context *ctx)
 }
 
 static void
-shun_db_cleanup(void)
+shun_db_cleanup(UNUSED_ARG(void *extra))
 {
     heap_delete(shun_heap);
     dict_delete(shun_dict);
@@ -311,7 +311,7 @@ shun_init(void)
     shun_dict = dict_new();
     dict_set_free_data(shun_dict, free_shun_from_dict);
     saxdb_register("shun", shun_saxdb_read, shun_saxdb_write);
-    reg_exit_func(shun_db_cleanup);
+    reg_exit_func(shun_db_cleanup, NULL);
 }
 
 struct shun_discrim *

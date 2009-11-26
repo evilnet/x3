@@ -30,7 +30,7 @@ struct timeq_entry {
 };
 
 static void
-timeq_cleanup(void)
+timeq_cleanup(UNUSED_ARG(void *extra))
 {
     timeq_del(0, 0, 0, TIMEQ_IGNORE_WHEN|TIMEQ_IGNORE_FUNC|TIMEQ_IGNORE_DATA);
     heap_delete(timeq);
@@ -41,7 +41,7 @@ static void
 timeq_init(void)
 {
     timeq = heap_new(ulong_comparator);
-    reg_exit_func(timeq_cleanup);
+    reg_exit_func(timeq_cleanup, NULL);
 }
 
 unsigned long

@@ -237,7 +237,7 @@ log_type_free(void *ptr)
 }
 
 static void
-cleanup_logs(void)
+cleanup_logs(UNUSED_ARG(void *extra))
 {
 
     close_logs();
@@ -1021,7 +1021,7 @@ log_init(void)
     dict_insert(log_dest_types, ldIrc_vtbl.type_name, &ldIrc_vtbl);
     conf_register_reload(log_conf_read);
     log_default = log_register_type("*", NULL);
-    reg_exit_func(cleanup_logs);
+    reg_exit_func(cleanup_logs, NULL);
     message_register_table(msgtab);
     log_inited = 1;
 }

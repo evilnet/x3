@@ -3,6 +3,19 @@ X3 ChangeLog
 
 2009-11-26  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/common.h src/main-common.c: add extra parameter to reg_exit_func and
+	exit_func_t.
+
+	* src/proto-p10.c src/mod-qserver.c src/chanserv.c src/mod-snoop.c
+	src/hash.c src/helpfile.c src/gline.c src/global.c src/mod-helpserv.c
+	src/opserv.c src/timeq.c src/saxdb.c src/modcmd.c src/saxdb.h
+	src/mod-sockcheck.c src/shun.c src/mod-python.c src/spamserv.c
+	src/mail-common.c src/mod-memoserv.c src/mod-track.c src/log.c src/ioset.c
+	src/nickserv.c src/main.c src/sar.c: collateral evolution fixes due to
+	exit_func change.
+
+2009-11-26  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/proto-common.c: fix typo in malloc variable name.
 
 2009-11-26  Henrik Stuart  <evilnet@hstuart.dk>

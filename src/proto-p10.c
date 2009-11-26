@@ -2487,7 +2487,7 @@ free_user(struct userNode *user)
 }
 
 static void
-parse_cleanup(void)
+parse_cleanup(UNUSED_ARG(void *extra))
 {
     unsigned int nn;
     free(of_list);
@@ -2724,7 +2724,7 @@ init_parse(void)
 
     userList_init(&dead_users);
     reg_del_channel_func(remove_unbursted_channel, NULL);
-    reg_exit_func(parse_cleanup);
+    reg_exit_func(parse_cleanup, NULL);
     // reg_notice_func(opserv, check_ctcp);
 }
 

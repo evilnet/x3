@@ -3186,7 +3186,7 @@ spamserv_conf_read(void)
 }
 
 static void
-spamserv_db_cleanup(void)
+spamserv_db_cleanup(UNUSED_ARG(void* extra))
 {
 	dict_iterator_t it;
 
@@ -3300,7 +3300,7 @@ init_spamserv(const char *nick)
             }
         }
 
-	reg_exit_func(spamserv_db_cleanup);
+	reg_exit_func(spamserv_db_cleanup, NULL);
 	message_register_table(msgtab);
 	crc32_init();
 }

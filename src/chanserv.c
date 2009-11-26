@@ -9915,7 +9915,7 @@ chanserv_saxdb_write(struct saxdb_context *ctx)
 }
 
 static void
-chanserv_db_cleanup(void) {
+chanserv_db_cleanup(UNUSED_ARG(void *extra)) {
     unsigned int ii;
     unreg_part_func(handle_part, NULL);
     while(channelList)
@@ -10180,7 +10180,7 @@ init_chanserv(const char *nick)
         }    
     }
 
-    reg_exit_func(chanserv_db_cleanup);
+    reg_exit_func(chanserv_db_cleanup, NULL);
     message_register_table(msgtab);
 }
 

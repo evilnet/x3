@@ -381,20 +381,24 @@ received_ping(void)
 }
 
 static exit_func_t *ef_list;
+static void **ef_list_extra;
 static unsigned int ef_size = 0, ef_used = 0;
 
-void reg_exit_func(exit_func_t handler)
+void reg_exit_func(exit_func_t handler, void *extra)
 {
     if (ef_used == ef_size) {
         if (ef_size) {
             ef_size <<= 1;
             ef_list = realloc(ef_list, ef_size*sizeof(exit_func_t));
+            ef_list_extra = realloc(ef_list_extra, ef_size*sizeof(void*));
         } else {
             ef_size = 8;
             ef_list = malloc(ef_size*sizeof(exit_func_t));
+            ef_list_extra = malloc(ef_size*sizeof(void*));
         }
     }
-    ef_list[ef_used++] = handler;
+    ef_list[ef_used] = handler;
+    ef_list_extra[ef_used++] = extra;
 }
 
 void call_exit_funcs(void)
@@ -408,9 +412,11 @@ void call_exit_funcs(void)
      */
 
     while (n > 0) {
-        ef_list[--n]();
+        --n;
+        ef_list[n](ef_list_extra[n]);
     }
     free(ef_list);
+    free(ef_list_extra);
     ef_used = ef_size = 0;
 }
 
@@ -584,7 +590,7 @@ license()
            "Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.\n\n");
 }
 
-void main_shutdown(void)
+void main_shutdown(UNUSED_ARG(void *extra))
 {
     struct uplinkNode *ul, *ul_next;
     ioset_cleanup();

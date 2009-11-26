@@ -598,7 +598,7 @@ ioset_run(void) {
         /* Call any timeq events we need to call. */
         timeq_run();
         if (do_write_dbs) {
-            saxdb_write_all();
+            saxdb_write_all(NULL);
             do_write_dbs = 0;
         }
         if (do_reopen) {

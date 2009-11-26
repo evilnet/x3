@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
     services_argv = argv;
 
     atexit(call_exit_funcs);
-    reg_exit_func(main_shutdown);
+    reg_exit_func(main_shutdown, NULL);
 
     log_init();
     MAIN_LOG = log_register_type("x3", "file:main.log");
@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
     modules_finalize();
 
     /* The first exit func to be called *should* be saxdb_write_all(). */
-    reg_exit_func(saxdb_write_all);
+    reg_exit_func(saxdb_write_all, NULL);
     if (replay_file) {
         char *msg;
         log_module(MAIN_LOG, LOG_INFO, "Beginning replay...");

@@ -38,7 +38,7 @@ void saxdb_init(void);
 void saxdb_finalize(void);
 struct saxdb *saxdb_register(const char *name, saxdb_reader_func_t *reader, saxdb_writer_func_t *writer);
 void saxdb_write(const char *db_name);
-void saxdb_write_all(void);
+void saxdb_write_all(void* extra);
 int write_database(FILE *out, struct dict *db);
 
 /* Callbacks for SAXDB_WRITERs */

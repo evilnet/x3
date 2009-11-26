@@ -7215,7 +7215,7 @@ opserv_db_init(void) {
 }
 
 static void
-opserv_db_cleanup(void)
+opserv_db_cleanup(UNUSED_ARG(void* extra))
 {
     unsigned int nn;
 
@@ -7422,6 +7422,6 @@ init_opserv(const char *nick)
     /* start the karma timer, using the saved one if available */
     routing_karma_timer(dict_find(opserv_routing_plan_options, "KARMA_TIMER", NULL));
 
-    reg_exit_func(opserv_db_cleanup);
+    reg_exit_func(opserv_db_cleanup, NULL);
     message_register_table(msgtab);
 }

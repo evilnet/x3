@@ -831,7 +831,7 @@ global_saxdb_write(struct saxdb_context *ctx)
 }
 
 static void
-global_db_cleanup(void)
+global_db_cleanup(UNUSED_ARG(void *extra))
 {
     while(messageList)
         message_del(messageList);
@@ -871,6 +871,6 @@ init_global(const char *nick)
     }
 
     saxdb_register("Global", global_saxdb_read, global_saxdb_write);
-    reg_exit_func(global_db_cleanup);
+    reg_exit_func(global_db_cleanup, NULL);
     message_register_table(msgtab);
 }

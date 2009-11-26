@@ -305,14 +305,14 @@ snoop_conf_read(void) {
 }
 
 void
-snoop_cleanup(void) {
+snoop_cleanup(UNUSED_ARG(void *extra)) {
     snoop_cfg.enabled = 0;
     unreg_del_user_func(snoop_del_user, NULL);
 }
 
 int
 snoop_init(void) {
-    reg_exit_func(snoop_cleanup);
+    reg_exit_func(snoop_cleanup, NULL);
     conf_register_reload(snoop_conf_read);
     reg_nick_change_func(snoop_nick_change, NULL);
     reg_join_func(snoop_join, NULL);

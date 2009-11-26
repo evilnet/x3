@@ -644,7 +644,7 @@ track_conf_read(void) {
 }
 
 void
-track_cleanup(void) {
+track_cleanup(UNUSED_ARG(void *extra)) {
     track_cfg.enabled = 0;
     unreg_del_user_func(track_del_user, NULL);
     dict_delete(track_db);
@@ -655,7 +655,7 @@ track_init(void) {
     track_db = dict_new();
     dict_set_free_keys(track_db, free);
 
-    reg_exit_func(track_cleanup);
+    reg_exit_func(track_cleanup, NULL);
     conf_register_reload(track_conf_read);
     reg_nick_change_func(track_nick_change, NULL);
     reg_join_func(track_join, NULL);

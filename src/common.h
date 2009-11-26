@@ -168,8 +168,8 @@ const char *irc_ntoa(const irc_in_addr_t *addr);
 int create_socket_client(struct uplinkNode *target);
 void close_socket(void);
 
-typedef void (*exit_func_t)(void);
-void reg_exit_func(exit_func_t handler);
+typedef void (*exit_func_t)(void *extra);
+void reg_exit_func(exit_func_t handler, void *extra);
 void call_exit_funcs(void);
 
 char *mysep(char **sepstr, char *delim);

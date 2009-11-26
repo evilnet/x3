@@ -4897,7 +4897,7 @@ helpserv_define_option(const char *name, helpserv_option_func_t *func) {
     dict_insert(helpserv_option_dict, name, func);
 }
 
-static void helpserv_db_cleanup(void) {
+static void helpserv_db_cleanup(UNUSED_ARG(void *extra)) {
     shutting_down=1;
     unreg_part_func(handle_part, NULL);
     unreg_del_user_func(handle_quit, NULL);
@@ -5030,7 +5030,7 @@ int helpserv_init() {
     reg_failpw_func(handle_nickserv_failpw, NULL);
     reg_handle_merge_func(handle_nickserv_merge, NULL);
 
-    reg_exit_func(helpserv_db_cleanup);
+    reg_exit_func(helpserv_db_cleanup, NULL);
 
     helpserv_module = module_register("helpserv", HS_LOG, HELPSERV_HELPFILE_NAME, helpserv_expand_variable);
     modcmd_register(helpserv_module, "helpserv", cmd_helpserv, 1, MODCMD_REQUIRE_AUTHED|MODCMD_NO_LOG|MODCMD_NO_DEFAULT_BIND, "level", "800", NULL);

@@ -2008,7 +2008,7 @@ static struct sar_family_helper sar_ipv6_helper = {
 #endif /* defined(AF_INET6) */
 
 static void
-sar_cleanup(void)
+sar_cleanup(UNUSED_ARG(void *extra))
 {
     ioset_close(sar_fd, 1);
     dict_delete(services_byname);
@@ -2041,7 +2041,7 @@ sar_conf_reload(void)
 void
 sar_init(void)
 {
-    reg_exit_func(sar_cleanup);
+    reg_exit_func(sar_cleanup, NULL);
     sar_log = log_register_type("sar", NULL);
 
     sar_requests = dict_new();

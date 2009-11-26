@@ -203,7 +203,7 @@ qserver_conf_read(void)
 }
 
 void
-qserver_cleanup(void)
+qserver_cleanup(UNUSED_ARG(void *extra))
 {
     unsigned int ii;
 
@@ -220,7 +220,7 @@ qserver_init(void)
     qserver_log = log_register_type("QServer", "file:qserver.log");
     conf_register_reload(qserver_conf_read);
     qserver_dict = dict_new();
-    reg_exit_func(qserver_cleanup);
+    reg_exit_func(qserver_cleanup, NULL);
     return 1;
 }
 

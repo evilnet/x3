@@ -138,7 +138,7 @@ mail_saxdb_write(struct saxdb_context *ctx) {
 }
 
 static void
-mail_common_cleanup(void)
+mail_common_cleanup(UNUSED_ARG(void *extra))
 {
     dict_delete(prohibited_addrs);
     dict_delete(prohibited_masks);
@@ -153,7 +153,7 @@ mail_common_init(void)
     prohibited_masks = dict_new();
     dict_set_free_keys(prohibited_masks, free);
     dict_set_free_data(prohibited_masks, free);
-    reg_exit_func(mail_common_cleanup);
+    reg_exit_func(mail_common_cleanup, NULL);
     saxdb_register("sendmail", mail_saxdb_read, mail_saxdb_write);
     mail_module = module_register("sendmail", MAIN_LOG, "mail.help", NULL);
     modcmd_register(mail_module, "banemail", cmd_banemail, 3, 0, "level", "601", NULL);

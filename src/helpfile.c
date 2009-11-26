@@ -48,7 +48,7 @@ struct userNode *message_source;
 struct language *lang_C;
 struct dict *languages;
 
-static void language_cleanup(void)
+static void language_cleanup(UNUSED_ARG(void *extra))
 {
     dict_delete(languages);
 }
@@ -1192,5 +1192,5 @@ static void helpfile_read_languages(void)
 void helpfile_finalize(void)
 {
     conf_register_reload(helpfile_read_languages);
-    reg_exit_func(language_cleanup);
+    reg_exit_func(language_cleanup, NULL);
 }

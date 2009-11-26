@@ -5158,7 +5158,7 @@ nickserv_define_func(const char *name, modcmd_func_t func, int min_level, int mu
 }
 
 static void
-nickserv_db_cleanup(void)
+nickserv_db_cleanup(UNUSED_ARG(void* extra))
 {
     unreg_del_user_func(nickserv_remove_user, NULL);
     userList_clean(&curr_helpers);
@@ -5329,7 +5329,7 @@ init_nickserv(const char *nick)
         nickserv_service = service_register(nickserv);
     }
     saxdb_register("NickServ", nickserv_saxdb_read, nickserv_saxdb_write);
-    reg_exit_func(nickserv_db_cleanup);
+    reg_exit_func(nickserv_db_cleanup, NULL);
     if(nickserv_conf.handle_expire_frequency)
         timeq_add(now + nickserv_conf.handle_expire_frequency, expire_handles, NULL);
 

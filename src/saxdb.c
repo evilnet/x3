@@ -184,7 +184,7 @@ saxdb_write(const char *db_name) {
 }
 
 void
-saxdb_write_all(void) {
+saxdb_write_all(UNUSED_ARG(void* extra)) {
     dict_iterator_t it;
     struct saxdb *db;
 
@@ -442,7 +442,7 @@ static MODCMD_FUNC(cmd_writeall) {
     struct timeval start, stop;
 
     gettimeofday(&start, NULL);
-    saxdb_write_all();
+    saxdb_write_all(NULL);
     gettimeofday(&stop, NULL);
     stop.tv_sec -= start.tv_sec;
     stop.tv_usec -= start.tv_usec;
@@ -507,7 +507,7 @@ static MODCMD_FUNC(cmd_stats_databases) {
 }
 
 static void
-saxdb_cleanup(void) {
+saxdb_cleanup(UNUSED_ARG(void *extra)) {
     dict_delete(saxdbs);
 }
 
@@ -537,7 +537,7 @@ saxdb_expand_help(const char *variable) {
 
 void
 saxdb_init(void) {
-    reg_exit_func(saxdb_cleanup);
+    reg_exit_func(saxdb_cleanup, NULL);
     saxdbs = dict_new();
     dict_set_free_data(saxdbs, saxdb_free);
     saxdb_register("mondo", saxdb_mondo_reader, saxdb_mondo_writer);

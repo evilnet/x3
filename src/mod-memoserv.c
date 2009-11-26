@@ -1273,7 +1273,7 @@ memoserv_saxdb_write(struct saxdb_context *ctx)
 }
 
 static void
-memoserv_cleanup(void)
+memoserv_cleanup(UNUSED_ARG(void *extra))
 {
     dict_delete(memos);
     dict_delete(historys);
@@ -1331,7 +1331,7 @@ memoserv_init(void)
     reg_handle_rename_func(memoserv_rename_account, NULL);
     reg_unreg_func(memoserv_unreg_account, NULL);
     conf_register_reload(memoserv_conf_read);
-    reg_exit_func(memoserv_cleanup);
+    reg_exit_func(memoserv_cleanup, NULL);
     saxdb_register("MemoServ", memoserv_saxdb_read, memoserv_saxdb_write);
 
     memoserv_module = module_register("MemoServ", MS_LOG, "mod-memoserv.help", NULL);

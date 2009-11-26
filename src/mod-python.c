@@ -1847,7 +1847,7 @@ python_finalize(void) {
 }
 
 static void
-python_cleanup(void) {
+python_cleanup(UNUSED_ARG(void *extra)) {
     /* Called on shutdown of the python module  (or before reloading)
     */
 
@@ -1870,7 +1870,7 @@ static MODCMD_FUNC(cmd_reload) {
     /* reload the python system completely 
     */
     log_module(PY_LOG, LOG_INFO, "Shutting python down");
-    python_cleanup();
+    python_cleanup(NULL);
     log_module(PY_LOG, LOG_INFO, "Loading python stuff");
     if(python_load()) {
          reply("PYMSG_RELOAD_SUCCESS");
@@ -2018,7 +2018,7 @@ int python_init(void) {
 //TODO:    reg_allchanmsg_func
 //TODO:    reg_user_mode_func
 
-    reg_exit_func(python_cleanup);
+    reg_exit_func(python_cleanup, NULL);
 
     python_load();
     return 1;

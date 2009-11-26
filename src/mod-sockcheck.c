@@ -926,7 +926,7 @@ sockcheck_add_test(const char *desc)
 }
 
 static void
-sockcheck_shutdown(void)
+sockcheck_shutdown(UNUSED_ARG(void *extra))
 {
     unsigned int n;
 
@@ -1170,7 +1170,7 @@ sockcheck_init(void)
 {
     PC_LOG = log_register_type("ProxyCheck", "file:proxycheck.log");
     conf_register_reload(sockcheck_read_conf);
-    reg_exit_func(sockcheck_shutdown);
+    reg_exit_func(sockcheck_shutdown, NULL);
     _sockcheck_init();
     message_register_table(msgtab);
 

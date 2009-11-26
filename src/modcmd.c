@@ -2079,7 +2079,7 @@ modcmd_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void 
 }
 
 void
-modcmd_cleanup(void) {
+modcmd_cleanup(UNUSED_ARG(void* extra)) {
     dict_delete(services);
     dict_delete(modules);
     if (suf_list)
@@ -2297,7 +2297,7 @@ modcmd_init(void) {
     services = dict_new();
     dict_set_free_data(services, free_service);
     reg_nick_change_func(modcmd_nick_change, NULL);
-    reg_exit_func(modcmd_cleanup);
+    reg_exit_func(modcmd_cleanup, NULL);
     conf_register_reload(modcmd_conf_read);
 
     modcmd_module = module_register("modcmd", MAIN_LOG, "modcmd.help", modcmd_expand);

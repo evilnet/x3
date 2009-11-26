@@ -297,7 +297,7 @@ gline_saxdb_write(struct saxdb_context *ctx)
 }
 
 static void
-gline_db_cleanup(void)
+gline_db_cleanup(UNUSED_ARG(void *extra))
 {
     heap_delete(gline_heap);
     dict_delete(gline_dict);
@@ -310,7 +310,7 @@ gline_init(void)
     gline_dict = dict_new();
     dict_set_free_data(gline_dict, free_gline_from_dict);
     saxdb_register("gline", gline_saxdb_read, gline_saxdb_write);
-    reg_exit_func(gline_db_cleanup);
+    reg_exit_func(gline_db_cleanup, NULL);
 }
 
 struct gline_discrim *

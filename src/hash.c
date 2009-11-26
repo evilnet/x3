@@ -39,7 +39,7 @@ unsigned int max_clients, invis_clients;
 time_t max_clients_time;
 struct userList curr_opers;
 
-static void hash_cleanup(void);
+static void hash_cleanup(void *extra);
 
 void init_structs(void)
 {
@@ -47,7 +47,7 @@ void init_structs(void)
     clients = dict_new();
     servers = dict_new();
     userList_init(&curr_opers);
-    reg_exit_func(hash_cleanup);
+    reg_exit_func(hash_cleanup, NULL);
 }
 
 int userList_contains(struct userList *list, struct userNode *user)
@@ -997,7 +997,7 @@ DEFINE_LIST(channelList, struct chanNode*)
 DEFINE_LIST(serverList, struct server*)
 
 static void
-hash_cleanup(void)
+hash_cleanup(UNUSED_ARG(void *extra))
 {
     dict_iterator_t it, next;
 
