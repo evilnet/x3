@@ -829,7 +829,7 @@ reg_channel_mode_func(channel_mode_func_t handler, void *extra)
 		} else {
 			cm_size = 8;
 			cm_list = malloc(cm_size*sizeof(channel_mode_func_t));
-            cm_list = malloc(cm_size*sizeof(void*));
+            cm_list_extra = malloc(cm_size*sizeof(void*));
 		}
 	}
 	cm_list[cm_used] = handler;

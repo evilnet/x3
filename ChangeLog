@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-11-26  Henrik Stuart  <evilnet@hstuart.dk>
 
+	* src/proto-common.c: fix typo in malloc variable name.
+
+2009-11-26  Henrik Stuart  <evilnet@hstuart.dk>
+
 	* src/modcmd.h src/modcmd.c: add extra parameter to reg_svccmd_unbind_func
 	and svccmd_unbind_func_t.
 
