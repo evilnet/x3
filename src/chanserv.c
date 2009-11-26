@@ -4485,7 +4485,7 @@ static CHANSERV_FUNC(cmd_myaccess)
             continue;
         sbuf.used = 0;
         string_buffer_append_printf(&sbuf, "[%s (%d", cData->channel->name, uData->access);
-        if(uData->flags == USER_AUTO_OP)
+        if(uData->flags != 0)
             string_buffer_append(&sbuf, ',');
         if(IsUserSuspended(uData))
             string_buffer_append(&sbuf, 's');

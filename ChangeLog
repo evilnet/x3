@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-26  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Fixed a missing ',' in cmd_myaccess output.
+
 2009-11-26  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/common.h src/main-common.c: add extra parameter to reg_exit_func and
