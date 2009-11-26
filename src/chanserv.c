@@ -7038,7 +7038,7 @@ static MODCMD_FUNC(chan_opt_resync)
 static struct svccmd_list set_shows_list;
 
 static void
-handle_svccmd_unbind(struct svccmd *target) {
+handle_svccmd_unbind(struct svccmd *target, UNUSED_ARG(void *extra)) {
     unsigned int ii;
     for(ii=0; ii<set_shows_list.used; ++ii)
         if(target == set_shows_list.list[ii])
@@ -9980,7 +9980,7 @@ init_chanserv(const char *nick)
     mask_dnrs = dict_new();
     dict_set_free_data(mask_dnrs, free);
 
-    reg_svccmd_unbind_func(handle_svccmd_unbind);
+    reg_svccmd_unbind_func(handle_svccmd_unbind, NULL);
     chanserv_module = module_register("ChanServ", CS_LOG, "chanserv.help", chanserv_expand_variable);
     DEFINE_COMMAND(register, 1, MODCMD_REQUIRE_AUTHED, "flags", "+acceptchan,+channel", NULL);
     DEFINE_COMMAND(noregister, 1, MODCMD_REQUIRE_AUTHED, "flags", "+helping", NULL);

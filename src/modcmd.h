@@ -186,8 +186,8 @@ int svccmd_invoke_argv(struct userNode *user, struct service *service, struct ch
 /* Get notification when a command is being unbound.  This lets
  * services which cache svccmd references remove them.
  */
-typedef void (*svccmd_unbind_func_t)(struct svccmd *target);
-void reg_svccmd_unbind_func(svccmd_unbind_func_t handler);
+typedef void (*svccmd_unbind_func_t)(struct svccmd *target, void *extra);
+void reg_svccmd_unbind_func(svccmd_unbind_func_t handler, void *extra);
 
 /* Initialize the module command subsystem. */
 void modcmd_init(void);

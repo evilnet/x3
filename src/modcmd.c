@@ -1278,20 +1278,24 @@ service_recheck_bindings(struct service *service, struct module *module) {
 }
 
 static svccmd_unbind_func_t *suf_list;
+static void **suf_list_extra;
 unsigned int suf_size, suf_used;
 
 void
-reg_svccmd_unbind_func(svccmd_unbind_func_t handler) {
+reg_svccmd_unbind_func(svccmd_unbind_func_t handler, void *extra) {
     if (suf_used == suf_size) {
         if (suf_size) {
             suf_size <<= 1;
             suf_list = realloc(suf_list, suf_size*sizeof(svccmd_unbind_func_t));
+            suf_list_extra = realloc(suf_list_extra, suf_size*sizeof(void*));
         } else {
             suf_size = 8;
             suf_list = malloc(suf_size*sizeof(svccmd_unbind_func_t));
+            suf_list_extra = malloc(suf_size*sizeof(void*));
         }
     }
-    suf_list[suf_used++] = handler;
+    suf_list[suf_used] = handler;
+    suf_list_extra[suf_used++] = extra;
 }
 
 static MODCMD_FUNC(cmd_unbind) {
@@ -1324,7 +1328,7 @@ static MODCMD_FUNC(cmd_unbind) {
     }
 
     for (ii=0; ii<suf_used; ii++)
-        suf_list[ii](bound);
+        suf_list[ii](bound, suf_list_extra[ii]);
     /* If this command binding is removing itself, we must take care
      * not to dereference it after the dict_remove.
      */
@@ -2080,6 +2084,8 @@ modcmd_cleanup(void) {
     dict_delete(modules);
     if (suf_list)
         free(suf_list);
+    if (suf_list_extra)
+        free(suf_list_extra);
 }
 
 static void

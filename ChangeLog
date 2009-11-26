@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-26  Henrik Stuart  <evilnet@hstuart.dk>
+
+	* src/modcmd.h src/modcmd.c: add extra parameter to reg_svccmd_unbind_func
+	and svccmd_unbind_func_t.
+
+	* src/chanserv.c: collateral evolution fixes due to svccmd_unbind_func
+	change.
+
 2009-11-24  Henrik Stuart  <evilnet@hstuart.dk>
 
 	* src/proto.h src/proto-common.c: add extra parameter to
