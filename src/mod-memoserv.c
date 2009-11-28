@@ -1382,6 +1382,7 @@ memoserv_finalize(void) {
         memoserv = memoserv_conf.bot;
         const char *modes = conf_get_data("modules/memoserv/modes", RECDB_QSTRING);
         memoserv = AddLocalUser(str, str, NULL, "User-User Memorandum Services", modes);
+        service_register(memoserv);
     } else {
         log_module(MS_LOG, LOG_ERROR, "database_get_data for memoserv_conf.bot failed!");
         exit(1);

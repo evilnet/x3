@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-28  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/mod-memoserv.c: Fix for bug where MemoServ is created as a
+	local bot but not registered as a service on first startup.
+
 2009-11-26  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Fixed a missing ',' in cmd_myaccess output.
