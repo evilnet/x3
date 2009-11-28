@@ -88,6 +88,7 @@
 #define KEY_PASSWD "passwd"
 #define KEY_NICKS "nicks"
 #define KEY_MASKS "masks"
+#define KEY_SSLFPS "sslfps"
 #define KEY_IGNORES "ignores"
 #define KEY_OPSERV_LEVEL "opserv_level"
 #define KEY_FLAGS "flags"
@@ -257,6 +258,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_LAST_HOST_UNKNOWN", "Last quit hostmask: Unknown" },
     { "NSMSG_HANDLEINFO_NICKS", "Nickname(s): %s" },
     { "NSMSG_HANDLEINFO_MASKS", "Hostmask(s): %s" },
+    { "NSMSG_HANDLEINFO_SSLFPS", "SSL Fingerprints(s): %s" },
     { "NSMSG_HANDLEINFO_IGNORES", "Ignore(s): %s" },
     { "NSMSG_HANDLEINFO_CHANNELS", "Channel(s): %s" },
     { "NSMSG_HANDLEINFO_CURRENT", "Current nickname(s): %s" },
@@ -286,9 +288,13 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_ADDMASK_SUCCESS", "Hostmask %s added." },
     { "NSMSG_ADDIGNORE_ALREADY", "$b%s$b is already an ignored hostmask in your account." },
     { "NSMSG_ADDIGNORE_SUCCESS", "Hostmask %s added." },
+    { "NSMSG_ADDSSLFP_ALREADY", "$b%s$b is already an SSL fingerprint in your account." },
+    { "NSMSG_ADDSSLFP_SUCCESS", "SSL fingerprint %s added." },
     { "NSMSG_DELMASK_NOTLAST", "You may not delete your last hostmask." },
     { "NSMSG_DELMASK_SUCCESS", "Hostmask %s deleted." },
     { "NSMSG_DELMASK_NOT_FOUND", "Unable to find mask to be deleted." },
+    { "NSMSG_DELSSLFP_SUCCESS", "SSL fingerprint %s deleted." },
+    { "NSMSG_DELSSLFP_NOT_FOUND", "Unable to find SSL fingerprint to be deleted." },
     { "NSMSG_OPSERV_LEVEL_BAD", "You may not promote another oper above your level." },
     { "NSMSG_USE_CMD_PASS", "Please use the PASS command to change your password." },
     { "NSMSG_UNKNOWN_NICK", "I know nothing about nick $b%s$b." },
@@ -540,6 +546,7 @@ free_handle_info(void *vhi)
     struct handle_info *hi = vhi;
 
     free_string_list(hi->masks);
+    free_string_list(hi->sslfps);
     free_string_list(hi->ignores);
     assert(!hi->users);
 
@@ -828,6 +835,25 @@ valid_user_for(struct userNode *user, struct handle_info *hi)
 	return 2;
     }
     /* The user is not allowed to use this account. */
+    return 0;
+}
+
+static int
+valid_user_sslfp(struct userNode *user, struct handle_info *hi)
+{
+    unsigned int ii;
+
+    if (!hi->sslfps->used)
+        return 0;
+    if (!(user->sslfp))
+        return 0;
+
+    /* If any SSL fingerprint matches, allow it. */
+    for (ii=0; ii<hi->sslfps->used; ii++)
+        if (!irccasecmp(user->sslfp, hi->sslfps->list[ii]))
+            return 1;
+
+    /* No valid SSL fingerprint found. */
     return 0;
 }
 
@@ -1122,6 +1148,7 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
 #endif
     hi = register_handle(handle, crypted, 0);
     hi->masks = alloc_string_list(1);
+    hi->sslfps = alloc_string_list(1);
     hi->ignores = alloc_string_list(1);
     hi->users = NULL;
     hi->language = lang_C;
@@ -1805,6 +1832,26 @@ static NICKSERV_FUNC(cmd_handleinfo)
         reply("NSMSG_HANDLEINFO_MASKS", nsmsg_none);
     }
 
+    if (hi->sslfps->used) {
+        for (i=0; i < hi->sslfps->used; i++) {
+            herelen = strlen(hi->sslfps->list[i]);
+            if (pos + herelen + 1 > ArrayLength(buff)) {
+                i--;
+                goto print_sslfp_buff;
+            }
+            memcpy(buff+pos, hi->sslfps->list[i], herelen);
+            pos += herelen; buff[pos++] = ' ';
+            if (i+1 == hi->sslfps->used) {
+              print_sslfp_buff:
+                buff[pos-1] = 0;
+                reply("NSMSG_HANDLEINFO_SSLFPS", buff);
+                pos = 0;
+            }
+        }
+    } else {
+        reply("NSMSG_HANDLEINFO_SSLFPS", nsmsg_none);
+    }
+
     if (hi->ignores->used) {
         for (i=0; i < hi->ignores->used; i++) {
             herelen = strlen(hi->ignores->list[i]);
@@ -2273,10 +2320,10 @@ static NICKSERV_FUNC(cmd_auth)
         return 1;
     }
 #ifdef WITH_LDAP
-    if( ( nickserv_conf.ldap_enable && ldap_result == LDAP_INVALID_CREDENTIALS )  ||
-        ( (!nickserv_conf.ldap_enable) && (!checkpass(passwd, hi->passwd)) ) ) {
+    if(( ( nickserv_conf.ldap_enable && ldap_result == LDAP_INVALID_CREDENTIALS )  ||
+        ( (!nickserv_conf.ldap_enable) && (!checkpass(passwd, hi->passwd)) ) ) && !valid_user_sslfp(user, hi)) {
 #else
-    if (!checkpass(passwd, hi->passwd)) {
+    if (!checkpass(passwd, hi->passwd) && !valid_user_sslfp(user, hi)) {
 #endif
         unsigned int n;
         send_message_type(4, user, cmd->parent->bot,
@@ -2890,6 +2937,80 @@ static NICKSERV_FUNC(cmd_odelmask)
     if (!(hi = get_victim_oper(user, argv[1])))
         return 0;
     return nickserv_delmask(cmd, user, hi, argv[2], 1);
+}
+
+static int
+nickserv_addsslfp(struct userNode *user, struct handle_info *hi, const char *sslfp)
+{
+    unsigned int i;
+    char *new_sslfp = strdup(sslfp);
+    for (i=0; i<hi->sslfps->used; i++) {
+        if (!irccasecmp(new_sslfp, hi->sslfps->list[i])) {
+            send_message(user, nickserv, "NSMSG_ADDSSLFP_ALREADY", new_sslfp);
+            free(new_sslfp);
+            return 0;
+        }
+    }
+    string_list_append(hi->sslfps, new_sslfp);
+    send_message(user, nickserv, "NSMSG_ADDSSLFP_SUCCESS", new_sslfp);
+    return 1;
+}
+
+static NICKSERV_FUNC(cmd_addsslfp)
+{
+	NICKSERV_MIN_PARMS((user->sslfp ? 1 : 2));
+    if ((argc < 2) && (user->sslfp)) {
+        int res = nickserv_addsslfp(user, user->handle_info, user->sslfp);
+        return res;
+    } else {
+        return nickserv_addsslfp(user, user->handle_info, argv[1]);
+    }
+}
+
+static NICKSERV_FUNC(cmd_oaddsslfp)
+{
+    struct handle_info *hi;
+
+    NICKSERV_MIN_PARMS(3);
+    if (!(hi = get_victim_oper(user, argv[1])))
+        return 0;
+    return nickserv_addsslfp(user, hi, argv[2]);
+}
+
+static int
+nickserv_delsslfp(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, const char *del_sslfp)
+{
+    unsigned int i;
+    for (i=0; i<hi->sslfps->used; i++) {
+        if (!irccasecmp(del_sslfp, hi->sslfps->list[i])) {
+            char *old_sslfp = hi->sslfps->list[i];
+            hi->sslfps->list[i] = hi->sslfps->list[--hi->sslfps->used];
+            reply("NSMSG_DELSSLFP_SUCCESS", old_sslfp);
+            free(old_sslfp);
+            return 1;
+        }
+    }
+    reply("NSMSG_DELSSLFP_NOT_FOUND");
+    return 0;
+}
+
+static NICKSERV_FUNC(cmd_delsslfp)
+{
+    NICKSERV_MIN_PARMS((user->sslfp ? 1 : 2));
+    if ((argc < 2) && (user->sslfp)) {
+        return nickserv_delsslfp(cmd, user, user->handle_info, user->sslfp);
+    } else {
+        return nickserv_delsslfp(cmd, user, user->handle_info, argv[1]);
+    }
+}
+
+static NICKSERV_FUNC(cmd_odelsslfp)
+{
+    struct handle_info *hi;
+    NICKSERV_MIN_PARMS(3);
+    if (!(hi = get_victim_oper(user, argv[1])))
+        return 0;
+    return nickserv_delsslfp(cmd, user, hi, argv[2]);
 }
 
 int
@@ -3882,6 +4003,8 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
             saxdb_write_sint(ctx, KEY_KARMA, hi->karma);
         if (hi->masks->used)
             saxdb_write_string_list(ctx, KEY_MASKS, hi->masks);
+        if (hi->sslfps->used)
+            saxdb_write_string_list(ctx, KEY_SSLFPS, hi->sslfps);
         if (hi->ignores->used)
             saxdb_write_string_list(ctx, KEY_IGNORES, hi->ignores);
         if (hi->maxlogins)
@@ -4494,7 +4617,7 @@ static void
 nickserv_db_read_handle(char *handle, dict_t obj)
 {
     const char *str;
-    struct string_list *masks, *slist, *ignores;
+    struct string_list *masks, *sslfps, *slist, *ignores;
     struct handle_info *hi;
     struct userNode *authed_users;
     struct userData *channel_list;
@@ -4534,6 +4657,8 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     hi->channels = channel_list;
     masks = database_get_data(obj, KEY_MASKS, RECDB_STRING_LIST);
     hi->masks = masks ? string_list_copy(masks) : alloc_string_list(1);
+    sslfps = database_get_data(obj, KEY_SSLFPS, RECDB_STRING_LIST);
+    hi->sslfps = sslfps ? string_list_copy(sslfps) : alloc_string_list(1);
     ignores = database_get_data(obj, KEY_IGNORES, RECDB_STRING_LIST);
     hi->ignores = ignores ? string_list_copy(ignores) : alloc_string_list(1);
     str = database_get_data(obj, KEY_MAXLOGINS, RECDB_QSTRING);
@@ -5246,6 +5371,10 @@ init_nickserv(const char *nick)
     nickserv_define_func("OADDMASK", cmd_oaddmask, 0, 1, 0);
     nickserv_define_func("DELMASK", cmd_delmask, -1, 1, 0);
     nickserv_define_func("ODELMASK", cmd_odelmask, 0, 1, 0);
+    nickserv_define_func("ADDSSLFP", cmd_addsslfp, -1, 1, 0);
+    nickserv_define_func("OADDSSLFP", cmd_oaddsslfp, 0, 1, 0);
+    nickserv_define_func("DELSSLFP", cmd_delsslfp, -1, 1, 0);
+    nickserv_define_func("ODELSSLFP", cmd_odelsslfp, 0, 1, 0);
     nickserv_define_func("PASS", cmd_pass, -1, 1, 0);
     nickserv_define_func("SET", cmd_set, -1, 1, 0);
     nickserv_define_func("OSET", cmd_oset, 0, 1, 0);

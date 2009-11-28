@@ -92,6 +92,7 @@ struct handle_note {
 struct handle_info {
     struct nick_info *nicks;
     struct string_list *masks;
+    struct string_list *sslfps;
     struct string_list *ignores;
     struct userNode *users;
     struct userData *channels;

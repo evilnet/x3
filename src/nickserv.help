@@ -108,6 +108,8 @@
                 "  $bPASS$b       Change your account's password.",
                 "  $bADDMASK$b    Add a hostmask to your account.",
                 "  $bDELMASK$b    Remove a hostmask from your account.",
+                "  $bADDSSLFP$b   Add an SSL fingerprint to your account.",
+                "  $bDELSSLFP$b   Remove an SSL fingerprint from your account.",
                 "  $bSET$b        Set per-account options.",
                 "  $bGHOST$b      Disconnects your old clients",
                 "  $bACCOUNT FLAGS$b Definition for each account flag"
@@ -129,6 +131,8 @@
                 "  $bPASS$b       Change your account's password.",
                 "  $bADDMASK$b    Add a hostmask to your account.",
                 "  $bDELMASK$b    Remove a hostmask from your account.",
+                "  $bADDSSLFP$b   Add an SSL fingerprint to your account.",
+                "  $bDELSSLFP$b   Remove an SSL fingerprint from your account.",
                 "  $bSET$b        Set per-account options.",
                 "  $bRENAME$b     Renames an account",
                 "  $bACCOUNT FLAGS$b Definition for each account flag"
@@ -167,6 +171,8 @@
                 "*$bOUNREGNICK$b  Remove a nick from someone's account.",
                 " $bOADDMASK$b    Add a mask to someone's account.",
                 " $bODELMASK$b    Remove a mask from someone's account.",
+                " $bOADDSSLFP$b   Add an SSL fingerprint to someone's account.",
+                " $bODELSSLFP$b   Remove an SSL fingerprint from someone's account.",
                 " $bOADDIGNORE$b  Add an ignore to someone's account.",
                 " $bODELIGNORE$b  Remove an ignore from someone's account.",
                 " $bMERGEDB$b     Load a database into memory."
@@ -675,3 +681,22 @@
         "Removes a hostmask from the specified account's ignore list.",
         "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u oaddignore");
+
+"ADDSSLFP" ("/msg $N ADDSSLFP [fingerprint]",
+        "Adds the specified SSL fingerprint to the account you are authenticated to with $b$N$b.  If no SSL fingerprint is given, it uses your current SSL fingerprint if available.",
+        "$uSee Also:$u auth, delsslfp");
+
+"DELSSLFP" ("/msg $N DELSSLFP [fingerprint]",
+        "Removes the specified SSL fingerprint to the account you are authenticated to with $b$N$b.  If no SSL fingerprint is given, it uses your current SSL fingerprint if available.",
+        "$uSee Also:$u addsslfp");
+
+"OADDSSLFP" ("/msg $N OADDSSLFP <nick|*account> <fingerprint>",
+        "Adds an SSL fingerprint to the specified account.",
+        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "$uSee Also:$u odelsslfp");
+
+"ODELSSLFP" ("/msg $N ODELSSLFP <nick|*account> <fingerprint>",
+        "Removes an SSL fingerprint from the specified account.",
+        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "$uSee Also:$u oaddsslfp");
+

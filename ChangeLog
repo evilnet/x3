@@ -1,6 +1,15 @@
 /***********************************************************************
 X3 ChangeLog
 
+2008-11-28  Matthew Beeching  <jobe@mdbnmet.co.uk>
+
+	* src/nickserv.help: Added help for ADDSSLFP, DELSSLFP, OADDSSLFP
+	and ODELSSLFP
+
+	* src/nickserv.c: Added support for SSL fingerprint authentication.
+
+	* src/nickserv.h: Added support for SSL fingerprint authentication.
+
 2009-11-28  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/mod-memoserv.c: Fix for bug where MemoServ is created as a
