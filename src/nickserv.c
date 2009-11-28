@@ -2033,11 +2033,11 @@ reg_failpw_func(failpw_func_t func, void *extra)
  * called by nefariouses enhanced AC login-on-connect code
  *
  */
-struct handle_info *loc_auth(char *handle, char *password, char *userhost)
+struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *userhost)
 {
     int pw_arg, used, maxlogins;
     unsigned int ii;
-    int wildmask = 0;
+    int wildmask = 0, fpmatch = 0;
     struct handle_info *hi;
     struct userNode *other;
 #ifdef WITH_LDAP
@@ -2060,9 +2060,10 @@ struct handle_info *loc_auth(char *handle, char *password, char *userhost)
         return NULL;
     }
 
-    if (!checkpass(password, hi->passwd)) {
+    if (password && *password && !checkpass(password, hi->passwd)) {
         return NULL;
     }
+
 #endif
 #ifdef WITH_LDAP
     /* ldap libs are present but we are not using them... */
@@ -2114,6 +2115,22 @@ struct handle_info *loc_auth(char *handle, char *password, char *userhost)
     /* Still no account, so just fail out */
     if (!hi) {
         return NULL;
+    }
+
+    if (sslfp && !hi->sslfps->used) {
+
+        /* If any SSL fingerprint matches, allow it. */
+        for (ii=0; ii<hi->sslfps->used; ii++) {
+            if (!irccasecmp(sslfp, hi->sslfps->list[ii])) {
+                fpmatch = 1;
+                break;
+            }
+        }
+
+        /* No valid SSL fingerprint found. */
+        if (!fpmatch) {
+            return NULL;
+        }
     }
 
     /* We don't know the users hostname, or anything because they

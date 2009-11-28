@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-29  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/nickserv.c: Added SSL fingerprint support to LOC.
+
+	* src/nickserv.h: Added sslfp to loc_auth.
+
+	* src/proto-p10.c: Added support for the new S loc auth type.
+
 2008-11-28  Matthew Beeching  <jobe@mdbnmet.co.uk>
 
 	* src/nickserv.help: Added help for ADDSSLFP, DELSSLFP, OADDSSLFP
