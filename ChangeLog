@@ -3,6 +3,9 @@ X3 ChangeLog
 
 2009-11-29  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/nickserv.c: Small tweak to the password checks with sslfp LOC.
+
+2009-11-29  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 	* src/nickserv.c: Added SSL fingerprint support to LOC.
 
 	* src/nickserv.h: Added sslfp to loc_auth.

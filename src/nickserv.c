@@ -2060,8 +2060,15 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
         return NULL;
     }
 
-    if (password && *password && !checkpass(password, hi->passwd)) {
-        return NULL;
+    if (sslfp && *sslfp) {
+        if (password && *password) {
+            if (!checkpass(password, hi->passwd))
+                return NULL;
+        }
+    } else {
+        if (!checkpass(password, hi->passwd)) {
+            return NULL;
+        }
     }
 
 #endif
