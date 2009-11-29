@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-11-29  Matthew Beeching  <jobe@mdbnmet.co.uk>
+
+	* src/nickserv.c: Rewrote parts of loc_auth() to get it working
+	the same as cmd_auth() with regards to SSL fingerprint support.
+
 2009-11-29  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/nickserv.c: Small tweak.

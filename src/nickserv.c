@@ -2035,110 +2035,92 @@ reg_failpw_func(failpw_func_t func, void *extra)
  */
 struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *userhost)
 {
-    int pw_arg, used, maxlogins;
+    int wildmask = 0, auth = 0;
+    int used, maxlogins;
     unsigned int ii;
-    int wildmask = 0, fpmatch = 0;
     struct handle_info *hi;
     struct userNode *other;
 #ifdef WITH_LDAP
     int ldap_result = LDAP_SUCCESS;
     char *email = NULL;
 #endif
-
+    
     hi = dict_find(nickserv_handle_dict, handle, NULL);
-    pw_arg = 2;
-
+    
 #ifdef WITH_LDAP
-    if(nickserv_conf.ldap_enable) {
+    if (nickserv_conf.ldap_enable) {
         ldap_result = ldap_check_auth(handle, password);
-        if(ldap_result != LDAP_SUCCESS) {
-           return NULL;
-        }
-    }
-#else
-    if (!hi) {
-        return NULL;
-    }
-
-    if (sslfp && *sslfp) {
-        if (password && *password) {
-            if (!checkpass(password, hi->passwd))
-                return NULL;
-        }
-    } else {
-        if (!checkpass(password, hi->passwd)) {
+        if (!hi && (ldap_result != LDAP_SUCCESS))
             return NULL;
+        if (ldap_result == LDAP_SUCCESS) {
+            /* Mark auth as successful */
+            auth++;
+        }
+    
+        if (!hi && (ldap_result == LDAP_SUCCESS) && nickserv_conf.ldap_autocreate) {
+            /* user not found, but authed to ldap successfully..
+             * create the account.
+             */
+            char *mask;
+            int rc;
+            
+            /* Add a *@* mask */
+            /* TODO if userhost is not null, build mask based on that. */
+            if(nickserv_conf.default_hostmask)
+               mask = "*@*";
+            else
+               return NULL; /* They dont have a *@* mask so they can't loc */
+    
+            if(!(hi = nickserv_register(NULL, NULL, handle, password, 0))) {
+               return 0; /* couldn't add the user for some reason */
+            }
+    
+            if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
+            {
+               if(nickserv_conf.email_required) {
+                   return 0;
+               }
+            }
+            if(email) {
+               nickserv_set_email_addr(hi, email);
+               free(email);
+            }
+            if(mask) {
+               char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+               string_list_append(hi->masks, mask_canonicalized);
+            }
+            if(nickserv_conf.sync_log)
+               SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, "@", handle);
         }
     }
-
-#endif
-#ifdef WITH_LDAP
-    /* ldap libs are present but we are not using them... */
-    if( !nickserv_conf.ldap_enable ) {
-       if (!hi) {
-          return NULL;
-       }
-       if (!checkpass(password, hi->passwd)) {
-         return NULL;
-       }
-    }
-    else if( (!hi) && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
-         /* user not found, but authed to ldap successfully..
-          * create the account.
-          */
-         char *mask;
-         int rc;
-
-         /* Add a *@* mask */
-         /* TODO if userhost is not null, build mask based on that. */
-         if(nickserv_conf.default_hostmask)
-            mask = "*@*";
-         else
-            return NULL; /* They dont have a *@* mask so they can't loc */
-
-         if(!(hi = nickserv_register(NULL, NULL, handle, password, 0))) {
-            return 0; /* couldn't add the user for some reason */
-         }
-
-         if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
-         {
-            if(nickserv_conf.email_required) {
-                return 0;
-            }
-         }
-         if(email) {
-            nickserv_set_email_addr(hi, email);
-            free(email);
-         }
-         if(mask) {
-            char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
-            string_list_append(hi->masks, mask_canonicalized);
-         }
-         if(nickserv_conf.sync_log)
-            SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, "@", handle);
-    }
 #endif
 
-    /* Still no account, so just fail out */
-    if (!hi) {
+    /* hi should now be a valid handle, if not return NULL */
+    if (!hi)
         return NULL;
+
+#ifdef WITH_LDAP
+    if (password && *password && !nickserv_conf.ldap_enable) {
+#else
+    if (password && *password) {
+#endif
+        if (checkpass(password, hi->passwd))
+            auth++;
     }
-
-    if (sslfp && *sslfp && !hi->sslfps->used) {
-
+    
+    if (!auth && sslfp && *sslfp && hi->sslfps->used) {
         /* If any SSL fingerprint matches, allow it. */
         for (ii=0; ii<hi->sslfps->used; ii++) {
             if (!irccasecmp(sslfp, hi->sslfps->list[ii])) {
-                fpmatch = 1;
+                auth++;
                 break;
             }
         }
-
-        /* No valid SSL fingerprint found. */
-        if (!fpmatch) {
-            return NULL;
-        }
     }
+    
+    /* Auth should have succeeded by this point */
+    if (!auth)
+        return NULL;
 
     /* We don't know the users hostname, or anything because they
      * havn't registered yet. So we can only allow LOC if your
@@ -2166,7 +2148,7 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
         ui = malloc(strlen(userhost));
         sprintf(uh, "%s@%s", ident, realhost);
         sprintf(ui, "%s@%s", ident, ip);
-        for (ii=0; ii<hi->masks->used; ii++) 
+        for (ii=0; ii<hi->masks->used; ii++)
         {
             if(match_ircglob(uh, hi->masks->list[ii])
                || match_ircglob(ui, hi->masks->list[ii]))
