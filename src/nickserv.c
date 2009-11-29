@@ -2124,7 +2124,7 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
         return NULL;
     }
 
-    if (sslfp && !hi->sslfps->used) {
+    if (sslfp && *sslfp && !hi->sslfps->used) {
 
         /* If any SSL fingerprint matches, allow it. */
         for (ii=0; ii<hi->sslfps->used; ii++) {

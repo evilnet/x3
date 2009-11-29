@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-11-29  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/nickserv.c: Small tweak.
+
+2009-11-29  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/nickserv.c: Small tweak to the password checks with sslfp LOC.
 
 2009-11-29  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
