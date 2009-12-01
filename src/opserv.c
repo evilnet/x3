@@ -586,7 +586,9 @@ typedef enum {
     REACT_SVSJOIN,
     REACT_SVSPART,
     REACT_VERSION,
-    REACT_MARK
+    REACT_MARK,
+    REACT_NOTICEUSER,
+    REACT_MSGUSER
 } opserv_alert_reaction;
 
 struct opserv_user_alert {
@@ -2532,6 +2534,8 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_SVSPART: reaction = "svspart"; break;
         case REACT_VERSION: reaction = "version"; break;
         case REACT_MARK: reaction = "mark"; break;
+        case REACT_NOTICEUSER: reaction = "noticeuser"; break;
+        case REACT_MSGUSER: reaction = "msguser"; break;
         default: reaction = "<unknown>"; break;
         }
         reply("OSMSG_ALERT_IS", iter_key(it), reaction, alert->owner);
@@ -4864,6 +4868,10 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_VERSION;
     else if (!irccasecmp(react, "mark"))
         reaction = REACT_MARK;
+    else if (!irccasecmp(react, "noticeuser"))
+        reaction = REACT_NOTICEUSER;
+    else if (!irccasecmp(react, "msguser"))
+        reaction = REACT_MSGUSER;
     else {
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
@@ -5151,6 +5159,8 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_SVSPART: reaction = "svspart"; break;
             case REACT_VERSION: reaction = "version"; break;
             case REACT_MARK: reaction = "mark"; break;
+            case REACT_NOTICEUSER: reaction = "noticeuser"; break;
+            case REACT_MSGUSER: reaction = "msguser"; break;
             default:
                 reaction = NULL;
                 log_module(OS_LOG, LOG_ERROR, "Invalid reaction type %d for alert %s (while writing database).", alert->reaction, iter_key(it));
@@ -6784,6 +6794,12 @@ alert_check_user(const char *key, void *data, void *extra)
 	add_track_user(user);
 #endif
 	break;
+    case REACT_NOTICEUSER:
+        irc_notice_user(opserv, user, alert->discrim->reason);
+        break;
+    case REACT_MSGUSER:
+        irc_privmsg_user(opserv, user, alert->discrim->reason);
+        break;
     }
     return 0;
 }
@@ -6969,6 +6985,10 @@ static MODCMD_FUNC(cmd_addalert)
         reaction = REACT_VERSION;
     else if(!irccasecmp(argv[2], "mark"))
         reaction = REACT_MARK;
+    else if(!irccasecmp(argv[2], "noticeuser"))
+        reaction = REACT_NOTICEUSER;
+    else if(!irccasecmp(argv[2], "msguser"))
+        reaction = REACT_MSGUSER;
     else {
         reply("OSMSG_UNKNOWN_REACTION", argv[2]);
         return 0;
@@ -7253,6 +7273,8 @@ init_opserv(const char *nick)
     opserv_define_func("ACCESS", cmd_access, 0, 0, 0);
     opserv_define_func("ADDALERT", cmd_addalert, 800, 0, 4);
     opserv_define_func("ADDALERT NOTICE", NULL, 0, 0, 0);
+    opserv_define_func("ADDALERT NOTICEUSER", NULL, 0, 0, 0);
+    opserv_define_func("ADDALERT MSGUSER", NULL, 0, 0, 0);
     opserv_define_func("ADDALERT SILENT", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT GLINE", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT SHUN", NULL, 900, 0, 0);

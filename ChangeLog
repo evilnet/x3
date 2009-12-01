@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-12-01  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/opserv.c: Added ADDALERT reactions noticeuser and msguser
+	to go with trace reactions notice and privmsg.
+
 2009-11-29  Matthew Beeching  <jobe@mdbnmet.co.uk>
 
 	* src/nickserv.c: Rewrote parts of loc_auth() to get it working
