@@ -4108,6 +4108,16 @@ static NICKSERV_FUNC(cmd_merge)
             string_list_append(hi_to->masks, strdup(mask));
     }
 
+    /* Merge the SSL fingerprints. */
+    for (ii=0; ii<hi_from->sslfps->used; ii++) {
+        char *sslfp = hi_from->sslfps->list[ii];
+        for (jj=0; jj<hi_to->sslfps->used; jj++)
+            if (!irccasecmp(hi_to->sslfps->list[jj], sslfp))
+                break;
+        if (jj==hi_to->sslfps->used) /* Nothing from the "to" handle covered this sslfp, so add it. */
+            string_list_append(hi_to->sslfps, strdup(sslfp));
+    }
+
     /* Merge the ignores. */
     for (ii=0; ii<hi_from->ignores->used; ii++) {
         char *ignore = hi_from->ignores->list[ii];

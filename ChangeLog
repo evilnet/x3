@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-12-02  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Added merging SSL fingerprint lists during
+	account merging.
+
 2009-12-01  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/opserv.c: Added ADDALERT reactions noticeuser and msguser
