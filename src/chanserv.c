@@ -6998,10 +6998,6 @@ channel_multiple_option(enum charOption option, struct userNode *user, struct ch
 
 static MODCMD_FUNC(chan_opt_automode)
 {
-    if(check_user_level(channel, user, lvlInviteMe, 1, 0))
-    {
-        reply("CSMSG_LOW_CHANNEL_ACCESS", channel->name);
-    }
     return channel_multiple_option(chAutomode, CSFUNC_ARGS);
 }
 

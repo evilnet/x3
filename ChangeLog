@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-12-06  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Removed seemingly unnecessary "cannot invite"
+	warning from chan_opt_automode.
+
 2009-12-02  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Added merging SSL fingerprint lists during
