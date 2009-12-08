@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-12-09  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	src/nickserv.c: Shuffle the auto oper functions around to fix a
+	desync issue.
+
+	src/proto-p10.c: Ignore PRIV_NONE within the first 5 seconds of
+	a client's connection. Temp fix for now.
+
 2009-12-06  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Removed seemingly unnecessary "cannot invite"

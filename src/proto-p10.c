@@ -1771,7 +1771,8 @@ static CMD_FUNC(cmd_privs)
             for (tmp = x3_strtok(&p, argv[i], ","); tmp;
                  tmp = x3_strtok(&p, NULL, ",")) {
                 if (!strcmp(tmp, "PRIV_NONE")) {
-                    clear_privs(user);
+                    if (now > user->timestamp+5)
+                        clear_privs(user);
                     break;
                 } else
                     client_modify_priv_by_name(user, tmp, what);

@@ -2191,8 +2191,6 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
 
 static NICKSERV_FUNC(cmd_auth)
 {
-    char *privv[MAXNUMPARAMS];
-    int privc, i;
     int pw_arg, used, maxlogins;
     struct handle_info *hi;
     const char *passwd;
@@ -2389,37 +2387,6 @@ static NICKSERV_FUNC(cmd_auth)
     if(HANDLE_FLAGGED(hi, AUTOHIDE))
         irc_umode(user, "+x");
 
-    if(!IsOper(user)) /* If they arnt already opered.. */
-    {
-        /* Auto Oper users with Opserv access -Life4Christ 8-10-2005  */
-        if( nickserv_conf.auto_admin[0] && hi->opserv_level >= opserv_conf_admin_level())
-        {
-            if (nickserv_conf.auto_admin_privs[0]) {
-                irc_raw_privs(user, nickserv_conf.auto_admin_privs);
-                privc = split_line(strdup(nickserv_conf.auto_admin_privs), false, MAXNUMPARAMS, privv);
-                for (i = 0; i < privc; i++) {
-                    client_modify_priv_by_name(user, privv[i], 1);
-                }
-            }
-            irc_umode(user,nickserv_conf.auto_admin);
-            reply("NSMSG_AUTO_OPER_ADMIN");
-        }
-        else if (nickserv_conf.auto_oper[0] && hi->opserv_level > 0)
-        {
-            if (nickserv_conf.auto_oper_privs[0]) {
-                irc_raw_privs(user, nickserv_conf.auto_oper_privs);
-                privc = split_line(strdup(nickserv_conf.auto_oper_privs), false, MAXNUMPARAMS, privv);
-                for (i = 0; i < privc; i++) {
-                    client_modify_priv_by_name(user, privv[i], 1);
-                }
-            }
-            irc_umode(user,nickserv_conf.auto_oper);
-            reply("NSMSG_AUTO_OPER");
-        }
-    }
-
-   /* Wipe out the pass for the logs */
-
     if (!hi->masks->used) {
         irc_in_addr_t ip;
         string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
@@ -2427,6 +2394,7 @@ static NICKSERV_FUNC(cmd_auth)
             string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_BYIP|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
     }
 
+    /* Wipe out the pass for the logs */
     argv[pw_arg] = "****";
     return 1;
 }
@@ -5330,18 +5298,37 @@ nickserv_db_cleanup(UNUSED_ARG(void* extra))
 }
 
 void handle_loc_auth_oper(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra)) {
+    char *privv[MAXNUMPARAMS];
+    int privc, i;
+
     if (!*nickserv_conf.auto_oper || !user->handle_info)
         return;
 
     if (!IsOper(user)) {
         if (*nickserv_conf.auto_admin && user->handle_info->opserv_level >= opserv_conf_admin_level()) {
+            if (nickserv_conf.auto_admin_privs[0]) {
+                irc_raw_privs(user, nickserv_conf.auto_admin_privs);
+                privc = split_line(strdup(nickserv_conf.auto_admin_privs), false, MAXNUMPARAMS, privv);
+                for (i = 0; i < privc; i++) {
+                    client_modify_priv_by_name(user, privv[i], 1);
+                }
+            }
             irc_umode(user, nickserv_conf.auto_admin);
             irc_sno(0x1, "%s (%s@%s) is now an IRC Administrator",
                     user->nick, user->ident, user->hostname);
+            send_message(user, nickserv, "NSMSG_AUTO_OPER_ADMIN");
         } else if (*nickserv_conf.auto_oper && user->handle_info->opserv_level) {
+            if (nickserv_conf.auto_oper_privs[0]) {
+                irc_raw_privs(user, nickserv_conf.auto_oper_privs);
+                privc = split_line(strdup(nickserv_conf.auto_oper_privs), false, MAXNUMPARAMS, privv);
+                for (i = 0; i < privc; i++) {
+                    client_modify_priv_by_name(user, privv[i], 1);
+                }
+            }
             irc_umode(user, nickserv_conf.auto_oper);
             irc_sno(0x1, "%s (%s@%s) is now an IRC Operator",
                     user->nick, user->ident, user->hostname);
+            send_message(user, nickserv, "NSMSG_AUTO_OPER");
         }
     }
 }
