@@ -1194,6 +1194,38 @@ emb_service_register(UNUSED_ARG(PyObject* self_), PyObject* args) {
     return pyobj_from_service(service_register(user));
 }
 
+size_t logs_size = 0;
+static struct log_type **logs_list = NULL;
+
+PyDoc_STRVAR(emb_log_register_type__doc__,
+        "registers a log source to write event data to.");
+static PyObject* emb_log_register_type(UNUSED_ARG(PyObject *self), PyObject* args) {
+    const char* logName;
+    const char* defaultLog;
+    struct log_type* log;
+    struct log_type** newlogs;
+
+    if (!PyArg_ParseTuple(args, "ss", &logName, &defaultLog))
+        return NULL;
+
+    newlogs = realloc(logs_list, (logs_size+1)*sizeof(struct log_type*));
+    if (newlogs == NULL) {
+        PyErr_SetString(PyExc_Exception, "unable to allocate memory for log structures. aborting.");
+        return NULL;
+    }
+    logs_list = newlogs;
+
+    log = log_register_type(logName, defaultLog);
+    if (log == NULL) {
+        PyErr_SetString(PyExc_Exception, "unable to register log");
+        return NULL;
+    }
+
+    logs_list[logs_size++] = log;
+
+    return Py_BuildValue("O", PyCObject_FromVoidPtr(log, NULL));
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, emb_dump__doc__},
@@ -1223,6 +1255,10 @@ static PyMethodDef EmbMethods[] = {
 //
     {"timeq_add", emb_timeq_add, METH_VARARGS, emb_timeq_add__doc__},
     {"timeq_del", emb_timeq_del, METH_VARARGS, emb_timeq_del__doc__},
+
+    /* module registration methods */
+    {"log_register_type", emb_log_register_type, METH_VARARGS,
+        emb_log_register_type__doc__},
 
     /* Information gathering methods */
     {"get_user", emb_get_user, METH_VARARGS, emb_get_user__doc__},
