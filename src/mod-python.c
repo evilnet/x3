@@ -1226,6 +1226,28 @@ static PyObject* emb_log_register_type(UNUSED_ARG(PyObject *self), PyObject* arg
     return Py_BuildValue("O", PyCObject_FromVoidPtr(log, NULL));
 }
 
+PyDoc_STRVAR(emb_module_register__doc__, "registers a module");
+PyObject* emb_module_register(UNUSED_ARG(PyObject* self), PyObject* args) {
+    PyObject* pylog;
+    char const *name, *helpfile;
+    struct log_type* log;
+    struct module* mod;
+
+    if (!PyArg_ParseTuple(args, "sOs", &name, &pylog, &helpfile))
+        return NULL;
+
+    log = PyCObject_AsVoidPtr(pylog);
+
+    mod = module_register(name, log, helpfile, NULL);
+
+    if (mod == NULL) {
+        PyErr_SetString(PyExc_Exception, "unable to register module");
+        return NULL;
+    }
+
+    return Py_BuildValue("O", PyCObject_FromVoidPtr(mod, NULL));
+}
+
 static PyMethodDef EmbMethods[] = {
     /* Communication methods */
     {"dump", emb_dump, METH_VARARGS, emb_dump__doc__},
@@ -1259,6 +1281,8 @@ static PyMethodDef EmbMethods[] = {
     /* module registration methods */
     {"log_register_type", emb_log_register_type, METH_VARARGS,
         emb_log_register_type__doc__},
+    {"module_register", emb_module_register, METH_VARARGS,
+        emb_module_register__doc__},
 
     /* Information gathering methods */
     {"get_user", emb_get_user, METH_VARARGS, emb_get_user__doc__},

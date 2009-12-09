@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-12-09  Henrik Stuart  <evilnet@hstuart.dk>
 
+	src/mod-python.c: add support for module_register.
+
+2009-12-09  Henrik Stuart  <evilnet@hstuart.dk>
+
 	src/mod-python.c: add support for log_register_type.
 
 2009-12-09  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
