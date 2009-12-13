@@ -314,13 +314,14 @@ char **make_object_vals()
     if(object_vals)
        free(object_vals);
 
-    object_vals = malloc(sizeof( *object_vals ) * nickserv_conf.ldap_object_classes->used);
+    object_vals = malloc(sizeof( *object_vals ) * nickserv_conf.ldap_object_classes->used+1);
 
     for(y = 0; y < nickserv_conf.ldap_object_classes->used; y++) {
         object_vals[y] = nickserv_conf.ldap_object_classes->list[y];
     }
     object_vals[y] = NULL;
     return object_vals;
+    /* NOTE: The return value of this is only good until the next call to it. */
 }
 
 char *make_password(const char *crypted)
@@ -352,6 +353,13 @@ LDAPMod **make_mods_add(const char *account, const char *password, const char *e
     /* TODO: take this from nickserv_conf.ldap_add_objects */
     LDAPMod **mods;
     static char **object_vals;
+
+    account_vals[0] = NULL;
+    account_vals[1] = NULL;
+    password_vals[0] = NULL;
+    password_vals[1] = NULL;
+    email_vals[0] = NULL;
+    email_vals[1] = NULL;
     object_vals = make_object_vals();
 
     account_vals[0] = (char *) account;
