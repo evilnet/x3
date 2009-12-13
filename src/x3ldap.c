@@ -722,7 +722,7 @@ int ldap_delfromgroup(char *account, const char *group)
 void ldap_close()
 {
    admin_bind = false;
-   ldap_unbind(ld);
+   ldap_unbind_ext(ld, NULL, NULL);
 }
 
 #endif
