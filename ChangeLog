@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-12-12  Alex Schumann  <rubin@afternet.org>
+
+	src/x3ldap.c: Fix crash bug with ldap adding users. Deal with some warnings.
+
+	src/x3ldap.h: Deal with some warnings.
+
 2009-12-09  Henrik Stuart  <evilnet@hstuart.dk>
 
 	src/mod-python.c: add support for module_register.
