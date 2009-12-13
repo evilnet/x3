@@ -24,13 +24,13 @@
 #include "nickserv.h"
 int ldap_do_init();
 
-unsigned int ldap_check_auth(char *account, char *pass);
+unsigned int ldap_check_auth(const char *account, const char *pass);
 int ldap_do_add(const char *account, const char *password, const char *email);
 int ldap_rename_account(char *oldaccount, char *newaccount);
 int ldap_delete_account(char *account);
 int ldap_do_oslevel(const char *account, int level, int oldlevel);
 int ldap_do_modify(const char *account, const char *password, const char *email);
-int ldap_get_user_info(char *account, char **email);
+int ldap_get_user_info(const char *account, char **email);
 int ldap_delfromgroup(char *account, const char *group);
 int ldap_add2group(char *account, const char *group);
 
