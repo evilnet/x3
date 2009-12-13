@@ -112,7 +112,7 @@ int ldap_do_admin_bind()
 }
 
 
-unsigned int ldap_check_auth( char *account, char *pass)
+unsigned int ldap_check_auth( const char *account, const char *pass)
 {
    char buff[MAXLEN];
 
@@ -167,7 +167,7 @@ int ldap_search_user(char *account, LDAPMessage **entry)
  * 0 or 2+ entries are matched, or the proper ldap error
  * code for other errors.
  */ 
-int ldap_get_user_info(char *account, char **email) 
+int ldap_get_user_info(const char *account, char **email) 
 {
     int rc;
     char **value;
