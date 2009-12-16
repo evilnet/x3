@@ -984,9 +984,9 @@ ldIrc_audit(struct logDestination *dest_, UNUSED_ARG(struct log_type *type), str
     struct logDest_irc *dest = (struct logDest_irc*)dest_;
 
     if (entry->channel_name) {
-        send_target_message(4, dest->target, entry->bot, "(%s", strchr(strchr(entry->default_desc, ' '), ':')+1);
+        send_target_message(5, dest->target, entry->bot, "(%s", strchr(strchr(entry->default_desc, ' '), ':')+1);
     } else {
-        send_target_message(4, dest->target, entry->bot, "%s", strchr(entry->default_desc, ')')+2);
+        send_target_message(5, dest->target, entry->bot, "%s", strchr(entry->default_desc, ')')+2);
     }
 }
 
@@ -995,7 +995,7 @@ ldIrc_module(struct logDestination *dest_, struct log_type *type, enum log_sever
     struct logDest_irc *dest = (struct logDest_irc*)dest_;
     extern struct userNode *opserv;
 
-    send_target_message(4, dest->target, opserv, "%s %s: %s\n", type->name, log_severity_names[sev], message);
+    send_target_message(5, dest->target, opserv, "%s %s: %s\n", type->name, log_severity_names[sev], message);
 }
 
 static struct logDest_vtable ldIrc_vtbl = {

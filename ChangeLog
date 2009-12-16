@@ -3,6 +3,10 @@ X3 ChangeLog
 
 2009-12-17  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
+	* src/log.c: Revert message type to 5.
+
+2009-12-17  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
 	* src/mod-track.c: Fixed a crash with net rider kicks.
 
 2009-12-12  Alex Schumann  <rubin@afternet.org>
