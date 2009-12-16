@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-12-17  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/mod-track.c: Fixed a crash with net rider kicks.
+
 2009-12-12  Alex Schumann  <rubin@afternet.org>
 
 	src/x3ldap.c: Fix crash bug with ldap adding users. Deal with some warnings.
