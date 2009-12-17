@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2009-12-18  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* x3.conf.example: Added type 8 for Nefarious 1.3.0.
+
+	* src/proto-p10.c: Only use the old cloak.c code if type 7 is given.
+	If type 8 is given then the cloaked hosts are picked up during burst
+	(+cC)
+
 2009-12-17  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/log.c: Revert message type to 5.

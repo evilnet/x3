@@ -3077,7 +3077,7 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
 
     tstr = conf_get_data("server/type", RECDB_QSTRING);
     type = atoi(tstr);
-    if (type > 6) {
+    if (type == 7) {
       if (irc_in_addr_is_ipv4(uNode->ip)) {
         make_virtip((char*)irc_ntoa(&uNode->ip), (char*)irc_ntoa(&uNode->ip), uNode->cryptip);
         make_virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);

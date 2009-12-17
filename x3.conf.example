@@ -49,17 +49,18 @@
      * things like bans, where it should not show the user's real hostname. */
     "hidden_host_type" "1"; // change this to 2 if you use Nefarious's style 2 host hiding.
     "key1" "45432"; // Set these key values to the network KEY values you use
-    "key2" "76934"; // for host hiding style 2.
-    "key3" "98336";
+    "key2" "76934"; // for host hiding style 2. If you are using Nefarious 1.3.0 (type 8)
+    "key3" "98336"; // then these are ignored.
     "prefix" "AfterNET"; // If you use style 2 then this is the name that is prefixed to hosts.
     "numeric" "51"; // hint: If you get collisions on link, CHANGE THIS.
-    /* Type handles some changes in nefarious 1.0 (was 0.5.0)
+    /* Type handles some changes in Nefarious from version to version.
      * 4 - nefarious 0.4.x and other ircds
      * 5 - nefarious 1.0.x and higher (Obselete)
-     * 6 - nefarious 1.1.0 and higher (Branch Revision)
-     * 7 - nefarious 1.2.0 and higher (Trunk Revsions)
+     * 6 - nefarious 1.1.0 and higher (Obselete)
+     * 7 - nefarious 1.2.0 and higher (Branch Revsion)
+     * 8 - nefarious 1.3.0 and higher (Trunk Revsions)
      */
-    "type" "6";
+    "type" "8";
     "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.
     "max_users" "256"; // You can save a little memory by setting this to a lower value.
     "force_n2k" "1"; // Use extended (5-digit) numnick for self, even if 3 are possible.
