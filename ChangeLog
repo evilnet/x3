@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-01-07  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* src/chanserv.c: 8ball will now accept "what colour".
+
 2009-12-18  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* x3.conf.example: Added type 8 for Nefarious 1.3.0.
