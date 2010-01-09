@@ -1,6 +1,19 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-01-09  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
+
+	* Srvx sync. Author: Michael Poole.
+
+	* src/ioset.c (ioset_listen): Linux -- reasonably -- requires that
+	SO_REUSEADDR be set on a socket before binding it to an in-use socket.
+	So do that.
+
+	* src/sar.c: Convert "struct sockaddr_storage" to "void *" to comply
+	with C99's strict(er) aliasing rules.  Allocate off the stack or
+	heap, as appropriate.  Add new function sar_free_nameserver() to
+	clean up the heap-allocated data.
+
 2010-01-07  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* src/chanserv.c: 8ball will now accept "what colour".
