@@ -1179,6 +1179,11 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
             send_message(user, nickserv, "NSMSG_REGISTER_HN_SUCCESS");
           }
         }
+        else {
+          if (is_registerable_nick(handle)) {
+            register_nick(handle, hi);
+          }
+        }
     }
     if (settee && (user != settee)) {
       if(user) {
@@ -2281,7 +2286,7 @@ static NICKSERV_FUNC(cmd_auth)
             * create the account.
             */
              char *mask;
-             if(!(hi = nickserv_register(user, NULL, argv[1], argv[2], 0))) {
+             if(!(hi = nickserv_register(user, user, argv[1], argv[2], 0))) {
                 reply("NSMSG_UNABLE_TO_ADD");
                 return 0; /* couldn't add the user for some reason */
              }

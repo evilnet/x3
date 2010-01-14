@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-01-14  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Added support for LDAP auth registering initial
+	nick when nick registration is enabled.
+
 2010-01-09  Neil Spierling  <sirvulcan@sirvulcan.co.nz>
 
 	* Srvx sync. Author: Michael Poole.
