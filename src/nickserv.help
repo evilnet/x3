@@ -551,12 +551,12 @@
         "$uSee Also:$u accountinfo, nickinfo, userinfo"
         );
 };
-"SET LANGUAGE" ("/msg $S SET LANGUAGE <langname>",
+"SET LANGUAGE" ("/msg $N SET LANGUAGE <langname>",
         "Sets the language that $S and other services will use when sending you messages.",
         "If a particular message is not available in your language, it will use the closest match it has.",
         "Supported languages are: ${modcmd:languages}",
         "$uSee Also:$u set");
-"SET STYLE" ("/msg $S SET STYLE <style>",
+"SET STYLE" ("/msg $N SET STYLE <style>",
         "Sets the output style that $S and other services will use when sending you messages.",
         "The style can be:.",
         "   Normal    - userlist has ----- seprators and does not show numeric levels.",

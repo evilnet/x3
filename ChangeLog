@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-02-05  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.help: Fix for a minor documentation error where $S
+	was used instead of $N.
+
 2010-01-14  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Added support for LDAP auth registering initial
