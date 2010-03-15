@@ -3,7 +3,7 @@ dnl Process this file with autoconf to create a configure script.
 dnl General initialization.
 AC_REVISION([$Id$])
 AC_PREREQ(2.61)
-AC_INIT([X3],[1.7],[evilnet-devel@lists.sourceforge.net])
+AC_INIT([X3],[1.8],[evilnet-devel@lists.sourceforge.net])
 CODENAME=X3
 AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_SRCDIR(src/opserv.c)
