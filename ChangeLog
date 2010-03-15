@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-03-13  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/hash.h: Changed HOSTLEN to match Nefarious.
+
 2010-03-03  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Fixed bug in P10 B64 IPv6 parsing where the
