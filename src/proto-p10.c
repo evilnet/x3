@@ -520,7 +520,7 @@ irc_p10_pton(irc_in_addr_t *ip, const char *input)
         do {
             if (*input == '_') {
                 unsigned int left;
-                for (left = (25 - strlen(input)) / 3; left; left--)
+                for (left = (25 - strlen(input)) / 3 - pos; left; left--)
                     ip->in6[pos++] = 0;
                 input++;
             } else {
