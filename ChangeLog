@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-03-15  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* ChangeLog: Abusing to figure out mercurial a bit.
+
 2010-02-05  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.help: Fix for a minor documentation error where $S
