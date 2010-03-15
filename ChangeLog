@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-02-27  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Added message handlers for ZLINE and REMOVE
+	to ignore both messages
+
 2010-02-05  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.help: Fix for a minor documentation error where $S

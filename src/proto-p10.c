@@ -80,6 +80,7 @@
 #define CMD_PROTO               "PROTO"
 #define CMD_QUIT                "QUIT"
 #define CMD_REHASH              "REHASH"
+#define CMD_REMOVE		"REMOVE"
 #define CMD_RESET		"RESET"
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
@@ -121,6 +122,7 @@
 #define CMD_WHO                 "WHO"
 #define CMD_WHOIS               "WHOIS"
 #define CMD_WHOWAS              "WHOWAS"
+#define CMD_ZLINE		"ZLINE"
 
 /* Tokenized commands. */
 #define TOK_ACCOUNT		"AC"
@@ -177,6 +179,7 @@
 #define TOK_PROTO               "PROTO"
 #define TOK_QUIT                "Q"
 #define TOK_REHASH              "REHASH"
+#define TOK_REMOVE		"RM"
 #define TOK_RESET		"RESET"
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
@@ -218,6 +221,7 @@
 #define TOK_WHO                 "H"
 #define TOK_WHOIS               "W"
 #define TOK_WHOWAS              "X"
+#define TOK_ZLINE		"ZL"
 
 /* Protocol messages; aliased to full commands or tokens depending
    on compile-time configuration. ircu prefers tokens WITH THE
@@ -283,6 +287,7 @@
 #define P10_PROTO               TYPE(PROTO)
 #define P10_QUIT                TYPE(QUIT)
 #define P10_REHASH              TYPE(REHASH)
+#define P10_REMOVE		TYPE(REMOVE)
 #define P10_RESET		TYPE(RESET)
 #define P10_RESTART             TYPE(RESTART)
 #define P10_RPING               TYPE(RPING)
@@ -323,6 +328,7 @@
 #define P10_WHO                 TYPE(WHO)
 #define P10_WHOIS               TYPE(WHOIS)
 #define P10_WHOWAS              TYPE(WHOWAS)
+#define P10_ZLINE		TYPE(ZLINE)
 #define P10_EXEMPT		TYPE(EXEMPT)
 
 /* Servers claiming to have a boot or link time before PREHISTORY
@@ -2700,6 +2706,11 @@ init_parse(void)
     /* We have reliable clock!  Always!  Wraaa! */
     dict_insert(irc_func_dict, CMD_SETTIME, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SETTIME, cmd_dummy);
+    /* Ignore ZLINE/ZL/REMOVE/RM */
+    dict_insert(irc_func_dict, CMD_ZLINE, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_ZLINE, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_REMOVE, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_REMOVE, cmd_dummy);
 
     /* ignore /trace and /motd commands targetted at us */
     dict_insert(irc_func_dict, TOK_TRACE, cmd_dummy);
