@@ -1253,7 +1253,7 @@ static CMD_FUNC(cmd_whois)
     else
         irc_numeric(from, RPL_WHOISUSER, "%s %s %s * :%s", who->nick, who->ident, who->hostname, who->info);
 
-    if (IsService(who) || (from == who)) {
+    if (!IsService(who) || (from == who)) {
         struct modeNode *mn;
         mlen = strlen(self->name) + strlen(from->nick) + 12 + strlen(who->nick);
         len = 0;
