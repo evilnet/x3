@@ -403,7 +403,7 @@ webtv_init(void)
     WB_LOG = log_register_type("WebTV", "file:webtv.log");
 
     conf_register_reload(webtv_conf_read);
-    reg_exit_func(webtv_cleanup);
+    reg_exit_func(webtv_cleanup, NULL);
 
     webtv_module = module_register("WebTV", WB_LOG, "mod-webtv.help", NULL);
     modcmd_register(webtv_module, "nick",  cmd_nick,  1, 0, NULL);
