@@ -86,7 +86,7 @@ static const struct message_entry msgtab[] = {
     { "MSG_INVALID_FACILITY", "$b%s$b is an invalid log facility." },
     { "MSG_INVALID_SEVERITY", "$b%s$b is an invalid severity level." },
 
-    { "LAST_RESULTS",     "$b%s$b] %s %s $b%s$b %s" },
+    { "LAST_RESULTS",     "$b%s]$b %s %s $b%s$b %s" },
     { "LAST_ERROR",       "%s:%s" },
     { "LAST_COMMAND_LOG", "Channel Events for %s" },
     { "LAST_LINE",        "----------------------------------------" },
@@ -1063,8 +1063,12 @@ int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *
    char   serv[NICKLEN+1];
    char   buf[MAXLEN];
    char   myservc[MAXLEN];
+   char   mynuhbuf[MAXLEN];
    char*  mychan;
    char*  mynuh;
+   char*  mynick;
+   char*  myacc;
+   char*  mynuhtemp;
    char* mycommand;
    char*  myrest;
    char*  datestr;
@@ -1077,7 +1081,16 @@ int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *
 
    datestr =   (char *) mysep(&LogLine, "]");
    mywho =     (char *) mysep(&LogLine, " ");
-   mynuh =     (char *) mysep(&LogLine, " ");
+   if (user->handle_info && ((user->handle_info->opserv_level > 0) || IsOper(user)))
+      mynuh =   (char *) mysep(&LogLine, " ");
+   else {
+      mynick =    (char *) mysep(&LogLine, "!");
+      mynuhtemp = (char *) mysep(&LogLine, "@");
+      mynuhtemp = (char *) mysep(&LogLine, ":");
+      myacc =     (char *) mysep(&LogLine, " ");
+      sprintf(mynuhbuf, "%s:%s", mynick, myacc);
+      mynuh = mynuhbuf;
+   }
    mycommand = (char *) mysep(&LogLine, " ");
    myrest =    (char *) mysep(&LogLine, "\0");
    myserva =   (char *) mysep(&mywho, ":");

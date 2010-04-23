@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-04-23  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/log.c: Modified X3.last to only show host and ident to
+	opers.
+
 2010-03-15  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* ChangeLog: Abusing to figure out mercurial a bit.
