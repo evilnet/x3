@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-04-29  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/opserv.c: Fix for possible bug in opserv_join_check().
+
 2010-04-23  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/log.c: Modified X3.last to only show host and ident to

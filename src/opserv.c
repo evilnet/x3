@@ -2959,7 +2959,9 @@ opserv_join_check(struct modeNode *mNode, UNUSED_ARG(void *extra))
     if (IsService(user))
         return 0;
 
-    dict_foreach(opserv_channel_alerts, alert_check_user, user);
+    /* Check for alerts, and stop if we find one that kills them. */
+    if (dict_foreach(opserv_user_alerts, alert_check_user, user))
+        return 0;
 
     if (opserv && channel->bad_channel) {
         opserv_debug("Found $b%s$b in bad-word channel $b%s$b; removing the user.", user->nick, channel->name);
