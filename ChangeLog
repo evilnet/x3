@@ -3,6 +3,11 @@ X3 ChangeLog
 
 2010-04-29  Matthew Beeching  <jobe@mdbnet.co.uk>
 
+	* src/opserv.c: Minor typo in previous commit where returning 0
+	when it should have been 1 from opserv_join_check().
+
+2010-04-29  Matthew Beeching  <jobe@mdbnet.co.uk>
+
 	* src/opserv.c: Fix for possible bug in opserv_join_check().
 
 2010-04-23  Matthew Beeching  <jobe@mdbnet.co.uk>
