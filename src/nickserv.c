@@ -4193,6 +4193,7 @@ struct nickserv_discrim {
     const char *hostmask;
     const char *handlemask;
     const char *emailmask;
+    const char *titlemask;
 #ifdef WITH_LDAP
     unsigned int inldap;
 #endif
@@ -4305,6 +4306,12 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
             } else {
                 discrim->emailmask = argv[i];
             }
+        } else if (!irccasecmp(argv[i], "title")) {
+            if (!irccasecmp(argv[++i], "*")) {
+                discrim->titlemask = 0;
+            } else {
+                discrim->titlemask = argv[i];
+            }
         } else if (!irccasecmp(argv[i], "access")) {
             const char *cmp = argv[++i];
             if (cmp[0] == '<') {
@@ -4371,6 +4378,11 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
 static int
 nickserv_discrim_match(struct nickserv_discrim *discrim, struct handle_info *hi)
 {
+    char *title = NULL;
+
+    if (hi->fakehost && (hi->fakehost[0] == '.'))
+      title = hi->fakehost + 1;
+
     if (((discrim->flags_on & hi->flags) != discrim->flags_on)
         || (discrim->flags_off & hi->flags)
         || (discrim->min_registered > hi->registered)
@@ -4378,6 +4390,7 @@ nickserv_discrim_match(struct nickserv_discrim *discrim, struct handle_info *hi)
         || (discrim->lastseen < (hi->users?now:hi->lastseen))
         || (discrim->handlemask && !match_ircglob(hi->handle, discrim->handlemask))
         || (discrim->emailmask && (!hi->email_addr || !match_ircglob(hi->email_addr, discrim->emailmask)))
+        || (discrim->titlemask && (!title || !match_ircglob(title, discrim->titlemask)))
         || (discrim->min_level > hi->opserv_level)
         || (discrim->max_level < hi->opserv_level)
         || (discrim->min_karma > hi->karma)
