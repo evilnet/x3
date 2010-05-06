@@ -601,6 +601,7 @@
         "  PRINT      - Print matching accounts",
         "  COUNT      - Count matching accounts",
         "  UNREGISTER - Unregister matching accounts",
+        "  SET        - Set the SETWHAT criteria to the SETVALUE criteria",
         "$uSee Also:$u search, search criteria");
 "SEARCH CRITERIA" {
         "/services/nickserv/disable_nicks" (
@@ -619,6 +620,8 @@
 	"  HOSTMASK LASTQUIT - Account matches if this mask \"covers\" user was last seen using",
         "  HOSTMASK   - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
         "  ACCESS     - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
+        "  SETWHAT    - Required for SET action, this is the setting to set",
+        "  SETVALUE   - Required for SET action, this is the etting value to set",
         "$uSee Also:$u search, search action"
         );
         "!/services/nickserv/disable_nicks" (
@@ -638,6 +641,8 @@
         "  HOSTMASK LASTQUIT - Account matches if this mask \"covers\" user was last seen using",
         "  HOSTMASK   - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
         "  ACCESS     - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
+        "  SETWHAT    - Required for SET action, this is the setting to set",
+        "  SETVALUE   - Required for SET action, this is the etting value to set",
         "$uSee Also:$u search, search action"
         );
 };

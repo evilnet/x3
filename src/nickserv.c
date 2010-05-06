@@ -1,3 +1,4 @@
+
 /* nickserv.c - Nick/authentication service
  * Copyright 2000-2004 srvx Development Team
  *
@@ -143,7 +144,7 @@
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
 #define NICKSERV_FUNC(NAME) MODCMD_FUNC(NAME)
-#define OPTION_FUNC(NAME) int NAME(UNUSED_ARG(struct svccmd *cmd), struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), unsigned int argc, char *argv[])
+#define OPTION_FUNC(NAME) int NAME(UNUSED_ARG(struct svccmd *cmd), struct userNode *user, struct handle_info *hi, UNUSED_ARG(unsigned int override), int noreply, unsigned int argc, char *argv[])
 typedef OPTION_FUNC(option_func_t);
 
 DEFINE_LIST(handle_info_list, struct handle_info*)
@@ -3079,7 +3080,7 @@ set_list(struct svccmd *cmd, struct userNode *user, struct handle_info *hi, int 
     /* Do this so options are presented in a consistent order. */
     for (i = 0; i < ArrayLength(set_display); ++i)
 	if ((opt = dict_find(nickserv_opt_dict, set_display[i], NULL)))
-	    opt(cmd, user, hi, override, 0, NULL);
+	    opt(cmd, user, hi, override, 0, 0, NULL);
     reply("NSMSG_SETTING_LIST_END");
 }
 
@@ -3097,7 +3098,7 @@ static NICKSERV_FUNC(cmd_set)
 	reply("NSMSG_INVALID_OPTION", argv[1]);
         return 0;
     }
-    return opt(cmd, user, hi, 0, argc-1, argv+1);
+    return opt(cmd, user, hi, 0, 0, argc-1, argv+1);
 }
 
 static NICKSERV_FUNC(cmd_oset)
@@ -3120,7 +3121,7 @@ static NICKSERV_FUNC(cmd_oset)
         return 0;
     }
 
-    return opt(cmd, user, hi, 1, argc-2, argv+2);
+    return opt(cmd, user, hi, 1, 0, argc-2, argv+2);
 }
 
 static OPTION_FUNC(opt_info)
@@ -3136,7 +3137,8 @@ static OPTION_FUNC(opt_info)
     }
 
     info = hi->infoline ? hi->infoline : user_find_message(user, "MSG_NONE");
-    reply("NSMSG_SET_INFO", info);
+    if (!(noreply))
+        reply("NSMSG_SET_INFO", info);
     return 1;
 }
 
@@ -3150,7 +3152,8 @@ static OPTION_FUNC(opt_width)
     else if (hi->screen_width > MAX_LINE_SIZE)
         hi->screen_width = MAX_LINE_SIZE;
 
-    reply("NSMSG_SET_WIDTH", hi->screen_width);
+    if (!(noreply))
+        reply("NSMSG_SET_WIDTH", hi->screen_width);
     return 1;
 }
 
@@ -3164,7 +3167,8 @@ static OPTION_FUNC(opt_tablewidth)
     else if (hi->screen_width > MAX_LINE_SIZE)
         hi->table_width = MAX_LINE_SIZE;
 
-    reply("NSMSG_SET_TABLEWIDTH", hi->table_width);
+    if (!(noreply))
+        reply("NSMSG_SET_TABLEWIDTH", hi->table_width);
     return 1;
 }
 
@@ -3176,12 +3180,14 @@ static OPTION_FUNC(opt_color)
         else if (disabled_string(argv[1]))
 	    HANDLE_CLEAR_FLAG(hi, MIRC_COLOR);
 	else {
-	    reply("MSG_INVALID_BINARY", argv[1]);
+            if (!(noreply))
+	        reply("MSG_INVALID_BINARY", argv[1]);
 	    return 0;
 	}
     }
 
-    reply("NSMSG_SET_COLOR", user_find_message(user, HANDLE_FLAGGED(hi, MIRC_COLOR) ? "MSG_ON" : "MSG_OFF"));
+    if (!(noreply))
+        reply("NSMSG_SET_COLOR", user_find_message(user, HANDLE_FLAGGED(hi, MIRC_COLOR) ? "MSG_ON" : "MSG_OFF"));
     return 1;
 }
 
@@ -3193,12 +3199,14 @@ static OPTION_FUNC(opt_privmsg)
         else if (disabled_string(argv[1]))
 	    HANDLE_CLEAR_FLAG(hi, USE_PRIVMSG);
 	else {
-	    reply("MSG_INVALID_BINARY", argv[1]);
+            if (!(noreply))
+	        reply("MSG_INVALID_BINARY", argv[1]);
 	    return 0;
 	}
     }
 
-    reply("NSMSG_SET_PRIVMSG", user_find_message(user, HANDLE_FLAGGED(hi, USE_PRIVMSG) ? "MSG_ON" : "MSG_OFF"));
+    if (!(noreply))
+        reply("NSMSG_SET_PRIVMSG", user_find_message(user, HANDLE_FLAGGED(hi, USE_PRIVMSG) ? "MSG_ON" : "MSG_OFF"));
     return 1;
 }
 
@@ -3210,12 +3218,14 @@ static OPTION_FUNC(opt_autohide)
         else if (disabled_string(argv[1]))
 	    HANDLE_CLEAR_FLAG(hi, AUTOHIDE);
 	else {
-	    reply("MSG_INVALID_BINARY", argv[1]);
+            if (!(noreply))
+	        reply("MSG_INVALID_BINARY", argv[1]);
 	    return 0;
 	}
     }
 
-    reply("NSMSG_SET_AUTOHIDE", user_find_message(user, HANDLE_FLAGGED(hi, AUTOHIDE) ? "MSG_ON" : "MSG_OFF"));
+    if (!(noreply))
+        reply("NSMSG_SET_AUTOHIDE", user_find_message(user, HANDLE_FLAGGED(hi, AUTOHIDE) ? "MSG_ON" : "MSG_OFF"));
     return 1;
 }
 
@@ -3249,7 +3259,8 @@ static OPTION_FUNC(opt_style)
         style = "Normal";
     }
 
-    reply("NSMSG_SET_STYLE", style);
+    if (!(noreply))
+        reply("NSMSG_SET_STYLE", style);
     return 1;
 }
 
@@ -3265,7 +3276,8 @@ static OPTION_FUNC(opt_announcements)
         else if (!strcmp(argv[1], "?") || !irccasecmp(argv[1], "default"))
             hi->announcements = '?';
         else {
-            reply("NSMSG_INVALID_ANNOUNCE", argv[1]);
+            if (!(noreply))
+                reply("NSMSG_INVALID_ANNOUNCE", argv[1]);
             return 0;
         }
     }
@@ -3276,7 +3288,8 @@ static OPTION_FUNC(opt_announcements)
     case '?': choice = "default"; break;
     default: choice = "unknown"; break;
     }
-    reply("NSMSG_SET_ANNOUNCEMENTS", choice);
+    if (!(noreply))
+        reply("NSMSG_SET_ANNOUNCEMENTS", choice);
     return 1;
 }
 
@@ -3287,7 +3300,8 @@ static OPTION_FUNC(opt_password)
        return 0;
     }
     if (!override) {
-	reply("NSMSG_USE_CMD_PASS");
+        if (!(noreply))
+	    reply("NSMSG_USE_CMD_PASS");
 	return 0;
     }
 
@@ -3296,8 +3310,9 @@ static OPTION_FUNC(opt_password)
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
         if((rc = ldap_do_modify(hi->handle, crypted, NULL)) != LDAP_SUCCESS) {
-             reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
-             return 0;   
+             if (!(noreply))
+                 reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+             return 0;
         }
     }
 #endif
@@ -3305,7 +3320,8 @@ static OPTION_FUNC(opt_password)
     if (nickserv_conf.sync_log)
         SyncLog("PASSCHANGE %s %s", hi->handle, hi->passwd);
 
-    reply("NSMSG_SET_PASSWORD", "***");
+    if (!(noreply))
+        reply("NSMSG_SET_PASSWORD", "***");
     return 1;
 }
 
@@ -3315,7 +3331,8 @@ static OPTION_FUNC(opt_flags)
     unsigned int ii, flen;
 
     if (!override) {
-	reply("MSG_SETTING_PRIVILEGED", argv[0]);
+        if (!(noreply))
+	    reply("MSG_SETTING_PRIVILEGED", argv[0]);
 	return 0;
     }
 
@@ -3326,10 +3343,12 @@ static OPTION_FUNC(opt_flags)
         if (hi->flags & (1 << ii))
             flags[flen++] = handle_flags[ii];
     flags[flen] = '\0';
-    if (hi->flags)
-        reply("NSMSG_SET_FLAGS", flags);
-    else
-        reply("NSMSG_SET_FLAGS", user_find_message(user, "MSG_NONE"));
+    if (!(noreply)) {
+        if (hi->flags)
+            reply("NSMSG_SET_FLAGS", flags);
+        else
+            reply("NSMSG_SET_FLAGS", user_find_message(user, "MSG_NONE"));
+    }
     return 1;
 }
 
@@ -3338,23 +3357,27 @@ static OPTION_FUNC(opt_email)
     if (argc > 1) {
         const char *str;
         if (!valid_email(argv[1])) {
-            reply("NSMSG_BAD_EMAIL_ADDR");
+            if (!(noreply))
+                reply("NSMSG_BAD_EMAIL_ADDR");
             return 0;
         }
         if ((str = mail_prohibited_address(argv[1]))) {
-            reply("NSMSG_EMAIL_PROHIBITED", argv[1], str);
+            if (!(noreply))
+                reply("NSMSG_EMAIL_PROHIBITED", argv[1], str);
             return 0;
         }
-        if (hi->email_addr && !irccasecmp(hi->email_addr, argv[1]))
-            reply("NSMSG_EMAIL_SAME");
-        else if (!override)
+        if (hi->email_addr && !irccasecmp(hi->email_addr, argv[1])) {
+            if (!(noreply))
+                reply("NSMSG_EMAIL_SAME");
+        } else if (!override)
                 nickserv_make_cookie(user, hi, EMAIL_CHANGE, argv[1], 0);
         else {
 #ifdef WITH_LDAP
             if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
                 int rc;
                 if((rc = ldap_do_modify(hi->handle, NULL, argv[1])) != LDAP_SUCCESS) {
-                   reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
+                   if (!(noreply))
+                       reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
                    return 0;
                 }
             }
@@ -3362,10 +3385,13 @@ static OPTION_FUNC(opt_email)
             nickserv_set_email_addr(hi, argv[1]);
             if (hi->cookie)
                 nickserv_eat_cookie(hi->cookie);
-            reply("NSMSG_SET_EMAIL", visible_email_addr(user, hi));
+            if (!(noreply))
+                reply("NSMSG_SET_EMAIL", visible_email_addr(user, hi));
         }
-    } else
-        reply("NSMSG_SET_EMAIL", visible_email_addr(user, hi));
+    } else {
+        if (!(noreply))
+            reply("NSMSG_SET_EMAIL", visible_email_addr(user, hi));
+    }
     return 1;
 }
 
@@ -3375,13 +3401,15 @@ static OPTION_FUNC(opt_maxlogins)
     if (argc > 1) {
         maxlogins = strtoul(argv[1], NULL, 0);
         if ((maxlogins > nickserv_conf.hard_maxlogins) && !override) {
-            reply("NSMSG_BAD_MAX_LOGINS", nickserv_conf.hard_maxlogins);
+            if (!(noreply))
+                reply("NSMSG_BAD_MAX_LOGINS", nickserv_conf.hard_maxlogins);
             return 0;
         }
         hi->maxlogins = maxlogins;
     }
     maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
-    reply("NSMSG_SET_MAXLOGINS", maxlogins);
+    if (!(noreply))
+        reply("NSMSG_SET_MAXLOGINS", maxlogins);
     return 1;
 }
 
@@ -3393,12 +3421,14 @@ static OPTION_FUNC(opt_advanced)
         else if (disabled_string(argv[1]))
 	    HANDLE_CLEAR_FLAG(hi, ADVANCED);
 	else {
-	    reply("MSG_INVALID_BINARY", argv[1]);
+            if (!(noreply))
+	        reply("MSG_INVALID_BINARY", argv[1]);
 	    return 0;
 	}
     }
 
-    reply("NSMSG_SET_ADVANCED", user_find_message(user, HANDLE_FLAGGED(hi, ADVANCED) ? "MSG_ON" : "MSG_OFF"));
+    if (!(noreply))
+        reply("NSMSG_SET_ADVANCED", user_find_message(user, HANDLE_FLAGGED(hi, ADVANCED) ? "MSG_ON" : "MSG_OFF"));
     return 1;
 }
 
@@ -3407,18 +3437,22 @@ static OPTION_FUNC(opt_language)
     struct language *lang;
     if (argc > 1) {
         lang = language_find(argv[1]);
-        if (irccasecmp(lang->name, argv[1]))
-            reply("NSMSG_LANGUAGE_NOT_FOUND", argv[1], lang->name);
+        if (irccasecmp(lang->name, argv[1])) {
+            if (!(noreply))
+                reply("NSMSG_LANGUAGE_NOT_FOUND", argv[1], lang->name);
+        }
         hi->language = lang;
     }
-    reply("NSMSG_SET_LANGUAGE", hi->language->name);
+    if (!(noreply))
+        reply("NSMSG_SET_LANGUAGE", hi->language->name);
     return 1;
 }
 
 static OPTION_FUNC(opt_karma)
 {
     if (!override) {
-        send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
+        if (!(noreply))
+            send_message(user, nickserv, "MSG_SETTING_PRIVILEGED", argv[0]);
         return 0;
     }
 
@@ -3428,11 +3462,13 @@ static OPTION_FUNC(opt_karma)
         } else if (argv[1][0] == '-' && isdigit(argv[1][1])) {
             hi->karma -= strtoul(argv[1] + 1, NULL, 10);
         } else {
-            send_message(user, nickserv, "NSMSG_INVALID_KARMA", argv[1]);
+            if (!(noreply))
+                send_message(user, nickserv, "NSMSG_INVALID_KARMA", argv[1]);
         }
     }
 
-    send_message(user, nickserv, "NSMSG_SET_KARMA", hi->karma);
+    if (!(noreply))
+        send_message(user, nickserv, "NSMSG_SET_KARMA", hi->karma);
     return 1;
 }
 
@@ -3490,12 +3526,14 @@ static OPTION_FUNC(opt_level)
     int res;
 
     if (!override) {
-	reply("MSG_SETTING_PRIVILEGED", argv[0]);
+        if (!(noreply))
+	    reply("MSG_SETTING_PRIVILEGED", argv[0]);
 	return 0;
     }
 
     res = (argc > 1) ? oper_try_set_access(user, nickserv, hi, strtoul(argv[1], NULL, 0)) : 0;
-    reply("NSMSG_SET_LEVEL", hi->opserv_level);
+    if (!(noreply))
+        reply("NSMSG_SET_LEVEL", hi->opserv_level);
     return res;
 }
 
@@ -3506,7 +3544,8 @@ static OPTION_FUNC(opt_epithet)
         struct userNode *target, *next_un;
 
         if (!override) {
-            reply("MSG_SETTING_PRIVILEGED", argv[0]);
+            if (!(noreply))
+                reply("MSG_SETTING_PRIVILEGED", argv[0]);
             return 0;
         }
 
@@ -3526,22 +3565,25 @@ static OPTION_FUNC(opt_epithet)
         }
     }
 
-    if (hi->epithet)
-        reply("NSMSG_SET_EPITHET", hi->epithet);
-    else
-        reply("NSMSG_SET_EPITHET", user_find_message(user, "MSG_NONE"));
+    if (!(noreply)) {
+        if (hi->epithet)
+            reply("NSMSG_SET_EPITHET", hi->epithet);
+        else
+            reply("NSMSG_SET_EPITHET", user_find_message(user, "MSG_NONE"));
+    }
     return 1;
 }
 
 static OPTION_FUNC(opt_title)
 {
     char *title;
-    const char *none;
+    const char *none = NULL;
     char *sptr;
 
     if ((argc > 1) && oper_has_access(user, nickserv, nickserv_conf.set_title_level, 0)) {
         if (!override) {
-            reply("MSG_SETTING_PRIVILEGED", argv[0]);
+            if (!(noreply))
+                reply("MSG_SETTING_PRIVILEGED", argv[0]);
             return 0;
         }
 
@@ -3552,19 +3594,22 @@ static OPTION_FUNC(opt_title)
         }
         else {
             if (strchr(title, '.')) {
-                reply("NSMSG_TITLE_INVALID");
+                if (!(noreply))
+                    reply("NSMSG_TITLE_INVALID");
                 return 0;
             }
             /* Alphanumeric titles only. */
             for(sptr = title; *sptr; sptr++) {
                 if(!isalnum(*sptr) && *sptr != '-') {
-                    reply("NSMSG_TITLE_INVALID");
+                    if (!(noreply))
+                        reply("NSMSG_TITLE_INVALID");
                     return 0;
                 }
             }
             if ((strlen(user->handle_info->handle) + strlen(title) +
                  strlen(nickserv_conf.titlehost_suffix) + 2) > HOSTLEN) {
-                reply("NSMSG_TITLE_TRUNCATED");
+                if (!(noreply))
+                    reply("NSMSG_TITLE_TRUNCATED");
                 return 0;
             }
             free(hi->fakehost);
@@ -3602,7 +3647,8 @@ static OPTION_FUNC(opt_title)
 
     if (!title)
         none = user_find_message(user, "MSG_NONE");
-    send_message(user, nickserv, "NSMSG_SET_TITLE", title ? title : none);
+    if (!(noreply))
+        send_message(user, nickserv, "NSMSG_SET_TITLE", title ? title : none);
     return 1;
 }
 
@@ -3676,13 +3722,15 @@ static OPTION_FUNC(opt_fakehost)
 
     if ((argc > 1) && oper_has_access(user, nickserv, nickserv_conf.set_fakehost_level, 0)) {
         if (!override) {
-            reply("MSG_SETTING_PRIVILEGED", argv[0]);
+            if (!(noreply))
+                reply("MSG_SETTING_PRIVILEGED", argv[0]);
             return 0;
         }
 
         fake = argv[1];
         if ((strlen(fake) > HOSTLEN) || (fake[0] == '.')) {
-            reply("NSMSG_FAKEHOST_INVALID", HOSTLEN);
+            if (!(noreply))
+                reply("NSMSG_FAKEHOST_INVALID", HOSTLEN);
             return 0;
         }
         if (!strcmp(fake, "*")) {
@@ -3708,14 +3756,16 @@ static OPTION_FUNC(opt_fakehost)
     /* Tell them we set the host */
     if (!fake)
         fake = user_find_message(user, "MSG_NONE");
-    reply("NSMSG_SET_FAKEHOST", fake);
+    if (!(noreply))
+        reply("NSMSG_SET_FAKEHOST", fake);
     return 1;
 }
 
 static OPTION_FUNC(opt_note)
 {
     if (!override) {
-        reply("MSG_SETTING_PRIVILEGED", argv[0]);
+        if (!(noreply))
+            reply("MSG_SETTING_PRIVILEGED", argv[0]);
         return 0;
     }
 
@@ -3733,7 +3783,8 @@ static OPTION_FUNC(opt_note)
         }
     }
 
-    reply("NSMSG_SET_NOTE", hi->note ? hi->note->note : user_find_message(user, "MSG_NONE"));
+    if (!(noreply))
+        reply("NSMSG_SET_NOTE", hi->note ? hi->note->note : user_find_message(user, "MSG_NONE"));
     return 1;
 }
 
@@ -4194,12 +4245,15 @@ struct nickserv_discrim {
     const char *handlemask;
     const char *emailmask;
     const char *titlemask;
+    const char *setwhat;
+    const char *setval;
+    struct svccmd *cmd;
 #ifdef WITH_LDAP
     unsigned int inldap;
 #endif
 };
 
-typedef void (*discrim_search_func)(struct userNode *source, struct handle_info *hi);
+typedef void (*discrim_search_func)(struct userNode *source, struct handle_info *hi, struct nickserv_discrim *discrim);
 
 struct discrim_apply_info {
     struct nickserv_discrim *discrim;
@@ -4224,6 +4278,7 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
     discrim->lastseen = LONG_MAX;
     discrim->min_karma = INT_MIN;
     discrim->max_karma = INT_MAX;
+    discrim->cmd = cmd;
 #ifdef WITH_LDAP
     discrim->inldap = 2;
 #endif
@@ -4260,6 +4315,14 @@ nickserv_discrim_create(struct svccmd *cmd, struct userNode *user, unsigned int 
             discrim->lastseen = now - ParseInterval(argv[++i]);
         } else if (!nickserv_conf.disable_nicks && !irccasecmp(argv[i], "nickmask")) {
             discrim->nickmask = argv[++i];
+        } else if (!irccasecmp(argv[i], "setwhat")) {
+            discrim->setwhat = argv[++i];
+            if (!(dict_find(nickserv_opt_dict, discrim->setwhat, NULL))) {
+                reply("NSMSG_INVALID_OPTION", discrim->setwhat);
+                goto fail;
+            }
+        } else if (!irccasecmp(argv[i], "setvalue")) {
+            discrim->setval = argv[++i];
         } else if (!irccasecmp(argv[i], "hostmask")) {
             i++;
             if (!irccasecmp(argv[i], "exact")) {
@@ -4446,7 +4509,7 @@ nickserv_discrim_search(struct nickserv_discrim *discrim, discrim_search_func ds
          it = next) {
         next = iter_next(it);
         if (nickserv_discrim_match(discrim, iter_data(it))) {
-            dsf(source, iter_data(it));
+            dsf(source, iter_data(it), discrim);
             matched++;
         }
     }
@@ -4454,18 +4517,18 @@ nickserv_discrim_search(struct nickserv_discrim *discrim, discrim_search_func ds
 }
 
 static void
-search_print_func(struct userNode *source, struct handle_info *match)
+search_print_func(struct userNode *source, struct handle_info *match, UNUSED_ARG(struct nickserv_discrim *discrim))
 {
     send_message(source, nickserv, "NSMSG_SEARCH_MATCH", match->handle);
 }
 
 static void
-search_count_func(UNUSED_ARG(struct userNode *source), UNUSED_ARG(struct handle_info *match))
+search_count_func(UNUSED_ARG(struct userNode *source), UNUSED_ARG(struct handle_info *match), UNUSED_ARG(struct nickserv_discrim *discrim))
 {
 }
 
 static void
-search_unregister_func (struct userNode *source, struct handle_info *match)
+search_unregister_func (struct userNode *source, struct handle_info *match, UNUSED_ARG(struct nickserv_discrim *discrim))
 {
     if (oper_has_access(source, nickserv, match->opserv_level, 0))
         nickserv_unregister_handle(match, source, nickserv); // XXX nickserv hard coded
@@ -4473,7 +4536,7 @@ search_unregister_func (struct userNode *source, struct handle_info *match)
 
 #ifdef WITH_LDAP
 static void
-search_add2ldap_func (struct userNode *source, struct handle_info *match)
+search_add2ldap_func (struct userNode *source, struct handle_info *match, UNUSED_ARG(struct nickserv_discrim *discrim))
 {
     int rc;
     if(match->email_addr && match->passwd && match->handle) {
@@ -4484,6 +4547,22 @@ search_add2ldap_func (struct userNode *source, struct handle_info *match)
     }
 }
 #endif
+
+static void
+search_set_func (struct userNode *source, struct handle_info *match, struct nickserv_discrim *discrim)
+{
+    option_func_t *opt;
+    char *oargv[2];
+    
+    if (!(opt = dict_find(nickserv_opt_dict, discrim->setwhat, NULL))) {
+        return;
+    }
+
+    oargv[0] = (char *)discrim->setwhat;
+    oargv[1] = (char *)discrim->setval;
+
+    opt(discrim->cmd, source, match, 1, 1, 2, oargv);
+}
 
 static int
 nickserv_sort_accounts_by_access(const void *a, const void *b)
@@ -4549,6 +4628,8 @@ static NICKSERV_FUNC(cmd_search)
         action = search_count_func;
     else if (!irccasecmp(argv[1], "unregister"))
         action = search_unregister_func;
+    else if (!irccasecmp(argv[1], "set"))
+        action = search_set_func;
 #ifdef WITH_LDAP
     else if (nickserv_conf.ldap_enable && !irccasecmp(argv[1], "add2ldap"))
         action = search_add2ldap_func;
@@ -4569,6 +4650,8 @@ static NICKSERV_FUNC(cmd_search)
         reply("NSMSG_ACCOUNT_SEARCH_RESULTS");
     else if (action == search_count_func)
         discrim->limit = INT_MAX;
+    else if ((action == search_set_func) && (!(discrim->setwhat) || !(discrim->setval)))
+       return reply("MSG_MISSING_PARAMS", argv[1]);
 
     matches = nickserv_discrim_search(discrim, action, user);
 

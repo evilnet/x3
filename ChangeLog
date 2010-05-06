@@ -3,6 +3,12 @@ X3 ChangeLog
 
 2010-05-06  Matthew Beeching  <jobe@mdbnet.co.uk>
 
+	* src/nickserv.c: Added SET action for SEARCH.
+
+	* src/nickserv.help: Added SET action for SEARCH.
+
+2010-05-06  Matthew Beeching  <jobe@mdbnet.co.uk>
+
 	* src/nickserv.c: Added NickServ search title criteria.
 
 	* src/nickserv.help: Added NickServ search title criteria.
