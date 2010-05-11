@@ -1,4 +1,3 @@
-
 /* nickserv.c - Nick/authentication service
  * Copyright 2000-2004 srvx Development Team
  *
@@ -65,6 +64,8 @@
 #define KEY_HANDLE_EXPIRE_FREQ	"handle_expire_freq"
 #define KEY_ACCOUNT_EXPIRE_FREQ "account_expire_freq"
 #define KEY_HANDLE_EXPIRE_DELAY	"handle_expire_delay"
+#define KEY_NICK_EXPIRE_FREQ "nick_expire_freq"
+#define KEY_NICK_EXPIRE_DELAY "nick_expire_delay"
 #define KEY_ACCOUNT_EXPIRE_DELAY "account_expire_delay"
 #define KEY_NOCHAN_HANDLE_EXPIRE_DELAY "nochan_handle_expire_delay"
 #define KEY_NOCHAN_ACCOUNT_EXPIRE_DELAY "nochan_account_expire_delay"
@@ -88,6 +89,7 @@
 #define KEY_ID "id"
 #define KEY_PASSWD "passwd"
 #define KEY_NICKS "nicks"
+#define KEY_NICKS_EX "nicks_ex"
 #define KEY_MASKS "masks"
 #define KEY_SSLFPS "sslfps"
 #define KEY_IGNORES "ignores"
@@ -266,7 +268,12 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_DNR", "Do-not-register (by %s): %s" },
     { "NSMSG_USERINFO_AUTHED_AS", "$b%s$b is authenticated to account $b%s$b." },
     { "NSMSG_USERINFO_NOT_AUTHED", "$b%s$b is not authenticated to any account." },
-    { "NSMSG_NICKINFO_OWNER", "Nick $b%s$b is owned by account $b%s$b." },
+    { "NSMSG_NICKINFO_ON", "$bNick Information for %s$b" },
+    { "NSMSG_NICKINFO_END", "----------End of Nick Info-----------" },
+    { "NSMSG_NICKINFO_REGGED", "Registered on: %s" },
+    { "NSMSG_NICKINFO_LASTSEEN", "Last seen: %s" },
+    { "NSMSG_NICKINFO_LASTSEEN_NOW", "Last seen: Right now!" },
+    { "NSMSG_NICKINFO_OWNER", "Account: %s." },
     { "NSMSG_PASSWORD_INVALID", "Incorrect password; please try again." },
     { "NSMSG_PLEASE_SET_EMAIL", "We now require email addresses for users.  Please use the $bset email$b command to set your email address!" },
     { "NSMSG_WEAK_PASSWORD", "WARNING: You are using a password that is considered weak (easy to guess).  It is STRONGLY recommended you change it (now, if not sooner) by typing \"/msg $S@$s PASS oldpass newpass\" (with your current password and a new password)." },
@@ -479,6 +486,8 @@ register_nick(const char *nick, struct handle_info *owner)
     struct nick_info *ni;
     ni = malloc(sizeof(struct nick_info));
     safestrncpy(ni->nick, nick, sizeof(ni->nick));
+    ni->registered = now;
+    ni->lastseen = now;
     ni->owner = owner;
     ni->next = owner->nicks;
     owner->nicks = ni;
@@ -1016,6 +1025,7 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
 
     if (user->handle_info) {
 	struct userNode *other;
+        struct nick_info* ni;
 
 	if (IsHelper(user))
             userList_remove(&curr_helpers, user);
@@ -1037,6 +1047,8 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
             HANDLE_CLEAR_FLAG(user->handle_info, HELPING);
         /* record them as being last seen at this time */
 	user->handle_info->lastseen = now;
+        if ((ni = get_nick_info(user->nick)))
+            ni->lastseen = now;
         /* and record their hostmask */
         snprintf(user->handle_info->last_quit_host, sizeof(user->handle_info->last_quit_host), "%s@%s", user->ident, user->hostname);
     }
@@ -1095,8 +1107,10 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
         }
 
         /* Stop trying to kick this user off their nick */
-        if ((ni = get_nick_info(user->nick)) && (ni->owner == hi))
+        if ((ni = get_nick_info(user->nick)) && (ni->owner == hi)) {
             timeq_del(0, nickserv_reclaim_p, user, TIMEQ_IGNORE_WHEN);
+            ni->lastseen = now;
+        }
     } else {
         /* We cannot clear the user's account ID, unfortunately. */
 	user->next_authed = NULL;
@@ -1945,13 +1959,29 @@ static NICKSERV_FUNC(cmd_userinfo)
 static NICKSERV_FUNC(cmd_nickinfo)
 {
     struct nick_info *ni;
+    char buff[400];
 
     NICKSERV_MIN_PARMS(2);
     if (!(ni = get_nick_info(argv[1]))) {
 	reply("MSG_NICK_UNKNOWN", argv[1]);
 	return 0;
     }
-    reply("NSMSG_NICKINFO_OWNER", ni->nick, ni->owner->handle);
+
+    reply("NSMSG_NICKINFO_ON", ni->nick);
+    reply("MSG_BAR");
+    reply("NSMSG_NICKINFO_REGGED", ctime(&ni->registered));
+
+    if (!GetUserH(ni->nick)) {
+        intervalString(buff, now - ni->owner->lastseen, user->handle_info);
+        reply("NSMSG_NICKINFO_LASTSEEN", buff);
+    } else {
+        reply("NSMSG_NICKINFO_LASTSEEN_NOW");
+    }
+
+    reply("NSMSG_NICKINFO_OWNER", ni->owner->handle);
+
+    reply("NSMSG_NICKINFO_END");
+
     return 1;
 }
 
@@ -4048,6 +4078,15 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
             saxdb_write_string_list(ctx, KEY_NICKS, slist);
             free(slist->list);
             free(slist);
+
+            saxdb_start_record(ctx, KEY_NICKS_EX, 0);
+            for (ni = hi->nicks; ni; ni = ni->next) {
+                saxdb_start_record(ctx, ni->nick, 0);
+                saxdb_write_int(ctx, KEY_REGISTER_ON, ni->registered);
+                saxdb_write_int(ctx, KEY_LAST_SEEN, ni->lastseen);
+                saxdb_end_record(ctx);
+            }
+            saxdb_end_record(ctx);
         }
         if (hi->opserv_level)
             saxdb_write_int(ctx, KEY_OPSERV_LEVEL, hi->opserv_level);
@@ -4706,6 +4745,8 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     struct handle_info *hi;
     struct userNode *authed_users;
     struct userData *channel_list;
+    struct dict *obj2;
+    dict_iterator_t it;
     unsigned long int id;
     unsigned int ii;
     dict_t subdb;
@@ -4763,10 +4804,39 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     hi->karma = str ? strtoul(str, NULL, 0) : 0;
     /* We want to read the nicks even if disable_nicks is set.  This is so
      * that we don't lose the nick data entirely. */
-    slist = database_get_data(obj, KEY_NICKS, RECDB_STRING_LIST);
-    if (slist) {
-        for (ii=0; ii<slist->used; ii++)
-            register_nick(slist->list[ii], hi);
+    obj2 = database_get_data(obj, KEY_NICKS_EX, RECDB_OBJECT);
+    for(it = dict_first(obj2); it; it = iter_next(it))
+    {
+        struct record_data *rd = iter_data(it);
+        struct nick_info* ni;
+
+        register_nick(iter_key(it), hi);
+        ni = get_nick_info(iter_key(it));
+
+        if (!(ni))
+            continue;
+
+        str = database_get_data(rd->d.object, KEY_REGISTER_ON, RECDB_QSTRING);
+        ni->registered = str ? (time_t)strtoul(str, NULL, 0) : now;
+        str = database_get_data(rd->d.object, KEY_LAST_SEEN, RECDB_QSTRING);
+        ni->lastseen = str ? (time_t)strtoul(str, NULL, 0) : ni->registered;
+    }
+    if (!obj2) {
+        slist = database_get_data(obj, KEY_NICKS, RECDB_STRING_LIST);
+        if (slist) {
+            for (ii=0; ii<slist->used; ii++) {
+                struct nick_info* ni;
+
+                register_nick(slist->list[ii], hi);
+                ni = get_nick_info(slist->list[ii]);
+
+                if (!(ni))
+                    continue;
+
+                ni->registered = hi->registered;
+                ni->lastseen = ni->registered;
+            }
+        }
     }
     str = database_get_data(obj, KEY_FLAGS, RECDB_QSTRING);
     if (str) {
@@ -4917,6 +4987,36 @@ expire_handles(UNUSED_ARG(void *data))
 }
 
 static void
+expire_nicks(UNUSED_ARG(void *data))
+{
+    dict_iterator_t it, next;
+    time_t expiry = nickserv_conf.nick_expire_delay;
+    struct nick_info *ni;
+    struct userNode *ui;
+
+    if (!(nickserv_conf.expire_nicks))
+        return;
+
+    for (it=dict_first(nickserv_nick_dict); it; it=next) {
+        next = iter_next(it);
+        ni = iter_data(it);
+        if ((ni->owner->opserv_level > 0)
+            || ((ui = GetUserH(ni->nick)) && (ui->handle_info) && (ui->handle_info == ni->owner))
+            || HANDLE_FLAGGED(ni->owner, FROZEN)
+            || HANDLE_FLAGGED(ni->owner, NODELETE)) {
+            continue;
+        }
+        if ((now - ni->lastseen) > expiry) {
+            log_module(NS_LOG, LOG_INFO, "Expiring nick %s for inactivity.", ni->nick);
+            delete_nick(ni);
+        }
+    }
+
+    if (nickserv_conf.nick_expire_frequency && nickserv_conf.expire_nicks)
+        timeq_add(now + nickserv_conf.nick_expire_frequency, expire_nicks, NULL);
+}
+
+static void
 nickserv_load_dict(const char *fname)
 {
     FILE *file;
@@ -5059,6 +5159,12 @@ nickserv_conf_read(void)
         nickserv_conf.auto_reclaim_action = str ? reclaim_action_from_string(str) : RECLAIM_NONE;
         str = database_get_data(conf_node, "auto_reclaim_delay", RECDB_QSTRING);
         nickserv_conf.auto_reclaim_delay = str ? ParseInterval(str) : 0;
+        str = database_get_data(conf_node, KEY_NICK_EXPIRE_FREQ, RECDB_QSTRING);
+        nickserv_conf.nick_expire_frequency = str ? ParseInterval(str) : 86400;
+        str = database_get_data(conf_node, KEY_NICK_EXPIRE_DELAY, RECDB_QSTRING);
+        nickserv_conf.nick_expire_delay = str ? ParseInterval(str) : 86400*30;
+        str = database_get_data(conf_node, "expire_nicks", RECDB_QSTRING);
+        nickserv_conf.expire_nicks = str ? enabled_string(str) : 0;
     }
     child = database_get_data(conf_node, KEY_FLAG_LEVELS, RECDB_OBJECT);
     for (it=dict_first(child); it; it=iter_next(it)) {
@@ -5565,6 +5671,8 @@ init_nickserv(const char *nick)
     reg_exit_func(nickserv_db_cleanup, NULL);
     if(nickserv_conf.handle_expire_frequency)
         timeq_add(now + nickserv_conf.handle_expire_frequency, expire_handles, NULL);
+    if(nickserv_conf.nick_expire_frequency && nickserv_conf.expire_nicks)
+        timeq_add(now + nickserv_conf.nick_expire_frequency, expire_nicks, NULL);
 
     if(autojoin_channels && nickserv) {
         for (i = 0; i < autojoin_channels->used; i++) {

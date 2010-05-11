@@ -166,6 +166,15 @@
             // This is ignored if "auto_reclaim_action" is "none".
             "auto_reclaim_delay" "0";
 
+            // Expire nicks
+            "expire_nicks" "0";
+
+            // how often should nicks be expired?
+            "nick_expire_freq" "1d";
+
+            // how long until a nick expires?
+            "nick_expire_delay" "900d";
+
         // access control for who can change account flags
         // See /msg authserv help account flags
         "flag_levels" {

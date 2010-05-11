@@ -1,6 +1,14 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-05-11  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Added nick expiration support.
+
+	* src/nickserv.h: Added nick expiration support.
+
+	* x3.conf.example: Added nick expiration support.
+
 2010-05-06  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Added SET action for SEARCH.

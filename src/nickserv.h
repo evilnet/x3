@@ -122,6 +122,8 @@ struct nick_info {
     struct handle_info *owner;
     struct nick_info *next; /* next nick owned by same handle */
     char nick[NICKLEN+1];
+    time_t registered;
+    time_t lastseen;
 };
 
 struct handle_info_list {
@@ -151,6 +153,7 @@ struct nickserv_config {
     unsigned int warn_nick_owned : 1;
     unsigned int warn_clone_auth : 1;
     unsigned int sync_log : 1;
+    unsigned int expire_nicks : 1;
     unsigned long nicks_per_handle;
     unsigned long password_min_length;
     unsigned long password_min_digits;
@@ -169,6 +172,8 @@ struct nickserv_config {
     unsigned long set_fakehost_level;
     unsigned long handles_per_email;
     unsigned long email_search_level;
+    unsigned long nick_expire_frequency;
+    unsigned long nick_expire_delay;
     const char *network_name;
     const char *titlehost_suffix;
     regex_t valid_handle_regex;
