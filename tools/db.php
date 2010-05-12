@@ -1,115 +1,178 @@
-<pre>
 <?php
 /*
- This is a php function & demo util which parses the x3.db and x3.conf files for use in web programs.
+ This is a php class & demo util which parses the x3.db and x3.conf files for use in web programs.
 
  Written by Jobe:
 <Jobe> reads in the DB, parses it then print_r's it
 <Jobe> if it comes across a syntax it doesnt know it stops parsing and puts the remaining data, all of it in ['parserror'] in whatever array its working in
+
+See bottom of this file for examples of how to use this class
 */
 
-$conf['dbfile'] = "x3.db";
-
-$dh = fopen($conf['dbfile'], "r");
-
-$contents = fread($dh, filesize($conf['dbfile']));
-
-fclose($dh);
-
-function parse_data ($data = "") {
-    static $passback = "";
-    $working = $data;
-    $return = array();
-    $loop = true;
-
-    if ( $data != "" ) {
-        while ( $loop ) {
-            if ( preg_match("/^\s*\/\/([^\n\r]*)[\n\r]*(.*)\$/s", $working, $matches) ) {
-                /* ignore // comments */
-                $working = $matches[2];
-            } else if ( preg_match("/^\s*#([^\n\r]*)[\n\r]*(.*)\$/s", $working, $matches) ) {
-                /* ignore # comments */
-                $working = $matches[2];
-            } else if ( preg_match("/^\s*\/\*(.*?)\*\/\s*(.*)\$/s", $working, $matches) ) {
-                // ignore /* */ comments
-                $working = $matches[2];
-            } else if ( preg_match("/^\s*\}\s*;\s*(.*)\$/s", $working, $matches) ) {
-                /* section end */
-                $passback = $matches[1];
-                $loop = false;
-            } else if ( preg_match("/^\s*((\"(((\\\\\")|[^\"])+)\")|([^\s]+))\s*\{\s*(.*)\$/s", $working, $matches) ) {
-                /* section start (name quoted) */
-                if ( $matches[3] != "" ) {
-                    $return[strtolower($matches[3])] = parse_data($matches[7]);
-                } else {
-                    $return[strtolower($matches[1])] = parse_data($matches[7]);
-                }
-                $working = $passback;
-            } else if ( preg_match("/^\s*((\"(((\\\\\")|[^\"])+)\")|([^\s]+))\s*\(\s*((((\"(((\\\\\")|[^\"])+)\")|([^\s,]+))\s*(,\s*((\"(((\\\\\")|[^\"])+)\")|([^\s,]+))\s*)*)?)\s*\)\s*;\s*(.*)\$/s", $working, $matches) ) {
-                /* array */
-                $arraycontents = $matches[7];
-                $array = array();
-                while ( preg_match("/[^\s]+/", $arraycontents) ) {
-                    preg_match("/^\s*,?\s*((\"(((\\\\\")|[^\"])+)\")|([^\s,]+))\s*(.*)/s", $arraycontents, $arraymatches);
-                    if ( $arraymatches[3] != "" ) {
-                        $array[] = $arraymatches[3];
-                    } else {
-                        $array[] = $arraymatches[1];
-                    }
-                    $arraycontents = $arraymatches[7];
-                }
-                if ( $matches[3] != "" ) {
-                    $return[strtolower($matches[3])] = $array;
-                } else {
-                    $return[strtolower($matches[1])] = $array;
-                }
-                $working = $matches[22];
-            } else if ( preg_match("/^\s*((\"(((\\\\\")|[^\"])+)\")|([^\s,]+))\s*(((\"(((\\\\\")|[^\"])+)\")|([^\s,]+)))?\s*;\s*(.*)\$/s", $working, $matches) ) {
-                /* name value pair */
-                if ( $matches[3] != "" ) {
-                    $key = strtolower($matches[3]);
-                } else {
-                    $key = strtolower($matches[1]);
-                }
-                if ( $matches[7] != "" ) {
-                    if ( $matches[10] != "" ) {
-                        $val = $matches[10];
-                    } else {
-                        $val = $matches[7];
-                    }
-                    if ( isset($return[$key]) ) {
-                        if ( !is_array($return[$key]) ) {
-                            $temp = $return[$key];
-                            unset($return[$key]);
-                            $return[$key][] = $temp;
-                            $return[$key][] = $val;
-                        } else {
-                            $return[$key][] = $val;
-                        }
-                    } else {
-                        $return[$key] = $val;
-                    }
-                } else {
-                    $return[$key] = array();
-                }
-                $working = $matches[14];
-            } else {
-                if ( $working != "" ) {
-                    $return['parseerror'] = $working;
-                }
-                $passback = "";
-                $loop = false;
-            }
-        }
-    }
-
-    return $return;
+class X3SaxDB {
+	public $data;
+	private $raw = "";
+	
+	function X3SaxDB($filename = "") {
+		$this->data = Array();
+		if ($filename != "") {
+			$this->parse($filename);
+		}
+	}
+	
+	function parse($raw = "") {
+		$temp = Array();
+		$temparray = Array();
+		$key = "";
+		$array = false;
+		
+		if ($raw != "") {
+			$this->raw = $raw;
+		}
+		
+		while ($this->raw != "") {
+			if (preg_match("/^[\s\r\n]*#[^\r\n]*[\r\n]+[\s\r\n]*/s", $this->raw, $matches)) {
+				// Remove "#<stuff>" comments
+				$this->raw = substr($this->raw, strLen($matches[0]));
+			} elseif (preg_match("/^[\s\r\n]*\/\/[^\r\n]*[\r\n]+[\s\r\n]*/s", $this->raw, $matches)) {
+				// Remove "//<stuff>" comments
+				$this->raw = substr($this->raw, strLen($matches[0]));
+			} elseif (preg_match("/^\/\*.*?\*\/[\r\n]+[\s\r\n]*/s", $this->raw, $matches)) {
+				// Remove "/*<stuff>*/" comments
+				$this->raw = substr($this->raw, strLen($matches[0]));
+			} elseif (preg_match("/^\}[\s\r\n]*;[\s\r\n]*/s", $this->raw, $matches)) {
+				// Block End
+				$this->raw = substr($this->raw, strLen($matches[0]));
+				break;
+			} elseif (preg_match("/^\)[\s\r\n]*;[\s\r\n]*/s", $this->raw, $matches)) {
+				// Array End
+				$this->raw = substr($this->raw, strLen($matches[0]));
+				$temp[$key][] = $temparray;
+				$temparray = Array();
+				$array = false;
+				$key = "";
+			} elseif (($key != "") and preg_match("/^\([\s\r\n]*/s", $this->raw, $matches)) {
+				// Array Start
+				$this->raw = substr($this->raw, strLen($matches[0]));
+				$array = true;
+			} elseif (($key != "") and preg_match("/^\{[\s\r\n]*/s", $this->raw, $matches)) {
+				// Block
+				$this->raw = substr($this->raw, strLen($matches[0]));
+				$temp[$key][] = $this->parse();
+				$key = "";
+			} elseif ($array and ($key != "") and preg_match("/^(?:(?:\"(.*?)(?<!\\\\)\")|(?:([^\s]*)))[\s\r\n]*,?[\s\r\n]*/s", $this->raw, $matches)) {
+				// Array Value
+				$this->raw = substr($this->raw, strLen($matches[0]));
+				$val = $matches[1];
+				if ($val == "") {
+					$val = $matches[2];
+				}
+				$temparray[] = stripslashes($val);
+			} elseif (($key != "") and preg_match("/^(?:=[\s\r\n]*)?(?:(?:\"(.*?)(?<!\\\\)\")|(?:([^\s]*)))[\s\r\n]*;[\s\r\n]*/s", $this->raw, $matches)) {
+				// Value
+				$this->raw = substr($this->raw, strLen($matches[0]));
+				$val = $matches[1];
+				if ($val == "") {
+					$val = $matches[2];
+				}
+				$temp[$key][] = stripslashes($val);
+				$key = "";
+			} elseif (preg_match("/^(?:(?:\"(.+?)(?<!\\\\)\")|(?:([^\s]*)))[\s\r\n]*/s", $this->raw, $matches)) {
+				// Key
+				$this->raw = substr($this->raw, strLen($matches[0]));
+				$key = $matches[1];
+				if ($key == "") {
+					$key = $matches[2];
+				}
+			} else {
+				// Error
+				$temp["parse_error"] = $this->raw;
+				$this->raw = "";
+				break;
+			}
+		}
+		
+		foreach (array_keys($temp) as $key) {
+			if (count($temp[$key]) == 1) {
+				$temp[$key] = $temp[$key][0];
+			}
+		}
+		
+		if ($raw != "") {
+			$this->data = $temp;
+			return $this->data;
+		} else {
+			return $temp;
+		}
+	}
+	
+	function parsefile($filename = "") {
+		
+		if ($filename != "") {
+			if (file_exists($filename) and is_readable($filename)) {
+				$this->raw = file_get_contents($filename);
+			}
+		}
+		
+		$this->parse($this->raw);
+		return $this->data;
+	}
+	
+	function getval($path, $array = null) {
+		$temp = $path;
+		$parts = Array();
+		$ret = Array();
+		
+		if (is_null($array)) {
+			$ret = $this->data;
+		} else {
+			$ret = $array;
+		}
+		
+		if (substr($temp, 0, 1) == "/") {
+			$temp = substr($temp, 1);
+		}
+		if (substr($temp, -1) != "/") {
+			$temp = $temp . "/";
+		}
+		
+		while ($temp != "") {
+			if (preg_match("/(?:(?:\"(.*?)(?<!\\\\)\")|(?:([^\/\r\n\s]*)))\//s", $temp, $matches)) {
+				$temp = substr($temp, strLen($matches[0]));
+				if ($matches[1] != "") {
+					$parts[] = $matches[1];
+				} else {
+					$parts[] = $matches[2];
+				}
+			} else {
+				$parts['error'] = $temp;
+				break;
+			}
+		}
+		
+		for ($i=0; $i<count($parts); $i++) {
+			$found = false;
+			if (!is_array($ret)) { unset($ret); break; }
+			foreach (array_keys($ret) as $key) {
+				if (strtolower($key) == strtolower($parts[$i])) {
+					$parts[$i] = $key;
+					$found = true;
+				}
+			}
+			if (!$found) { unset($ret); break; }
+			$ret = $ret[$parts[$i]];
+			if (($i < count($parts) - 1) and isset($ret[0])) {
+				$ret = $ret[0];
+			}
+		}
+		
+		return $ret;
+	}
 }
 
-$db = parse_data($contents);
-
-print_r($db);
-
+$x3db = new X3SaxDB();
+$data = $x3db->parsefile("data/x3.db");
+// $data == copy of $x3db->data
+var_dump($x3db->data);
+var_dump($x3db->getval("/NickServ/Jobe/email_addr"));
 ?>
-</pre>
-

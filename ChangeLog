@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-05-12  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* tools/db.php: Rewrote parser function as a class and faster
+	parsing.
+
 2010-05-11  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Added nick expiration support.
