@@ -3620,6 +3620,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOQUITMSGS, 'Q');
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
+        DO_MODE_CHAR(ADMINSONLY, 'a');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
@@ -3676,6 +3677,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOQUITMSGS, 'Q');
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
+        DO_MODE_CHAR(ADMINSONLY, 'a');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
@@ -3751,6 +3753,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOQUITMSGS, 'Q');
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
+        DO_MODE_CHAR(ADMINSONLY, 'a');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
@@ -3775,6 +3778,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOQUITMSGS, 'Q');
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
+        DO_MODE_CHAR(ADMINSONLY, 'a');
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
