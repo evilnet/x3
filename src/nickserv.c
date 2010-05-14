@@ -1972,7 +1972,7 @@ static NICKSERV_FUNC(cmd_nickinfo)
     reply("NSMSG_NICKINFO_REGGED", ctime(&ni->registered));
 
     if (!GetUserH(ni->nick)) {
-        intervalString(buff, now - ni->owner->lastseen, user->handle_info);
+        intervalString(buff, now - ni->lastseen, user->handle_info);
         reply("NSMSG_NICKINFO_LASTSEEN", buff);
     } else {
         reply("NSMSG_NICKINFO_LASTSEEN_NOW");

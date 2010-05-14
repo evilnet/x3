@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-05-14  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fix for NickServ NICKINFO using the wrong
+	lastseen timestamp.
+
 2010-05-13  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Fixed support for channel mode +a (Admins only).
