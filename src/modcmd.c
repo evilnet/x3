@@ -596,9 +596,10 @@ svccmd_can_invoke(struct userNode *user, struct userNode *bot, struct svccmd *cm
 static int
 svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_argc, char *old_argv[], char *new_argv[]) {
     unsigned int ii, new_argc;
-    char *arg;
+    char *arg, *altarg;
 
     for (ii=new_argc=0; ii<cmd->alias.used; ++ii) {
+        altarg = NULL;
         arg = cmd->alias.list[ii];
         if (arg[0] != '$') {
             new_argv[new_argc++] = arg;
@@ -613,6 +614,19 @@ svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_
             lbound = strtoul(arg+1, &end_num, 10);
             switch (end_num[0]) {
             case 0: ubound = lbound; break;
+            case 'a':
+                altarg = (user && user->handle_info) ? user->handle_info->handle : "(account)";
+                break;
+            case 'n':
+                altarg = user ? user->nick : "(nick)";
+                break;
+            case 'm':
+#ifdef WITH_PROTOCOL_P10
+                altarg = user ? user->numeric : "(numnick)";
+#else
+                altarg = "(This ircd protocol has no numnicks!)";
+#endif
+                break;
             case '-':
                 if (end_num[1] == 0) {
                     ubound = old_argc - 1;
@@ -625,6 +639,22 @@ svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_
             default:
                 log_module(MAIN_LOG, LOG_ERROR, "Alias expansion parse error in %s (near %s; %s.%s arg %d).", arg, end_num, cmd->parent->bot->nick, cmd->name, ii);
                 return 0;
+            }
+            if (altarg != NULL) {
+                if (end_num[1] != 0) {
+                    if ((end_num[1] == '-') && (end_num[2] == 0))
+                        ubound = old_argc - 1;
+                    else if ((end_num[1] == '-') && (isdigit(end_num[2])))
+                        ubound = strtoul(end_num+2, NULL, 10);
+                    else {
+                        log_module(MAIN_LOG, LOG_ERROR, "Alias expansion parse error in %s (near %s; %s.%s arg %d).", arg, end_num, cmd->parent->bot->nick, cmd->name, ii);
+                        return 0;
+                    }
+                } else {
+                    ubound = lbound;
+                }
+                if (lbound >= old_argc)
+                    new_argv[new_argc++] = altarg;
             }
             if (ubound >= old_argc)
                 ubound = old_argc - 1;
@@ -1126,6 +1156,15 @@ check_alias_args(char *argv[], unsigned int argc) {
             switch (end_num[0]) {
             case 0:
                 continue;
+            case 'a':
+            case 'n':
+            case 'm':
+                if (end_num[1] == 0)
+                    continue;
+                else if (end_num[1] == '-')
+                    end_num++;
+                else
+                    return arg;
             case '-':
                 if (end_num[1] == 0)
                     continue;

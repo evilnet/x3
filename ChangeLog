@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-05-21  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/modcmd.c: Added support for fall back replacements in
+	command bindings. For example if you specify $1n instead of $1,
+	then the users nick will be used if param 1 is not supplied.
+
 2010-05-14  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fix for NickServ NICKINFO using the wrong
