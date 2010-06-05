@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-06-06  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Fix for crash on BURST (B) message for a channel
+	with +L, at least one ban or except, and no users.
+
 2010-05-21  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/modcmd.c: Added support for fall back replacements in

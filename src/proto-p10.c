@@ -1801,13 +1801,20 @@ static CMD_FUNC(cmd_burst)
     struct modeNode *mNode;
     long mode;
     int oplevel = -1;
+    int type = 0;
     char *user, *end, sep;
+    char *tstr;
     time_t in_timestamp;
     char* parm = NULL;
 
     if (argc < 3)
         return 0;
     modes[0] = 0;
+
+    tstr = conf_get_data("server/type", RECDB_QSTRING);
+    if(tstr) {
+        type = atoi(tstr);
+    }
 
     exemptlist[0] = 0;
     banlist[0] = 0;
@@ -1819,7 +1826,7 @@ static CMD_FUNC(cmd_burst)
             int n_modes;
             for (pos=argv[next], n_modes = 1; *pos; pos++)
                 if ((*pos == 'k') || (*pos == 'l') || (*pos == 'A')
-                    || (*pos == 'U'))
+                    || (*pos == 'U') || ((type > 7) && (*pos == 'L')))
                     n_modes++;
             if (next + n_modes > argc)
                 n_modes = argc - next;
