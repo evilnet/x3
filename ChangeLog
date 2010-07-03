@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-07-03  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Removed extra 'is' from CSMSG_SMURF_TARGET.
+
 2010-06-06  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Fix for crash on BURST (B) message for a channel

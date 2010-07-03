@@ -441,7 +441,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_HELPER_NO_ACCESS", "%s lacks access to %s but has $bsecurity override$b enabled." },
     { "CSMSG_HELPER_HAS_ACCESS", "%s has $b%s$b access (%d) in %s and has $bsecurity override$b enabled." },
     { "CSMSG_LAZY_SMURF_TARGET", "%s is %s ($bIRCOp$b; not logged in)." },
-    { "CSMSG_SMURF_TARGET", "%s is %s ($b%s$b)." },
+    { "CSMSG_SMURF_TARGET", "%s %s ($b%s$b)." },
     { "CSMSG_OPERATOR_TITLE", "IRC operator" },
     { "CSMSG_UC_H_TITLE", "network helper" },
     { "CSMSG_LC_H_TITLE", "support helper" },
