@@ -5790,6 +5790,24 @@ discrim_match(discrim_t discrim, struct userNode *user)
                 case 'z':
                     if(IsSSL(user)) matches++;
                     break;
+                case 'D':
+                    if(IsPrivDeaf(user)) matches++;
+                    break;
+                case 'R':
+                    if(IsAccountOnly(user)) matches++;
+                    break;
+                case 'W':
+                    if(IsWhoisNotice(user)) matches++;
+                    break;
+                case 'H':
+                    if(IsHideOper(user)) matches++;
+                    break;
+                case 'L':
+                    if(IsHideOper(user)) matches++;
+                    break;
+                case 'q':
+                    if(IsCommonChansOnly(user)) matches++;
+                    break;
             }
         }
         if (matches != strlen(discrim->modes)) return 0;

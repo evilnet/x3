@@ -56,30 +56,36 @@
 #define MODE_ADMINSONLY         0x10000000 /* +a Admins only */
 #define MODE_REMOVE             0x80000000
 
-#define FLAGS_OPER		0x000001 /* Operator +o */
-#define FLAGS_LOCOP		0x000002 /* Local operator +O */
-#define FLAGS_INVISIBLE		0x000004 /* invisible +i */
-#define FLAGS_WALLOP		0x000008 /* receives wallops +w */
-#define FLAGS_DUMMY             0x000010 /* user is not announced to other servers */
-#define FLAGS_DEAF		0x000020 /* deaf +d */
-#define FLAGS_SERVICE		0x000040 /* cannot be kicked, killed or deoped +k */
-#define FLAGS_GLOBAL		0x000080 /* receives global messages +g */
-#define FLAGS_SETHOST		0x000100 /* sethost +h */
-#define FLAGS_PERSISTENT	0x000200 /* for reserved nicks, this isn't just one-shot */
-#define FLAGS_GAGGED		0x000400 /* for gagged users */
-#define FLAGS_AWAY		0x000800 /* for away users */
-#define FLAGS_STAMPED           0x001000 /* for users who have been stamped */
-#define FLAGS_HIDDEN_HOST       0x002000 /* user's host is masked by their account +x */
-#define FLAGS_REGNICK           0x004000 /* user owns their current nick */
-#define FLAGS_REGISTERING	0x008000 /* user has issued account register command, is waiting for email cookie */
-#define FLAGS_BOT		0x010000 /* Bot +B */
-#define FLAGS_HIDECHANS		0x020000 /* Hidden channels +n */
-#define FLAGS_HIDEIDLE		0x040000 /* Hidden idle time +I */
-#define FLAGS_XTRAOP		0x080000 /* user is XtraOP +X */
-#define FLAGS_CLOAKHOST         0x100000 /* user has cloaked host +C */
-#define FLAGS_CLOAKIP           0x200000 /* user has cloaked ip +c */
-#define FLAGS_ADMIN             0x400000 /* Admin +a */
-#define FLAGS_SSL               0x800000 /* user is using a secure connection +z */
+#define FLAGS_OPER		0x00000001 /* Operator +o */
+#define FLAGS_LOCOP		0x00000002 /* Local operator +O */
+#define FLAGS_INVISIBLE		0x00000004 /* invisible +i */
+#define FLAGS_WALLOP		0x00000008 /* receives wallops +w */
+#define FLAGS_DUMMY             0x00000010 /* user is not announced to other servers */
+#define FLAGS_DEAF		0x00000020 /* deaf +d */
+#define FLAGS_SERVICE		0x00000040 /* cannot be kicked, killed or deoped +k */
+#define FLAGS_GLOBAL		0x00000080 /* receives global messages +g */
+#define FLAGS_SETHOST		0x00000100 /* sethost +h */
+#define FLAGS_PERSISTENT	0x00000200 /* for reserved nicks, this isn't just one-shot */
+#define FLAGS_GAGGED		0x00000400 /* for gagged users */
+#define FLAGS_AWAY		0x00000800 /* for away users */
+#define FLAGS_STAMPED           0x00001000 /* for users who have been stamped */
+#define FLAGS_HIDDEN_HOST       0x00002000 /* user's host is masked by their account +x */
+#define FLAGS_REGNICK           0x00004000 /* user owns their current nick */
+#define FLAGS_REGISTERING	0x00008000 /* user has issued account register command, is waiting for email cookie */
+#define FLAGS_BOT		0x00010000 /* Bot +B */
+#define FLAGS_HIDECHANS		0x00020000 /* Hidden channels +n */
+#define FLAGS_HIDEIDLE		0x00040000 /* Hidden idle time +I */
+#define FLAGS_XTRAOP		0x00080000 /* user is XtraOP +X */
+#define FLAGS_CLOAKHOST         0x00100000 /* user has cloaked host +C */
+#define FLAGS_CLOAKIP           0x00200000 /* user has cloaked ip +c */
+#define FLAGS_ADMIN             0x00400000 /* Admin +a */
+#define FLAGS_SSL               0x00800000 /* user is using a secure connection +z */
+#define FLAGS_PRIVDEAF          0x01000000 /* user is deaf to private messages +D */
+#define FLAGS_ACCOUNTONLY       0x02000000 /* user only receives PMs from authed users +R */
+#define FLAGS_WHOIS             0x04000000 /* user receives notices when /whois'ed +W */
+#define FLAGS_HIDEOPER          0x08000000 /* user is a hidden IRCop +H */
+#define FLAGS_NOLINK            0x10000000 /* user has opted out of channel redirection +L */
+#define FLAGS_COMMONCHANSONLY   0x20000000 /* user only receives PMs from users on same cahnnels +q */
 
 #define IsOper(x)               ((x)->modes & FLAGS_OPER)
 #define IsService(x)            ((x)->modes & FLAGS_SERVICE)
@@ -104,6 +110,12 @@
 #define IsLocal(x)              ((x)->uplink == self)
 #define IsAdmin(x)              ((x)->modes & FLAGS_ADMIN)
 #define IsSSL(x)                ((x)->modes & FLAGS_SSL)
+#define IsPrivDeaf(x)           ((x)->modes & FLAGS_PRIVDEAF)
+#define IsAccountOnly(x)        ((x)->modes & FLAGS_ACCOUNTONLY)
+#define IsWhoisNotice(x)        ((x)->modes & FLAGS_WHOIS)
+#define IsHideOper(x)           ((x)->modes & FLAGS_HIDEOPER)
+#define IsNoRedirect(x)         ((x)->modes & FLAGS_NOLINK)
+#define IsCommonChansOnly(x)    ((x)->modes & FLAGS_COMMONCHANSONLY)
 
 #define NICKLEN         30
 #define USERLEN         10

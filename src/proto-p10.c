@@ -349,8 +349,8 @@ static const char *his_servername;
 static const char *his_servercomment;
 static int extended_accounts;
 
-/* These correspond to 1 << X:      012345678901234567 */
-const char irc_user_mode_chars[] = "o iw dkgn        I";
+/* These correspond to 1 << X:      01234567890123456789012345 */
+const char irc_user_mode_chars[] = "oOiw dkgh    x  BnIX  azDRWHLq";
 
 static struct userNode *AddUser(struct server* uplink, const char *nick, const char *ident, const char *hostname, const char *modes, const char *numeric, const char *userinfo, time_t timestamp, const char *realip);
 
@@ -3332,6 +3332,12 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
             break;
         case 'a': do_user_mode(FLAGS_ADMIN); break;
         case 'z': do_user_mode(FLAGS_SSL); break;
+        case 'D': do_user_mode(FLAGS_PRIVDEAF); break;
+        case 'R': do_user_mode(FLAGS_ACCOUNTONLY); break;
+        case 'W': do_user_mode(FLAGS_WHOIS); break;
+        case 'H': do_user_mode(FLAGS_HIDEOPER); break;
+        case 'L': do_user_mode(FLAGS_NOLINK); break;
+        case 'q': do_user_mode(FLAGS_COMMONCHANSONLY); break;
 	}
 #undef do_user_mode
     }

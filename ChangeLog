@@ -3,6 +3,17 @@ X3 ChangeLog
 
 2010-07-07  Matthew Beeching  <jobe@mdbnet.co.uk>
 
+	* src/hash.h: Added support for user modes +D, +R, +W, +H, +L
+	and +q.
+
+	* src/opserv.c: Added support for user modes +D, +R, +W, +H, +L
+	and +q.
+
+	* src/proto-p10.c: Added support for user modes +D, +R, +W, +H,
+	+L and +q.
+
+2010-07-07  Matthew Beeching  <jobe@mdbnet.co.uk>
+
 	* src/hash.h: Added support for user modes +z and +a and fixed
 	some comments.
 
