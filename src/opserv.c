@@ -1460,6 +1460,21 @@ opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG
             return; /* channel is invite only */
         }
 
+        if (!IsOper(target) && (channel->modes & MODE_OPERSONLY)) {
+            return; /* user is not oper and channel is opers only */
+        }
+
+        /* Update to check if user is umode +a */
+        if (!IsOper(target) && (channel->modes & MODE_ADMINSONLY)) {
+            return; /* user is not admin and channel is admin only */
+        }
+
+        if (target->handle_info && (channel->modes & MODE_REGONLY)) {
+            return; /* user is not authed and channel is authed only users */
+        }
+
+        /* Add test for channel mode +Z with user mode -z */
+
         if (channel->limit > 0) {
             if (channel->members.used >= channel->limit) {
                 return; /* channel is invite on */

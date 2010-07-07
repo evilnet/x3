@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-07-07  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/opserv.c: Added support to TRACE/ADDALERT CHECKRESTRICTIONS
+	criteria for channel mode +O and +r.
+
 2010-07-03  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Removed extra 'is' from CSMSG_SMURF_TARGET.
