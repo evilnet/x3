@@ -56,8 +56,8 @@
 #define MODE_ADMINSONLY         0x10000000 /* +a Admins only */
 #define MODE_REMOVE             0x80000000
 
-#define FLAGS_OPER		0x000001 /* Operator +O */
-#define FLAGS_LOCOP		0x000002 /* Local operator +o */
+#define FLAGS_OPER		0x000001 /* Operator +o */
+#define FLAGS_LOCOP		0x000002 /* Local operator +O */
 #define FLAGS_INVISIBLE		0x000004 /* invisible +i */
 #define FLAGS_WALLOP		0x000008 /* receives wallops +w */
 #define FLAGS_DUMMY             0x000010 /* user is not announced to other servers */
@@ -69,15 +69,17 @@
 #define FLAGS_GAGGED		0x000400 /* for gagged users */
 #define FLAGS_AWAY		0x000800 /* for away users */
 #define FLAGS_STAMPED           0x001000 /* for users who have been stamped */
-#define FLAGS_HIDDEN_HOST       0x002000 /* user's host is masked by their account */
+#define FLAGS_HIDDEN_HOST       0x002000 /* user's host is masked by their account +x */
 #define FLAGS_REGNICK           0x004000 /* user owns their current nick */
 #define FLAGS_REGISTERING	0x008000 /* user has issued account register command, is waiting for email cookie */
 #define FLAGS_BOT		0x010000 /* Bot +B */
 #define FLAGS_HIDECHANS		0x020000 /* Hidden channels +n */
 #define FLAGS_HIDEIDLE		0x040000 /* Hidden idle time +I */
-#define FLAGS_XTRAOP		0x080000 /* Hidden idle time  */
-#define FLAGS_CLOAKHOST         0x100000 /* user has cloaked host */
-#define FLAGS_CLOAKIP           0x200000 /* user has cloaked ip */
+#define FLAGS_XTRAOP		0x080000 /* user is XtraOP +X */
+#define FLAGS_CLOAKHOST         0x100000 /* user has cloaked host +C */
+#define FLAGS_CLOAKIP           0x200000 /* user has cloaked ip +c */
+#define FLAGS_ADMIN             0x400000 /* Admin +a */
+#define FLAGS_SSL               0x800000 /* user is using a secure connection +z */
 
 #define IsOper(x)               ((x)->modes & FLAGS_OPER)
 #define IsService(x)            ((x)->modes & FLAGS_SERVICE)
@@ -100,6 +102,8 @@
 #define IsDummy(x)              ((x)->modes & FLAGS_DUMMY)
 #define IsFakeHost(x)           ((x)->fakehost[0] != '\0')
 #define IsLocal(x)              ((x)->uplink == self)
+#define IsAdmin(x)              ((x)->modes & FLAGS_ADMIN)
+#define IsSSL(x)                ((x)->modes & FLAGS_SSL)
 
 #define NICKLEN         30
 #define USERLEN         10

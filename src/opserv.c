@@ -1464,8 +1464,7 @@ opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG
             return; /* user is not oper and channel is opers only */
         }
 
-        /* Update to check if user is umode +a */
-        if (!IsOper(target) && (channel->modes & MODE_ADMINSONLY)) {
+        if (!IsAdmin(target) && (channel->modes & MODE_ADMINSONLY)) {
             return; /* user is not admin and channel is admin only */
         }
 
@@ -1473,7 +1472,9 @@ opserv_svsjoin(struct userNode *target, UNUSED_ARG(char *src_handle), UNUSED_ARG
             return; /* user is not authed and channel is authed only users */
         }
 
-        /* Add test for channel mode +Z with user mode -z */
+        if (!IsSSL(target) && (channel->modes & MODE_SSLONLY)) {
+            return; /* user is not SSL and channel is SSL only */
+        }
 
         if (channel->limit > 0) {
             if (channel->members.used >= channel->limit) {
@@ -5782,6 +5783,12 @@ discrim_match(discrim_t discrim, struct userNode *user)
                     break;
                 case 'x':
                     if(IsHiddenHost(user)) matches++;
+                    break;
+                case 'a':
+                    if(IsAdmin(user)) matches++;
+                    break;
+                case 'z':
+                    if(IsSSL(user)) matches++;
                     break;
             }
         }

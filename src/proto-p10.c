@@ -3330,6 +3330,8 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
                 assign_fakehost(user, host, 0);
             }
             break;
+        case 'a': do_user_mode(FLAGS_ADMIN); break;
+        case 'z': do_user_mode(FLAGS_SSL); break;
 	}
 #undef do_user_mode
     }
