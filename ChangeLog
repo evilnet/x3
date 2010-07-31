@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-07-31  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-common.c: Added hg revision information to VERSION
+	reply to match version strings everywhere else.
+
 2010-07-30  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/Makefile.in: Added version.c generation at compile time

@@ -26,6 +26,7 @@
 #include "spamserv.h"
 #include "shun.h"
 #include "timeq.h"
+#include "version.h"
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
@@ -370,7 +371,7 @@ static CMD_FUNC(cmd_version)
         log_module(MAIN_LOG, LOG_ERROR, "Could not find VERSION origin user %s", origin);
         return 0;
     }
-    irc_numeric(user, 351, "%s %s %s", PACKAGE_TARNAME, PACKAGE_VERSION, self->name);
+    irc_numeric(user, 351, "%s %s+[%s] %s", PACKAGE_TARNAME, PACKAGE_VERSION, cvs_version, self->name);
     return 1;
 }
 
