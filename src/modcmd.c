@@ -26,6 +26,7 @@
 #include "opserv.h"
 #include "saxdb.h"
 #include "timeq.h"
+#include "version.h"
 
 
 struct pending_template {
@@ -1046,7 +1047,7 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, const char *text, in
             snprintf(response, sizeof(response), "\x01USERINFO %s\x01", bot->info);
             irc_notice_user(bot, user, response);
         } else if (!irccasecmp(text, "VERSION")) {
-            snprintf(response, sizeof(response), "\x01VERSION %s+[%s]\x01", PACKAGE_STRING, cvs_verstring());
+            snprintf(response, sizeof(response), "\x01VERSION %s+[%s]\x01", PACKAGE_STRING, cvs_version);
             irc_notice_user(bot, user, response);
         } else if (!irccasecmp(text, "GENDER")) {
              snprintf(response, sizeof(response), "\x01GENDER ummm im still deciding\x01");
@@ -2059,7 +2060,7 @@ static MODCMD_FUNC(cmd_dump_messages) {
 }
 
 static MODCMD_FUNC(cmd_version) {
-    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s]$b (Based on srvx 1.3.x), Built: "__DATE__", "__TIME__".", cvs_verstring());
+    send_message_type(4, user, cmd->parent->bot, "$b"PACKAGE_STRING"+[%s]$b (Based on srvx 1.3.x), Built: "__DATE__", "__TIME__".", cvs_version);
     send_message_type(4, user, cmd->parent->bot, "See $bCREDITS$b for more information.");
     return 1;
 }

@@ -1,6 +1,16 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-07-30  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/Makefile.in: Added version.c generation at compile time
+
+	* src/modcmd.c: Updated to use cvs_version from version.c
+
+	* src/version.c.SH: Added version.c.SH to generate version.c
+
+	* src/version.h: Added version.h
+
 2010-07-07  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/hash.h: Added support for user modes +D, +R, +W, +H, +L
