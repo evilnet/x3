@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-08-19  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Changed TOK_PRIVS to "PR" to match current ircu
+	distributions.
+
 2010-07-31  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-common.c: Added hg revision information to VERSION

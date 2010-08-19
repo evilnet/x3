@@ -175,7 +175,7 @@
 #define TOK_PONG                "Z"
 #define TOK_POST                "POST"
 #define TOK_PRIVMSG             "P"
-#define TOK_PRIVS		"PRIVS"
+#define TOK_PRIVS		"PR"
 #define TOK_PROTO               "PROTO"
 #define TOK_QUIT                "Q"
 #define TOK_REHASH              "REHASH"
