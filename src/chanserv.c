@@ -7814,14 +7814,12 @@ static CHANSERV_FUNC(cmd_spin)
 
          char *oldnick = NULL;
          char *oldident = NULL;
-         char *oldhost = NULL;
          char abusednick[NICKLEN] = "";
          int abusednum = 1 + (int) (10000.0 * (rand() / (RAND_MAX + 1.0)));
          struct userNode *clone;
 
          oldnick = strdup(user->nick);
          oldident = strdup(user->ident);
-         oldhost = strdup(user->hostname);
 
          //snprintf(abusednick, NICKLEN, "Abused%d", abusednum+(1 + rand() % 120));
          while (1) {
@@ -7833,7 +7831,7 @@ static CHANSERV_FUNC(cmd_spin)
 
          SVSNickChange(user, abusednick);
          irc_svsnick(chanserv, user, abusednick);
-         clone = AddLocalUser(oldnick, oldident, oldhost, "I got abused by the wheel of misfortune :D", "+i");
+         clone = AddLocalUser(oldnick, oldident, "abused.by.wheel.of.misfortune", "I got abused by the wheel of misfortune :D", "+i");
          timeq_add(now + 300, chanserv_remove_abuse, clone->nick);
     }
     /* kill */

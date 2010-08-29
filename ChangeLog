@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-08-29  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Changed wheel of misfortune nick change pseudo
+	user to use a hard coded host name to prevent accidentally giving
+	out a users real host.
+
 2010-08-19  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Changed TOK_PRIVS to "PR" to match current ircu
