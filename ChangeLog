@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-09-08  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Replaced some horrible code for formatting a
+	channel mode string and fix for a bug where chan mode +A was
+	being ignored.
+
 2010-08-29  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Changed wheel of misfortune nick change pseudo

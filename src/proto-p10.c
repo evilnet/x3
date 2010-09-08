@@ -496,10 +496,10 @@ irc_server(struct server *srv)
 
     inttobase64(extranum, srv->num_mask, (srv->numeric[1] || (srv->num_mask >= 64*64)) ? 3 : 2);
     if (srv == self) {
-        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6 :%s",
+        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6o :%s",
                 srv->name, srv->hops+1, srv->boot, srv->link_time, srv->numeric, extranum, srv->description);
     } else {
-        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6 :%s",
+        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6o :%s",
                 self->numeric, srv->name, srv->hops+1, srv->boot, srv->link_time, (srv->self_burst ? 'J' : 'P'), srv->numeric, extranum, srv->description);
     }
 }
@@ -3458,7 +3458,8 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'A':
             if (add) {
                 if ((in_arg >= argc)
-                    || keyncpy(change->new_upass, modes[in_arg++], sizeof(change->new_upass)))
+                    || keyncpy(change->new_apass, modes[in_arg++], sizeof(change->new_apass)))
+                    goto error;
                 change->modes_set |= MODE_APASS;
             } else {
                 change->modes_clear |= MODE_APASS;
@@ -3797,59 +3798,19 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(REGISTERED, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
+
+	DO_MODE_CHAR(KEY, 'k');
+	DO_MODE_CHAR(LIMIT, 'l');
+	DO_MODE_CHAR(APASS, 'A');
+	DO_MODE_CHAR(UPASS, 'U');
 #undef DO_MODE_CHAR
-        switch (change->modes_set & (MODE_KEY|MODE_LIMIT|MODE_APASS|MODE_UPASS)) {
-        /* Doing this implementation has been a pain in the arse, I hope I didn't forget a possible combination */
-        case MODE_KEY|MODE_LIMIT|MODE_APASS|MODE_UPASS:
-            used += sprintf(outbuff+used, "lkAU %d %s %s %s", change->new_limit, change->new_key,change->new_apass, change->new_upass);
-            break;
 
-        case MODE_KEY|MODE_LIMIT|MODE_APASS:
-            used += sprintf(outbuff+used, "lkA %d %s %s", change->new_limit, change->new_key, change->new_apass);
-            break;
-        case MODE_KEY|MODE_LIMIT|MODE_UPASS:
-            used += sprintf(outbuff+used, "lkU %d %s %s", change->new_limit, change->new_key, change->new_upass);
-            break;
-        case MODE_KEY|MODE_APASS|MODE_UPASS:
-            used += sprintf(outbuff+used, "kAU %s %s %s", change->new_key, change->new_apass, change->new_upass);
-            break;
-
-        case MODE_KEY|MODE_APASS:
-            used += sprintf(outbuff+used, "kA %s %s", change->new_key, change->new_apass);
-            break;
-        case MODE_KEY|MODE_UPASS:
-            used += sprintf(outbuff+used, "kU %s %s", change->new_key, change->new_upass);
-            break;
-        case MODE_KEY|MODE_LIMIT:
-            used += sprintf(outbuff+used, "lk %d %s", change->new_limit, change->new_key);
-            break;
-
-        case MODE_LIMIT|MODE_UPASS:
-            used += sprintf(outbuff+used, "lU %d %s", change->new_limit, change->new_upass);
-            break;
-        case MODE_LIMIT|MODE_APASS:
-            used += sprintf(outbuff+used, "lA %d %s", change->new_limit, change->new_apass);
-            break;
-        case MODE_APASS|MODE_UPASS:
-            used += sprintf(outbuff+used, "AU %s %s", change->new_apass, change->new_upass);
-
-        case MODE_LIMIT|MODE_APASS|MODE_UPASS:
-            used += sprintf(outbuff+used, "lAU %d %s %s", change->new_limit, change->new_apass, change->new_upass);
-            break;
-
-        case MODE_APASS:
-            used += sprintf(outbuff+used, "A %s", change->new_apass);
-            break;
-        case MODE_UPASS:
-            used += sprintf(outbuff+used, "U %s", change->new_upass);
-            break;
-        case MODE_KEY:
-            used += sprintf(outbuff+used, "k %s", change->new_key);
-            break;
-        case MODE_LIMIT:
-            used += sprintf(outbuff+used, "l %d", change->new_limit);
-            break;
-        }
+#define DO_MODE_PARM(BIT, PARM) if (change->modes_set & MODE_##BIT) used += sprintf(outbuff+used, " %s", PARM);
+	DO_MODE_PARM(KEY, change->new_key);
+	DO_MODE_PARM(LIMIT, change->new_limit);
+	DO_MODE_PARM(APASS, change->new_apass);
+	DO_MODE_PARM(UPASS, change->new_upass);
+#undef DO_MODE_PARM
     }
     outbuff[used] = 0;
     return outbuff;
