@@ -5540,7 +5540,7 @@ send_staff_list(struct userNode *to, struct userList *list, int skip_flags)
         user = list->list[nn];
         if(user->modes & skip_flags)
             continue;
-        if(IsBot(user))
+        if(IsBot(user) || IsHideOper(user))
             continue;
         table.contents[table.length] = alloca(table.width*sizeof(**table.contents));
         if(IsAway(user))
