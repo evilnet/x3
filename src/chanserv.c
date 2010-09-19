@@ -9984,8 +9984,8 @@ init_chanserv(const char *nick)
     modcmd_register(chanserv_module, "dnrsearch remove", NULL, 0, 0, NULL);
     modcmd_register(chanserv_module, "dnrsearch count", NULL, 0, 0, NULL);
     DEFINE_COMMAND(move, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "template", "register", NULL);
-    DEFINE_COMMAND(csuspend, 2, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "flags", "+helping", NULL);
-    DEFINE_COMMAND(cunsuspend, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN, "flags", "+helping", NULL);
+    DEFINE_COMMAND(csuspend, 2, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN|MODCMD_IGNORE_CSUSPEND, "flags", "+helping", NULL);
+    DEFINE_COMMAND(cunsuspend, 1, MODCMD_REQUIRE_AUTHED|MODCMD_REQUIRE_REGCHAN|MODCMD_IGNORE_CSUSPEND, "flags", "+helping", NULL);
     DEFINE_COMMAND(createnote, 5, 0, "level", "800", NULL);
     DEFINE_COMMAND(removenote, 2, 0, "level", "800", NULL);
 

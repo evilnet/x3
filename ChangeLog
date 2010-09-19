@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-09-19  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Added ignore_csuspend to *ChanServ.csuspend
+	and *ChanServ.cunsuspend as a default flag.
+
 2010-09-17  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Updated ChanServ.staff, ChanServ.ircops and
