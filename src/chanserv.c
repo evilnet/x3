@@ -257,6 +257,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_DURATION_TOO_LOW", "Timed bans must last for at least 15 seconds." },
     { "CSMSG_DURATION_TOO_HIGH", "Timed bans must last for less than 2 years." },
     { "CSMSG_LAME_MASK", "$b%s$b is a little too general. Try making it more specific." },
+    { "CSMSG_NO_EXTBANS", "$b%s$b is an extended ban, which are not allowed." },
     { "CSMSG_MASK_PROTECTED", "Sorry, ban for $b%s$b conflicts with a protected user's hostmask." },
     { "CSMSG_NO_MATCHING_USERS", "No one in $b%s$b has a hostmask matching $b%s$b." },
     { "CSMSG_BAN_NOT_FOUND", "Sorry, no ban or LAMER found: $b%s$b." },
@@ -3807,6 +3808,13 @@ bad_channel_ban(struct chanNode *channel, struct userNode *user, const char *ban
     return 0;
 }
 
+int is_extban(char *b) {
+    if(*b == '~') {
+        return 1;
+    }
+    return 0;
+}
+
 static int
 eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, char *argv[], struct svccmd *cmd, int action)
 {
@@ -3932,6 +3940,13 @@ eject_user(struct userNode *user, struct chanNode *channel, unsigned int argc, c
         {
 	    if(cmd)
                 reply("CSMSG_LAME_MASK", argv[1]);
+            return 0;
+        }
+        //TODO: We have no support to do protection etc etc so for now we dont let you use x3 to set extended bans.
+        if(is_extban(argv[1]))
+        {
+            if(cmd)
+                reply("CSMSG_NO_EXTBANS", argv[1]);
             return 0;
         }
 
@@ -4258,7 +4273,8 @@ void expire_bans(UNUSED_ARG(void* data)) /* Real bans, not lamers */
         count = 0;
         /* First find out how many bans were going to unset */
         for (jj=0; jj < channel->channel->banlist.used; ++jj) {
-            if(channel->channel->banlist.list[jj]->set < bantimeout)
+            //TODO: for now, were just not removing extended bans, but ultimately some types we should, some shouldn't...see below
+            if(channel->channel->banlist.list[jj]->set < bantimeout && !is_extban(channel->channel->banlist.list[jj]->ban))
                 count++;
         }
         if(count > 0) {
@@ -4268,7 +4284,8 @@ void expire_bans(UNUSED_ARG(void* data)) /* Real bans, not lamers */
             /* Walk over every ban in this channel.. */
             for (jj=0; jj < channel->channel->banlist.used; ++jj) {
                 bn = channel->channel->banlist.list[jj];
-                if (bn->set < bantimeout) {
+                //TODO: for now, were just not removing extended bans, but ultimately some types we should, some shouldn't...see above
+                if (bn->set < bantimeout && !is_extban(bn->ban)) {
                     log_module(CS_LOG, LOG_DEBUG, "Removing ban %s from %s", bn->ban, channel->channel->name);
 
                     /* Add this ban to the mode change */
@@ -4413,6 +4430,7 @@ static CHANSERV_FUNC(cmd_unbanall)
 	return 0;
     }
 
+    // TODO: dont remove some kinds of extended bans such as ~c
     change = mod_chanmode_alloc(channel->banlist.used);
     for(ii=0; ii<channel->banlist.used; ii++)
     {
