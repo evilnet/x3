@@ -3807,7 +3807,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
 
 #define DO_MODE_PARM(BIT, PARM) if (change->modes_set & MODE_##BIT) used += sprintf(outbuff+used, " %s", PARM);
 	DO_MODE_PARM(KEY, change->new_key);
-	DO_MODE_PARM(LIMIT, change->new_limit);
+	if (change->modes_set & MODE_LIMIT) used += sprintf(outbuff+used, " %d", change->new_limit);
 	DO_MODE_PARM(APASS, change->new_apass);
 	DO_MODE_PARM(UPASS, change->new_upass);
 #undef DO_MODE_PARM

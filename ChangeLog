@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-09-24  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+        * src/proto-p10.c: Fix for crash bug during burst where X3 sends
+        a B (BURST) message with a channel limit in the modes string.
+
 2010-09-24  Alex Schumann <rubin@afternet.org>
 
 	* src/chanserv.c: dont let users set extended bans with
