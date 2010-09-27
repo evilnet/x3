@@ -6668,7 +6668,7 @@ static MODCMD_FUNC(chan_opt_maxsetinfo)
 
    if(argc > 1) {
      charmax = atoi(argv[1]);
-     if ((charmax > 0) && (charmax < chanserv_conf.max_userinfo_length))
+     if ((charmax > 0) && (charmax <= chanserv_conf.max_userinfo_length))
        channel->channel_info->maxsetinfo = charmax;
    }
 

@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-09-27  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Fix for maxsetinfo now allowing you to set it
+	to the maximum value as specified in x3.conf
+
 2010-09-24  Matthew Beeching  <jobe@mdbnet.co.uk>
 
         * src/proto-p10.c: Fix for crash bug during burst where X3 sends
