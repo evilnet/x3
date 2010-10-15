@@ -1835,24 +1835,14 @@ static CMD_FUNC(cmd_burst)
             break;
         }
         case '%': {
+            ctype = 1;
             for(parm = mysep(&argv[next], " "); /* parm = first param */
                   parm;   /* While param is not null */
                   parm = mysep(&argv[next], " ")  /* parm = next param */
                )
             {
-              switch (parm[0]) {
-                case '%': {
-                  ctype = 1;
-                  break;
-                }
-                case '~': {
-                  ctype = 2;
-                  break;
-                }
-                default: {
-                  break;
-                }
-              }
+              if (0 == strcmp("~", parm))
+                ctype = 2;
               if (ctype == 1) {
                 if (bcheck == 0) {
                   /* strip % char off start of very first ban */

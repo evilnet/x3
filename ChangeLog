@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-10-15  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Fix for P10 BURST message parsing where
+	extended bans were causing premature change from ban mask to
+	except mask parsing.
+
 2010-09-27  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Fix for maxsetinfo now allowing you to set it
