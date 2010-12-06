@@ -1625,6 +1625,8 @@ static NICKSERV_FUNC(cmd_oregister)
             string_list_append(hi->masks, mask_canonicalized);
     }
 
+    argv[2] = "****";
+
     if (nickserv_conf.sync_log)
         SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, email ? email : "@", user->info); /* Send just @ for email if none */
     return 1;

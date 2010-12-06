@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2010-12-06  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fixed bug where NickServ.oregister incorrectly
+	logged the password.
+
 2010-10-15  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Fix for P10 BURST message parsing where
