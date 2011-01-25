@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2011-01-25  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Fix for auto-oper bug where PRIVS were not
+	being applied on Nefarious branch versions (or in short reverted
+	revision 697:e6fe90cab8d0)
+
 2010-12-06  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fixed bug where NickServ.oregister incorrectly
