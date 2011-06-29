@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2011-06-29  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fixed a bug when reading services/nickserv/hard_maxlogins
+	from x3.conf
+
 2011-01-25  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Fix for auto-oper bug where PRIVS were not

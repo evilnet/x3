@@ -5139,6 +5139,7 @@ nickserv_conf_read(void)
     str = database_get_data(conf_node, "default_maxlogins", RECDB_QSTRING);
     nickserv_conf.default_maxlogins = str ? strtoul(str, NULL, 0) : 2;
     str = database_get_data(conf_node, "hard_maxlogins", RECDB_QSTRING);
+    nickserv_conf.hard_maxlogins = str ? strtoul(str, NULL, 0) : 10;
     str = database_get_data(conf_node, KEY_OUNREGISTER_INACTIVE, RECDB_QSTRING);
     nickserv_conf.ounregister_inactive = str ? ParseInterval(str) : 86400*28;
     str = database_get_data(conf_node, KEY_OUNREGISTER_FLAGS, RECDB_QSTRING);
@@ -5151,7 +5152,6 @@ nickserv_conf_read(void)
         if(pos)
             nickserv_conf.ounregister_flags |= 1 << (pos - 1);
     }
-    nickserv_conf.hard_maxlogins = str ? strtoul(str, NULL, 0) : 10;
     if (!nickserv_conf.disable_nicks) {
         str = database_get_data(conf_node, "reclaim_action", RECDB_QSTRING);
         nickserv_conf.reclaim_action = str ? reclaim_action_from_string(str) : RECLAIM_NONE;
