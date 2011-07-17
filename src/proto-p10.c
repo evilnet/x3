@@ -2231,9 +2231,11 @@ static CMD_FUNC(cmd_kill)
          * Ghost response to a KILL we sent out earlier.  So we only
          * whine if the target is local.
          */
-        if (!strncmp(argv[1], self->numeric, strlen(self->numeric)))
+        if (!strncmp(argv[1], self->numeric, strlen(self->numeric))) {
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find kill victim %s", argv[1]);
-        return 0;
+            return 0;
+        }
+        return 1;
     }
 
     if (IsLocal(user) && IsService(user)) {

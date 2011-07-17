@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2011-07-18  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Fix for "PARSE ERROR" on "Ghost 5 Numeric Collided"
+	kill message.
+
 2011-06-29  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Fixed a bug when reading services/nickserv/hard_maxlogins
