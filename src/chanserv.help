@@ -315,7 +315,7 @@
         "Restores a channel's $b$C$b registration.",
         "$uSee Also:$u csuspend, unregister");
 "DELLAMER" ("/msg $C DELLAMER <#channel> <mask|nick>",
-        "Deletes a lamer from the channel lamer list. This command works for both permanent and timed lamers alike.",
+        "Deletes one or more lamers from the channel lamer list. This command works for both permanent and timed lamers alike. You can use wildcards (* and ?) in the mask, and all matching lamers will be removed.",
         "$uSee Also:$u addlamer, addtimedlamer, lamers");
 "DELNOTE" ("/msg $C DELNOTE <#channel> <note-name>",
         "Deletes a note from the channel.  To do this, you must be able to set the note.",
