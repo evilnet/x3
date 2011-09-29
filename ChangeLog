@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2011-08-29  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.help: Fixed typo in durations help.
+
 2011-07-18  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Fix for "PARSE ERROR" on "Ghost 5 Numeric Collided"

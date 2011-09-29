@@ -372,7 +372,7 @@
         "$bh$b - hours (60 minutes)",
         "$bm$b - minutes (60 seconds)",
         "$bs$b - seconds",
-        "If the unit letter is not givin, seconds are assumed.",
+        "If the unit letter is not given, seconds are assumed.",
         "$b$b",
         "$uExamples$u:",
         "$b5d$b is 5 days.",
