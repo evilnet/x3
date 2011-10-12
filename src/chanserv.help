@@ -485,8 +485,8 @@
 
 "STAFF REGISTER" (
         "/msg $C REGISTER <#channel> [user|*account] [force]",
-        "Registers a channel to the givin user with $b$C$b.",
-        "If staff provides the third argument, $bforce$b, it will allow the registration even if it is a do-not-register channel or ther register limit will be exceded.",
+        "Registers a channel to the given user with $b$C$b.",
+        "If staff provides the third argument, $bforce$b, it will allow the registration even if it is a do-not-register channel or their register limit will be exceeded.",
         "$uSee Also:$u addowner, noregister, register, unregister");
 
 "REMOVENOTE" ("/msg $S REMOVENOTE <typename> [FORCE]",

@@ -1,7 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
-2011-08-29  Matthew Beeching  <jobe@mdbnet.co.uk>
+2011-10-12  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.help: Fixed typo in staff register help.
+
+2011-09-29  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.help: Fixed typo in durations help.
 
