@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2011-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Added a new line to NickServ.accountinfo to show
+	new email address for email change cookies.
+
 2011-10-12  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.help: Fixed typo in staff register help.

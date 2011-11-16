@@ -250,6 +250,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_COOKIE_EMAIL", "Cookie: There is currently an email change cookie issued for this account" },
     { "NSMSG_HANDLEINFO_COOKIE_ALLOWAUTH", "Cookie: There is currently an allowauth cookie issued for this account" },
     { "NSMSG_HANDLEINFO_COOKIE_UNKNOWN", "Cookie: There is currently an unknown cookie issued for this account" },
+    { "NSMSG_HANDLEINFO_COOKIE_EMAIL_DATA", "Cookie: New email address: %s" },
     { "NSMSG_HANDLEINFO_INFOLINE", "Infoline: %s" },
     { "NSMSG_HANDLEINFO_FLAGS", "Flags: %s" },
     { "NSMSG_HANDLEINFO_EPITHET", "Epithet: %s" },
@@ -1770,6 +1771,8 @@ static NICKSERV_FUNC(cmd_handleinfo)
         default: type = "NSMSG_HANDLEINFO_COOKIE_UNKNOWN"; break;
         }
         reply(type);
+        if (IsOper(user) && (hi->cookie->type == EMAIL_CHANGE))
+            reply("NSMSG_HANDLEINFO_COOKIE_EMAIL_DATA", hi->cookie->data);
     }
 
     if (hi->flags) {
