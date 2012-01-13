@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2012-01-13  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/opserv.help: Fixed typo in help for TRACE CRITERIA.
+
 2011-11-16  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/nickserv.c: Added a new line to NickServ.accountinfo to show
