@@ -5697,6 +5697,9 @@ resync_channel(struct chanNode *channel)
         }
         else /* Give various userlevels their modes.. */
         {
+            /* If the user has autoop/autovoice disabled then ignore them */
+            if(uData && !IsUserAutoOp(uData))
+              continue;
             if(uData && uData->access >= UL_OP )
             {
                 if(!(mn->modes & MODE_CHANOP))

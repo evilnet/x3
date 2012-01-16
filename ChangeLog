@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2012-01-16  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/chanserv.c: Fix for USER AUTOOP option being ignored during
+	ChanServ.resync.
+
 2012-01-13  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/opserv.help: Fixed typo in help for TRACE CRITERIA.
