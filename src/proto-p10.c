@@ -1094,23 +1094,27 @@ void
 irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what, const char *topic)
 {
 
-   int type = 4, host_in_topic = 0, hasident = 0;
-   const char *hstr, *tstr;
+   int type = 4, host_in_topic = 0, hasident = 0, hhtype = 0;
+   const char *hstr, *tstr, *hhstr, *htstr;
    char *host, *hostmask;
    char shost[MAXLEN];
    char sident[MAXLEN];
 
    tstr = conf_get_data("server/type", RECDB_QSTRING);
    hstr = conf_get_data("server/host_in_topic", RECDB_QSTRING);
+   hhstr = conf_get_data("server/hidden_host", RECDB_QSTRING);
+   htstr = conf_get_data("server/hidden_host_type", RECDB_QSTRING);
    if(tstr)
      type = atoi(tstr);
    else
      type = 4;/* default to 040 style topics */
+   if (htstr)
+     hhtype = atoi(htstr);
 
    if (hstr) {
-      if (IsFakeHost(who))
+      if (IsHiddenHost(who) && IsFakeHost(who))
           safestrncpy(shost, who->fakehost, sizeof(shost));
-      else if (IsSetHost(who)) {
+      else if (IsHiddenHost(who) && IsSetHost(who)) {
           hostmask = strdup(who->sethost);
           if ((host = (strrchr(hostmask, '@')))) {
               hasident = 1;
@@ -1124,6 +1128,10 @@ irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what,
               safestrncpy(sident, who->ident, sizeof(shost));
 
           safestrncpy(shost, host, sizeof(shost));
+      } else if (IsHiddenHost(who) && (hhtype == 1) && who->handle_info && hhstr) {
+          snprintf(shost, sizeof(shost), "%s.%s", who->handle_info->handle, hhstr);
+      } else if (IsHiddenHost(who) && (hhtype == 2) && who->crypthost[0]) {
+          safestrncpy(shost, who->crypthost, sizeof(shost));
       } else
           safestrncpy(shost, who->hostname, sizeof(shost));
 

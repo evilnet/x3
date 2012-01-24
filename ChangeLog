@@ -1,6 +1,11 @@
 /***********************************************************************
 X3 ChangeLog
 
+2012-01-24  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/proto-p10.c: Fixed irc_topic() to honour server/hidden_host_type
+	and associated config settings.
+
 2012-01-16  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/chanserv.c: Fix for USER AUTOOP option being ignored during
