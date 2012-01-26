@@ -78,6 +78,7 @@ dict_splay(struct dict_node *node, const char *key)
     int res;
 
     if (!node) return NULL;
+    if (!key) return NULL;
     N.l = N.r = NULL;
     l = r = &N;
 
@@ -228,6 +229,7 @@ dict_remove2(dict_t dict, const char *key, int no_dispose)
 
     if (!dict->root)
         return 0;
+    if (!key) return 0;
     verify(dict);
     dict->root = dict_splay(dict->root, key);
     if (irccasecmp(key, dict->root->key))

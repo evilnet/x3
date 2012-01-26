@@ -1,6 +1,13 @@
 /***********************************************************************
 X3 ChangeLog
 
+2012-01-26  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/dict-splay.c: Fix for possible crash bugs in dict_splay()
+	and dict_remove2();
+
+	* src/tools.c: Fix for crash bug in irccasecmp();
+
 2012-01-24  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/proto-p10.c: Fixed irc_topic() to honour server/hidden_host_type

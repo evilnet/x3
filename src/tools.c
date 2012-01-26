@@ -367,6 +367,10 @@ irc_strtolower(char *str) {
 
 int
 irccasecmp(const char *stra, const char *strb) {
+    if (!stra)
+      return -1;
+    if (!strb)
+      return 1;
     while (*stra && (tolower(*stra) == tolower(*strb)))
         stra++, strb++;
     return tolower(*stra) - tolower(*strb);
