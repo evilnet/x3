@@ -1,6 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
+2012-04-29  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/x3ldap.c: Replaced ldap_get_values() with ldap_get_values_len().
+
 2012-01-26  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/dict-splay.c: Fix for possible crash bugs in dict_splay()
