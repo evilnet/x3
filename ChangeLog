@@ -1,6 +1,12 @@
 /***********************************************************************
 X3 ChangeLog
 
+2013-01-27  Matthew Beeching  <jobe@mdbnet.co.uk>
+
+	* src/nickserv.c: Fix for crash bug when using calling *NickServ.oset
+	with an account name where nobody is online using that account and no
+	fakehost is set.
+
 2012-04-29  Matthew Beeching  <jobe@mdbnet.co.uk>
 
 	* src/x3ldap.c: Replaced ldap_get_values() with ldap_get_values_len().

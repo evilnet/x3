@@ -364,13 +364,13 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_SET_FLAGS", "$bFLAGS:        $b%s" },
     { "NSMSG_SET_EMAIL", "$bEMAIL:        $b%s" },
     { "NSMSG_SET_MAXLOGINS", "$bMAXLOGINS:    $b%d" },
-    { "NSMSG_SET_ADVANCED", "$bADVANCED:      $b%s" },
+    { "NSMSG_SET_ADVANCED", "$bADVANCED:     $b%s" },
     { "NSMSG_SET_LANGUAGE", "$bLANGUAGE:     $b%s" },
     { "NSMSG_SET_LEVEL", "$bLEVEL:        $b%d" },
     { "NSMSG_SET_EPITHET", "$bEPITHET:      $b%s" },
     { "NSMSG_SET_NOTE", "$bNOTE:         $b%s"},
     { "NSMSG_SET_TITLE", "$bTITLE:        $b%s" },
-    { "NSMSG_SET_FAKEHOST", "$bFAKEHOST:    $b%s" },
+    { "NSMSG_SET_FAKEHOST", "$bFAKEHOST:     $b%s" },
 
     { "NSMSG_AUTO_OPER", "You have been auto-opered" },
     { "NSMSG_AUTO_OPER_ADMIN", "You have been auto-admined" },
@@ -977,7 +977,10 @@ generate_fakehost(struct handle_info *handle)
             for (target = handle->users; target; target = target->next_authed)
                break;
 
-            snprintf(buffer, sizeof(buffer), "%s", target->crypthost);
+            if (target)
+               snprintf(buffer, sizeof(buffer), "%s", target->crypthost);
+            else
+               strncpy(buffer, "none", sizeof(buffer));
         }
         return buffer;
     } else if (handle->fakehost[0] == '.') {
