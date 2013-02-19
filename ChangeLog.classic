@@ -1,5 +1,4 @@
-/***********************************************************************
-X3 ChangeLog
+X3 ChangeLog (Classic GNU version)
 
 2013-02-18  Alex Schumann  <rubin@afternet.org>
 	* all: Converted from mercurial to git. (testing email commit messages again)
@@ -3977,7 +3976,4 @@ X3 ChangeLog
 
 	* src/nickserv.help: Added odelcookie section.
 
-***********************************************************************/
-
-#define CVS_VERSION "$Id$"
 

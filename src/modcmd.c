@@ -18,7 +18,6 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-#include "../ChangeLog"
 #include "chanserv.h"
 #include "conf.h"
 #include "compat.h"
@@ -976,28 +975,6 @@ svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *c
     argc = split_line(tmpline, false, ArrayLength(argv), argv);
     return argc ? svccmd_invoke_argv(user, service, channel, argc, argv, server_qualified) : 0;
 }
-
-char *cvs_verstring() {
-  static char verstring[MAXLEN] = { 0 };
-  
-  if(!*verstring) {
-    char *svn = NULL, *svnver = NULL, *svndate = NULL, *v = 0, ver[MAXLEN];
-    int vc = 0;
-
-    strcpy(ver, CVS_VERSION);
-    for (svn = x3_strtok(&v, ver, " "); svn;
-         svn = x3_strtok(&v, 0, " ")) {
-        if (vc == 2)
-            svnver = svn;
-        else if (vc == 3)
-            svndate = svn;
-        vc++;
-    }
-    sprintf(verstring, "%s %s", svnver, svndate);
-  }
-  return verstring;
-}
-
 
 void
 modcmd_privmsg(struct userNode *user, struct userNode *bot, const char *text, int server_qualified) {
