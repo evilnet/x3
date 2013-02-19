@@ -91,3 +91,4 @@ slab_read_SOURCES = slab-read.c
 version.c: version.c.SH
 	${SHELL} ${srcdir}/version.c.SH
 
+.PHONY: version.c
