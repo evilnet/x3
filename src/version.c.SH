@@ -4,17 +4,19 @@
 
 echo "Extracting src/version.c ..."
 
+git_command='git describe'
+
 if [ -d ../.git ]; then
     if [ -x `which git` ]; then
-        echo "Found git. version is"`git log -1 --pretty=oneline`
-        cvs_version="git:"`git log -1 --pretty=oneline`
+        echo "Found git. version is"`$git_command`
+        cvs_version="git:"`$git_command`
     else
         echo "No git installed. unknown git revision"
-        cvs_version="unknown"
+        cvs_version="git:unknown"
     fi
 else
     echo "Not a git repository. leaving revision empty"
-    cvs_version="not git"
+    cvs_version="release"
 fi
 
 
