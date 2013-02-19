@@ -1,8 +1,10 @@
 /***********************************************************************
 X3 ChangeLog
 
-2013-02-18  Alex Schumann <rubin@afternet.org>
-        * all: Converted from mercurial to git. (testing email commit messages again)
+2013-02-18  Alex Schumann  <rubin@afternet.org>
+	* all: Converted from mercurial to git. (testing email commit messages again)
+	* configure.in: Roll version to 1.8.1
+	* src/version.c.SH: replace hg version string with git one
 
 2013-01-27  Matthew Beeching  <jobe@mdbnet.co.uk>
 

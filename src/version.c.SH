@@ -1,13 +1,22 @@
 #! /bin/sh
 
+#TODO: we should tag our version changes, and use git describe instead of git log.
+
 echo "Extracting src/version.c ..."
 
-if test -f ../.release
-then
-        cvs_version=`cat ../.release`
+if [ -d ../.git ]; then
+    if [ -x `which git` ]; then
+        echo "Found git. version is"`git log -1 --pretty=oneline`
+        cvs_version="git:"`git log -1 --pretty=oneline`
+    else
+        echo "No git installed. unknown git revision"
+        cvs_version="unknown"
+    fi
 else
-        cvs_version=`hg tip --template '{rev}:{node|short} {date|shortdate}'`
+    echo "Not a git repository. leaving revision empty"
+    cvs_version="not git"
 fi
+
 
 /bin/cat >version.c <<!SUB!THIS!
 /* version.c - CVS Version specific information.
