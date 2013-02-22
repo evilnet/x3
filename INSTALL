@@ -68,36 +68,54 @@ Compiling:
 ----------
   1) cd to the main directory of the X3 source tree.  
 
+     $ cd evilnet-x3serv
+
   2) Run the configure script with correct arguments. You need to tell configure
-     at minimum a path to install to, and which modules to compile.
+     at minimum a path to install to (--prefix). Later, after x3 is working,
+     you may want to recompile it with additional modules by adding
+     "--modules=memoserv,helpserv" but leave modules out for now.
+     
      Configure will verify that your system will have the resources needed for 
      X3 to compile. You should also turn debugging on to assist with setup: 
-     $ ./configure --prefix=/path/to/install --enable-modules=memoserv,helpserv --enable-debug
 
-  3) You may optionally edit config.h in case the configure script made a
-     mistake. Leave it default to begin with.
+     $ ./configure --prefix=/path/to/install --enable-debug
 
-  4) Run "make" to begin compiling.  If you encounter any
+  3) Run "make" to begin compiling.  If you encounter any
      uncorrectable errors/warnings, please scroll up to the introduction
      section and follow the instructions.
+
      $ make
 
-  5) You may now either type "make install" to install it to your
+  4) You may now either type "make install" to install it to your
      installation path, or work from your build directory, either is fine.
+
      $ make install
 
-  6) Change to the install directory.
+  5) Change to the install directory.
+
      $ cd /path/to/install
 
-  7) Copy x3.conf.example to x3.conf and edit to suit your
-     needs. Errors in the configuration file will be logged to
-     main.log (and if X3 is running in the foreground with -f, printed to
-     stdout) when you start x3. 
-     The example config contains help to assist you with modifications.
+  6) Copy x3.conf.example to x3.conf 
+
+     $ cp x3.conf.example x3.conf
+
+  7) The example config contains help to assist you with modifications.
      Remember to begin by only editing the bare minimum ammount you need to
      edit to make it run. Then, when it is working, gradually customize the 
      config more. This way errors can be identified at their source.
-     $ cp x3.conf.example x3.conf
+
+     Errors in the configuration file will be logged to
+     main.log (and if X3 is running in the foreground with -f, printed to
+     stdout) when you start x3. 
+
+     To start with you will want to tell x3 where to connect. Modify the "Hub"
+     entry in "uplinks" with your ircd info. You'll need a matching connect
+     block in ircd.conf and a server type listen block for the  port.
+     
+     You probably also want to modify the "hostname", "description", and "prefix",
+     "numeric", "admin" etc. Other bits are documented, but generally must match
+     how your ircd is configured. 
+
      $ nano -w x3.conf
 
   8) You can now run x3 for the first time. You can debug by
