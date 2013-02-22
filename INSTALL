@@ -14,12 +14,11 @@ files.
 
 Requirements:
 ----------
-This release of X3 (1.4) only supports the Undernet P10
-protocol and is known to link to ircu/Undernet (u2.10.11, u2.10.12),
-Nefarious IRCu 0.4.0 and Nefarious IRCu 1.0. It does not support 
-bahamut, hybrid, Unreal, or any other ircd not listed. Should
-you find other compatible ircds, please let us know.  Most of the
-testing has been done on Nefarious IRCu 0.4.0/1.0 (Based on ircu2.10.11.x).
+This release of X3 (1.8) only supports the Undernet P10
+protocol and nefarious extensions. It is tested with Nefarious IRCu 
+1.3. It does not support bahamut, hybrid, Unreal, or any other ircd 
+not listed. Should you find other compatible ircds, please let us know.
+Most of the testing has been done on Nefarious IRCu 1.3.0 (Based on ircu2.10.11.x).
 
 X3 is known to compile on the following systems as long as you
 are using GNU make (make on Linux, gmake on many other systems):
@@ -34,9 +33,6 @@ are using GNU make (make on Linux, gmake on many other systems):
   * BSDi 4.x; tested on 4.0.1			      (x86)
   * CYGWIN 1.1.x and 1.3.x; tested on 1.1.8	      (x86)
 
-For the Linux kernel, X3 has been tested on Debian 2.x - 3.x, and
-Redhat 5.x - 8.x.
-
 X3 should compile on other system types also.  If you have success
 on other platforms/archs or problems on any platforms/archs, please
 contact the authors to let us know.
@@ -50,67 +46,76 @@ supports ISO C99 varadic macros.  gcc is the compiler we use for
 almost all our testing, and we recommend it for use with X3.
 
 Quick Install:
-----------
-$ ./configure
-    NOTE: The protocol the resulting X3 binary will support is
-    determined by the configure script. The P10 protocol is the
-    default.
+==============
+$ ./configure --prefix=~/x3run  
+    # Will install to x3run directory in your home directory
 $ make
-$ ${EDITOR} x3.conf
-    NOTE: You may want to copy x3.conf.example to x3.conf and
-    edit that.
+$ cp x3.conf.example x3.conf
+$ nano -w x3.conf
+    # use -w (no wrapping) option with nano, or use your favorite editor
 $ ./x3
+    # launches x3. 
+    # Note: x3 runs in the background as a service by default. Give it arguments
+    # -f -d  to have it run in the foreground and print debug information.
+
+Detailed Install:
+=================
+It is generally a bad idea to run or install x3 as root. Choose an account x3
+will run under, and configure it to install and run from somewhere that user
+has permissions.
 
 Compiling:
 ----------
-  1) Enter the root directory of the X3 tree.  If installation is done
-     from outside of it, it may cause problems during compile, or during
-     runtime.
+  1) cd to the main directory of the X3 source tree.  
 
-  2) Run the configure script (sh configure), it will verify that your
-     system will have the resources needed for X3 to compile.  If you
-     would like to change the path where X3 will be installed to,
-     execute configure with the --prefix=/path option.  The default path
-     is ~/x3/, with the X's representing the version. 
+  2) Run the configure script with correct arguments. You need to tell configure
+     at minimum a path to install to, and which modules to compile.
+     Configure will verify that your system will have the resources needed for 
+     X3 to compile. You should also turn debugging on to assist with setup: 
+     $ ./configure --prefix=/path/to/install --enable-modules=memoserv,helpserv --enable-debug
 
-  3) On some systems you may need to edit the Makefile in order for
-     it to compile correctly.  Includes, and other such things may
-     reside in other directories.  Most likely the Makefile won't require
-     any modifications.
+  3) You may optionally edit config.h in case the configure script made a
+     mistake. Leave it default to begin with.
 
-  4) You may optionally edit config.h in case the configure script made a
-     mistake.
-
-  5) Execute the "make" command to begin compiling.  If you encounter any
+  4) Run "make" to begin compiling.  If you encounter any
      uncorrectable errors/warnings, please scroll up to the introduction
      section and follow the instructions.
+     $ make
 
-  6) You may now either type "make install" to install it to your
+  5) You may now either type "make install" to install it to your
      installation path, or work from your build directory, either is fine.
+     $ make install
 
-  7) Copy sockcheck.conf.example to sockcheck.conf (and edit to add
-     new proxy types, if you wish).
+  6) Change to the install directory.
+     $ cd /path/to/install
 
-  8) Copy x3.conf.example to x3.conf and edit to suit your
+  7) Copy x3.conf.example to x3.conf and edit to suit your
      needs. Errors in the configuration file will be logged to
-     main.log (and if X3 is running in the foreground, printed to
-     stdout) when you start the daemon.
+     main.log (and if X3 is running in the foreground with -f, printed to
+     stdout) when you start x3. 
+     The example config contains help to assist you with modifications.
+     Remember to begin by only editing the bare minimum ammount you need to
+     edit to make it run. Then, when it is working, gradually customize the 
+     config more. This way errors can be identified at their source.
+     $ cp x3.conf.example x3.conf
+     $ nano -w x3.conf
 
-  9) You can now begin using your service bots.  You can debug by
-     running it with '-fd', it will not background itself, and it
+  8) You can now run x3 for the first time. You can debug by
+     running it with '-fd'. It will not background itself, and it
      will be fairly verbose if you gave the configure script the
      --enable-debug flag. If you would like to run in the foreground
      with no verbosity, use the '-f' flag. If you just want to run it,
      execute X3 without any flags.
+     $ ./x3 -fd
 
- 10) Once you have X3 started, you'll need to register a AuthServ
+  9) Once you have X3 started, you'll need to register a AuthServ
      account:
        /msg AuthServ@services.irc.com register <account> <password>
      Make sure that you register the first account -- it is
-     automatically granted certain privileges and gives you root-level
+     automatically granted owner privileges and gives you admin
      access to O3 once you are opered up.
 
- 11) New operators can be given access to O3 through AuthServ's
+ 10) New operators can be given access to O3 through AuthServ's
      (or whatever you've named the nick/authentication service) oset
      command:
        /msg AuthServ oset <nick>|*<account> level <level>
@@ -120,6 +125,16 @@ Compiling:
      traditional configurations) through AuthServ:
        /msg AuthServ oset <nick>|*<account> flags +H
 
-End of file, INSTALL.
+ 11) X3 stores its information in a flat text file (x3.db by default). If
+     you shut down x3 first, you can edit this file by hand (but be careful!)
+     If you delete it, x3 will start up brand new at step 9 (above) which
+     can be handy if you think you have made a mistake.
 
--Jedi (jedi@turboflux.net)
+
+
+If you get into trouble, stop by channel #Evilnet on irc.afternet.org for help.
+
+--------------
+Help guide originally created for srvx by: -Jedi (jedi@turboflux.net)
+Adapted by Rubin
+
