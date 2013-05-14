@@ -5344,6 +5344,10 @@ nickserv_reclaim(struct userNode *user, struct nick_info *ni, enum reclaim_actio
 
     assert(user);
     assert(ni);
+
+    if (IsLocal(user))
+        return;
+
     switch (action) {
     case RECLAIM_NONE:
         /* do nothing */
