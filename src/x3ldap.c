@@ -126,7 +126,7 @@ unsigned int ldap_check_auth( const char *account, const char *pass)
 
 }
 
-int ldap_search_user(char *account, LDAPMessage **entry)
+int ldap_search_user(const char *account, LDAPMessage **entry)
 {
 
    char filter[MAXLEN+1];
@@ -724,6 +724,21 @@ void ldap_close()
 {
    admin_bind = false;
    ldap_unbind_ext(ld, NULL, NULL);
+}
+
+/* queries the ldap server for account..
+ * returns LDAP_SUCCESS if a match is found
+ * returns LDAP_OTHER if no match is found
+ * on error returns the proper ldap error
+ */
+int ldap_user_exists(const char *account)
+{
+  int rc;
+  LDAPMessage *res;
+
+  rc = ldap_search_user(account, &res);
+
+  return rc;
 }
 
 #endif

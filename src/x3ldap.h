@@ -33,7 +33,7 @@ int ldap_do_modify(const char *account, const char *password, const char *email)
 int ldap_get_user_info(const char *account, char **email);
 int ldap_delfromgroup(char *account, const char *group);
 int ldap_add2group(char *account, const char *group);
-
+int ldap_user_exists(const char *account);
 
 void ldap_close();
 

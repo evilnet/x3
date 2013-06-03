@@ -1135,7 +1135,7 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
 {
     struct handle_info *hi;
     struct nick_info *ni;
-    char crypted[MD5_CRYPT_LENGTH];
+    char crypted[MD5_CRYPT_LENGTH] = "";
 
     if ((hi = dict_find(nickserv_handle_dict, handle, NULL))) {
         if(user)
@@ -1150,14 +1150,17 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
         return 0;
     }
 
-    if (!is_secure_password(handle, passwd, user))
-        return 0;
+    if (passwd)
+    {
+        if (!is_secure_password(handle, passwd, user))
+            return 0;
 
-    cryptpass(passwd, crypted);
+        cryptpass(passwd, crypted);
+    }
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
         int rc;
-        rc = ldap_do_add(handle, (no_auth ? NULL : crypted), NULL);
+        rc = ldap_do_add(handle, (no_auth || !passwd ? NULL : crypted), NULL);
         if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
            if(user)
              send_message(user, nickserv, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
@@ -5426,6 +5429,39 @@ ctime(&hi->registered));
 #else
     hi = dict_find(nickserv_id_dict, stamp, NULL);
     log_module(MAIN_LOG, LOG_WARNING, "Using non-P10 code in accounts, not tested at all!");
+#endif
+
+#ifdef WITH_LDAP
+    if(!hi && nickserv_conf.ldap_enable && nickserv_conf.ldap_autocreate &&
+       (ldap_user_exists(stamp) == LDAP_SUCCESS)) {
+        int rc = 0;
+        int cont = 1;
+        char *email = NULL;
+        char *mask;
+
+        /* First attempt to get the email address from LDAP */
+        if((rc = ldap_get_user_info(stamp, &email) != LDAP_SUCCESS))
+            if(nickserv_conf.email_required)
+                cont = 0;
+
+        /* Now try to register the handle */
+        if (cont && (hi = nickserv_register(user, user, stamp, NULL, 1))) {
+            if(nickserv_conf.default_hostmask)
+                mask = "*@*";
+            else
+                mask = generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+
+            if(mask) {
+                char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+                string_list_append(hi->masks, mask_canonicalized);
+            }
+
+            if(email) {
+                nickserv_set_email_addr(hi, email);
+                free(email);
+            }
+        }
+    }
 #endif
 
     if (hi) {
