@@ -51,6 +51,7 @@ EXTRA_x3_SOURCES = \
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
 x3_SOURCES = \
+	base64.c base64.h \
 	chanserv.c chanserv.h \
 	compat.c compat.h \
 	conf.c conf.h \

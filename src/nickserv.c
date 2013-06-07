@@ -18,6 +18,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
+#include "base64.h"
 #include "chanserv.h"
 #include "conf.h"
 #include "config.h"
@@ -5521,10 +5522,241 @@ nickserv_define_func(const char *name, modcmd_func_t func, int min_level, int mu
     }
 }
 
+#define SDFLAG_STALE 0x01  /**< SASL session data is stale, delete on next pass. */
+
+struct SASLSession
+{
+    struct SASLSession *next;
+    struct SASLSession *prev;
+    struct server* source;
+    char *buf, *p;
+    int buflen;
+    char uid[128];
+    char mech[10];
+    char sslclifp[128];
+    int flags;
+};
+
+struct SASLSession *saslsessions = NULL;
+
+void
+sasl_delete_session(struct SASLSession *session)
+{
+    if (!session)
+        return;
+
+    if (session->buf)
+        free(session->buf);
+
+    if (session->next)
+        session->next->prev = session->prev;
+    if (session->prev)
+        session->prev->next = session->next;
+    else
+        saslsessions = session->next;
+
+    free(session);
+}
+
+void
+sasl_delete_stale(UNUSED_ARG(void *data))
+{
+    int delcount = 0;
+    int remcount = 0;
+    struct SASLSession *sess = NULL;
+    struct SASLSession *nextsess = NULL;
+
+    log_module(NS_LOG, LOG_DEBUG, "SASL: Checking for stale sessions");
+
+    for (sess = saslsessions; sess; sess = nextsess)
+    {
+        nextsess = sess->next;
+
+        if (sess->flags & SDFLAG_STALE)
+        {
+            delcount++;
+            sasl_delete_session(sess);
+        }
+        else
+        {
+            remcount++;
+            sess->flags |= SDFLAG_STALE;
+        }
+    }
+
+    if (delcount)
+        log_module(NS_LOG, LOG_DEBUG, "SASL: Deleted %d stale sessions, %d remaining", delcount, remcount);
+    if (remcount)
+        timeq_add(now + 30, sasl_delete_stale, NULL);
+}
+
+struct SASLSession*
+sasl_get_session(const char *uid)
+{
+    struct SASLSession *sess;
+
+    for (sess = saslsessions; sess; sess = sess->next)
+    {
+        if (!strncmp(sess->uid, uid, 128))
+        {
+            log_module(NS_LOG, LOG_DEBUG, "SASL: Found session for %s", sess->uid);
+            return sess;
+        }
+    }
+
+    sess = malloc(sizeof(struct SASLSession));
+    memset(sess, 0, sizeof(struct SASLSession));
+
+    strncpy(sess->uid, uid, 128);
+
+    if (!saslsessions)
+        timeq_add(now + 30, sasl_delete_stale, NULL);
+
+    if (saslsessions)
+        saslsessions->prev = sess;
+    sess->next = saslsessions;
+    saslsessions = sess;
+
+    log_module(NS_LOG, LOG_DEBUG, "SASL: Created session for %s", sess->uid);
+    return sess;
+}
+
+void
+sasl_packet(struct SASLSession *session)
+{
+    log_module(NS_LOG, LOG_DEBUG, "SASL: Got packet containing: %s", session->buf);
+
+    if (!session->mech[0])
+    {
+        log_module(NS_LOG, LOG_DEBUG, "SASL: No mechanism stored yet, using %s", session->buf);
+        if (strcmp(session->buf, "PLAIN")) {
+            irc_sasl(session->source, session->uid, "M", "PLAIN");
+            irc_sasl(session->source, session->uid, "D", "F");
+            sasl_delete_session(session);
+            return;
+        }
+
+        strncpy(session->mech, session->buf, 10);
+        irc_sasl(session->source, session->uid, "C", "+");
+    }
+    else /* We only have PLAIN at the moment so next message must be credentials */
+    {
+        char *raw;
+        size_t rawlen;
+        char *authzid = NULL;
+        char *authcid = NULL;
+        char *passwd = NULL;
+        char *r;
+        unsigned int i = 0, c = 0;
+        struct handle_info *hi;
+
+        base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
+
+        raw = (char *)realloc(raw, rawlen+1);
+	raw[rawlen] = '\0';
+
+        authzid = raw;
+        r = raw;
+        for (i=0; i<rawlen; i++)
+        {
+            if (!*r++)
+            {
+                if (c++)
+                    passwd = r;
+                else
+                    authcid = r;
+            }
+        }
+
+        log_module(NS_LOG, LOG_DEBUG, "SASL: Checking supplied credentials");
+
+        if (c != 2)
+        {
+            log_module(NS_LOG, LOG_DEBUG, "SASL: Incomplete credentials supplied");
+            irc_sasl(session->source, session->uid, "D", "F");
+        }
+        else
+        {
+            if (!(hi = loc_auth(NULL, authcid, passwd, NULL)))
+            {
+                log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
+                irc_sasl(session->source, session->uid, "D", "F");
+            }
+            else
+            {
+                log_module(NS_LOG, LOG_DEBUG, "SASL: Valid credentials supplied");
+                irc_sasl(session->source, session->uid, "L", hi->handle);
+                irc_sasl(session->source, session->uid, "D", "S");
+            }
+        }
+
+        sasl_delete_session(session);
+
+        free(raw);
+        return;
+    }
+
+    /* clear stale state */
+    session->flags &= ~SDFLAG_STALE;
+}
+
+void
+handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, const char *data, UNUSED_ARG(const char *ext), UNUSED_ARG(void *extra))
+{
+    struct SASLSession* sess = sasl_get_session(uid);
+    int len = strlen(data);
+
+    sess->source = source;
+
+    if (!strcmp(subcmd, "D"))
+    {
+        sasl_delete_session(sess);
+        return;
+    }
+
+    if (strcmp(subcmd, "S") && strcmp(subcmd, "C"))
+        return;
+
+    if (len == 0)
+        return;
+
+    if (sess->p == NULL)
+    {
+        sess->buf = (char *)malloc(len + 1);
+        sess->p = sess->buf;
+        sess->buflen = len;
+    }
+    else
+    {
+        if (sess->buflen + len + 1 > 8192) /* This is a little much... */
+        {
+            irc_sasl(source, uid, "D", "F");
+            sasl_delete_session(sess);
+            return;
+        }
+
+        sess->buf = (char *)realloc(sess->buf, sess->buflen + len + 1);
+        sess->p = sess->buf + sess->buflen;
+        sess->buflen += len;
+    }
+
+    memcpy(sess->p, data, len);
+
+    /* Messages not exactly 400 bytes are the end of a packet. */
+    if(len < 400)
+    {
+        sasl_packet(sess);
+        sess->buflen = 0;
+        free(sess->buf);
+        sess->buf = sess->p = NULL;
+    }
+}
+
 static void
 nickserv_db_cleanup(UNUSED_ARG(void* extra))
 {
     unreg_del_user_func(nickserv_remove_user, NULL);
+    unreg_sasl_input_func(handle_sasl_input, NULL);
     userList_clean(&curr_helpers);
     policer_params_delete(nickserv_conf.auth_policer_params);
     dict_delete(nickserv_handle_dict);
@@ -5599,6 +5831,7 @@ init_nickserv(const char *nick)
     reg_del_user_func(nickserv_remove_user, NULL);
     reg_account_func(handle_account);
     reg_auth_func(handle_loc_auth_oper, NULL);
+    reg_sasl_input_func(handle_sasl_input, NULL);
 
     /* set up handle_inverse_flags */
     memset(handle_inverse_flags, 0, sizeof(handle_inverse_flags));
@@ -5728,6 +5961,7 @@ init_nickserv(const char *nick)
             AddChannelUser(nickserv, chan)->modes |= MODE_CHANOP;
         }
     }
+
 #ifdef WITH_LDAP
     ldap_do_init(nickserv_conf);
 #endif

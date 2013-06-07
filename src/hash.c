@@ -101,6 +101,52 @@ GetServerH(const char *name)
     return dict_find(servers, name, NULL);
 }
 
+sasl_input_func_t *sif_list;
+void **sif_list_extra;
+unsigned int sif_size = 0, sif_used = 0;
+
+void
+reg_sasl_input_func(sasl_input_func_t handler, void *extra)
+{
+    if (sif_used == sif_size) {
+        if (sif_size) {
+            sif_size <<= 1;
+            sif_list = realloc(sif_list, sif_size*sizeof(new_user_func_t));
+            sif_list_extra = realloc(sif_list_extra, sif_size*sizeof(void*));
+        } else {
+            sif_size = 8;
+            sif_list = malloc(sif_size*sizeof(new_user_func_t));
+            sif_list_extra = malloc(sif_size*sizeof(void*));
+        }
+    }
+    sif_list[sif_used] = handler;
+    sif_list_extra[sif_used++] = extra;
+}
+
+void
+call_sasl_input_func(struct server* source ,const char *identifier, const char *subcmd, const char *data, const char *ext)
+{
+    unsigned int i;
+
+    for (i = 0; i < sif_used; ++i)
+    {
+        sif_list[i](source, identifier, subcmd, data, ext, sif_list_extra[i]);
+    }
+}
+
+void
+unreg_sasl_input_func(sasl_input_func_t handler, void *extra)
+{
+    unsigned int i;
+    for (i=0; i<sif_used; i++) {
+        if (sif_list[i] == handler && sif_list_extra[i] == extra) break;
+    }
+    if (i == sif_used) return;
+    memmove(sif_list+i, sif_list+i+1, (sif_used-i-1)*sizeof(sif_list[0]));
+    memmove(sif_list_extra+i, sif_list_extra+i+1, (sif_used-i-1)*sizeof(sif_list_extra[0]));
+    sif_used--;
+}
+
 new_user_func_t *nuf_list;
 void **nuf_list_extra;
 unsigned int nuf_size = 0, nuf_used = 0;

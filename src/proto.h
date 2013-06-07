@@ -170,6 +170,7 @@ void irc_regnick(struct userNode *user);
 void irc_fakehost(struct userNode *user, const char *host);
 void irc_mark(struct userNode *user, char *mark);
 void irc_sno(unsigned int mask, char const* format, ...);
+void irc_sasl(struct server* dest, const char *identifier, const char *subcmd, const char *data);
 
 /* numeric messages */
 void irc_numeric(struct userNode *user, unsigned int num, const char *format, ...);

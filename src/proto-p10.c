@@ -85,6 +85,7 @@
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
 #define CMD_RPONG               "RPONG"
+#define CMD_SASL                "SASL"
 #define CMD_SERVER              "SERVER"
 #define CMD_SERVLIST            "SERVLIST"
 #define CMD_SERVSET             "SERVSET"
@@ -184,6 +185,7 @@
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
 #define TOK_RPONG               "RO"
+#define TOK_SASL                "SASL"
 #define TOK_SERVER              "S"
 #define TOK_SERVLIST            "SERVSET"
 #define TOK_SERVSET             "SERVSET"
@@ -292,6 +294,7 @@
 #define P10_RESTART             TYPE(RESTART)
 #define P10_RPING               TYPE(RPING)
 #define P10_RPONG               TYPE(RPONG)
+#define P10_SASL                TYPE(SASL)
 #define P10_SERVER              CMD_SERVER
 #define P10_SERVLIST            TYPE(SERVLIST)
 #define P10_SERVSET             TYPE(SERVSET)
@@ -1216,6 +1219,12 @@ void irc_sno(unsigned int mask, char const* format, ...) {
     putsock("%s " CMD_SNO " %d :%s", self->numeric, mask, buffer);
 }
 
+void
+irc_sasl(struct server* dest, const char *identifier, const char *subcmd, const char *data)
+{
+    putsock("%s " P10_SASL " %s %s %s :%s", self->numeric, dest->numeric, identifier, subcmd, data);
+}
+
 static void send_burst(void);
 
 static void
@@ -1430,6 +1439,22 @@ static CMD_FUNC(cmd_rping)
 
     if (dest == self)
         irc_rpong(argv[2], argv[3], argv[4], argv[5]);
+
+    return 1;
+}
+
+static CMD_FUNC(cmd_sasl)
+{
+    struct server *serv;
+
+    if (argc < 5)
+        return 0;
+
+    serv = GetServerH(origin);
+    if (!serv)
+      return 0;
+
+    call_sasl_input_func(serv, argv[2], argv[3], argv[4], (argc>5 ? argv[5] : NULL));
 
     return 1;
 }
@@ -2672,6 +2697,9 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_RPING, cmd_rping);
     dict_insert(irc_func_dict, CMD_RPONG, cmd_dummy);
     dict_insert(irc_func_dict, TOK_RPONG, cmd_dummy);
+
+    dict_insert(irc_func_dict, CMD_SASL, cmd_sasl);
+    dict_insert(irc_func_dict, TOK_SASL, cmd_sasl);
 
     /* In P10, DESTRUCT doesn't do anything except be broadcast to servers.
      * Apparently to obliterate channels from any servers that think they

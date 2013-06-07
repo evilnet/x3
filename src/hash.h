@@ -395,6 +395,11 @@ typedef int (*server_link_func_t) (struct server *server, void *extra);
 void reg_server_link_func(server_link_func_t handler, void *extra);
 void call_server_link_funcs(struct server *server);
 
+typedef void (*sasl_input_func_t) (struct server* source ,const char *identifier, const char *subcmd, const char *data, const char *ext, void *extra);
+void reg_sasl_input_func(sasl_input_func_t handler, void *extra);
+void call_sasl_input_func(struct server* source ,const char *identifier, const char *subcmd, const char *data, const char *ext);
+void unreg_sasl_input_func(sasl_input_func_t handler, void *extra);
+
 typedef int (*new_user_func_t) (struct userNode *user, void *extra);
 void reg_new_user_func(new_user_func_t handler, void *extra);
 void call_new_user_funcs(struct userNode *user);

@@ -62,7 +62,7 @@ globtest_LDADD = $(LDADD)
 am_slab_read_OBJECTS = slab-read.$(OBJEXT)
 slab_read_OBJECTS = $(am_slab_read_OBJECTS)
 slab_read_LDADD = $(LDADD)
-am_x3_OBJECTS = chanserv.$(OBJEXT) compat.$(OBJEXT) conf.$(OBJEXT) \
+am_x3_OBJECTS = base64.$(OBJEXT) chanserv.$(OBJEXT) compat.$(OBJEXT) conf.$(OBJEXT) \
 	dict-splay.$(OBJEXT) getopt.$(OBJEXT) getopt1.$(OBJEXT) \
 	gline.$(OBJEXT) global.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
 	helpfile.$(OBJEXT) hosthiding.$(OBJEXT) ioset.$(OBJEXT) \
@@ -244,6 +244,7 @@ EXTRA_x3_SOURCES = \
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
 x3_SOURCES = \
+	base64.c base64.h \
 	chanserv.c chanserv.h \
 	compat.c compat.h \
 	conf.c conf.h \
