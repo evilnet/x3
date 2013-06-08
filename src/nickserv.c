@@ -5649,6 +5649,7 @@ sasl_packet(struct SASLSession *session)
         char *r;
         unsigned int i = 0, c = 0;
         struct handle_info *hi;
+        static char buffer[256];
 
         base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
 
@@ -5684,8 +5685,9 @@ sasl_packet(struct SASLSession *session)
             }
             else
             {
+                snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hi->handle, hi->registered);
                 log_module(NS_LOG, LOG_DEBUG, "SASL: Valid credentials supplied");
-                irc_sasl(session->source, session->uid, "L", hi->handle);
+                irc_sasl(session->source, session->uid, "L", buffer);
                 irc_sasl(session->source, session->uid, "D", "S");
             }
         }

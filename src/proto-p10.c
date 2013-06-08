@@ -1222,7 +1222,7 @@ void irc_sno(unsigned int mask, char const* format, ...) {
 void
 irc_sasl(struct server* dest, const char *identifier, const char *subcmd, const char *data)
 {
-    putsock("%s " P10_SASL " %s %s %s :%s", self->numeric, dest->numeric, identifier, subcmd, data);
+    putsock("%s " P10_SASL " %s %s %s %s", self->numeric, dest->numeric, identifier, subcmd, data);
 }
 
 static void send_burst(void);
