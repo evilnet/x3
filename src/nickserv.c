@@ -5743,6 +5743,7 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
     }
 
     memcpy(sess->p, data, len);
+    sess->buf[len] = '\0';
 
     /* Messages not exactly 400 bytes are the end of a packet. */
     if(len < 400)
