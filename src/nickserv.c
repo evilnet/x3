@@ -969,7 +969,7 @@ generate_fakehost(struct handle_info *handle)
         if (data)
             style = atoi(data);
 
-        if (style == 1)
+        if ((style == 1) || (style == 3))
             snprintf(buffer, sizeof(buffer), "%s.%s", handle->handle, hidden_host_suffix);
         else if (style == 2) {
             /* Due to the way fakehost is coded theres no way i can

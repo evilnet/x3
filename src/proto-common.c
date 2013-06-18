@@ -904,10 +904,10 @@ generate_hostmask(struct userNode *user, int options)
         if (data)
             style = atoi(data);
 
-        if ((style == 1) && user->handle_info && hidden_host_suffix && !(options & GENMASK_NO_HIDING)) {
+        if (((style == 1) || (style == 3)) && user->handle_info && hidden_host_suffix && !(options & GENMASK_NO_HIDING)) {
             hostname = alloca(strlen(user->handle_info->handle) + strlen(hidden_host_suffix) + 2);
             sprintf(hostname, "%s.%s", user->handle_info->handle, hidden_host_suffix);
-        } else if ((style == 2) && !(options & GENMASK_NO_HIDING)) {
+        } else if (((style == 2) || (style == 3)) && !(options & GENMASK_NO_HIDING)) {
             hostname = alloca(strlen(user->crypthost));
             sprintf(hostname, "%s", user->crypthost);
         }

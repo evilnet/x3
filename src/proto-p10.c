@@ -1131,9 +1131,9 @@ irc_topic(struct userNode *service, struct userNode *who, struct chanNode *what,
               safestrncpy(sident, who->ident, sizeof(shost));
 
           safestrncpy(shost, host, sizeof(shost));
-      } else if (IsHiddenHost(who) && (hhtype == 1) && who->handle_info && hhstr) {
+      } else if (IsHiddenHost(who) && ((hhtype == 1) || (hhtype == 3)) && who->handle_info && hhstr) {
           snprintf(shost, sizeof(shost), "%s.%s", who->handle_info->handle, hhstr);
-      } else if (IsHiddenHost(who) && (hhtype == 2) && who->crypthost[0]) {
+      } else if (IsHiddenHost(who) && ((hhtype == 2) || (hhtype == 3)) && who->crypthost[0]) {
           safestrncpy(shost, who->crypthost, sizeof(shost));
       } else
           safestrncpy(shost, who->hostname, sizeof(shost));
