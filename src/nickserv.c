@@ -5533,7 +5533,7 @@ struct SASLSession
     int buflen;
     char uid[128];
     char mech[10];
-    char sslclifp[128];
+    char *sslclifp;
     int flags;
 };
 
@@ -5547,6 +5547,9 @@ sasl_delete_session(struct SASLSession *session)
 
     if (session->buf)
         free(session->buf);
+
+    if (session->sslclifp)
+        free(session->sslclifp);
 
     if (session->next)
         session->next->prev = session->prev;
@@ -5678,7 +5681,7 @@ sasl_packet(struct SASLSession *session)
         }
         else
         {
-            if (!(hi = loc_auth(NULL, authcid, passwd, NULL)))
+            if (!(hi = loc_auth(session->sslclifp, authcid, passwd, NULL)))
             {
                 log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
                 irc_sasl(session->source, session->uid, "D", "F");
@@ -5703,7 +5706,7 @@ sasl_packet(struct SASLSession *session)
 }
 
 void
-handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, const char *data, UNUSED_ARG(const char *ext), UNUSED_ARG(void *extra))
+handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, const char *data, const char *ext, UNUSED_ARG(void *extra))
 {
     struct SASLSession* sess = sasl_get_session(uid);
     int len = strlen(data);
@@ -5744,6 +5747,9 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
 
     memcpy(sess->p, data, len);
     sess->buf[len] = '\0';
+
+    if (ext != NULL)
+        sess->sslclifp = strdup(ext);
 
     /* Messages not exactly 400 bytes are the end of a packet. */
     if(len < 400)
