@@ -26,6 +26,7 @@ src/modules-list.h
 src/slab-read
 src/stamp-h1
 src/version.c
+src/config.h
 src/x3
 x3
 
