@@ -5547,9 +5547,11 @@ sasl_delete_session(struct SASLSession *session)
 
     if (session->buf)
         free(session->buf);
+    session->buf = NULL;
 
     if (session->sslclifp)
         free(session->sslclifp);
+    session->sslclifp = NULL;
 
     if (session->next)
         session->next->prev = session->prev;
@@ -5756,7 +5758,8 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
     {
         sasl_packet(sess);
         sess->buflen = 0;
-        free(sess->buf);
+        if (sess->buf != NULL)
+          free(sess->buf);
         sess->buf = sess->p = NULL;
     }
 }
