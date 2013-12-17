@@ -47,6 +47,18 @@
  * - Some kind of system for getting needed binds bound automagicaly to make it easier
  *   to run peoples' scripts and mod-python in general.
  * - An interface to reading/writing data to x3.db. Maybe generic, or attached to account or channel reg records?
+
+ * basic startup for now:
+ * configure --enable-modules=python
+ * /msg o3 bind o3 py\ run *python.run
+ * /msg o3 bind o3 py\ reload *python.reload
+ * /msg o3 bind o3 py\ command *python.command
+
+ * example script bindings (for now)
+ * /msg o3 bind x3 hangman *modcmd.joiner
+ * /msg o3 bind x3 hangman\ start *python.command hangman start
+ * /msg o3 bind x3 hangman\ end *python.command hangman end
+ * /msg o3 bind x3 hangman\ guess *python.command hangman guess
  */
 
 static const struct message_entry msgtab[] = {
@@ -2020,10 +2032,10 @@ static void modpython_conf_read(void) {
     }
 
     str = database_get_data(conf_node, "scripts_dir", RECDB_QSTRING);
-    modpython_conf.scripts_dir = str ? str : "./";
+    modpython_conf.scripts_dir = strdup(str ? str : "./");
 
     str = database_get_data(conf_node, "main_module", RECDB_QSTRING);
-    modpython_conf.main_module = str ? str : "modpython";
+    modpython_conf.main_module = strdup(str ? str : "modpython");
 }
 
 int python_init(void) {
@@ -2031,7 +2043,7 @@ int python_init(void) {
        do all our setup tasks and bindings 
     */
 
-    PY_LOG = log_register_type("Python", "file:python.log");
+    //PY_LOG = log_register_type("Python", "file:python.log");
     python_module = module_register("python", PY_LOG, "mod-python.help", NULL);
     conf_register_reload(modpython_conf_read);
 
@@ -2048,7 +2060,7 @@ int python_init(void) {
 */
     modcmd_register(python_module, "reload",  cmd_reload,  1,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     modcmd_register(python_module, "run",  cmd_run,  2,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
-    modcmd_register(python_module, "command", cmd_command, 3, MODCMD_REQUIRE_STAFF, NULL);
+//    modcmd_register(python_module, "command", cmd_command, 3, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
 
 //  Please help us by implementing any of the callbacks listed as TODO below. They already exist
 //  in x3, they just need handle_ bridges implemented. (see python_handle_join for an example)
