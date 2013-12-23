@@ -691,6 +691,7 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
     struct svccmd *cmd;
     unsigned int cmd_arg, perms, flags, options, result;
     char channel_name[CHANNELLEN+1];
+    char *new_argv[MAXNUMPARAMS]; /* for aliases */
 
     options = (server_qualified ? SVCCMD_QUALIFIED : 0) | SVCCMD_DEBIT | SVCCMD_NOISY;
     /* Find the command argument. */
@@ -754,7 +755,6 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
 
     /* Expand the alias arguments, if there are any. */
     if (cmd->alias.used) {
-        char *new_argv[MAXNUMPARAMS];
         int res;
 
         res = svccmd_expand_alias(cmd, user, argc, argv, new_argv);
@@ -808,8 +808,11 @@ svccmd_invoke_argv(struct userNode *user, struct service *service, struct chanNo
         safestrncpy(channel_name, channel->name, sizeof(channel_name));
     else
         channel_name[0] = 0;
-    if (!(result = cmd->command->func(user, channel, argc, argv, cmd)))
+
+    /* Call the function here */
+    if (!(result = cmd->command->func(user, channel, argc, argv, cmd))) 
         return 0;
+
     if (!(flags & MODCMD_NO_LOG)) {
         enum log_severity slvl;
         if (result & CMD_LOG_OVERRIDE)
