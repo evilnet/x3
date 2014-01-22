@@ -5646,14 +5646,14 @@ sasl_packet(struct SASLSession *session)
     }
     else /* We only have PLAIN at the moment so next message must be credentials */
     {
-        char *raw;
-        size_t rawlen;
+        char *raw = NULL;
+        size_t rawlen = 0;
         char *authzid = NULL;
         char *authcid = NULL;
         char *passwd = NULL;
-        char *r;
+        char *r = NULL;
         unsigned int i = 0, c = 0;
-        struct handle_info *hi;
+        struct handle_info *hi = NULL;
         static char buffer[256];
 
         base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
