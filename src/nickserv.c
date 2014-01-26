@@ -5561,6 +5561,7 @@ struct SASLSession
     char uid[128];
     char mech[10];
     char *sslclifp;
+    char *hostmask;
     int flags;
 };
 
@@ -5579,6 +5580,10 @@ sasl_delete_session(struct SASLSession *session)
     if (session->sslclifp)
         free(session->sslclifp);
     session->sslclifp = NULL;
+
+    if (session->hostmask)
+        free(session->hostmask);
+    session->hostmask = NULL;
 
     if (session->next)
         session->next->prev = session->prev;
@@ -5693,7 +5698,7 @@ sasl_packet(struct SASLSession *session)
             log_module(NS_LOG, LOG_DEBUG, "SASL: Incomplete credentials supplied");
             irc_sasl(session->source, session->uid, "D", "F");
         } else {
-            if (!(hi = loc_auth(session->sslclifp, authzid, NULL, NULL)))
+            if (!(hi = loc_auth(session->sslclifp, authzid, NULL, session->hostmask)))
             {
                 log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
                 irc_sasl(session->source, session->uid, "D", "F");
@@ -5751,7 +5756,7 @@ sasl_packet(struct SASLSession *session)
         }
         else
         {
-            if (!(hi = loc_auth(session->sslclifp, authcid, passwd, NULL)))
+            if (!(hi = loc_auth(session->sslclifp, authcid, passwd, session->hostmask)))
             {
                 log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
                 irc_sasl(session->source, session->uid, "D", "F");
@@ -5787,6 +5792,12 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
     {
         sasl_delete_session(sess);
         return;
+    }
+
+    if (!strcmp(subcmd, "H")) {
+       log_module(NS_LOG, LOG_DEBUG, "SASL: Storing host mask %s", data);
+       sess->hostmask = strdup(data);
+       return ;
     }
 
     if (strcmp(subcmd, "S") && strcmp(subcmd, "C"))
