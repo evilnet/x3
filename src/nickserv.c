@@ -2076,6 +2076,27 @@ reg_failpw_func(failpw_func_t func, void *extra)
 }
 
 /*
+ * Return hi for the first handle that has a matching SSL fingerprint.
+ */
+struct handle_info *find_handleinfo_by_sslfp(char *sslfp)
+{
+    dict_iterator_t it;
+    struct handle_info *hi;
+    unsigned int ii = 0;;
+
+    for (it = dict_first(nickserv_handle_dict); it; it = iter_next(it)) {
+        hi = iter_data(it);
+        for (ii=0; ii<hi->sslfps->used; ii++) {
+            if (!irccasecmp(sslfp, hi->sslfps->list[ii])) {
+                return hi;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/*
  * Return hi if the handle/pass pair matches, NULL if it doesnt.
  *
  * called by nefariouses enhanced AC login-on-connect code
@@ -2086,17 +2107,23 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
     int wildmask = 0, auth = 0;
     int used, maxlogins;
     unsigned int ii;
-    struct handle_info *hi;
+    struct handle_info *hi = NULL;
     struct userNode *other;
 #ifdef WITH_LDAP
     int ldap_result = LDAP_SUCCESS;
     char *email = NULL;
 #endif
     
-    hi = dict_find(nickserv_handle_dict, handle, NULL);
+    if (handle != NULL)
+        hi = dict_find(nickserv_handle_dict, handle, NULL);
+    if (!hi && (sslfp != NULL)) {
+        hi = find_handleinfo_by_sslfp(sslfp);
+        if (!handle && (hi != NULL))
+            handle = hi->handle;
+    }
     
 #ifdef WITH_LDAP
-    if (nickserv_conf.ldap_enable) {
+    if (nickserv_conf.ldap_enable && (password != NULL)) {
         ldap_result = ldap_check_auth(handle, password);
         if (!hi && (ldap_result != LDAP_SUCCESS))
             return NULL;
@@ -5634,8 +5661,11 @@ sasl_packet(struct SASLSession *session)
     if (!session->mech[0])
     {
         log_module(NS_LOG, LOG_DEBUG, "SASL: No mechanism stored yet, using %s", session->buf);
-        if (strcmp(session->buf, "PLAIN")) {
-            irc_sasl(session->source, session->uid, "M", "PLAIN");
+        if (strcmp(session->buf, "PLAIN") && (strcmp(session->buf, "EXTERNAL") || !session->sslclifp)) {
+            if (!session->sslclifp)
+                irc_sasl(session->source, session->uid, "M", "PLAIN");
+            else
+                irc_sasl(session->source, session->uid, "M", "PLAIN,EXTERNAL");
             irc_sasl(session->source, session->uid, "D", "F");
             sasl_delete_session(session);
             return;
@@ -5643,6 +5673,44 @@ sasl_packet(struct SASLSession *session)
 
         strncpy(session->mech, session->buf, 10);
         irc_sasl(session->source, session->uid, "C", "+");
+    }
+    else if (!strcmp(session->mech, "EXTERNAL"))
+    {
+        char *raw = NULL;
+        size_t rawlen = 0;
+        char *authzid = NULL;
+        struct handle_info *hi = NULL;
+        static char buffer[256];
+
+        base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
+
+        if (rawlen != 0)
+            authzid = raw;
+
+        log_module(NS_LOG, LOG_DEBUG, "SASL: Checking supplied credentials");
+
+        if (!session->sslclifp) {
+            log_module(NS_LOG, LOG_DEBUG, "SASL: Incomplete credentials supplied");
+            irc_sasl(session->source, session->uid, "D", "F");
+        } else {
+            if (!(hi = loc_auth(session->sslclifp, authzid, NULL, NULL)))
+            {
+                log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
+                irc_sasl(session->source, session->uid, "D", "F");
+            }
+            else
+            {
+                snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hi->handle, hi->registered);
+                log_module(NS_LOG, LOG_DEBUG, "SASL: Valid credentials supplied");
+                irc_sasl(session->source, session->uid, "L", buffer);
+                irc_sasl(session->source, session->uid, "D", "S");
+            }
+        }
+
+        sasl_delete_session(session);
+
+        free(raw);
+        return;
     }
     else /* We only have PLAIN at the moment so next message must be credentials */
     {
