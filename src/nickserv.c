@@ -2205,16 +2205,37 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
      */
     if(userhost) {
         char *buf;
-        char *ident;
-        char *realhost;
-        char *ip;
+        char *ident = NULL;
+        char *realhost = NULL;
+        char *ip = NULL;
         char *uh;
         char *ui;
+        char *c;
+        int bracket = 0;
 
         buf = strdup(userhost);
-        ident = mysep(&buf, "@");
-        realhost = mysep(&buf, ":");
-        ip = mysep(&buf, ":");
+
+        ident = buf;
+        for (c = buf; *c; c++) {
+            if ((realhost == NULL) && (*c == '@')) {
+                *c++ = '\0';
+                if (*c == '[') {
+                    bracket = 1;
+                    *c++ = '\0';
+                }
+                realhost = c;
+            } else if (bracket && (ip == NULL) && (*c == ']')) {
+                bracket = 0;
+                *c = '\0';
+            } else if (!bracket && (ip == NULL) && (*c == ':')) {
+                *c++ = '\0';
+                ip = c;
+                break;
+            }
+        }
+
+        log_module(NS_LOG, LOG_DEBUG, "LOC: ident=%s host=%s ip=%s", ident, realhost, ip);
+
         if(!ip || !realhost || !ident) {
             free(buf);
             return NULL; /* Invalid AC request, just quit */
