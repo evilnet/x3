@@ -24,7 +24,7 @@
 #include "saxdb.h"
 #include "timeq.h"
 
-#ifndef HAVE_MATH_H
+#ifdef HAVE_MATH_H
   #include <math.h>
   #include <complex.h>
 #else

@@ -29,6 +29,8 @@
 #include "config.h"
 #ifdef WITH_LDAP
 
+#define LDAP_DEPRECATED 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ldap.h>
@@ -276,7 +278,7 @@ char *make_password(const char *crypted)
        char *passbuf;
 
        packed = pack(crypted, &len);
-       base64_encode_alloc(packed, len, &base64pass);
+       base64_encode_alloc((char *)packed, len, &base64pass);
        passbuf = malloc(strlen(base64pass) + 1 + 5);
        strcpy(passbuf, "{MD5}");
        strcat(passbuf, base64pass);
@@ -360,7 +362,7 @@ int ldap_do_add(const char *account, const char *crypted, const char *email)
     LDAPMod **mods;
     int rc, i;
     int num_mods;
-    char *passbuf;
+    char *passbuf = NULL;
     
     if(!admin_bind && LDAP_SUCCESS != ( rc = ldap_do_admin_bind())) {
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");

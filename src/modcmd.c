@@ -608,7 +608,9 @@ svccmd_expand_alias(struct svccmd *cmd, struct userNode *user, unsigned int old_
         if (arg[1] == '$') {
             new_argv[new_argc++] = arg + 1;
         } else if (isdigit(arg[1])) {
-            unsigned int lbound, ubound, jj;
+            unsigned int lbound = 0;
+            unsigned int ubound = 0;
+            unsigned int jj = 0;
             char *end_num;
 
             lbound = strtoul(arg+1, &end_num, 10);
