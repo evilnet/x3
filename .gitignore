@@ -28,5 +28,6 @@ src/stamp-h1
 src/version.c
 src/config.h
 src/x3
+src/*.orig
 x3
 

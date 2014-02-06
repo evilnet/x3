@@ -4130,14 +4130,7 @@ nickserv_saxdb_write(struct saxdb_context *ctx) {
         if (hi->maxlogins)
             saxdb_write_int(ctx, KEY_MAXLOGINS, hi->maxlogins);
         if (hi->nicks) {
-            struct string_list *slist;
             struct nick_info *ni;
-
-            slist = alloc_string_list(nickserv_conf.nicks_per_handle);
-            for (ni = hi->nicks; ni; ni = ni->next) string_list_append(slist, ni->nick);
-            saxdb_write_string_list(ctx, KEY_NICKS, slist);
-            free(slist->list);
-            free(slist);
 
             saxdb_start_record(ctx, KEY_NICKS_EX, 0);
             for (ni = hi->nicks; ni; ni = ni->next) {
