@@ -909,6 +909,10 @@ irc_burst(struct chanNode *chan)
         if ((n+1)<chan->members.used)
             burst_line[pos++] = ',';
     }
+
+    if (len > 0 && (chan->banlist.used > 0 || chan->exemptlist.used > 0))
+        burst_line[pos++] = ' ';
+
     if (chan->banlist.used) {
         /* dump the bans */
         first_ban = 1;
@@ -934,13 +938,18 @@ irc_burst(struct chanNode *chan)
             }
         }
     }
+
     if (chan->exemptlist.used) {
         /* dump the exempts */
         first_exempt = 1;
 
         for (n=0; n<chan->exemptlist.used; ) {
             if (first_exempt && (pos < 500)) {
-                burst_line[pos++] = ' ';
+                if (chan->banlist.used < 1) {
+                    burst_line[pos++] = ':';
+                    burst_line[pos++] = '%';
+                    burst_line[pos++] = ' ';
+                }
                 burst_line[pos++] = '~';
                 burst_line[pos++] = ' ';
             }
