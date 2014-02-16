@@ -221,7 +221,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_NICK_NOT_REGISTERED", "Nick $b%s$b has not been registered to any account." },
     { "NSMSG_HANDLE_NOT_FOUND", "Could not find your account -- did you register yet?" },
     { "NSMSG_ALREADY_AUTHED", "You are already authed to account $b%s$b; you must reconnect to auth to a different account." },
-    { "NSMSG_USE_AUTHCOOKIE", "Your hostmask is not valid for account $b%1$s$b.  Please use the $bauthcookie$b command to grant yourself access.  (/msg $S authcookie %1$s)" },
+    { "NSMSG_USE_AUTHCOOKIE", "Your hostmask is not valid for account $b%1$s$b.  Please use the $bauthcookie$b command to grant yourself access.  (/msg $N authcookie %1$s)" },
     { "NSMSG_HOSTMASK_INVALID", "Your hostmask is not valid for account $b%s$b." },
     { "NSMSG_USER_IS_SERVICE", "$b%s$b is a network service; you can only use that command on real users." },
     { "NSMSG_USER_PREV_AUTH", "$b%s$b is already authenticated." },
