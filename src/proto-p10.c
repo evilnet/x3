@@ -853,7 +853,7 @@ irc_settime(const char *srv_name_mask, time_t new_time)
 void
 irc_ungline(const char *mask)
 {
-    putsock("%s " P10_GLINE " * -%s", self->numeric, mask);
+    putsock("%s " P10_GLINE " * -%s " FMT_TIME_T, self->numeric, mask, now);
 }
 
 void
