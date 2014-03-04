@@ -837,8 +837,8 @@ irc_gline(struct server *srv, struct gline *gline, int silent)
 void
 irc_shun(struct server *srv, struct shun *shun)
 {
-    putsock("%s " P10_SHUN " %s +%s " FMT_TIME_T " :<%s> %s",
-            self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, shun->issuer, shun->reason);
+    putsock("%s " P10_SHUN " %s +%s " FMT_TIME_T " " FMT_TIME_T " :<%s> %s",
+            self->numeric, (srv ? srv->numeric : "*"), shun->target, shun->expires-now, now, shun->issuer, shun->reason);
 }
 
 void
@@ -859,7 +859,7 @@ irc_ungline(const char *mask)
 void
 irc_unshun(const char *mask)
 {
-    putsock("%s " P10_SHUN " * -%s", self->numeric, mask);
+    putsock("%s " P10_SHUN " * -%s " FMT_TIME_T, self->numeric, mask, now);
 }
 
 void
