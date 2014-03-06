@@ -183,6 +183,7 @@
             "uc_H" "800"; // net helper (upper case H)
             "S" "999";    // O3 access suspended
             "b" "1";      // Bot (Hidden from !staff etc)
+            "I" "999";   // User can impersonate an account with an equal or lower opserv level
         };
 
         // and for who can change epithets for staff

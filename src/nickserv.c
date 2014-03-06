@@ -5731,7 +5731,7 @@ sasl_packet(struct SASLSession *session)
         free(raw);
         return;
     }
-    else /* We only have PLAIN at the moment so next message must be credentials */
+    else
     {
         char *raw = NULL;
         size_t rawlen = 0;
@@ -5741,6 +5741,7 @@ sasl_packet(struct SASLSession *session)
         char *r = NULL;
         unsigned int i = 0, c = 0;
         struct handle_info *hi = NULL;
+        struct handle_info *hii = NULL;
         static char buffer[256];
 
         base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
@@ -5777,10 +5778,29 @@ sasl_packet(struct SASLSession *session)
             }
             else
             {
-                snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hi->handle, hi->registered);
-                log_module(NS_LOG, LOG_DEBUG, "SASL: Valid credentials supplied");
-                irc_sasl(session->source, session->uid, "L", buffer);
-                irc_sasl(session->source, session->uid, "D", "S");
+                if (*authzid && irccasecmp(authzid, authcid) && HANDLE_FLAGGED(hi, IMPERSONATE))
+                {
+                    hii = hi;
+                    hi = get_handle_info(authzid);
+                }
+                if (hi)
+                {
+                    if (hii)
+                    {
+                        log_module(NS_LOG, LOG_DEBUG, "SASL: %s is ipersonating %s", hii->handle, hi->handle);
+                        snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hii->handle, hii->registered);
+                        irc_sasl(session->source, session->uid, "I", buffer);
+                    }
+                    log_module(NS_LOG, LOG_DEBUG, "SASL: Valid credentials supplied");
+                    snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hi->handle, hi->registered);
+                    irc_sasl(session->source, session->uid, "L", buffer);
+                    irc_sasl(session->source, session->uid, "D", "S");
+                }
+                else
+                {
+                    log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
+                    irc_sasl(session->source, session->uid, "D", "F");
+                }
             }
         }
 
@@ -5943,6 +5963,9 @@ init_nickserv(const char *nick)
     for (i=0; handle_flags[i]; i++) {
         handle_inverse_flags[(unsigned char)handle_flags[i]] = i + 1;
         flag_access_levels[i] = 0;
+        /* ensure flag I requires a minimum of 999 if not set in the config */
+        if ((unsigned char)handle_flags[i] == 'I')
+            flag_access_levels[i] = 999;
     }
 
     conf_register_reload(nickserv_conf_read);
