@@ -3290,6 +3290,7 @@ static CHANSERV_FUNC(cmd_deluser)
     struct userData *victim;
     struct userData *actor, *real_actor;
     unsigned short access_level, override = 0;
+    unsigned short access_level_user = 0;
     char *chan_name;
 
     REQUIRE_PARAMS(2);
@@ -3310,14 +3311,15 @@ static CHANSERV_FUNC(cmd_deluser)
     {
         access_level = user_level_from_name(argv[1], UL_OWNER);
         char *useraccess = user_level_name_from_level(victim->access);
+        access_level_user = user_level_from_name(useraccess, UL_OWNER);
         if(!access_level)
         {
             reply("CSMSG_INVALID_ACCESS", argv[1]);
             return 0;
         }
-	if(strcasecmp(argv[1], useraccess))
+	if(access_level != access_level_user)
 	{
-	    reply("CSMSG_INCORRECT_ACCESS", handle->handle, user_level_name_from_level(victim->access), argv[1]);
+	    reply("CSMSG_INCORRECT_ACCESS", handle->handle, useraccess, argv[1]);
 	    return 0;
 	}
     }
