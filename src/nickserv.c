@@ -1548,7 +1548,7 @@ static NICKSERV_FUNC(cmd_oregister)
     char* mask = NULL;
     char* nick = NULL;
 
-    NICKSERV_MIN_PARMS(2);
+    NICKSERV_MIN_PARMS(3);
    
     account = argv[1];
     pass = argv[2];
