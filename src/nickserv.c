@@ -2341,7 +2341,7 @@ static NICKSERV_FUNC(cmd_auth)
     }
     
 #ifdef WITH_LDAP
-    if(strchr(argv[1], '<') || strchr(handle, '>')) {
+    if(strchr(handle, '<') || strchr(handle, '>')) {
         reply("NSMSG_NO_ANGLEBRACKETS");
         return 0;
     }
@@ -2377,7 +2377,7 @@ static NICKSERV_FUNC(cmd_auth)
             * create the account.
             */
              char *mask;
-             if(!(hi = nickserv_register(user, user, argv[1], argv[2], 0))) {
+             if(!(hi = nickserv_register(user, user, handle, passwd, 0))) {
                 reply("NSMSG_UNABLE_TO_ADD");
                 return 0; /* couldn't add the user for some reason */
              }
