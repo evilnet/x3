@@ -608,6 +608,7 @@
         "  $b3$b  #1 Plus give halfops to everyone.",
         "  $b4$b  #1 Plus give ops to everyone (not advised.)",
         "  $b5$b  Give half-op to halfops, and op to ops only, but pals do not get voice. ",
+        "  $b6$b  Just voice everyone with access.  ",
         "$uSee Also:$u set, up, uset autoop, resync");
 
 "SET BANTIMEOUT" ("/msg $C SET <#channel> BANTIMEOUT <value>",
