@@ -258,6 +258,7 @@
         "$bVERSION$b :     Check the version on the user that tripped the alert",
         "$bSVSJOIN$b :     Force the user that tripped the alert to join the target channel",
         "$bSVSPART$b :     Force the user that tripped the alert to part the target channel",
+	"$bMARK$b :	   Mark the user that tripped the alert (must be used in combination with the mark trace criteria)",
         "$uSee Also:$u addalert, delalert"
         );
 
