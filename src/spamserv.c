@@ -43,6 +43,7 @@
 #define KEY_ISSUED		     "issued"
 #define KEY_TRUSTED_ACCOUNTS	     "trusted"
 #define KEY_DEBUG_CHANNEL            "debug_channel"
+#define KEY_DEBUG_CHANNEL_MODES      "debug_channel_modes"
 #define KEY_GLOBAL_EXCEPTIONS        "global_exceptions"
 #define KEY_GLOBAL_BADWORDS          "global_badwords"
 #define KEY_NETWORK_RULES            "network_rules"
@@ -3116,7 +3117,7 @@ static void
 spamserv_conf_read(void)
 {
 	dict_t conf_node;
-	const char *str; 
+	const char *str, *modes;
 
 	if(!(conf_node = conf_get_data(SPAMSERV_CONF_NAME, RECDB_OBJECT)))
 	{
@@ -3128,7 +3129,9 @@ spamserv_conf_read(void)
 
 	if(str)
 	{
-		spamserv_conf.debug_channel = AddChannel(str, now, "+tinms", NULL, NULL);
+		modes = database_get_data(conf_node, KEY_DEBUG_CHANNEL_MODES, RECDB_QSTRING);
+
+		spamserv_conf.debug_channel = AddChannel(str, now, (modes ? modes : "+tinms"), NULL, NULL);
 
 		if(spamserv_conf.debug_channel)
 			spamserv_join_channel(spamserv_conf.debug_channel);

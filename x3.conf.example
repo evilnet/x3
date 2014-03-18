@@ -561,6 +561,7 @@
 
         // debug channel
         "debug_channel" "#operserv";
+        "debug_channel_modes" "+tinms";
 
         // url of the network rules. if you don't have network rules, remove this key.
         "network_rules" "http://www.afternet.org/aup";
