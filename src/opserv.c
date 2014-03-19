@@ -182,6 +182,7 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_KICKALL_DONE", "I have cleared out %s." },
     { "OSMSG_LEAVING", "Leaving $b%s$b." },
     { "OSMSG_MARK_INVALID", "Sorry, marks must contain only letters, numbers, and dashes ('-')." },
+    { "OSMSG_MARK_NOTMARKED", "Action not mark but mark supplied. (Did you mean marked?)" },
     { "OSMSG_MODE_SET", "I have set the modes for $b%s$b." },
     { "OSMSG_OP_DONE", "Opped the requested lusers." },
     { "OSMSG_OPALL_DONE", "Opped everyone on $b%s$b." },
@@ -571,7 +572,7 @@ struct discrim_and_source {
     unsigned int disp_limit;
 };
 
-static discrim_t opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int argc, char *argv[], int allow_channel);
+static discrim_t opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int argc, char *argv[], int allow_channel, const char *action);
 static unsigned int opserv_discrim_search(discrim_t discrim, discrim_search_func dsf, void *data);
 static int gag_helper_func(struct userNode *match, void *extra);
 static int ungag_helper_func(struct userNode *match, void *extra);
@@ -4773,7 +4774,7 @@ add_gag_helper(const char *key, void *data, UNUSED_ARG(void *extra))
 }
 
 static struct opserv_user_alert *
-opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_reaction reaction, const char *text_discrim, int last, int expire)
+opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_reaction reaction, const char *text_discrim, int last, int expire, const char *action)
 {
     unsigned int wordc;
     char *wordv[MAXNUMPARAMS], *discrim_copy;
@@ -4790,7 +4791,7 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
     alert->last = last;
     discrim_copy = strdup(text_discrim); /* save a copy of the discrim */
     wordc = split_line(discrim_copy, false, ArrayLength(wordv), wordv);
-    alert->discrim = opserv_discrim_create(req, opserv, wordc, wordv, 0);
+    alert->discrim = opserv_discrim_create(req, opserv, wordc, wordv, 0, action);
     alert->expire = expire;
     /* Check for missing required criteria or broken records */
     if (!alert->discrim || (reaction==REACT_SVSJOIN && !alert->discrim->chantarget) ||
@@ -4894,7 +4895,7 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         log_module(OS_LOG, LOG_ERROR, "Invalid reaction %s for alert %s.", react, key);
         return 0;
     }
-    alert = opserv_add_user_alert(opserv, key, reaction, discrim, last, expire);
+    alert = opserv_add_user_alert(opserv, key, reaction, discrim, last, expire, react);
     if (!alert) {
         log_module(OS_LOG, LOG_ERROR, "Unable to create alert %s from database.", key);
         return 0;
@@ -5280,7 +5281,7 @@ static MODCMD_FUNC(cmd_settime)
 }
 
 static discrim_t
-opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int argc, char *argv[], int allow_channel)
+opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int argc, char *argv[], int allow_channel, const char *action)
 {
     unsigned int i, j;
     discrim_t discrim;
@@ -5388,6 +5389,10 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
             goto fail;
         }
     } else if (irccasecmp(argv[i], "mark") == 0) {
+        if (irccasecmp(action, "mark")) {
+            send_message(user, bot, "OSMSG_MARK_NOTMARKED");
+            goto fail;
+        }
         if(!is_valid_mark(argv[i+1])) {
             send_message(user, bot, "OSMSG_MARK_INVALID");
             goto fail;
@@ -6268,7 +6273,7 @@ static MODCMD_FUNC(cmd_trace)
     das.dict = NULL;
     das.source = user;
     das.destination = cmd->parent->bot;
-    das.discrim = opserv_discrim_create(user, cmd->parent->bot, argc-2, argv+2, 1);
+    das.discrim = opserv_discrim_create(user, cmd->parent->bot, argc-2, argv+2, 1, argv[1]);
     if (!das.discrim)
         return 0;
 
@@ -7040,7 +7045,7 @@ static MODCMD_FUNC(cmd_addalert)
         expire = now + ParseInterval(argv[4]);
 
     if (!svccmd_can_invoke(user, opserv_service->bot, subcmd, channel, SVCCMD_NOISY)
-        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + (expire ? 5 : 3), argc - (expire ? 5 : 3), NULL), 0, expire)) {
+        || !opserv_add_user_alert(user, name, reaction, unsplit_string(argv + (expire ? 5 : 3), argc - (expire ? 5 : 3), NULL), 0, expire, argv[2])) {
         reply("OSMSG_ALERT_ADD_FAILED");
         return 0;
     }
