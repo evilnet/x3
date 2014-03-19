@@ -657,6 +657,7 @@
     "snoop" {
         // Where to send snoop messages?
         "channel" "#MrSnoopy";
+        "channel_modes" "+sntim";
         // Which bot?
         "bot" "O3";
         // Show new users and joins from net joins?  (off by default)
@@ -672,6 +673,7 @@
         "snomask" "nick,join,part,kick,new,del,auth,chanmode,umode";
         // Where to send snoop messages?
         "channel" "#MrPeanuts";
+        "channel_modes" "+sntOm";
         // Which bot?
         "bot" "O3";
         // Show new users and joins from net joins?  (off by default)

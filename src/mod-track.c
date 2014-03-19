@@ -624,7 +624,7 @@ MODCMD_FUNC(cmd_listtrack)
 static void
 track_conf_read(void) {
     dict_t node;
-    char *str;
+    char *str, *modes;
 
     node = conf_get_data("modules/track", RECDB_OBJECT);
     if (!node)
@@ -635,11 +635,12 @@ track_conf_read(void) {
     else
 	    parse_track_conf(str);
     str = database_get_data(node, "channel", RECDB_QSTRING);
+    modes = database_get_data(node, "channel_modes", RECDB_QSTRING);
     if (!str)
         return;
     // XXX - dont do addchannel if the channel is being shared with
     // another module:
-    track_cfg.channel = AddChannel(str, now, "+sntOm", NULL, NULL);
+    track_cfg.channel = AddChannel(str, now, (modes ? modes : "+sntOm"), NULL, NULL);
     if (!track_cfg.channel)
         return;
     str = database_get_data(node, "show_bursts", RECDB_QSTRING);
