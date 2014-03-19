@@ -1584,7 +1584,7 @@ static MODCMD_FUNC(cmd_shun)
     struct shun *shun;
 
     reason = unsplit_string(argv+3, argc-3, NULL);
-    if (!is_shun(argv[1]) && !IsChannelName(argv[1]) && (argv[1][0] != '&')) {
+    if (!is_shun(argv[1])) {
         reply("MSG_INVALID_SHUN", argv[1]);
         return 0;
     }
