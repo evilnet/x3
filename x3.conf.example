@@ -57,8 +57,9 @@
      * 4 - nefarious 0.4.x and other ircds
      * 5 - nefarious 1.0.x and higher (Obselete)
      * 6 - nefarious 1.1.0 and higher (Obselete)
-     * 7 - nefarious 1.2.0 and higher (Branch Revsion)
-     * 8 - nefarious 1.3.0 and higher (Trunk Revsions)
+     * 7 - nefarious 1.2.0 and higher (Obselete)
+     * 8 - nefarious 1.3.0 and higher (Legacy Version)
+     * 9 - nefarious 2.0.x and higher (Current Version)
      */
     "type" "8";
     "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.

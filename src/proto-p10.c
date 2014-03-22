@@ -1181,10 +1181,24 @@ void
 irc_mark(struct userNode *user, char *mark)
 {
     char *host = user->hostname;
+    int type = 4;
+    const char *tstr = NULL;
 
     /* TODO: Allow mark overwrite. If they are marked, and their fakehost is oldmark.hostname, update it to newmark.hostname so mark can be called multiple times. Probably requires ircd modification also */
     if(user->mark)
         return;
+
+    tstr = conf_get_data("server/type", RECDB_QSTRING);
+    if(tstr)
+        type = atoi(tstr);
+    else
+        type = 4;
+
+    if (type >= 9)
+    {
+        putsock("%s " CMD_MARK " %s MARK %s", self->numeric, user->nick, mark);
+        return;
+    }
 
     /* if the mark will put us over the  host length, clip some off the left hand side
      * to make room...
