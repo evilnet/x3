@@ -5702,7 +5702,15 @@ resync_channel(struct chanNode *channel)
             /* If the user has autoop/autovoice disabled then ignore them */
             if(uData && !IsUserAutoOp(uData))
               continue;
-            if(uData && uData->access >= UL_OP )
+            if(uData && uData->access >= UL_PEON && cData->chOpts[chAutomode] == 'l')
+            {
+                if(!(mn->modes & MODE_VOICE))
+                {
+                    changes->args[used].mode = MODE_VOICE;
+                    changes->args[used++].u.member = mn;
+                }
+            }
+            else if(uData && uData->access >= UL_OP )
             {
                 if(!(mn->modes & MODE_CHANOP))
                 {
@@ -8637,7 +8645,9 @@ handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), U
 
         if(IsUserAutoOp(channel) && cData->chOpts[chAutomode] != 'n')
         {
-            if(channel->access >= UL_OP )
+            if (channel->access >= UL_PEON && cData->chOpts[chAutomode] == 'l')
+                change.args[0].mode = MODE_VOICE;
+            else if(channel->access >= UL_OP )
                 change.args[0].mode = MODE_CHANOP;
             else if(channel->access >= UL_HALFOP )
                 change.args[0].mode = MODE_HALFOP;
