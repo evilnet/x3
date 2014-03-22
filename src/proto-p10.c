@@ -3041,7 +3041,7 @@ AddLocalUser(const char *nick, const char *ident, const char *hostname, const ch
     if (!hostname)
         hostname = self->name;
     make_numeric(self, local_num, numeric);
-    return AddUser(self, nick, ident, hostname, modes, numeric, desc, now, "AAAAAA");
+    return AddUser(self, nick, ident, hostname, modes, numeric, desc, timestamp, "AAAAAA");
 }
 
 struct userNode *
