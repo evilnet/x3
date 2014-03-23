@@ -218,7 +218,8 @@ static const struct message_entry msgtab[] = {
     { "OSMSG_WHOIS_HIDECHANS",  "Channel list omitted for your sanity." },
     { "OSMSG_WHOIS_VERSION",    "Version      : %s" },  
     { "OSMSG_WHOIS_SSLFP",      "SSL f/print  : %s" },
-    { "OSMSG_WHOIS_MARK",       "Mark         : %s" },  
+    { "OSMSG_WHOIS_MARK",       "Mark         : %s" },
+    { "OSMSG_WHOIS_MARKS",      "Marks        : %s" },
     { "OSMSG_WHOIS_NO_NOTICE",  "No_notices   : %s" },
     { "OSMSG_UNBAN_DONE", "Ban(s) removed from channel %s." },
     { "OSMSG_CHANNEL_VOICED", "All users on %s voiced." },
@@ -2193,6 +2194,28 @@ static MODCMD_FUNC(cmd_whois)
     if(target->mark) {
         reply("OSMSG_WHOIS_MARK", target->mark);
     }
+    if(target->marks) {
+        char markbuf[MAXLEN] = "";
+        unsigned int ii = 0;
+
+        string_list_sort(user->marks);
+
+        for (ii=0; ii<user->marks->used; ii++)
+        {
+            if (markbuf[0] && strlen(markbuf) + strlen(user->marks->list[ii]) + 4 > 70) {
+                reply("OSMSG_WHOIS_MARKS", markbuf);
+                memset(&markbuf, 0, MAXLEN);
+            }
+
+            if (markbuf[0])
+                strcat(markbuf, ", ");
+            strcat(markbuf, user->marks->list[ii]);
+        }
+
+        if (markbuf[0])
+            reply("OSMSG_WHOIS_MARKS", markbuf);
+    }
+
     reply("OSMSG_WHOIS_NO_NOTICE", target->no_notice ? "YES":"NO");
   
     if (target->modes) {
@@ -5680,6 +5703,20 @@ discrim_match(discrim_t discrim, struct userNode *user)
 {
     unsigned int level, i;
     char *scmp=NULL, *dcmp=NULL;
+    int markmatched = 0;
+
+    if (discrim->mask_mark)
+    {
+        unsigned int ii = 0;
+
+        if (user->mark && match_ircglob(user->mark, discrim->mask_mark))
+            markmatched = 1;
+
+        if (user->marks)
+            for (ii=0; ii<user->marks->used; ii++)
+                if (match_ircglob(user->marks->list[ii], discrim->mask_mark))
+                    markmatched = 1;
+    }
 
     if ((user->timestamp < discrim->min_ts)
         || (user->timestamp > discrim->max_ts)
@@ -5690,7 +5727,7 @@ discrim_match(discrim_t discrim, struct userNode *user)
         || (discrim->info_space == 0 && user->info[0] == ' ')
         || (discrim->info_space == 1 && user->info[0] != ' ')
         || (discrim->server && !match_ircglob(user->uplink->name, discrim->server))
-        || (discrim->mask_mark && (!user->mark || !match_ircglob(user->mark, discrim->mask_mark)))
+        || (discrim->mask_mark && !markmatched)
         || (discrim->accountmask && (!user->handle_info || !match_ircglob(user->handle_info->handle, discrim->accountmask)))
         || (discrim->ip_mask_bits && !irc_check_mask(&user->ip, &discrim->ip_mask, discrim->ip_mask_bits))
         )

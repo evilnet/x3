@@ -1183,10 +1183,8 @@ irc_mark(struct userNode *user, char *mark)
     char *host = user->hostname;
     int type = 4;
     const char *tstr = NULL;
-
-    /* TODO: Allow mark overwrite. If they are marked, and their fakehost is oldmark.hostname, update it to newmark.hostname so mark can be called multiple times. Probably requires ircd modification also */
-    if(user->mark)
-        return;
+    unsigned int ii = 0;
+    int markfound = 0;
 
     tstr = conf_get_data("server/type", RECDB_QSTRING);
     if(tstr)
@@ -1194,11 +1192,27 @@ irc_mark(struct userNode *user, char *mark)
     else
         type = 4;
 
+    if (user->marks)
+        for (ii=0; ii<user->marks->used; ii++)
+            if (!irccasecmp(user->marks->list[ii], mark))
+                markfound = 1;
+
+    if (!markfound)
+    {
+        if (!user->marks)
+            user->marks = alloc_string_list(1);
+        string_list_append(user->marks, strdup(mark));
+    }
+
     if (type >= 9)
     {
         putsock("%s " CMD_MARK " %s MARK %s", self->numeric, user->nick, mark);
         return;
     }
+
+    /* TODO: Allow mark overwrite. If they are marked, and their fakehost is oldmark.hostname, update it to newmark.hostname so mark can be called multiple times. Probably requires ircd modification also */
+    if(user->mark)
+        return;
 
     /* if the mark will put us over the  host length, clip some off the left hand side
      * to make room...
@@ -1992,10 +2006,18 @@ static CMD_FUNC(cmd_burst)
  */
 static CMD_FUNC(cmd_mark)
 {
+    const char *tstr;
+    int type = 4;
     struct userNode *target;
     /* 
      * log_module(MAIN_LOG, LOG_ERROR, "DEBUG: mark, user %s, type %s, arg %s", argv[1], argv[2], argv[3]);
      */
+
+    tstr = conf_get_data("server/type", RECDB_QSTRING);
+    if(tstr)
+       type = atoi(tstr);
+    else
+       type = 4;/* default to 040 style topics */
 
     if(argc < 4)
         return 0;
@@ -2003,14 +2025,28 @@ static CMD_FUNC(cmd_mark)
         /* DNSBL <modes> */
         return 1;
     }
-    else if(!strcasecmp(argv[2], "DNSBL_DATA")) {
+    else if(!strcasecmp(argv[2], "DNSBL_DATA") || !strcasecmp(argv[2], "MARK")) {
+        int markfound = 0;
+        unsigned int ii = 0;
         /* DNSBL_DATA name */
         target = GetUserH(argv[1]);
         if(!target) {
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose dnsbl mark is changing.", argv[1]);
             return 0;
         }
-        target->mark = strdup(argv[3]);
+        if (type >= 9) {
+            if (target->marks)
+                for (ii=0; ii<target->marks->used; ii++)
+                    if (!irccasecmp(target->marks->list[ii], argv[3]))
+                         markfound = 1;
+            if (!markfound)
+            {
+                if (!target->marks)
+                    target->marks = alloc_string_list(1);
+                string_list_append(target->marks, strdup(argv[3]));
+            }
+        } else
+            target->mark = strdup(argv[3]);
         return 1;
         
     }
@@ -3256,6 +3292,8 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
         free(user->mark);
         user->mark = NULL;
     }
+    free_string_list(user->marks);
+    user->marks = NULL;
 
     /* clean up geoip data if any */
     if(user->country_code) free(user->country_code);

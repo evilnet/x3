@@ -24,6 +24,7 @@
 #include "common.h"
 #include "dict.h"
 #include "policer.h"
+#include "recdb.h"
 
 #define MODE_CHANOP		0x00000001 /* +o USER */
 #define MODE_VOICE		0x00000002 /* +v USER */
@@ -245,6 +246,8 @@ struct userNode {
     char *mark;                   /* only filled if they are marked */
     char *version_reply;          /* only filled in if a version query was triggered */
     char *sslfp;                  /* only filled in if a mark SSLCLIFP is received */
+
+    struct string_list *marks;    /* list of user's marks */
 
     time_t timestamp;             /* Time of last nick change */
     time_t idle_since;
