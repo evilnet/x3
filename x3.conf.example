@@ -116,6 +116,11 @@
         // hard_maxlogins is the ammount the user cant override.
         "hard_maxlogins" "10";
 
+        //automatically set the following modes when opers auth:
+        // - if it includes o, then are auto remote-opered.
+        "auto_oper" "+oxwgs";
+        "auto_oper_privs" "CHAN_LIMIT SHOW_INVIS SHOW_ALL_INVIS KILL LOCAL_KILL REHASH RESTART DIE JUPE LOCAL_JUPE OPMODE WHOX SEE_CHAN PROPAGATE DISPLAY SEE_OPERS WIDE_GLINE FORCE_OPMODE REMOTEREHASH CHECK SEE_SECRET_CHAN WIDE_SHUN WIDE_ZLINE LIST_CHAN";
+
         // This names a file that contains easily guessed passwords.
         // It always contains "password", "<password>" and the user's
         // account name.
