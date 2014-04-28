@@ -224,7 +224,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_TRIMMED_USERS", "Trimmed $b%d users$b with access from %d to %d from the %s user list who were inactive for at least %s." },
     { "CSMSG_INCORRECT_ACCESS", "%s has access $b%s$b, not %s." },
     { "CSMSG_USER_EXISTS", "%s is already on the $b%s$b user list (with %s access)." },
-    { "CSMSG_ADDUSER_PENDING", "I have sent him/her a message letting them know, and if they auth or register soon, I will finish adding them automatically." },
+    { "CSMSG_ADDUSER_PENDING", "I have sent %s a message letting them know, and if they auth or register soon, I will finish adding them automatically." },
     { "CSMSG_ADDUSER_PENDING_ALREADY", "He or she is already pending addition to %s once he/she auths with $b$N$b." },
     { "CSMSG_ADDUSER_PENDING_HEADER", "Users to add to channels pending logins:" }, /* Remove after testing? */
     { "CSMSG_ADDUSER_PENDING_LIST", "Channel %s user %s" },             /* Remove after testing? */
@@ -3167,7 +3167,7 @@ static CHANSERV_FUNC(cmd_adduser)
             }
             else {
                 if(IsInChannel(channel, unode)) {
-                   reply("CSMSG_ADDUSER_PENDING");
+                   reply("CSMSG_ADDUSER_PENDING", unode->nick);
                    tmp = add_adduser_pending(channel, unode, access_level);
                    send_message_type(1,unode, chanserv, "CSMSG_ADDUSER_PENDING_TARGET", user->nick, channel->name);
                 }
