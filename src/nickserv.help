@@ -4,14 +4,14 @@
                 " $b$N$b is the login bot. It provides ",
                 " accounts for use on the network. ",
                 " $N is how you 'log in' to get access ",
-		" in channels registered with $C, and  ",
-		" its how ircops are known to $O and $G.",
-		" To get an account:  ",
-		"   $b/msg $N HELP REGISTER$b ",
-		" To login to your account: ",
-		"   $b/msg $N@$s AUTH accountname password$b",
+                " in channels registered with $C, and  ",
+                " its how ircops are known to $O and $G.",
+                " To get an account:  ",
+                "   $b/msg $N HELP REGISTER$b ",
+                " To login to your account: ",
+                "   $b/msg $N@$s AUTH accountname password$b",
                 " $b$b",
-		" Read more about $N in the help system:",
+                " Read more about $N in the help system:",
                 " To read help, type:",
                 "   $b/msg $N HELP <$bsubject$b>$b       ",
                 " (In help, words in <> represent required",
@@ -20,17 +20,17 @@
                 " shows help with the command create an ",
                 " account. ",
                 " $b$b",
-	        " $b$N$b help categories:",
-        	"  $bACCOUNT$b      Account management.",
+                " $b$N$b help categories:",
+                "  $bACCOUNT$b      Account management.",
                 "  $bEMAIL$b        Email based commands",
                 "                 such as recovering forgotten",
                 "                 passwords.",
                 "  $bIGNORE$b       Ignore list management.",
-        	"  $bINFORMATION$b  Informational functions.",
+                "  $bINFORMATION$b  Informational functions.",
                 "  $bOPER$b         Commands for IRC Operators.",
                 "$b$b",
                 " $b$N is $uNOT$u a NickServ$b!        ",
-		"  We do not 'own' nicks here. ",
+                "  We do not 'own' nicks here. ",
                 "  see $b/msg $N HELP NOT NICKSERV$b   ",
                 "  for details "
         );
@@ -38,14 +38,14 @@
                 " $b$N$b is the login bot. It provides ",
                 " accounts for use on the network. ",
                 " $N is how you 'log in' to get access ",
-		" in channels registered with $C, and  ",
-		" its how ircops are known to $O and $G.",
-		" To get an account:  ",
-		"   $b/msg $N HELP REGISTER$b ",
-		" To login to your account: ",
-		"   $b/msg $N@$s AUTH accountname password$b",
+                " in channels registered with $C, and  ",
+                " its how ircops are known to $O and $G.",
+                " To get an account:  ",
+                "   $b/msg $N HELP REGISTER$b ",
+                " To login to your account: ",
+                "   $b/msg $N@$s AUTH accountname password$b",
                 " $b$b",
-		" Read more about $N in the help system:",
+                " Read more about $N in the help system:",
                 " To read help, type:",
                 "   $b/msg $N HELP <$bsubject$b>$b       ",
                 " (In help, words in <> represent required",
@@ -54,14 +54,14 @@
                 " shows help with the command create an ",
                 " account. ",
                 " $b$b",
-	        " $b$N$b help categories:",
-        	"  $bACCOUNT$b      Account management.",
-        	"  $bINFORMATION$b  Informational functions.",
+                " $b$N$b help categories:",
+                "  $bACCOUNT$b      Account management.",
+                "  $bINFORMATION$b  Informational functions.",
                 "  $bIGNORE$b       Ignore list management.",
                 "  $bOPER$b         Commands for IRC Operators.",
                 "$b$b",
                 " $b$N is $uNOT$u a NickServ$b!        ",
-		"  We do not 'own' nicks here. ",
+                "  We do not 'own' nicks here. ",
                 "  see $b/msg $N HELP NOT NICKSERV$b   ",
                 "  for details "
         );
@@ -69,27 +69,39 @@
         "!/services/nickserv/disable_nicks" {
         "/services/nickserv/email_enabled" (
                 "$b$N Help$b",
-                "$b$N$b is a nickname and authentication service, intended to serve as a central authentication point for all other network services. $b$C$b, $b$O$b, and $b$G$b all depend on $b$N$b to verify that users are valid.  It also manages nickname ownership.",
-	        "$b$N$b command categories:",
-        	"  ACCOUNT     Account management.",
+                "$b$N$b is a nickname and authentication",
+                "service, intended to serve as a central",
+                "authentication point for all other network",
+                "services. $b$C$b, $b$O$b, and $b$G$b all",
+                "depend on $b$N$b to verify that users are",
+                "valid.  It also manages nickname ownership.",
+                "$b$b",
+                "$b$N$b command categories:",
+                "  ACCOUNT     Account management.",
                 "  NICK        Nick management.",
                 "  EMAIL       Email maintenance commands.",
-        	"  INFORMATION Other functions.",
+                "  INFORMATION Other functions.",
                 "  OPER        $N commands for IRC Operators."
         );
         "!/services/nickserv/email_enabled" (
                 "$b$N Help$b",
-                "$b$N$b is a nickname and authentication service, intended to serve as a central authentication point for all other network services. $b$C$b, $b$O$b, and $b$G$b all depend on $b$N$b to verify that users are valid. It also manages nickname ownership.",
-	        "$b$N$b command categories:",
-        	"  ACCOUNT     Account management.",
+                "$b$N$b is a nickname and authentication",
+                "service, intended to serve as a central",
+                "authentication point for all other network",
+                "services. $b$C$b, $b$O$b, and $b$G$b all",
+                "depend on $b$N$b to verify that users are",
+                "valid. It also manages nickname ownership.",
+                "$b$b",
+                "$b$N$b command categories:",
+                "  ACCOUNT     Account management.",
                 "  NICK        Nick management.",
-        	"  INFORMATION Other functions.",
+                "  INFORMATION Other functions.",
                 "  OPER        $N commands for IRC Operators."
         );
         };
 };
 
-"HANDLE" ("The term $uhandle$u from earlier versions was confusing to many new users.  Therefore, it has been changed to $uaccount$u.");
+"HANDLE" ("The term $uhandle$u from earlier versions was confusing to many new users. Therefore, it has been changed to $uaccount$u.");
 
 "ACCOUNT" {
         "/services/nickserv/enable_ghost" (
@@ -175,7 +187,9 @@
                 " $bODELSSLFP$b   Remove an SSL fingerprint from someone's account.",
                 " $bOADDIGNORE$b  Add an ignore to someone's account.",
                 " $bODELIGNORE$b  Remove an ignore from someone's account.",
-                " $bMERGEDB$b     Load a database into memory."
+                " $bMERGEDB$b     Load a database into memory.",
+                "$b$b",
+                "Commands prefixed with * only if nick ownership is enabled."
         );
 
 
@@ -183,15 +197,23 @@
         "/services/nickserv/disable_nicks" (
         "/msg $N OUNREGISTER <nick|*account> [FORCE]",
         "Un-registers the specified account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
-        "Without FORCE only accounts that are inactive and have no special flags can be unregistered.",
+        "You may use *Account instead of Nick as the name",
+        "argument; the * makes $N use the name of an account",
+        "directly (useful if the user is not online).",
+        "$b$b",
+        "Without FORCE only accounts that are inactive and",
+        "have no special flags can be unregistered.",
         "$uSee Also:$u oregister"
         );
         "!/services/nickserv/disable_nicks" (
         "/msg $N OUNREGISTER <nick|*account> [FORCE]",
-        "Un-registers the specified account, and any nicks that have been registered to that account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
-        "Without FORCE only accounts that are inactive and have no special flags can be unregistered.",
+        "Un-registers the specified account, and any nicks that",
+        "have been registered to that account.",
+        "You may use *Account instead of Nick as the name",
+        "argument; the * makes $N use the name of an account",
+        "directly (useful if the user is not online).",
+        "Without FORCE only accounts that are inactive",
+        "and have no special flags can be unregistered.",
         "$uSee Also:$u oregister, oregnick, ounregnick"
         );
 };
@@ -204,15 +226,19 @@
         );
         "!/services/nickserv/disable_nicks" (
         "/msg $N@$s UNREGISTER <password>",
-        "Un-registers the account you are authenticated with, and any nicks that have been registered to that account.",
+        "Un-registers the account you are authenticated with,",
+        "and any nicks that have been registered to that account.",
         "$uSee Also:$u register, regnick, unregnick"
         );
 };
 
 "NICK" {
         "!/services/nickserv/disable_nicks" (
-        "You may register IRC nicknames to be associated with your accounts, and will be able to request a KILL for anyone using a nickname registered to you.",
-	"Nick management commands are:",
+        "You may register IRC nicknames to be associated with your",
+        "accounts, and will be able to request a KILL for anyone",
+        "using a nickname registered to you.",
+        "$b$b",
+        "Nick management commands are:",
         "  NICKINFO   Find out who has registered a nick.",
         "  REGNICK    Register a nickname.",
         "  UNREGNICK  Unregister a nickname.",
@@ -239,8 +265,13 @@
 "OREGNICK" {
         "!/services/nickserv/disable_nicks" (
         "/msg $N OREGNICK [<nick|*account> <nick>]",
-        "Registers specified nick to the specified account. If nick and account are not specified, then $boregnick$b registers your current nick to the account you are authenticated to.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "Registers specified nick to the specified account. If nick",
+        "and account are not specified, then $boregnick$b registers",
+        "your current nick to the account you are authenticated to.",
+        "$b$b",
+        "You may use *Account instead of Nick as the name argument;",
+        "the * makes $N use the name of an account directly (useful",
+        "if the user is not online).",
         "$uSee Also:$u oregister, ounregister, ounregnick"
         );
 };
@@ -256,7 +287,8 @@
 "UNREGNICK" {
         "!/services/nickserv/disable_nicks" (
         "/msg $N UNREGNICK [nick]",
-        "Un-registers a nick that was previously registered to your account.  If you do not specify a nick, your current nick will be un-registered.",
+        "Un-registers a nick that was previously registered to your account.",
+        "If you do not specify a nick, your current nick will be un-registered.",
         "$uSee Also:$u register, regnick, unregister"
         );
 };
@@ -264,15 +296,19 @@
 "RECLAIM" {
         "!/services/nickserv/disable_nicks" (
         "/msg $N RECLAIM <nick>",
-        "Reclaims the specified nick. You must be authenticated to the account that registered the nick.",
-        "Depending on configuration, this may do nothing, may ask the user nicely, may force a nick change on them, or may /KILL (disconnect) the target user."
+        "Reclaims the specified nick. You must be authenticated to the account",
+        "that registered the nick.",
+        "Depending on configuration, this may do nothing, may ask the user",
+        "nicely, may force a nick change on them, or may /KILL (disconnect)",
+        "the target user."
         );
 };
 
 "EMAIL" {
         "/services/nickserv/email_enabled" (
         "Email-based maintenance commands and topics are:",
-        "  AUTHCOOKIE Email a cookie to allow you to authenticate (auth) without a matching hostmask.",
+        "  AUTHCOOKIE Email a cookie to allow you to authenticate (auth)",
+        "without a matching hostmask.",
         "  RESETPASS  Request a password change if you forgot your old password.",
         "  COOKIE     Complete an email-based maintenance action.",
         "  DELCOOKIE  For AUTHCOOKIE or RESETPASS, cancel the requested cookie.",
@@ -283,8 +319,12 @@
 "AUTHCOOKIE" {
         "/services/nickserv/email_enabled" (
         "/msg $N AUTHCOOKIE <account>",
-        "Requests that $N send you email with a cookie that allows you to auth to your account if you do not have a matching hostmask.  (For example, if your ISP changed your IP or hostname.)",
-        "Once you receive the cookie in email, you can use the $bcookie$b command to log in.",
+        "Requests that $N send you email with a cookie that allows you to auth",
+        "to your account if you do not have a matching hostmask. (For example,",
+        "if your ISP changed your IP or hostname.)",
+        "$b$b",
+        "Once you receive the cookie in email, you can use the $bcookie$b",
+        "command to log in.",
         "$uSee Also:$u cookie, delcookie"
         );
 };
@@ -292,8 +332,13 @@
 "RESETPASS" {
         "/services/nickserv/email_enabled" (
         "/msg $N@$s RESETPASS <account> <newpassword>",
-        "Requests that $N send you email with a cookie that will change your password (in case you have forgotten it).  Once you receive the cookie in email, use the $bcookie$b command to actually change your password.",
-        "$bYour password will not be changed, and you will not be able to use it to log in, until you confirm the change using the $ucookie$u command.$b",
+        "Requests that $N send you email with a cookie that will change your",
+        "password (in case you have forgotten it). Once you receive the",
+        "cookie in email, use the $bcookie$b command to actually change your",
+        "password.",
+        "$b$b",
+        "$bYour password will not be changed, and you will not be able to use",
+        "it to log in, until you confirm the change using the $ucookie$u command.$b",
         "$uSee Also:$u cookie, delcookie"
         );
 };
@@ -302,7 +347,8 @@
         "/services/nickserv/email_enabled" (
         "/msg $N DELCOOKIE",
         "Requests that $N cancel your authcookie or resetpass cookie.",
-        "(Since set-email cookies and registration cookies send email to unverified addresses, to prevent mail flooding, they cannot be cancelled.)",
+        "(Since set-email cookies and registration cookies send email to unverified",
+        "addresses, to prevent mail flooding, they cannot be cancelled.)",
         "$uSee Also:$u authcookie, resetpass, cookie"
         );
 };
@@ -310,7 +356,9 @@
 "COOKIE" {
         "/services/nickserv/email_enabled" (
         "/msg $N@$s COOKIE <account> <cookie>",
-        "Completes the maintenance action (for example, activating an account or changing your password) for which a cookie was issued.  The cookie will then be forgotten.",
+        "Completes the maintenance action (for example, activating an account or",
+        "changing your password) for which a cookie was issued.  The cookie will",
+        "then be forgotten.",
         "$uSee Also:$u authcookie, resetpass, set, delcookie"
         );
 };
@@ -318,53 +366,101 @@
 "EMAIL POLICY" {
         "/services/nickserv/email_enabled" (
         "$bEMAIL POLICY",
-        "AfterNET has utmost respect for the privacy of its users.  We will submit your email address to as many spam databases as we can find, and we will even post it on our web site.",
-        "(No, not really.  It looks like somebody forgot to edit nickserv.help or nickserv.help.m4 to remove this entry.  Make sure they edit the mail section of x3.conf while they are at it.)"
+        "AfterNET has utmost respect for the privacy of its users. We will submit",
+        "your email address to as many spam databases as we can find, and we will",
+        "even post it on our web site.",
+        "$b$b",
+        "(No, not really. It looks like somebody forgot to edit nickserv.help or",
+        "nickserv.help.m4 to remove this entry. Make sure they edit the mail",
+        "section of x3.conf while they are at it.)"
         );
 };
 
 "ADDMASK" ("/msg $N ADDMASK [user@host]",
-        "Adds the specified user@host to the account you are authenticated to with $b$N$b.  If no mask is given, it uses your current mask.",
+        "Adds the specified user@host to the account you are authenticated to",
+        "with $b$N$b.  If no mask is given, it uses your current mask.",
         "$uSee Also:$u auth, delmask");
+
 "ALLOWAUTH" ("/msg $N ALLOWAUTH <nick> [account] [STAFF]",
-        "Allows the specified nick to $bauth$b to the specified account. $bAllowauth$b does NOT add the hostmask of that nick to the specified account.",
-        "If no account is given, it will cancel the allowauth for the user (assuming the user has an allowauth).",
-        "If the account is marked as a helper or oper, the STAFF qualifier must be given afterwards.  This reduces social engineering attacks.",
+        "Allows the specified nick to $bauth$b to the specified account.",
+        "$bAllowauth$b does NOT add the hostmask of that nick to the specified",
+        "account.",
+        "$b$b",
+        "If no account is given, it will cancel the allowauth for the user",
+        "(assuming the user has an allowauth).",
+        "If the account is marked as a helper or oper, the STAFF qualifier",
+        "must be given afterwards.  This reduces social engineering attacks.",
         "$uSee Also:$u addmask, auth");
 
 "LOGIN" ("See /MSG $N HELP AUTH");
 
 "AUTH" {
         "/services/nickserv/email_enabled" (
-        "/msg $N@$s AUTH <account> <password>",
-        "Authenticates yourself with $b$N$b to the specified account. You must use $bauth$b before you have any access to network services, including channels that are registered with $b$C$b.",
+        "/msg $N@$s AUTH [account] <password>",
+        "Authenticates yourself with $b$N$b to the specified account.",
+        "You must use $bauth$b before you have any access to network",
+        "services, including channels that are registered with $b$C$b.",
+        "If you omit the account, it uses your current nick as your account name.",
         "$uSee Also:$u pass, resetpass, authcookie",
         );
         "!/services/nickserv/email_enabled" (
         "/msg $N@$s AUTH [account] <password>",
-        "Authenticates yourself with $b$N$b to the specified account. You must use $bauth$b before you have any access to network services, including channels that are registered with $b$C$b.",
+        "Authenticates yourself with $b$N$b to the specified account.",
+        "You must use $bauth$b before you have any access to network",
+        "services, including channels that are registered with $b$C$b.",
         "If you omit the account, it uses your current nick as your account name.",
         "$uSee Also:$u pass",
         );
 };
+
+"IDENTIFY" {
+        "/services/nickserv/email_enabled" (
+        "/msg $N@$s IDENTIFY [account] <password>",
+        "Authenticates yourself with $b$N$b to the specified account.",
+        "You must use $bidentify$b before you have any access to network",
+        "services, including channels that are registered with $b$C$b.",
+        "If you omit the account, it uses your current nick as your account name.",
+        "$uSee Also:$u pass, auth, resetpass, authcookie",
+        );
+        "!/services/nickserv/email_enabled" (
+        "/msg $N@$s IDENTIFY [account] <password>",
+        "Authenticates yourself with $b$N$b to the specified account.",
+        "You must use $bidentify$b before you have any access to network",
+        "services, including channels that are registered with $b$C$b.",
+        "If you omit the account, it uses your current nick as your account name.",
+        "$uSee Also:$u pass, auth",
+        );
+};
+
 "DELMASK" ("/msg $N DELMASK <user@host>",
         "Removes a hostmask from the account you are authenticated on.",
-        "An account must have at least one hostmask; you cannot remove the last mask for an account.",
+        "An account must have at least one hostmask; you cannot remove the last",
+        "mask for an account.",
         "$uSee Also:$u addmask");
+
 "ACCOUNTINFO" {
         "/services/nickserv/disable_nicks" (
         "/msg $N ACCOUNTINFO <nick|*account>",
-        "Displays infomation on the specified account, including the date the account was registered, the last time it was used, its infoline, its flags, its hostmask(s), its channels, and nicknames of users currently using the account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "Displays infomation on the specified account, including the date the account",
+        "was registered, the last time it was used, its infoline, its flags,",
+        "its hostmask(s), its channels, and nicknames of users currently using the account.",
+        "$b$b",
+        "You may use *Account instead of Nick as the name argument; the * makes $N use",
+        "the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u userinfo, account flags"
         );
         "! /services/nickserv/disable_nicks" (
         "/msg $N ACCOUNTINFO <nick|*account>",
-        "Displays infomation on the specified account, including the date the account was registered, the last time it was used, its infoline, its flags, its hostmask(s), its channels, and nicknames of users currently using the account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "Displays infomation on the specified account, including the date the account",
+        "was registered, the last time it was used, its infoline, its flags,",
+        "its hostmask(s), its channels, and nicknames of users currently using the account.",
+        "$b$b",
+        "You may use *Account instead of Nick as the name argument; the * makes $N use",
+        "the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u nickinfo, userinfo, account flags"
         );
 };
+
 "ACCOUNT FLAGS" ("$bACCOUNT FLAGS$b",
         "The following flags on accounts are defined:",
         "$bS$b  $O access suspended",
@@ -378,54 +474,79 @@
         "$bn$b  No-delete (will never be unregistered for inactivity)",
         "$bb$b  Hides you from the staff list",
         "$uSee Also:$u accountinfo, set, $C staff");
+
 "OADDMASK" ("/msg $N OADDMASK <nick|*account> <user@host>",
         "Adds a hostmask to the specified account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "You may use *Account instead of Nick as the name argument; the * makes",
+        "$N use the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u odelmask");
+
 "ODELMASK" ("/msg $N ODELMASK <nick|*account> <user@host>",
         "Removes a hostmask from the specified account.",
         "An account must have at least one hostmask; you cannot remove the last mask for an account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "You may use *Account instead of Nick as the name argument; the * makes",
+        "$N use the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u oaddmask");
+
 "OREGISTER" {
         "/services/nickserv/disable_nicks" {
                 "/services/nickserv/email_required" (
                 "/msg $N@$s OREGISTER <account> <password> <email> [user@host] [nick]",
-                "Registers an account for nick with $b$N$b using the specified account name, password, email address and user@host. If the nick of an online user is specified, then they will be logged in, and that user's user@host is used if you don't specify one.  If no nickname or hostmask is used, it uses a default hostmask, or adds one when they first authenticate.",
+                "Registers an account for nick with $b$N$b using the specified account name,",
+                "password, email address and user@host. If the nick of an online user is specified,",
+                "then they will be logged in, and that user's user@host is used if you don't",
+                "specify one. If no nickname or hostmask is used, it uses a default hostmask, or",
+                "adds one when they first authenticate.",
                 "$uSee Also:$u ounregister, oaddmask, oset"
                 );
                 "!/services/nickserv/email_required" (
                 "/msg $N@$s OREGISTER <account> <password> [user@host] [nick]",
-                "Registers an account for nick with $b$N$b using the specified account name, password, email address and user@host. If the nick of an online user is specified, then they will be logged in, and that user's user@host is used if you don't specify one.  If no nickname or hostmask is used, it uses a default hostmask, or adds one when they first authenticate.",
+                "Registers an account for nick with $b$N$b using the specified account name,",
+                "password, email address and user@host. If the nick of an online user is specified,",
+                "then they will be logged in, and that user's user@host is used if you don't",
+                "specify one. If no nickname or hostmask is used, it uses a default hostmask, or",
+                "adds one when they first authenticate.",
                 "$uSee Also:$u ounregister, oaddmask, oset"
                 );
         };
         "!/services/nickserv/disable_nicks" {
                 "/services/nickserv/email_required" (
                 "/msg $N@$s OREGISTER <account> <password> <email> [user@host] [nick]",
-                "Registers an account for nick with $b$N$b using the specified account name, password, email address and user@host. If the nick of an online user is specified, then they will be logged in, and that user's user@host is used if you don't specify one.  If no nickname or hostmask is used, it uses a default hostmask, or adds one when they first authenticate.",
+                "Registers an account for nick with $b$N$b using the specified account name,",
+                "password, email address and user@host. If the nick of an online user is specified,",
+                "then they will be logged in, and that user's user@host is used if you don't",
+                "specify one. If no nickname or hostmask is used, it uses a default hostmask, or",
+                "adds one when they first authenticate.",
                 "$uSee Also:$u oregnick, ounregister, ounregnick, oaddmask, oset"
                 );
                 "!/services/nickserv/email_required" (
                 "/msg $N@$s OREGISTER <account> <password> [user@host] [nick]",
-                "Registers an account for nick with $b$N$b using the specified account name, password, email address and user@host. If the nick of an online user is specified, then they will be logged in, and that user's user@host is used if you don't specify one.  If no nickname or hostmask is used, it uses a default hostmask, or adds one when they first authenticate.",
+                "Registers an account for nick with $b$N$b using the specified account name,",
+                "password, email address and user@host. If the nick of an online user is specified,",
+                "then they will be logged in, and that user's user@host is used if you don't",
+                "specify one. If no nickname or hostmask is used, it uses a default hostmask, or",
+                "adds one when they first authenticate.",
                 "$uSee Also:$u oregnick, ounregister, ounregnick, oaddmask, oset"
                 );
         };
 };
+
 "OSET" (
-          "/msg $N OSET <nick|*account> [<setting> <value>]",
-          "Allows opers/helpers to change a users account settings. You may set:",
-          "$bPASSWORD$b: Sets user's password.",
-          "$bFLAGS$b: Changes account flags (SphHdscfn) for user (see $uaccount flags$u).",
-          "$bLEVEL$b: Sets $O access level.",
-          "$bEPITHET$b: The description shown for the user's access in /whois.",
-          "$bNOTE$b: Adds a note to the user's account.",
-          "$bTITLE$b: The title the user will get (in their hostname) when +x.",
-          "$bFAKEHOST$b: The fake hostname the user will get when +x.",
-          "..or anything $bset$b can change.",
-          "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
-          "$uSee Also:$u accountinfo, account flags, set, userinfo"
+        "/msg $N OSET <nick|*account> [<setting> <value>]",
+        "Allows opers/helpers to change a users account settings. You may set:",
+        "$bPASSWORD$b: Sets user's password.",
+        "$bFLAGS$b: Changes account flags (SphHdscfn) for user (see $uaccount flags$u).",
+        "$bLEVEL$b: Sets $O access level.",
+        "$bEPITHET$b: The description shown for the user's access in /whois.",
+        "$bNOTE$b: Adds a note to the user's account.",
+        "$bTITLE$b: The title the user will get (in their hostname) when +x.",
+        "$bFAKEHOST$b: The fake hostname the user will get when +x.",
+        "..or anything $bset$b can change.",
+        "$b$b",
+        "You may use *Account instead of Nick as the name argument; the * makes",
+        " $N use the name of an account directly (useful if the user is",
+        "not online).",
+        "$uSee Also:$u accountinfo, account flags, set, userinfo"
 );
 
 "ODELCOOKIE" {
@@ -444,33 +565,44 @@
         "/msg $N@$s REGISTER <account> <password> <email>",
         "$bDO NOT TYPE THE < and >!$b <> indicates required fields. ",
         "Register is the command to create an an account with $b$N$b. ",
-        "Having an account provides a single login identity for the network, and for use with $b$C$b.",
-	"$b$b",
-        "$bEmail activation is required:$b An email will be sent to the email address you give to verify it. You must",
-	"provide a valid email address or registration will fail. After you register, check your email for instructions validating your account.",
-	"$b$b",
-	"If you already have an account, login using the $bAUTH$b command:",
-	"$b/msg $N@$s AUTH <accountname> <password>$b",
+        "Having an account provides a single login identity for the network,",
+        "and for use with $b$C$b.",
+        "$b$b",
+        "$bEmail activation is required:$b An email will be sent to the email",
+        "address you give to verify it. You must provide a valid email address",
+        "or registration will fail. After you register, check your email for",
+        "instructions validating your account.",
+        "$b$b",
+        "If you already have an account, login using the $bAUTH$b command:",
+        "$b/msg $N@$s AUTH <accountname> <password>$b",
         "$uSee Also:$u auth, unregister"
         );
         "1: /services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password> [email]",
         "$bDO NOT TYPE THE < and >!$b <> indicates required fields. ",
-        "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
+        "Register is the command to register an account with $b$N$b. Later,",
+        "you can use your account and password with $bauth$b to authenticate",
+        "to your account.",
         "Having an account provides a single login identity for use with $b$C$b.",
-        "Email activation is not required: But, if you specify an email address, an email will be sent to it containing a cookie that will let you activate your account.  Once you have that cookie, use the $bcookie$b command to activate your account.",
-       	"$b$b",
-	"If you already have an account, login using the $bAUTH$b command:",
-	"$b/msg $N@$s AUTH <accountname> <password>$b",
- "$uSee Also:$u auth, unregister"
+        "Email activation is not required: But, if you specify an email address,",
+        "an email will be sent to it containing a cookie that will let you",
+        "activate your account. Once you have that cookie, use the $bcookie$b",
+        "command to activate your account.",
+               "$b$b",
+        "If you already have an account, login using the $bAUTH$b command:",
+        "$b/msg $N@$s AUTH <accountname> <password>$b",
+        "$uSee Also:$u auth, unregister"
         );
         "2: !/services/nickserv/email_enabled" (
         "/msg $N@$s REGISTER <account> <password>",
-        "Register is the command to register an account with $b$N$b. Later, you can use your account and password with $bauth$b to authenticate to your account.",
+        "Register is the command to register an account with $b$N$b. Later,",
+        "you can use your account and password with $bauth$b to authenticate",
+        "to your account.",
         "Having an account provides a single login identity for use with $b$C$b.",
         "$uSee Also:$u auth, unregister"
         );
 };
+
 "SET" {
         "/services/nickserv/email_enabled && /services/nickserv/disable_nicks" (
         "/msg $N SET [<setting> [value]]",
@@ -551,11 +683,13 @@
         "$uSee Also:$u accountinfo, nickinfo, userinfo"
         );
 };
+
 "SET LANGUAGE" ("/msg $N SET LANGUAGE <langname>",
         "Sets the language that $S and other services will use when sending you messages.",
         "If a particular message is not available in your language, it will use the closest match it has.",
         "Supported languages are: ${modcmd:languages}",
         "$uSee Also:$u set");
+
 "SET STYLE" ("/msg $N SET STYLE <style>",
         "Sets the output style that $S and other services will use when sending you messages.",
         "The style can be:.",
@@ -566,21 +700,28 @@
         "$b $b",
         "Many other outputs besides userlist are styled to match as well.",
         "$uSee Also:$u set");
+
 "STATUS" {
         "/services/nickserv/disable_nicks" (
         "/msg $N STATUS",
-        "Displays information about the status of $b$N$b, including the total number of accounts in its database."
+        "Displays information about the status of $b$N$b, including the total number of",
+        "accounts in its database."
         );
         "!/services/nickserv/disable_nicks" (
-        "Displays information about the status of $b$N$b, including the total number of accounts and nicks that are registered in its database, and how many nicks are registered to your account (if you are authenticated to one)."
+        "Displays information about the status of $b$N$b, including the total number of",
+        "accounts and nicks that are registered in its database, and how many nicks are",
+        "registered to your account (if you are authenticated to one)."
         );
 };
+
 "USERINFO" ("/msg $N USERINFO <nick>",
         "Shows what account the nick specified is authenticated to.",
         "$uSee Also:$u auth, accountinfo, account flags");
         
 "GHOST" ("/msg $N GHOST <nick>",
-        "This disconnects an old client that is authed to your account.  This is $bnot$b the same thing as nick ownership; the user $bmust$b be authenticated to the same account you are.",
+        "This disconnects an old client that is authed to your account. This is $bnot$b",
+        "the same thing as nick ownership; the user $bmust$b be authenticated to the",
+        "same account you are.",
         "$uSee Also:$u auth");
 
 "RENAME" ("/msg $N RENAME <nick|*old-account> <new-account>",
@@ -598,81 +739,95 @@
 
 "SEARCH ACTION" ("$bSEARCH ACTION$b",
         "The following actions are valid:",
-        "  PRINT      - Print matching accounts",
-        "  COUNT      - Count matching accounts",
-        "  UNREGISTER - Unregister matching accounts",
-        "  SET        - Set the SETWHAT criteria to the SETVALUE criteria",
+        "  $bPRINT$b      - Print matching accounts",
+        "  $bCOUNT$b      - Count matching accounts",
+        "  $bUNREGISTER$b - Unregister matching accounts",
+        "  $bSET$b        - Set the SETWHAT criteria to the SETVALUE criteria",
         "$uSee Also:$u search, search criteria");
+
 "SEARCH CRITERIA" {
         "/services/nickserv/disable_nicks" (
         "$bSEARCH CRITERIA$b",
         "The following account search criteria are valid.  Each takes an additional argument, giving the actual criteria:",
-        "  LIMIT      - Limits the number of matches",
-        "  FLAGS      - Bits that must be turned on (e.g. +h) and/or off (e.g. -S) in an account",
-        "  REGISTERED - Registered time constraint (<Nu, <=Nu, =Nu, >=Nu or >Nu)",
-        "  SEEN       - Accounts not seen for at least this long",
-        "  ACCOUNTMASK - A glob that must match the account name",
-        "  EMAIL      - A glob that must match the account's email address",
-        "  TITLE      - A glob that must match the account's title",
-        "  HOSTMASK SUPERSET - Account matches if someone with this hostmask can auth to the account",
-        "  HOSTMASK EXACT - Account matches if this exact hostmask is in list",
-        "  HOSTMASK SUBSET - Account matches if this mask \"covers\" one in their userlist",
-	"  HOSTMASK LASTQUIT - Account matches if this mask \"covers\" user was last seen using",
-        "  HOSTMASK   - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
-        "  ACCESS     - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
-        "  SETWHAT    - Required for SET action, this is the setting to set",
-        "  SETVALUE   - Required for SET action, this is the etting value to set",
+        "  $bLIMIT$b      - Limits the number of matches",
+        "  $bFLAGS$b      - Bits that must be turned on (e.g. +h) and/or off (e.g. -S) in an account",
+        "  $bREGISTERED$b - Registered time constraint (<Nu, <=Nu, =Nu, >=Nu or >Nu)",
+        "  $bSEEN$b       - Accounts not seen for at least this long",
+        "  $bACCOUNTMASK$b - A glob that must match the account name",
+        "  $bEMAIL$b      - A glob that must match the account's email address",
+        "  $bTITLE$b      - A glob that must match the account's title",
+        "  $bHOSTMASK SUPERSET$b - Account matches if someone with this hostmask can auth to the account",
+        "  $bHOSTMASK EXACT$b - Account matches if this exact hostmask is in list",
+        "  $bHOSTMASK SUBSET$b - Account matches if this mask \"covers\" one in their userlist",
+        "  $bHOSTMASK LASTQUIT$b - Account matches if this mask \"covers\" user was last seen using",
+        "  $bHOSTMASK$b   - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
+        "  $bACCESS$b     - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
+        "  $bSETWHAT$b    - Required for SET action, this is the setting to set",
+        "  $bSETVALUE$b   - Required for SET action, this is the etting value to set",
         "$uSee Also:$u search, search action"
         );
         "!/services/nickserv/disable_nicks" (
         "$bSEARCH CRITERIA$b",
         "The following account search criteria are valid.  Each takes an additional argument, giving the actual criteria:",
-        "  LIMIT      - Limits the number of matches",
-        "  FLAGS      - Bits that must be turned on (e.g. +h) and/or off (e.g. -S) in an account",
-        "  REGISTERED - Registered time constraint (<Nu, <=Nu, =Nu, >=Nu or >Nu)",
-        "  SEEN       - Accounts not seen for at least this long",
-        "  ACCOUNTMASK - A glob that must match the account name",
-        "  EMAIL      - A glob that must match the account's email address",
-        "  TITLE      - A glob that must match the account's title",
-        "  NICKMASK   - A glob that must match a nick registered to the account",
-        "  HOSTMASK SUPERSET - Account matches if someone with this hostmask can auth to the account",
-        "  HOSTMASK EXACT - Account matches if this exact hostmask is in list",
-        "  HOSTMASK SUBSET - Account matches if this mask \"covers\" one in their userlist",
-        "  HOSTMASK LASTQUIT - Account matches if this mask \"covers\" user was last seen using",
-        "  HOSTMASK   - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
-        "  ACCESS     - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
-        "  SETWHAT    - Required for SET action, this is the setting to set",
-        "  SETVALUE   - Required for SET action, this is the etting value to set",
+        "  $bLIMIT$b      - Limits the number of matches",
+        "  $bFLAGS$b      - Bits that must be turned on (e.g. +h) and/or off (e.g. -S) in an account",
+        "  $bREGISTERED$b - Registered time constraint (<Nu, <=Nu, =Nu, >=Nu or >Nu)",
+        "  $bSEEN$b       - Accounts not seen for at least this long",
+        "  $bACCOUNTMASK$b - A glob that must match the account name",
+        "  $bEMAIL$b      - A glob that must match the account's email address",
+        "  $bTITLE$b      - A glob that must match the account's title",
+        "  $bNICKMASK$b   - A glob that must match a nick registered to the account",
+        "  $bHOSTMASK SUPERSET$b - Account matches if someone with this hostmask can auth to the account",
+        "  $bHOSTMASK EXACT$b - Account matches if this exact hostmask is in list",
+        "  $bHOSTMASK SUBSET$b - Account matches if this mask \"covers\" one in their userlist",
+        "  $bHOSTMASK LASTQUIT$b - Account matches if this mask \"covers\" user was last seen using",
+        "  $bHOSTMASK$b   - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
+        "  $bACCESS$b     - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
+        "  $bSETWHAT$b    - Required for SET action, this is the setting to set",
+        "  $bSETVALUE$b   - Required for SET action, this is the etting value to set",
         "$uSee Also:$u search, search action"
         );
 };
+
 "MERGE" {
         "!/services/nickserv/disable_nicks" (
         "/msg $N MERGE <from-nick|*from-account> <to-nick|*to-account>",
-        "Merge access from $bfrom-account$b into $bto-account$b.  This includes hostmasks, registered nicks, authed users, access in channels, and $O access (if any).  If $bto-account$b has equal  or greater access than $bfrom-account$b (or more a general hostmask, etc), $bto-account$b keeps that information.",
+        "Merge access from $bfrom-account$b into $bto-account$b. This includes hostmasks,",
+        "registered nicks, authed users, access in channels, and $O access (if any). If",
+        "$bto-account$b has equal or greater access than $bfrom-account$b (or more a",
+        "general hostmask, etc), $bto-account$b keeps that information.",
+        "$b$b",
         "This command is only accessible to helpers and IRC operators.",
         "$uSee Also:$u rename"
         );
         "/services/nickserv/disable_nicks" ("/msg $N MERGE <from-nick|*from-account> <to-nick|*to-account>",
-        "Merge access from $bfrom-account$b into $bto-account$b.  This includes hostmasks, authed users, access in channels, and $O access (if any).  If $bto-account$b has equal  or greater access than $bfrom-account$b (or more a general hostmask, etc), $bto-account$b keeps that information.",
+        "Merge access from $bfrom-account$b into $bto-account$b. This includes hostmasks,",
+        "authed users, access in channels, and $O access (if any). If $bto-account$b has",
+        "equal or greater access than $bfrom-account$b (or more a general hostmask, etc),",
+        "$bto-account$b keeps that information.",
+        "$b$b",
         "This command is only accessible to helpers and IRC operators.",
         "$uSee Also:$u rename"
         );
 };
 
 "MERGEDB" ("/msg $N MERGEDB <dbfilename>",
-        "Merge contents of $bdbfilename$b into in-memory database.  Any accounts in both will be $bOVERWRITTEN$b with the information from $bdbfilename$b, although authed users will be authed to the new account.",
+        "Merge contents of $bdbfilename$b into in-memory database. Any accounts in both",
+        "will be $bOVERWRITTEN$b with the information from $bdbfilename$b, although",
+        "authed users will be authed to the new account.",
+        "$b$b",
         "This command is only accessible to IRC operators.",
-        "$uSee Also:$u OperServ.write");
+        "$uSee Also:$u $O.write");
 
 "IGNORE" ("Ignore list management commands are:",
-        " $bADDIGNORE$b   Adds a hostmask to your ignore list.",
-        " $bDELIGNORE$b   Remove an entry from your ignore list.",
-        " $bACCOUNTINFO$b Displays information about an account including ignores.",
+        " $bADDIGNORE$b   - Adds a hostmask to your ignore list.",
+        " $bDELIGNORE$b   - Remove an entry from your ignore list.",
+        " $bACCOUNTINFO$b - Displays information about an account including ignores.",
         );
 
 "ADDIGNORE" ("/msg $N ADDIGNORE [user@host]",
-        "Adds the specified user@host to the account ignore list that you are authenticated to with $b$N$b.",
+        "Adds the specified user@host to the account ignore list that you are",
+        "authenticated to with $b$N$b.",
         "$uSee Also:$u delignore");
 
 "DELIGNORE" ("/msg $N DELIGNORE <user@host>",
@@ -681,29 +836,42 @@
 
 "OADDIGNORE" ("/msg $N OADDIGNORE <nick|*account> <user@host>",
         "Adds a hostmask to the specified account's ignore list.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "You may use *Account instead of Nick as the name argument; the * makes $b$N$b use",
+        "the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u odelignore");
 
 "ODELIGNORE" ("/msg $N ODELIGNORE <nick|*account> <user@host>",
         "Removes a hostmask from the specified account's ignore list.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "You may use *Account instead of Nick as the name argument; the * makes $b$N$b",
+        "use the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u oaddignore");
 
 "ADDSSLFP" ("/msg $N ADDSSLFP [fingerprint]",
-        "Adds the specified SSL fingerprint to the account you are authenticated to with $b$N$b.  If no SSL fingerprint is given, it uses your current SSL fingerprint if available.",
+        "Adds the specified SSL fingerprint to the account you are authenticated to",
+        "with $b$N$b.  If no SSL fingerprint is given, it uses your current SSL",
+        "fingerprint if available.",
         "$uSee Also:$u auth, delsslfp");
 
 "DELSSLFP" ("/msg $N DELSSLFP [fingerprint]",
-        "Removes the specified SSL fingerprint to the account you are authenticated to with $b$N$b.  If no SSL fingerprint is given, it uses your current SSL fingerprint if available.",
+        "Removes the specified SSL fingerprint to the account you are authenticated to",
+        "with $b$N$b.  If no SSL fingerprint is given, it uses your current SSL",
+        "fingerprint if available.",
         "$uSee Also:$u addsslfp");
 
 "OADDSSLFP" ("/msg $N OADDSSLFP <nick|*account> <fingerprint>",
         "Adds an SSL fingerprint to the specified account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "You may use *Account instead of Nick as the name argument; the * makes $b$N$b use",
+        "the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u odelsslfp");
 
 "ODELSSLFP" ("/msg $N ODELSSLFP <nick|*account> <fingerprint>",
         "Removes an SSL fingerprint from the specified account.",
-        "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
+        "You may use *Account instead of Nick as the name argument; the * makes $b$N$b use",
+        "the name of an account directly (useful if the user is not online).",
         "$uSee Also:$u oaddsslfp");
 
+"CHECKPASS" ("/msg $N CHECKPASS <nick|*account> <password>",
+        "Checks the password against the encrypted password in the database",
+        "to see if it matches and returns yes or no if the password is correct.",
+        "$uSee Also:$u pass");
+        
