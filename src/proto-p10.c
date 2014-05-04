@@ -1730,7 +1730,8 @@ static struct {
   P(SHUN),           P(LOCAL_SHUN),     P(WIDE_SHUN),     P(ZLINE),
   P(LOCAL_ZLINE),    P(WIDE_ZLINE),     P(LIST_CHAN),     P(WHOIS_NOTICE),
   P(HIDE_IDLE),      P(XTRAOP),         P(HIDE_CHANNELS), P(DISPLAY_MODE),
-  P(FREEFORM),       P(REMOVE),         P(SPAMFILTER),
+  P(FREEFORM),       P(REMOVE),         P(SPAMFILTER),    P(ADMIN),
+  P(APASS_OPMODE),   P(HIDE_OPER),      P(REMOTE),        P(SERVICE),
 #undef P
   { 0, 0 }
 };

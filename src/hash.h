@@ -187,6 +187,11 @@ enum Priv {
   PRIV_REMOVE,          /**< oper can force remove deactivated glines,
                              shuns and zlines. */
   PRIV_SPAMFILTER,      /**< oper can set spamfilters via SPAMFILTER */
+  PRIV_ADMIN,           /**< oper is an IRC Admin */
+  PRIV_APASS_OPMODE,    /**< oper can use OPMODE to set/unset channel modes +A and +U */
+  PRIV_HIDE_OPER,       /**< oper can set/unset user mode +H */
+  PRIV_REMOTE,          /**< oper can use his/her operator block from a remote server */
+  PRIV_SERVICE,         /**< oper can set/unset user mode +k */
   PRIV_LAST_PRIV        /**< number of privileges */
 };
 
