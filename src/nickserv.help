@@ -875,3 +875,8 @@
         "to see if it matches and returns yes or no if the password is correct.",
         "$uSee Also:$u pass");
         
+"CHECKEMAIL" ("/msg $N CHECKEMAIL <nick|*account> <email>",
+        "Checks the email against the database to verify the email address",
+        "matches the specified nick or account.",
+        "$uSee Also:$u set email");
+        
