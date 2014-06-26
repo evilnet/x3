@@ -123,15 +123,6 @@ mail_send(struct userNode *from, struct handle_info *to, const char *subject, co
         close(infds[0]);
         close(outfds[1]);
 
-        /* Do we have any "extra" headers to send? */
-        extras = conf_get_data("mail/extra_headers", RECDB_STRING_LIST);
-        if (extras) {
-            for (nn=0; nn<extras->used; nn++) {
-                fputs(extras->list[nn], out);
-                fputs("\n", out);
-            }
-        }
-
         /* Content type?  (format=flowed is a standard for plain text
          * that lets the receiver reconstruct paragraphs, defined in
          * RFC 2646.  See comment above send_flowed_text() for more.)
@@ -144,6 +135,15 @@ mail_send(struct userNode *from, struct handle_info *to, const char *subject, co
         fprintf(out, "From: %s <%s>\n", from->nick, fromaddr);
         fprintf(out, "To: \"%s\" <%s>\n", to->handle, to->email_addr);
         fprintf(out, "Subject: %s\n", subject);
+
+        /* Do we have any "extra" headers to send? */
+        extras = conf_get_data("mail/extra_headers", RECDB_STRING_LIST);
+        if (extras) {
+            for (nn=0; nn<extras->used; nn++) {
+                fputs(extras->list[nn], out);
+                fputs("\n", out);
+            }
+        }
 
         /* Send mail body */
         fputs("\n", out); /* terminate headers */
