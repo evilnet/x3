@@ -2288,6 +2288,7 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
 static NICKSERV_FUNC(cmd_auth)
 {
     int pw_arg, used, maxlogins;
+    int sslfpauth = 0;
     struct handle_info *hi;
     const char *passwd;
     const char *handle;
@@ -2419,11 +2420,15 @@ static NICKSERV_FUNC(cmd_auth)
         argv[pw_arg] = "BADMASK";
         return 1;
     }
+
+    if (valid_user_sslfp(user, hi))
+        sslfpauth = 1;
+
 #ifdef WITH_LDAP
     if(( ( nickserv_conf.ldap_enable && ldap_result == LDAP_INVALID_CREDENTIALS )  ||
-        ( (!nickserv_conf.ldap_enable) && (!checkpass(passwd, hi->passwd)) ) ) && !valid_user_sslfp(user, hi)) {
+        ( (!nickserv_conf.ldap_enable) && (!checkpass(passwd, hi->passwd)) ) ) && !sslfpauth) {
 #else
-    if (!checkpass(passwd, hi->passwd) && !valid_user_sslfp(user, hi)) {
+    if (!checkpass(passwd, hi->passwd) && !sslfpauth) {
 #endif
         unsigned int n;
         send_message_type(4, user, cmd->parent->bot,
@@ -2467,9 +2472,9 @@ static NICKSERV_FUNC(cmd_auth)
     set_user_handle_info(user, hi, 1);
     if (nickserv_conf.email_required && !hi->email_addr)
         reply("NSMSG_PLEASE_SET_EMAIL");
-    if (!is_secure_password(hi->handle, passwd, NULL))
+    if (!sslfpauth && !is_secure_password(hi->handle, passwd, NULL))
         reply("NSMSG_WEAK_PASSWORD");
-    if (hi->passwd[0] != '$')
+    if (!sslfpauth && (hi->passwd[0] != '$'))
         cryptpass(passwd, hi->passwd);
 
    /* If a channel was waiting for this user to auth, 
