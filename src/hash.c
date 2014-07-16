@@ -38,6 +38,7 @@ dict_t servers;
 unsigned int max_clients, invis_clients;
 time_t max_clients_time;
 struct userList curr_opers;
+unsigned int count_opers;
 
 static void hash_cleanup(void *extra);
 
@@ -47,6 +48,7 @@ void init_structs(void)
     clients = dict_new();
     servers = dict_new();
     userList_init(&curr_opers);
+    count_opers = 0;
     reg_exit_func(hash_cleanup, NULL);
 }
 
@@ -1056,6 +1058,7 @@ hash_cleanup(UNUSED_ARG(void *extra))
     dict_delete(clients);
     dict_delete(servers);
     userList_clean(&curr_opers);
+    count_opers = 0;
 
     free(slf_list);
     free(slf_list_extra);

@@ -5534,7 +5534,7 @@ static CHANSERV_FUNC(cmd_netinfo)
     reply("CSMSG_NETWORK_INFO");
     reply("CSMSG_NETWORK_SERVERS", dict_size(servers));
     reply("CSMSG_NETWORK_USERS", dict_size(clients));
-    reply("CSMSG_NETWORK_OPERS", curr_opers.used);
+    reply("CSMSG_NETWORK_OPERS", count_opers);
     reply("CSMSG_NETWORK_CHANNELS", registered_channels);
     reply("CSMSG_NETWORK_LAMERS", banCount);
     reply("CSMSG_NETWORK_CHANUSERS", userCount);
@@ -5579,14 +5579,14 @@ send_staff_list(struct userNode *to, struct userList *list, int skip_flags)
 static CHANSERV_FUNC(cmd_ircops)
 {
     reply("CSMSG_STAFF_OPERS");
-    send_staff_list(user, &curr_opers, FLAGS_SERVICE);
+    send_staff_list(user, &curr_opers, FLAGS_SERVICE | FLAGS_BOT);
     return 1;
 }
 
 static CHANSERV_FUNC(cmd_helpers)
 {
     reply("CSMSG_STAFF_HELPERS");
-    send_staff_list(user, &curr_helpers, FLAGS_OPER);
+    send_staff_list(user, &curr_helpers, FLAGS_OPER | FLAGS_SERVICE | FLAGS_BOT);
     return 1;
 }
 

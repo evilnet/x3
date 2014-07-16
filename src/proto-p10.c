@@ -3250,8 +3250,11 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
 
     user->uplink->clients--;
     user->uplink->users[user->num_local] = NULL;
-    if (IsOper(user))
+    if (IsOper(user)) {
         userList_remove(&curr_opers, user);
+        if (count_opers > 0 && !IsBotM(user) && !IsService(user) && !IsHideOper(user))
+          count_opers--;
+    }
     /* remove from global dictionary, but not if after a collide */
     if (user == dict_find(clients, user->nick, NULL))
         dict_remove(clients, user->nick);
@@ -3316,6 +3319,8 @@ static void call_oper_funcs(struct userNode *user);
 
 void mod_usermode(struct userNode *user, const char *mode_change) {
     int add = 1;
+    long setmodes = 0;
+    int donemodes = 0;
     const char *word = mode_change;
 
     if (!user || !mode_change)
@@ -3323,12 +3328,16 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 
     call_user_mode_funcs(user, mode_change);
 
+    setmodes = user->modes;
+
     while (*word != ' ' && *word) word++;
     while (*word == ' ') word++;
-    while (1) {
+    while (!donemodes) {
 #define do_user_mode(FLAG) do { if (add) user->modes |= FLAG; else user->modes &= ~FLAG; } while (0)
 	switch (*mode_change++) {
-	case 0: case ' ': return;
+	case 0: case ' ':
+            donemodes = 1;
+            break;
 	case '+': add = 1; break;
 	case '-': add = 0; break;
 	case 'o':
@@ -3430,6 +3439,37 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
         case 'q': do_user_mode(FLAGS_COMMONCHANSONLY); break;
 	}
 #undef do_user_mode
+    }
+
+    // Set user mode +o
+    if (!(setmodes & FLAGS_OPER) && IsOper(user)) {
+        if (!IsBotM(user) && !IsService(user) && !IsHideOper(user))
+            count_opers++;
+    }
+
+    // Set user mode -o
+    if ((setmodes & FLAGS_OPER) && !IsOper(user)) {
+        if (count_opers > 1 && !(setmodes & FLAGS_BOT) &&
+            !(setmodes & FLAGS_SERVICE) && !(setmodes & FLAGS_HIDEOPER))
+            count_opers--;
+    }
+
+    // Set +H, +k or +B
+    if (!(setmodes & FLAGS_HIDEOPER) &&
+        !(setmodes & FLAGS_SERVICE) &&
+        !(setmodes & FLAGS_BOT) &&
+        (IsHideOper(user) || IsService(user) || IsBotM(user))) {
+        if ((setmodes & FLAGS_OPER) && IsOper(user) && count_opers > 0)
+              count_opers--;
+    }
+
+    // Set -H, -k or -B
+    if (((setmodes & FLAGS_HIDEOPER) ||
+         (setmodes & FLAGS_SERVICE) ||
+         (setmodes & FLAGS_BOT)) &&
+        !IsHideOper(user) && !IsService(user) && !IsBotM(user)) {
+        if ((setmodes & FLAGS_OPER) && IsOper(user))
+            count_opers++;
     }
 }
 

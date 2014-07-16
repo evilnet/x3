@@ -392,6 +392,8 @@ extern unsigned int max_clients, invis_clients;
 extern time_t max_clients_time;
 extern struct userList curr_opers, curr_helpers;
 
+extern unsigned int count_opers;
+
 struct server* GetServerH(const char *name); /* using full name */
 struct userNode* GetUserH(const char *nick);   /* using nick */
 struct chanNode* GetChannel(const char *name);
