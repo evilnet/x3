@@ -9,8 +9,9 @@ A1) Read the README and INSTALL files, especially INSTALL.
 
 Q2) How do I set up my IRC server so X3 talks to it?
 A2) That depends on which IRC server you use.  Check its
-documentation.  #evilnet will not support ircd questions other
-than Nefarious IRCu
+documentation.  Essentially you add a connect block for X3 in
+ircd.conf and point to that at the top of x3.conf. You'll also
+need a UWORLD block etc.
 
 Q3) I get "You must first authenticate with NickServ", help!
 A3) To register an account, /msg NickServ@services.example.com
@@ -27,16 +28,13 @@ if you have an auto-perform to log in, and you connect to some other
 IRC network, you will send your password to whoever or whatever is
 named NickServ on that network.
 
-Q5) When I try to register a channel with ChanServ, it tells me I have
-to have "security override" on.  Why?
-A5-1) X3's default configuration is to only allow network staff to
-register channels.  For IRC operators and network helpers (users with
-account flag +H), security override can be enabled by sending "/msg
-ChanServ god on".  For support helpers (users with account flag +h),
-security override is enabled when the user is in the configured
-support channel.
-A5-2) If you want to allow anyone to register channels, use "/msg
-OpServ modcmd ChanServ.register flags -helping".
+Q5) How do I restrict all users from registering channels?
+A5) /msg opserv modcmd ChanServ.register flags +helping
+This will allow only network staff to register channels.  For IRC
+operators and network helpers (users with account flag +H), security
+override can be enabled by sending "/msg ChanServ god on".  For 
+support helpers (users with account flag +h), security override is
+enabled when the user is in the configured support channel.
 
 Q6) How do I enable HelpServ?
 A6) When you run the "configure" script, you must enable the helpserv
