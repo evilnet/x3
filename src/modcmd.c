@@ -955,7 +955,7 @@ svccmd_send_help(struct userNode *user, struct service *service, const char *top
 }
 
 static int
-svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *channel, const char *text, int server_qualified) {
+svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *channel, const char *text, int server_qualified, int chanmsg) {
     unsigned int argc;
     char *argv[MAXNUMPARAMS];
     char tmpline[MAXLEN];
@@ -963,6 +963,9 @@ svccmd_invoke(struct userNode *user, struct service *service, struct chanNode *c
     if (!*text)
         return 0;
     if (service->privileged) {
+        /* Silently return if the message is a channel message (trigger) */
+        if (chanmsg && (!IsOper(user) || !user->handle_info || HANDLE_FLAGGED(user->handle_info, OPER_SUSPENDED)))
+            return 0;
         if (!IsOper(user)) {
             send_message(user, service->bot, "MSG_SERVICE_PRIVILEGED", service->bot->nick);
             return 0;
@@ -1040,7 +1043,7 @@ modcmd_privmsg(struct userNode *user, struct userNode *bot, const char *text, in
 
     if (service->msg_hook && service->msg_hook(user, bot, text, server_qualified))
         return;
-    svccmd_invoke(user, service, NULL, text, server_qualified);
+    svccmd_invoke(user, service, NULL, text, server_qualified, 0);
 }
 
 void
@@ -1048,7 +1051,7 @@ modcmd_chanmsg(struct userNode *user, struct chanNode *chan, const char *text, s
     struct service *service;
     if (!(service = dict_find(services, bot->nick, NULL)))
         return;
-    svccmd_invoke(user, service, chan, text, 0);
+    svccmd_invoke(user, service, chan, text, 0, 1);
     (void)is_notice;
 }
 
@@ -1412,7 +1415,7 @@ static MODCMD_FUNC(cmd_timecmd) {
 
     unsplit_string(argv+1, argc-1, cmd_text);
     gettimeofday(&start, NULL);
-    svccmd_invoke(user, cmd->parent, channel, cmd_text, 0);
+    svccmd_invoke(user, cmd->parent, channel, cmd_text, 0, 0);
     gettimeofday(&stop, NULL);
     stop.tv_sec -= start.tv_sec;
     stop.tv_usec -= start.tv_usec;
