@@ -5799,10 +5799,18 @@ sasl_packet(struct SASLSession *session)
             }
             else
             {
-                if (*authzid && irccasecmp(authzid, authcid) && HANDLE_FLAGGED(hi, IMPERSONATE))
+                if (*authzid && irccasecmp(authzid, authcid))
                 {
-                    hii = hi;
-                    hi = get_handle_info(authzid);
+                    if (HANDLE_FLAGGED(hi, IMPERSONATE))
+                    {
+                        hii = hi;
+                        hi = get_handle_info(authzid);
+                    }
+                    else
+                    {
+                        log_module(NS_LOG, LOG_DEBUG, "SASL: Impersonation unauthorized");
+                        hi = NULL;
+                    }
                 }
                 if (hi)
                 {
