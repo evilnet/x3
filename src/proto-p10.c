@@ -2364,7 +2364,15 @@ static CMD_FUNC(cmd_silence)
     if (argc < 2)
         return 0;
 
-    user = GetUserN(argv[1]);
+    if (strncmp(argv[1], "*", 2) == 0)
+    {
+        if (!(user = GetUserH(origin))) {
+            log_module(MAIN_LOG, LOG_ERROR, "Could not find SILENCE origin user %s", origin);
+            return 0;
+        }
+    }
+    else
+        user = GetUserN(argv[1]);
 
     /* Sanity, go nuts if this happens */
     if (!user)
