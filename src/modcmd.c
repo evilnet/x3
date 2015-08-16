@@ -2064,7 +2064,7 @@ static MODCMD_FUNC(cmd_credits) {
     send_message_type(4, user, cmd->parent->bot, "$b$b");
     send_message_type(4, user, cmd->parent->bot, "The srvx 1.3.x Development Team includes Paul Chang, Adrian Dewhurst, Miles Peterson, Michael Poole and others.");
     send_message_type(4, user, cmd->parent->bot, "The X3 Development Team includes Alex Schumann, Reed Loden, Neil Spierling, Matthew Beeching.");
-    send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at http://evilnet.sourceforge.net or in #evilnet on irc.afternet.org.");
+    send_message_type(4, user, cmd->parent->bot, "The X3 Development Team can be reached at https://github.com/evilnet/x3/ or in #evilnet on irc.afternet.org.");
     send_message_type(4, user, cmd->parent->bot, "$b$b");
     send_message_type(4, user, cmd->parent->bot, "Thanks goes to ThiefMaster, Joe Hansche (joeatrr), Martijn Smit (wasted), and to any other people who have contributed to X3.");
     send_message_type(4, user, cmd->parent->bot, "This program is free software; see COPYING in the distribution files.");

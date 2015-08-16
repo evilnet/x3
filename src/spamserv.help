@@ -188,7 +188,7 @@
 
 "SET ADVSCAN" ("/msg $X SET <#channel> ADVSCAN <1/0>",
         "If this setting is enabled, $X checks all messages for advertisements.",
-        "Advertisements are: www.*, http:*, ftp.*, ftp:* and #*; e.g. #evilnet, http://evilnet.sourceforge.net etc ..");
+        "Advertisements are: www.*, http:*, ftp.*, ftp:* and #*; e.g. #evilnet, https://github.com/evilnet/x3/ etc ..");
 
 "SET BADSCAN" ("/msg $X SET <#channel> BADSCAN <1/0>",
         "If this setting is enabled, $X checks all messages for badwords.");
