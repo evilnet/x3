@@ -788,7 +788,8 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
 
     /* If only matching the visible hostnames, bail early. */
     if ((flags & MATCH_VISIBLE) && IsHiddenHost(user)
-        && (IsFakeHost(user) || (hidden_host_suffix && user->handle_info)))
+        && (IsFakeHost(user) || (hidden_host_suffix && user->handle_info) ||
+            user->crypthost || user->cryptip))
         return 0;
     /* If it might be an IP glob, test that. */
     if (!glob[strspn(glob, "0123456789./*?")]
