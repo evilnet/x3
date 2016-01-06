@@ -5790,7 +5790,7 @@ sasl_packet(struct SASLSession *session)
 
         log_module(NS_LOG, LOG_DEBUG, "SASL: Checking supplied credentials");
 
-        if (c != 2)
+        if ((c != 2) || !(*authcid))
         {
             log_module(NS_LOG, LOG_DEBUG, "SASL: Incomplete credentials supplied");
             irc_sasl(session->source, session->uid, "D", "F");
