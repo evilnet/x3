@@ -3124,7 +3124,7 @@ static CHANSERV_FUNC(cmd_adduser)
     struct userData *actee;
     struct userData *actor, *real_actor;
     struct handle_info *handle = NULL;
-    struct adduserPending *tmp;
+    //struct adduserPending *tmp;
     unsigned short access_level, override = 0;
 
     REQUIRE_PARAMS(3);
@@ -3168,7 +3168,7 @@ static CHANSERV_FUNC(cmd_adduser)
             else {
                 if(IsInChannel(channel, unode)) {
                    reply("CSMSG_ADDUSER_PENDING", unode->nick);
-                   tmp = add_adduser_pending(channel, unode, access_level);
+                   add_adduser_pending(channel, unode, access_level);
                    send_message_type(1,unode, chanserv, "CSMSG_ADDUSER_PENDING_TARGET", user->nick, channel->name);
                 }
                 /* this results in user must auth AND not in chan errors. too confusing..
@@ -5309,10 +5309,10 @@ static CHANSERV_FUNC(cmd_mode)
 
 static CHANSERV_FUNC(cmd_invite)
 {
-    struct userData *uData;
+    //struct userData *uData;
     struct userNode *invite;
 
-    uData = GetChannelUser(channel->channel_info, user->handle_info);
+    //uData = GetChannelUser(channel->channel_info, user->handle_info);
 
     if(argc > 1)
     {
@@ -7912,7 +7912,7 @@ static CHANSERV_FUNC(cmd_spin)
     /* service ignore */
     else if (!strcasecmp(wheel, "svsignore")) 
     {
-         int gagged;
+         //int gagged;
          int ignoretime = 0;
          char target[HOSTLEN + 13];
 
@@ -7927,7 +7927,7 @@ static CHANSERV_FUNC(cmd_spin)
          strcat(target, user->hostname);
          ignoretime = now + (1 + rand() % 120);
 
-         gagged = gag_create(target, "wheelofabuse", "Reward for spinning the wheel of misfortune!", ignoretime);
+         gag_create(target, "wheelofabuse", "Reward for spinning the wheel of misfortune!", ignoretime);
     }
     /* kick and ban from each channel your in */
     else if (!strcasecmp(wheel, "kickbanall")) 
@@ -9367,7 +9367,7 @@ user_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
 static void
 ban_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
 {
-    struct banData *bData;
+    //struct banData *bData;
     char *set, *triggered, *s_duration, *s_expires, *reason, *owner;
     time_t set_time, triggered_time, expires_time;
 
@@ -9398,7 +9398,7 @@ ban_read_helper(const char *key, struct record_data *rd, struct chanData *chan)
     if(!reason || (expires_time && (expires_time < now)))
         return;
 
-    bData = add_channel_ban(chan, key, owner, set_time, triggered_time, expires_time, reason);
+    add_channel_ban(chan, key, owner, set_time, triggered_time, expires_time, reason);
 }
 
 static struct suspended *
