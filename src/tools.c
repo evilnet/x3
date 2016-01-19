@@ -645,7 +645,7 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
     if (is_extended) {
         log_module(MAIN_LOG, LOG_DEBUG, "Extended ban. T (%c) R (%d) M (%s)", exttype, extreverse, glob);
         switch (exttype) {
-            case 'a':
+            case 'a': // account
                 if (user->handle_info) {
                     if (extreverse) {
                         if (0 != strcasecmp(glob, user->handle_info->handle))
@@ -659,7 +659,7 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
                         return 1;
                 }
                 return match_ircglob(user->hostname, glob);
-            case 'c':
+            case 'c': // another channel
                 if (!strstr(glob, "#"))
                     return -1;
 
@@ -738,6 +738,15 @@ user_matches_glob(struct userNode *user, const char *orig_glob, int flags, int s
                 return match_ircglob(user->hostname, glob);
             case 'R': /* this is handled ircd side */
                 return match_ircglob(user->hostname, glob);
+            case 'm': // mute by mark
+                 if(user->mark && !strcmp(glob, user->mark)) 
+                    return true;
+                else 
+                    return false;
+                
+            case 'M': // mute by mark unless authed
+                return false; // can never match a logged in user
+
             default:
                 return -1;
         }
