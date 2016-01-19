@@ -8933,7 +8933,7 @@ handle_mode(struct chanNode *channel, struct userNode *user, const struct mod_ch
         else if((change->args[ii].mode & (MODE_REMOVE | MODE_BAN)) == MODE_BAN)
         {
             const char *ban = change->args[ii].u.hostmask;
-            if(!bad_channel_ban(channel, user, ban, NULL, NULL))
+            if(bad_channel_ban(channel, user, ban, NULL, NULL) != 1)
                 continue;
             if(!bounce)
                 bounce = mod_chanmode_alloc(change->argc + 1 - ii);
