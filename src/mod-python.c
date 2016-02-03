@@ -46,6 +46,12 @@
  * - modpython.py calls for everything you can reg_ a handler for in x3
  * - Some kind of system for getting needed binds bound automagicaly to make it easier
  *   to run peoples' scripts and mod-python in general.
+ *   - Create a (python side) command registry that plugins register into
+ *   - In modcmd.c check that list first, before the usual (c based) command search
+ *   - If python version returns 0, go on with the built-in search, otherwise just quit (allows plugins to override)
+ *   - OR 
+ *   - Mechanism for python plugins to register themselves like x3 plugins? (*module.____) ??
+ *   - Then, same problem as other x3 modules, pain to set up commands 1st time etc, maybe solve that for all modules?
  * - An interface to reading/writing data to x3.db. Maybe generic, or attached to account or channel reg records?
 
  * basic startup for now:
