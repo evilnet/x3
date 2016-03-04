@@ -8027,7 +8027,7 @@ void eightball(char *outcome, int method, unsigned int seed)
    char ballcolors[50][50] = {
         "blue", "red", "green", "yellow",
         "white", "black", "grey", "brown",
-        "yellow", "pink", "purple", "orange", "teal", "burgandy",
+        "yellow", "pink", "purple", "orange", "teal", "burgundy",
         "fuchsia","turquoise","magenta", "cyan"};
 #define NUMOFLOCATIONS 50
    char balllocations[50][55] = { 
