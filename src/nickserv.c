@@ -5327,8 +5327,9 @@ nickserv_conf_read(void)
     if(nickserv_conf.ldap_enable > 0) {
         /* ldap is enabled but not compiled in - error out */
         log_module(MAIN_LOG, LOG_ERROR, "ldap is enabled in config, but not compiled in!");
-        nickserv_conf.ldap_enable = 0;
-        sleep(5);
+        exit(2);
+        /* nickserv_conf.ldap_enable = 0; */
+        /* sleep(5); */
     }
 #endif 
 
