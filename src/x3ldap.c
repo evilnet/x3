@@ -17,6 +17,13 @@
  * along with srvx; if not, write to the Free Software Foundation,
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
+ * 
+ * INSTRUCTIONS:
+ *   * Setup an ldap server. Add inetOrgAnon to the schema (it is in tools/ldap)
+ *   * Make sure ldap is enabled at compile time (debian needs libldap2-dev package)
+ *   * Enable ldap in x3.conf and set everything
+ *   * Initial import: you can use the secret authserv search action add2ldap
+ *     to get your users into ldap. /msg authserv search add2ldap account *
  *
  * TODO:
  *   * get queries working in static existance, so i understand how it works
