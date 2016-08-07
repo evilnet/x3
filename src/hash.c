@@ -731,7 +731,6 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
             && !(channel->modes & MODE_REGISTERED)
             && !(channel->modes & MODE_APASS)) {
             mNode->modes |= MODE_CHANOP;
-            log_module(MAIN_LOG, LOG_DEBUG, "setting op");
         }
 
         if (IsLocal(user)) {

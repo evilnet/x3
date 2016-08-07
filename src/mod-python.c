@@ -46,10 +46,24 @@
  * - modpython.py calls for everything you can reg_ a handler for in x3
  * - Some kind of system for getting needed binds bound automagicaly to make it easier
  *   to run peoples' scripts and mod-python in general.
+ *   - Create a (python side) command registry that plugins register into
+ *   - In modcmd.c check that list first, before the usual (c based) command search
+ *   - If python version returns 0, go on with the built-in search, otherwise just quit (allows plugins to override)
+ *   - OR 
+ *   - Mechanism for python plugins to register themselves like x3 plugins? (*module.____) ??
+ *   - Then, same problem as other x3 modules, pain to set up commands 1st time etc, maybe solve that for all modules?
  * - An interface to reading/writing data to x3.db. Maybe generic, or attached to account or channel reg records?
 
  * basic startup for now:
  * configure --enable-modules=python
+ * Make install will copy modpython.py and plugins/ directory to start out with hangman example/test
+ *
+ * x3.conf: in the "moduleS" section add:
+ *   "python" {
+ *       "scripts_dir" "/home/you/x3rundirectory";
+ *       "main_module" "modpython";
+ *   };
+
  * /msg o3 bind o3 py\ run *python.run
  * /msg o3 bind o3 py\ reload *python.reload
  * /msg o3 bind o3 py\ command *python.command
@@ -58,7 +72,7 @@
  * /msg o3 bind x3 hangman *modcmd.joiner
  * /msg o3 bind x3 hangman\ start *python.command hangman start
  * /msg o3 bind x3 hangman\ end *python.command hangman end
- * /msg o3 bind x3 hangman\ guess *python.command hangman guess
+ * /msg o3 bind x3 hangman\ guess *python.command hangman guess $1
  */
 
 static const struct message_entry msgtab[] = {
@@ -1874,6 +1888,7 @@ int python_load() {
         free(env);
     }
 
+    log_module(PY_LOG, LOG_DEBUG, "Starting Python Init from python_load");
     Py_Initialize();
     Py_InitModule("_svc", EmbMethods);
     pName = PyString_FromString(modpython_conf.main_module);
@@ -1892,6 +1907,7 @@ int python_load() {
         else {
             /* error handler class not found */
             log_module(PY_LOG, LOG_WARNING, "Failed to create handler object");
+            exit(1);
             return 0;
         }
     }
@@ -1899,6 +1915,7 @@ int python_load() {
         //PyErr_Print();
         python_log_module();
         log_module(PY_LOG, LOG_WARNING, "Failed to load modpython.py");
+        exit(1);
         return 0;
     }
     return 0;
@@ -2017,8 +2034,11 @@ static MODCMD_FUNC(cmd_command) {
     else {
         msg = "";
     }
-    char *args[] = {plugin, command, msg};
+    char *args[] = {strdup(plugin), strdup(command), strdup(msg)};
     python_call_handler("cmd_command", args, numstrargs(args), cmd->parent->bot->nick, user?user->nick:"", channel?channel->name:"");
+    free(args[0]);
+    free(args[1]);
+    free(args[2]);
     return 1;
 }
 
@@ -2043,7 +2063,7 @@ int python_init(void) {
        do all our setup tasks and bindings 
     */
 
-    //PY_LOG = log_register_type("Python", "file:python.log");
+    PY_LOG = log_register_type("Python", "file:python.log");
     python_module = module_register("python", PY_LOG, "mod-python.help", NULL);
     conf_register_reload(modpython_conf_read);
 
@@ -2060,7 +2080,7 @@ int python_init(void) {
 */
     modcmd_register(python_module, "reload",  cmd_reload,  1,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
     modcmd_register(python_module, "run",  cmd_run,  2,  MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
-//    modcmd_register(python_module, "command", cmd_command, 3, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
+    modcmd_register(python_module, "command", cmd_command, 3, MODCMD_REQUIRE_AUTHED, "flags", "+oper", NULL);
 
 //  Please help us by implementing any of the callbacks listed as TODO below. They already exist
 //  in x3, they just need handle_ bridges implemented. (see python_handle_join for an example)
