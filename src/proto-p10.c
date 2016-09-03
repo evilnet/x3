@@ -1491,7 +1491,7 @@ static CMD_FUNC(cmd_sasl)
     if (!serv)
       return 0;
 
-    call_sasl_input_func(serv, argv[2], argv[3], argv[4], (argc>5 ? argv[5] : NULL));
+    call_sasl_input_func(serv, argv[2], argv[3], argv[4], (argc>5 ? argv[argc-1] : NULL));
 
     return 1;
 }
