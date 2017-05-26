@@ -320,6 +320,7 @@
         "$bIDENT$b ident              Specifies an ident to search for.",
         "$bHOST$b host                Specifies a hostname to search for.",
         "$bINFO$b infoline            Specifies a user's info to search for.",
+        "$bMODES$b +modes-modes       Specifies modes they have and don't have.",
         "$bSERVER$b server            Specifies a server to search for.",
         "$bIP$b 127.0.0.1             Specifies an IP to search for (independent of hostname).",
         "$bACCOUNT$b account          Specifies an account to search for.",

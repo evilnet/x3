@@ -5802,70 +5802,79 @@ discrim_match(discrim_t discrim, struct userNode *user)
 
     if (discrim->modes) {
 	    unsigned int ii, matches = 0;
+        unsigned int negate = 0;
         for (ii = 0; ii < strlen(discrim->modes); ii++) {
             switch(discrim->modes[ii]) {
+                case '+':
+                    negate = 0;
+                    matches++;
+                    break;
+                case '-':
+                    negate = 1;
+                    matches++;
+                    break;
                 case 'O':
-                    if(IsOper(user)) matches++;
+                    if(IsOper(user) != 0 != negate) matches++;
                     break;
                 case 'o':
-                    if(IsOper(user)) matches++;
+                    if(IsOper(user) != 0 != negate) matches++;
                     break;
                 case 'i':
-                    if(IsInvisible(user)) matches++;
+                    if(IsInvisible(user) != 0 != negate) matches++;
                     break;
                 case 'w':
-                    if(IsWallOp(user)) matches++;
+                    if(IsWallOp(user) != 0 != negate) matches++;
                     break;
                 case 'd':
-                    if(IsDeaf(user)) matches++;
+                    if(IsDeaf(user) != 0 != negate) matches++;
                     break;
                 case 'k':
-                    if(IsService(user)) matches++;
+                    if(IsService(user) != 0 != negate) matches++;
                     break;
                 case 'g':
-                    if(IsGlobal(user)) matches++;
+                    if(IsGlobal(user) != 0 != negate) matches++;
                     break;
                 case 'h':
-                    if(IsSetHost(user)) matches++;
+                    if(IsSetHost(user) != 0 != negate) matches++;
                     break;
                 case 'B':
-                    if(IsBotM(user)) matches++;
+                    if(IsBotM(user) != 0 != negate) matches++;
                     break;
                 case 'n':
-                    if(IsHideChans(user)) matches++;
+                    if(IsHideChans(user) != 0 != negate) matches++;
                     break;
                 case 'I':
-                    if(IsHideIdle(user)) matches++;
+                    if(IsHideIdle(user) != 0 != negate) matches++;
                     break;
                 case 'X':
-                    if(IsXtraOp(user)) matches++;
+                    if(IsXtraOp(user) != 0 != negate) matches++;
                     break;
                 case 'x':
-                    if(IsHiddenHost(user)) matches++;
+                    if(IsHiddenHost(user) != 0 != negate) matches++;
                     break;
                 case 'a':
-                    if(IsAdmin(user)) matches++;
+                    if(IsAdmin(user) != 0 != negate) matches++;
                     break;
                 case 'z':
-                    if(IsSSL(user)) matches++;
+                    if(IsSSL(user) != 0 != negate) matches++;
                     break;
                 case 'D':
-                    if(IsPrivDeaf(user)) matches++;
+                    if(IsPrivDeaf(user) != 0 != negate) matches++;
                     break;
                 case 'R':
-                    if(IsAccountOnly(user)) matches++;
+                    if(IsAccountOnly(user) != 0 != negate) matches++;
                     break;
                 case 'W':
-                    if(IsWhoisNotice(user)) matches++;
+                    if(IsWhoisNotice(user) != 0 != negate) matches++;
                     break;
                 case 'H':
-                    if(IsHideOper(user)) matches++;
+                    if(IsHideOper(user) != 0 != negate) matches++;
                     break;
                 case 'L':
-                    if(IsHideOper(user)) matches++;
+                    if(IsHideOper(user) != 0 != negate) matches++;
                     break;
                 case 'q':
-                    if(IsCommonChansOnly(user)) matches++;
+                    if(IsCommonChansOnly(user) != 0 != negate) matches++;
                     break;
             }
         }
