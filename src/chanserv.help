@@ -175,8 +175,8 @@
             " See $b/msg $C HELP <COMMAND>$b for the  ",
             " exact syntax of each command.           ",
             "=---------- For more info see: ---------=",
-            "     http://www.afternet.org/support     ",
-            "     http://evilnet.sf.net/x3/x3help.php "
+            "   http://www.afternet.org/help          ",
+            "   http://www.afternet.org/help/irc/x3_help"
 );
 
 "LOGIN" (
