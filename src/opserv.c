@@ -5840,6 +5840,7 @@ discrim_match(discrim_t discrim, struct userNode *user)
                 case 'B':
                     if(IsBotM(user) != 0 != negate) matches++;
                     break;
+                case 'p':
                 case 'n':
                     if(IsHideChans(user) != 0 != negate) matches++;
                     break;

@@ -3370,6 +3370,7 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
 	case 'g': do_user_mode(FLAGS_GLOBAL); break;
 	case 'B': do_user_mode(FLAGS_BOT); break;
 	case 'n': do_user_mode(FLAGS_HIDECHANS); break;
+    case 'p': do_user_mode(FLAGS_HIDECHANS); break;
 	case 'I': do_user_mode(FLAGS_HIDEIDLE); break;
 	case 'X': do_user_mode(FLAGS_XTRAOP); break;
 	case 'C': do_user_mode(FLAGS_CLOAKHOST);
