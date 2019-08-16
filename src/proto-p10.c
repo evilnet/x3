@@ -106,6 +106,7 @@
 #define CMD_SVSPART             "SVSPART"
 #define CMD_SVSQUIT             "SVSQUIT"
 #define CMD_SWHOIS              "SWHOIS"
+#define CMD_TEMPSHUN            "TEMPSHUN"
 #define CMD_TIME                "TIME"
 #define CMD_TOPIC               "TOPIC"
 #define CMD_TRACE               "TRACE"
@@ -206,6 +207,7 @@
 #define TOK_SVSPART             "SP"
 #define TOK_SVSQUIT             "SX"
 #define TOK_SWHOIS              "SW"
+#define TOK_TEMPSHUN            "TS"
 #define TOK_TIME                "TI"
 #define TOK_TOPIC               "T"
 #define TOK_TRACE               "TR"
@@ -315,6 +317,7 @@
 #define P10_SVSPART             TYPE(SVSPART)
 #define P10_SVSQUIT		TYPE(SVSQUIT)
 #define P10_SWHOIS              TYPE(SWHOIS)
+#define P10_TEMPSHUN            TYPE(TEMPSHUN)
 #define P10_TIME                TYPE(TIME)
 #define P10_TOPIC               TYPE(TOPIC)
 #define P10_TRACE               TYPE(TRACE)
@@ -1090,6 +1093,12 @@ irc_swhois(struct userNode *from, struct userNode *target, const char *message)
     putsock("%s " P10_SWHOIS " %s %s%s", from->uplink->numeric, target->numeric, message ? ":" : "",
                                          message ? message : "");
 
+}
+
+void
+irc_tempshun(struct userNode *from, struct userNode *target, int remove, const char *reason)
+{
+    putsock("%s " P10_TEMPSHUN " %s %s :%s", from->numeric, (remove ? "-" : "+"), target->numeric, reason);
 }
 
 void
@@ -2738,6 +2747,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_SVSPART, cmd_svspart);
     dict_insert(irc_func_dict, CMD_SWHOIS, cmd_dummy);
     dict_insert(irc_func_dict, TOK_SWHOIS, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_TEMPSHUN, cmd_dummy);
+    dict_insert(irc_func_dict, TOK_TEMPSHUN, cmd_dummy);
     dict_insert(irc_func_dict, CMD_WHOIS, cmd_whois);
     dict_insert(irc_func_dict, TOK_WHOIS, cmd_whois);
     dict_insert(irc_func_dict, CMD_GLINE, cmd_gline);

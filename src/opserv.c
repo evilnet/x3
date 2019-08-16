@@ -586,6 +586,7 @@ typedef enum {
     REACT_GLINE,
     REACT_TRACK,
     REACT_SHUN,
+    REACT_TEMPSHUN,
     REACT_SVSJOIN,
     REACT_SVSPART,
     REACT_VERSION,
@@ -1529,6 +1530,12 @@ opserv_shun(struct userNode *target, char *src_handle, char *reason, unsigned lo
     }
     if (!duration) duration = opserv_conf.block_shun_duration;
     return shun_add(src_handle, mask, duration, reason, now, 1);
+}
+
+static void
+opserv_tempshun(struct userNode *target, char *src_handle, char *reason)
+{
+    irc_tempshun(opserv, target, 0, reason);
 }
 
 static MODCMD_FUNC(cmd_sblock)
@@ -2587,6 +2594,7 @@ static MODCMD_FUNC(cmd_stats_alerts) {
         case REACT_GLINE: reaction = "gline"; break;
         case REACT_TRACK: reaction = "track"; break;
         case REACT_SHUN: reaction = "shun"; break;
+        case REACT_TEMPSHUN: reaction = "tempshun"; break;
         case REACT_SVSJOIN: reaction = "svsjoin"; break;
         case REACT_SVSPART: reaction = "svspart"; break;
         case REACT_VERSION: reaction = "version"; break;
@@ -4919,6 +4927,8 @@ add_user_alert(const char *key, void *data, UNUSED_ARG(void *extra))
         reaction = REACT_TRACK;
     else if (!irccasecmp(react, "shun"))
         reaction = REACT_SHUN;
+    else if (!irccasecmp(react, "tempshun"))
+        reaction = REACT_TEMPSHUN;
     else if (!irccasecmp(react, "svsjoin"))
         reaction = REACT_SVSJOIN;
     else if (!irccasecmp(react, "svspart"))
@@ -5214,6 +5224,7 @@ opserv_saxdb_write(struct saxdb_context *ctx)
             case REACT_GLINE: reaction = "gline"; break;
             case REACT_TRACK: reaction = "track"; break;
             case REACT_SHUN: reaction = "shun"; break;
+            case REACT_TEMPSHUN: reaction = "tempshun"; break;
             case REACT_SVSJOIN: reaction = "svsjoin"; break;
             case REACT_SVSPART: reaction = "svspart"; break;
             case REACT_VERSION: reaction = "version"; break;
@@ -6076,6 +6087,18 @@ trace_shun_func(struct userNode *match, void *extra)
 }
 
 static int
+trace_tempshun_func(struct userNode *match, void *extra)
+{
+  struct discrim_and_source *das = extra;
+
+  if (is_oper_victim(das->source, match, das->discrim->match_opers, 1) && is_trust_victim(match, das->discrim->match_trusted)) {
+    opserv_tempshun(match, das->source->handle_info->handle, das->discrim->reason);
+  }
+
+  return 0;
+}
+
+static int
 trace_kill_func(struct userNode *match, void *extra)
 {
     struct discrim_and_source *das = extra;
@@ -6312,6 +6335,8 @@ static MODCMD_FUNC(cmd_trace)
         action = trace_gline_func;
     else if (!irccasecmp(argv[1], "shun"))
         action = trace_shun_func;
+    else if (!irccasecmp(argv[1], "tempshun"))
+        action = trace_tempshun_func;
     else if (!irccasecmp(argv[1], "kill"))
         action = trace_kill_func;
     else if (!irccasecmp(argv[1], "gag"))
@@ -6875,6 +6900,9 @@ alert_check_user(const char *key, void *data, void *extra)
     case REACT_SHUN:
         opserv_shun(user, alert->owner, alert->discrim->reason, alert->discrim->duration);
         return 1;
+    case REACT_TEMPSHUN:
+        opserv_tempshun(user, alert->owner, alert->discrim->reason);
+        return 1;
     case REACT_SVSJOIN:
         opserv_svsjoin(user, alert->owner, alert->discrim->reason, alert->discrim->chantarget, alert->discrim->checkrestrictions);
         break;
@@ -7088,6 +7116,8 @@ static MODCMD_FUNC(cmd_addalert)
 #endif
     } else if (!irccasecmp(argv[2], "shun"))
         reaction = REACT_SHUN;
+    else if(!irccasecmp(argv[2], "tempshun"))
+        reaction = REACT_TEMPSHUN;
     else if(!irccasecmp(argv[2], "svsjoin")) 
         reaction = REACT_SVSJOIN;
     else if(!irccasecmp(argv[2], "svspart")) 
@@ -7389,6 +7419,7 @@ init_opserv(const char *nick)
     opserv_define_func("ADDALERT SILENT", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT GLINE", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT SHUN", NULL, 900, 0, 0);
+    opserv_define_func("ADDALERT TEMPSHUN", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT TRACK", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT KILL", NULL, 900, 0, 0);
     opserv_define_func("ADDALERT SVSJOIN", NULL, 999, 0, 0);
@@ -7502,6 +7533,7 @@ init_opserv(const char *nick)
     opserv_define_func("TRACE DOMAINS", NULL, 0, 0, 0);
     opserv_define_func("TRACE GLINE", NULL, 600, 0, 0);
     opserv_define_func("TRACE SHUN", NULL, 600, 0, 0);
+    opserv_define_func("TRACE TEMPSHUN", NULL, 600, 0, 0);
     opserv_define_func("TRACE GAG", NULL, 600, 0, 0);
     opserv_define_func("TRACE KILL", NULL, 600, 0, 0);
     opserv_define_func("TRACE VERSION", NULL, 999, 0, 0);
