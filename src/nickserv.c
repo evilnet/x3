@@ -2127,6 +2127,10 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
             handle = hi->handle;
     }
     
+    /* Ensure handle is valid if not found in internal DB */
+    if (!hi && !is_valid_handle(handle))
+        return 0;
+
 #ifdef WITH_LDAP
     if (nickserv_conf.ldap_enable && (password != NULL)) {
         ldap_result = ldap_check_auth(handle, password);
