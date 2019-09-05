@@ -5449,9 +5449,10 @@ check_user_nick(struct userNode *user, UNUSED_ARG(void *extra)) {
         irc_regnick(user);
         return 0;
     }
-    if (nickserv_conf.warn_nick_owned)
+    if (nickserv_conf.warn_nick_owned) {
         send_message(user, nickserv, "NSMSG_RECLAIM_WARN", ni->nick, ni->owner->handle);
         send_message(user, nickserv, "NSMSG_RECLAIM_HOWTO", ni->owner->handle, nickserv->nick, self->name, ni->owner->handle);
+    }
     if (nickserv_conf.auto_reclaim_action == RECLAIM_NONE)
         return 0;
     if (nickserv_conf.auto_reclaim_delay)
