@@ -2128,7 +2128,7 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
     }
     
     /* Ensure handle is valid if not found in internal DB */
-    if (!hi && !is_valid_handle(handle))
+    if (!hi && (!handle || !is_valid_handle(handle)))
         return 0;
 
 #ifdef WITH_LDAP
