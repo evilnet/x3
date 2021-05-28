@@ -2093,6 +2093,8 @@ static CMD_FUNC(cmd_mark)
 
         target->sslfp = strdup(sslfp);
 
+        nickserv_do_autoauth(target);
+
         return 1;
     }
     /* unknown type of mark */

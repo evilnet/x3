@@ -229,6 +229,8 @@ int nickserv_modify_handle_flags(struct userNode *user, struct userNode *bot, co
 int oper_has_access(struct userNode *user, struct userNode *bot, unsigned int min_level, unsigned int quiet);
 void nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd);
 
+void nickserv_do_autoauth(struct userNode *user);
+
 struct handle_info *get_victim_oper(struct userNode *user, const char *target);
 struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *userhost);
 

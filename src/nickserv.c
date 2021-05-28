@@ -2294,6 +2294,71 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
     return hi;
 }
 
+void nickserv_do_autoauth(struct userNode *user)
+{
+    struct handle_info *hi;
+    struct userNode *other;
+    int used, maxlogins;
+
+    /* Already authed, nothing to do */
+    if (user->handle_info)
+        return;
+
+    /* No client certificate fingerprint, cant auto auth */
+    if (!user->sslfp)
+        return;
+
+    hi = find_handleinfo_by_sslfp(user->sslfp);
+    if (!hi)
+        return;
+
+    /* User doesn't match host masks */
+    if (!valid_user_for(user, hi)) {
+        if (hi->email_addr && nickserv_conf.email_enabled)
+            send_message_type(4, user, nickserv,
+                              handle_find_message(hi, "NSMSG_USE_AUTHCOOKIE"),
+                              hi->handle);
+        else
+            send_message_type(4, user, nickserv,
+                              handle_find_message(hi, "NSMSG_HOSTMASK_INVALID"),
+                              hi->handle);
+        return;
+    }
+
+    /* Account suspended? */
+    if (HANDLE_FLAGGED(hi, SUSPENDED)) {
+        send_message_type(4, user, nickserv,
+                          handle_find_message(hi, "NSMSG_HANDLE_SUSPENDED"));
+        return;
+    }
+
+    maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
+    for (used = 0, other = hi->users; other; other = other->next_authed) {
+        if (++used >= maxlogins) {
+            send_message_type(4, user, nickserv,
+                              handle_find_message(hi, "NSMSG_MAX_LOGINS"),
+                              maxlogins);
+            return;
+        }
+    }
+
+    set_user_handle_info(user, hi, 1);
+    if (nickserv_conf.email_required && !hi->email_addr)
+        send_message_type(4, user, nickserv,
+                          handle_find_message(hi, "NSMSG_PLEASE_SET_EMAIL"));
+
+   /* If a channel was waiting for this user to auth,
+    * finish adding them */
+    process_adduser_pending(user);
+
+    send_message_type(4, user, nickserv,
+                      handle_find_message(hi, "NSMSG_AUTH_SUCCESS"));
+
+    /* Set +x if autohide is on */
+    if(HANDLE_FLAGGED(hi, AUTOHIDE))
+        irc_umode(user, "+x");
+}
+
 static NICKSERV_FUNC(cmd_auth)
 {
     int pw_arg, used, maxlogins;
@@ -3894,12 +3959,10 @@ static OPTION_FUNC(opt_note)
 
 static NICKSERV_FUNC(cmd_reclaim)
 {
-    struct handle_info *hi;
     struct nick_info *ni;
     struct userNode *victim;
 
     NICKSERV_MIN_PARMS(2);
-    hi = user->handle_info;
     ni = dict_find(nickserv_nick_dict, argv[1], 0);
     if (!ni) {
         reply("NSMSG_UNKNOWN_NICK", argv[1]);
