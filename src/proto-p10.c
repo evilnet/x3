@@ -2010,7 +2010,7 @@ static CMD_FUNC(cmd_burst)
     return res;
 }
 
-/* TODO: 
+/* TODO:
  * This is a stub that doesn't actually do anything. It should be completed
  * so that bans on *!*@markname.* match users as it does in nefarious
  */
@@ -2019,7 +2019,7 @@ static CMD_FUNC(cmd_mark)
     const char *tstr;
     int type = 4;
     struct userNode *target;
-    /* 
+    /*
      * log_module(MAIN_LOG, LOG_ERROR, "DEBUG: mark, user %s, type %s, arg %s", argv[1], argv[2], argv[3]);
      */
 
@@ -2058,7 +2058,7 @@ static CMD_FUNC(cmd_mark)
         } else
             target->mark = strdup(argv[3]);
         return 1;
-        
+
     }
     else if(!strcasecmp(argv[2], "CVERSION")) {
         /* CTCP VERSION mark */

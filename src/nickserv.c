@@ -264,7 +264,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_LAST_HOST_UNKNOWN", "Last quit hostmask: Unknown" },
     { "NSMSG_HANDLEINFO_NICKS", "Nickname(s): %s" },
     { "NSMSG_HANDLEINFO_MASKS", "Hostmask(s): %s" },
-    { "NSMSG_HANDLEINFO_SSLFPS", "SSL Fingerprints(s): %s" },
+    { "NSMSG_HANDLEINFO_SSLFPS", "Client Certificate Fingerprints(s): %s" },
     { "NSMSG_HANDLEINFO_IGNORES", "Ignore(s): %s" },
     { "NSMSG_HANDLEINFO_CHANNELS", "Channel(s): %s" },
     { "NSMSG_HANDLEINFO_CURRENT", "Current nickname(s): %s" },
@@ -299,13 +299,13 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_ADDMASK_SUCCESS", "Hostmask %s added." },
     { "NSMSG_ADDIGNORE_ALREADY", "$b%s$b is already an ignored hostmask in your account." },
     { "NSMSG_ADDIGNORE_SUCCESS", "Hostmask %s added." },
-    { "NSMSG_ADDSSLFP_ALREADY", "$b%s$b is already an SSL fingerprint in your account." },
-    { "NSMSG_ADDSSLFP_SUCCESS", "SSL fingerprint %s added." },
+    { "NSMSG_ADDSSLFP_ALREADY", "$b%s$b is already a client certificate fingerprint in your account." },
+    { "NSMSG_ADDSSLFP_SUCCESS", "Client certificate fingerprint %s added." },
     { "NSMSG_DELMASK_NOTLAST", "You may not delete your last hostmask." },
     { "NSMSG_DELMASK_SUCCESS", "Hostmask %s deleted." },
     { "NSMSG_DELMASK_NOT_FOUND", "Unable to find mask to be deleted." },
-    { "NSMSG_DELSSLFP_SUCCESS", "SSL fingerprint %s deleted." },
-    { "NSMSG_DELSSLFP_NOT_FOUND", "Unable to find SSL fingerprint to be deleted." },
+    { "NSMSG_DELSSLFP_SUCCESS", "Client certificate fingerprint %s deleted." },
+    { "NSMSG_DELSSLFP_NOT_FOUND", "Unable to find client certificate fingerprint to be deleted." },
     { "NSMSG_OPSERV_LEVEL_BAD", "You may not promote another oper above your level." },
     { "NSMSG_USE_CMD_PASS", "Please use the PASS command to change your password." },
     { "NSMSG_UNKNOWN_NICK", "I know nothing about nick $b%s$b." },
@@ -6030,10 +6030,10 @@ init_nickserv(const char *nick)
     nickserv_define_func("OADDMASK", cmd_oaddmask, 0, 1, 0);
     nickserv_define_func("DELMASK", cmd_delmask, -1, 1, 0);
     nickserv_define_func("ODELMASK", cmd_odelmask, 0, 1, 0);
-    nickserv_define_func("ADDSSLFP", cmd_addsslfp, -1, 1, 0);
-    nickserv_define_func("OADDSSLFP", cmd_oaddsslfp, 0, 1, 0);
-    nickserv_define_func("DELSSLFP", cmd_delsslfp, -1, 1, 0);
-    nickserv_define_func("ODELSSLFP", cmd_odelsslfp, 0, 1, 0);
+    nickserv_define_func("ADDCERTFP", cmd_addsslfp, -1, 1, 0);
+    nickserv_define_func("OADDCERTFP", cmd_oaddsslfp, 0, 1, 0);
+    nickserv_define_func("DELCERTFP", cmd_delsslfp, -1, 1, 0);
+    nickserv_define_func("ODELCERTFP", cmd_odelsslfp, 0, 1, 0);
     nickserv_define_func("PASS", cmd_pass, -1, 1, 0);
     nickserv_define_func("SET", cmd_set, -1, 1, 0);
     nickserv_define_func("OSET", cmd_oset, 0, 1, 0);
