@@ -5842,7 +5842,7 @@ sasl_packet(struct SASLSession *session)
         base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
 
         raw = (char *)realloc(raw, rawlen+1);
-	raw[rawlen] = '\0';
+        raw[rawlen] = '\0';
 
         authzid = raw;
         r = raw;
