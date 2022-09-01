@@ -115,8 +115,10 @@ int main(int argc, char *argv[])
     GC_enable_incremental();
 #endif
 
-    chdir(PREFIX);
-    log_module(MAIN_LOG, LOG_INFO, "changed to %s\n", PREFIX);
+    if (!chdir(PREFIX))
+        log_module(MAIN_LOG, LOG_INFO, "changed to %s\n", PREFIX);
+    else
+        log_module(MAIN_LOG, LOG_WARNING, "unable to change directory to %s, using current directory instead\n", PREFIX);
     run_as_daemon = 1;
     debug = 0;
     tools_init();

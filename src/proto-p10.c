@@ -22,7 +22,6 @@
 #include "chanserv.h"
 #include "hash.h"
 #include "helpfile.h"
-#include "hosthiding.h"
 #include "proto-common.c"
 #include "opserv.h"
 
@@ -3136,8 +3135,6 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
 {
     struct userNode *oldUser, *uNode;
     unsigned int ignore_user, dummy;
-    char *tstr;
-    int type;
 
     if ((strlen(numeric) < 3) || (strlen(numeric) > 5)) {
         log_module(MAIN_LOG, LOG_WARNING, "AddUser(%p, %s, ...): numeric %s wrong length!", (void*)uplink, nick, numeric);
@@ -3194,17 +3191,6 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     safestrncpy(uNode->hostname, hostname, sizeof(uNode->hostname));
     safestrncpy(uNode->numeric, numeric, sizeof(uNode->numeric));
     irc_p10_pton(&uNode->ip, realip);
-
-    tstr = conf_get_data("server/type", RECDB_QSTRING);
-    type = atoi(tstr);
-    if (type == 7) {
-      if (irc_in_addr_is_ipv4(uNode->ip)) {
-        make_virtip((char*)irc_ntoa(&uNode->ip), (char*)irc_ntoa(&uNode->ip), uNode->cryptip);
-        make_virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
-      } else if (irc_in_addr_is_ipv6(uNode->ip)) {
-        make_ipv6virthost((char*)irc_ntoa(&uNode->ip), uNode->hostname, uNode->crypthost);
-      }
-    }
 
     if (!uNode->crypthost && uNode->cryptip)
         snprintf(uNode->crypthost, sizeof(uNode->crypthost), "%s", strdup(uNode->cryptip));

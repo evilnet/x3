@@ -65,7 +65,7 @@ slab_read_LDADD = $(LDADD)
 am_x3_OBJECTS = base64.$(OBJEXT) chanserv.$(OBJEXT) compat.$(OBJEXT) conf.$(OBJEXT) \
 	dict-splay.$(OBJEXT) getopt.$(OBJEXT) getopt1.$(OBJEXT) \
 	gline.$(OBJEXT) global.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
-	helpfile.$(OBJEXT) hosthiding.$(OBJEXT) ioset.$(OBJEXT) \
+	helpfile.$(OBJEXT) ioset.$(OBJEXT) \
 	log.$(OBJEXT) main.$(OBJEXT) math.$(OBJEXT) md5.$(OBJEXT) \
 	modcmd.$(OBJEXT) modules.$(OBJEXT) nickserv.$(OBJEXT) \
 	opserv.$(OBJEXT) policer.$(OBJEXT) recdb.$(OBJEXT) \
@@ -256,7 +256,6 @@ x3_SOURCES = \
 	hash.c hash.h \
 	heap.c heap.h \
 	helpfile.c helpfile.h \
-	hosthiding.c hosthiding.h \
 	ioset.c ioset.h ioset-impl.h \
 	log.c log.h \
 	mail.h \
@@ -368,7 +367,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/heap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/helpfile.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hosthiding.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ioset-epoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ioset-kevent.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ioset-select.Po@am__quote@
