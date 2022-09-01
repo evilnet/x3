@@ -185,7 +185,7 @@ make_virthost (char *curr, char *host, char *virt)
 {
   static char mask[HOSTLEN + 1];
   char *parv[HOSTLEN + 1], *parv2[HOSTLEN + 1], s[HOSTLEN + 1], s2[HOSTLEN + 2];
-  int parc = 0, parc2 = 0, len = 0;
+  int parc2 = 0, len = 0;
   unsigned int hash[8];
 
   if ((strlen(host) < 3) || (strlen(curr) < 3))
@@ -194,7 +194,6 @@ make_virthost (char *curr, char *host, char *virt)
   strncpy (s, curr, HOSTLEN);
   strncpy (s2, host, HOSTLEN);
 
-  parc = str2arr (parv, s, ".");
   parc2 = str2arr (parv2, s2, ".");
 
   check_keys();
@@ -248,7 +247,7 @@ make_virtip (char *curr, char *host, char *virt)
 {
   static char mask[HOSTLEN + 1];
   char *parv[HOSTLEN + 1], *parv2[HOSTLEN + 1], s[HOSTLEN + 1], s2[HOSTLEN + 2];
-  int parc = 0, parc2 = 0, len = 0;
+  int parc2 = 0, len = 0;
   unsigned int hash[8];
 
   if ((strlen(host) < 3) || (strlen(curr) < 3))
@@ -257,7 +256,6 @@ make_virtip (char *curr, char *host, char *virt)
   strncpy (s, curr, HOSTLEN);
   strncpy (s2, host, HOSTLEN);
 
-  parc = str2arr (parv, s, ".");
   parc2 = str2arr (parv2, s2, ".");
 
   check_keys();
@@ -295,7 +293,7 @@ make_ipv6virthost (char *curr, char *host, char *new)
   static char mask[HOSTLEN + 1];
   char *parv[HOSTLEN + 1], *parv2[HOSTLEN + 1], s[HOSTLEN + 1],
     s2[HOSTLEN + 2], s3[HOSTLEN + 2];
-  int parc = 0, parc2 = 0;
+  int parc2 = 0;
   unsigned int hash[8];
 
   if ((strlen(host) < 3) || (strlen(curr) < 3))
@@ -306,7 +304,6 @@ make_ipv6virthost (char *curr, char *host, char *new)
 
   ip62arr (s, s3);
 
-  parc = str2arr (parv, s3, ":");
   parc2 = str2arr (parv2, s2, ".");
 
   check_keys();

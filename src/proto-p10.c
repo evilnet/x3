@@ -1628,7 +1628,6 @@ static CMD_FUNC(cmd_nick)
         NickChange(user, argv[1], 1);
     } else {
         struct server *serv;
-        struct userNode *nuser;
         char modes[MAXLEN];
         /* new nick */
         if (argc < 9)
@@ -1638,7 +1637,7 @@ static CMD_FUNC(cmd_nick)
             unsplit_string(argv+6, argc-9, modes);
         else
             strcpy(modes, "+");
-        nuser = AddUser(serv, argv[1], argv[4], argv[5], modes, argv[argc-2], argv[argc-1], atoi(argv[3]), argv[argc-3]);
+        AddUser(serv, argv[1], argv[4], argv[5], modes, argv[argc-2], argv[argc-1], atoi(argv[3]), argv[argc-3]);
     }
     return 1;
 }
@@ -2218,7 +2217,7 @@ static CMD_FUNC(cmd_clearmode)
 static CMD_FUNC(cmd_topic)
 {
     struct chanNode *cn;
-    time_t chan_ts, topic_ts;
+    time_t topic_ts;
     struct userNode *user;
 
     if (argc < 3)
@@ -2231,15 +2230,12 @@ static CMD_FUNC(cmd_topic)
 
     if (argc == 5) {              /* Asuka / Topic Bursting IRCu's */
         user = GetUserH(origin);
-        chan_ts = atoi(argv[2]);
         topic_ts = atoi(argv[3]);
     } else if (argc >= 6) {       /* Nefarious 0.5.0 */
         user = GetUserH(strtok(argv[2], "!"));
-        chan_ts = atoi(argv[3]);
         topic_ts = atoi(argv[4]);
     } else {                      /* Regular IRCu (No Topic Bursting)*/
         user = GetUserH(origin);
-        chan_ts = cn->timestamp;
         topic_ts = now;
     }
 
@@ -2483,14 +2479,11 @@ static CMD_FUNC(cmd_notice)
 {
     struct privmsg_desc pd;
     struct server *srv;
-    int nuser = 0;
 
     if (argc != 3)
         return 0;
 
     pd.user = GetUserH(origin);
-    if(!pd.user)
-        nuser = 1;
     if (!pd.user || (IsGagged(pd.user) && !IsOper(pd.user))) {
     }
     else {

@@ -745,12 +745,11 @@ log_entry_search(struct logSearch *discrim, entry_search_func esf, void *data)
     unsigned int matched = 0;
 
     if (discrim->type) {
-        static volatile struct logEntry *last;
         struct logEntry *entry;
 
-        for (entry = discrim->type->log_oldest, last = NULL;
+        for (entry = discrim->type->log_oldest;
              entry;
-             last = entry, entry = entry->next) {
+             entry = entry->next) {
             verify(entry);
             if (entry_match(discrim, entry)) {
                 esf(entry, data);
@@ -1068,7 +1067,6 @@ int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *
    char*  mynuh;
    char*  mynick;
    char*  myacc;
-   char*  mynuhtemp;
    char* mycommand;
    char*  myrest;
    char*  datestr;
@@ -1085,8 +1083,8 @@ int parselog(char *LogLine, struct userNode *user, struct chanNode *cptr, char *
       mynuh =   (char *) mysep(&LogLine, " ");
    else {
       mynick =    (char *) mysep(&LogLine, "!");
-      mynuhtemp = (char *) mysep(&LogLine, "@");
-      mynuhtemp = (char *) mysep(&LogLine, ":");
+      mysep(&LogLine, "@");
+      mysep(&LogLine, ":");
       myacc =     (char *) mysep(&LogLine, " ");
       sprintf(mynuhbuf, "%s:%s", mynick, myacc);
       mynuh = mynuhbuf;

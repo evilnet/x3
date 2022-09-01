@@ -2156,7 +2156,7 @@ static SPAMSERV_FUNC(cmd_oaddtrust)
         cInfo = get_chanInfo(channel->name);
         cData = channel->channel_info;
 
-        if (!cInfo || !channel->channel_info) {
+        if (!cInfo || !cData) {
             ss_reply("SSMSG_NOT_REGISTERED", channel->name);
             return 0;
         }
@@ -2290,7 +2290,7 @@ static SPAMSERV_FUNC(cmd_odeltrust)
         cInfo = get_chanInfo(channel->name);
         cData = channel->channel_info;
 
-        if (!cInfo || !channel->channel_info) {
+        if (!cInfo || !cData) {
             ss_reply("SSMSG_NOT_REGISTERED", channel->name);
             return 0;
         }

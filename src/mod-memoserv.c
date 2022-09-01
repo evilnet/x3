@@ -315,7 +315,6 @@ static struct memo*
 add_memo(time_t sent, struct memo_account *recipient, struct memo_account *sender, char *message, int nfrom_read)
 {
     struct memo *memo;
-    struct history *history;
 
     memo = calloc(1, sizeof(*memo));
     if (!memo)
@@ -336,7 +335,7 @@ add_memo(time_t sent, struct memo_account *recipient, struct memo_account *sende
     memoCount++;
 
     if (nfrom_read)
-        history = add_history(sent, recipient, sender, memo->id);
+        add_history(sent, recipient, sender, memo->id);
 
     return memo;
 }
@@ -1113,7 +1112,6 @@ memoserv_history_read(const char *key, struct record_data *hir)
 {
     char *str;
     struct handle_info *sender, *recipient;
-    struct history *history;
     unsigned long id;
     time_t sent;
 
@@ -1151,7 +1149,7 @@ memoserv_history_read(const char *key, struct record_data *hir)
         return 0;
     }
 
-    history = add_history(sent, memoserv_get_account(recipient), memoserv_get_account(sender), id);
+    add_history(sent, memoserv_get_account(recipient), memoserv_get_account(sender), id);
 
     return 0;
 }

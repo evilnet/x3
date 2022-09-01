@@ -1136,9 +1136,8 @@ check_alias_args(char *argv[], unsigned int argc) {
             continue;
         } else if (isdigit(argv[arg][1])) {
             char *end_num;
-            unsigned long tmp;
 
-            tmp = strtoul(argv[arg]+1, &end_num, 10);
+            strtoul(argv[arg]+1, &end_num, 10);
             switch (end_num[0]) {
             case 0:
                 continue;

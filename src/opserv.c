@@ -1533,7 +1533,7 @@ opserv_shun(struct userNode *target, char *src_handle, char *reason, unsigned lo
 }
 
 static void
-opserv_tempshun(struct userNode *target, char *src_handle, char *reason)
+opserv_tempshun(struct userNode *target, UNUSED_ARG(char *src_handle), char *reason)
 {
     irc_tempshun(opserv, target, 0, reason);
 }
@@ -1581,7 +1581,7 @@ static MODCMD_FUNC(cmd_sblock)
         if(!svccmd_can_invoke(user, cmd->parent->bot, shun_cmd, channel, SVCCMD_NOISY))
             return 0;
     }
-    reason = (argc > 2) ? unsplit_string(argv+2, argc-2, NULL) : NULL;
+    reason = (argc > offset) ? unsplit_string(argv+offset, argc-offset, NULL) : NULL;
     shun = opserv_shun(target, user->handle_info->handle, reason, duration);
     reply("OSMSG_SHUN_ISSUED", shun->target);
     return 1;
@@ -5825,68 +5825,68 @@ discrim_match(discrim_t discrim, struct userNode *user)
                     matches++;
                     break;
                 case 'O':
-                    if(IsOper(user) != 0 != negate) matches++;
+                    if((IsOper(user) != 0) != negate) matches++;
                     break;
                 case 'o':
-                    if(IsOper(user) != 0 != negate) matches++;
+                    if((IsOper(user) != 0) != negate) matches++;
                     break;
                 case 'i':
-                    if(IsInvisible(user) != 0 != negate) matches++;
+                    if((IsInvisible(user) != 0) != negate) matches++;
                     break;
                 case 'w':
-                    if(IsWallOp(user) != 0 != negate) matches++;
+                    if((IsWallOp(user) != 0) != negate) matches++;
                     break;
                 case 'd':
-                    if(IsDeaf(user) != 0 != negate) matches++;
+                    if((IsDeaf(user) != 0) != negate) matches++;
                     break;
                 case 'k':
-                    if(IsService(user) != 0 != negate) matches++;
+                    if((IsService(user) != 0) != negate) matches++;
                     break;
                 case 'g':
-                    if(IsGlobal(user) != 0 != negate) matches++;
+                    if((IsGlobal(user) != 0) != negate) matches++;
                     break;
                 case 'h':
-                    if(IsSetHost(user) != 0 != negate) matches++;
+                    if((IsSetHost(user) != 0) != negate) matches++;
                     break;
                 case 'B':
-                    if(IsBotM(user) != 0 != negate) matches++;
+                    if((IsBotM(user) != 0) != negate) matches++;
                     break;
                 case 'p':
                 case 'n':
-                    if(IsHideChans(user) != 0 != negate) matches++;
+                    if((IsHideChans(user) != 0) != negate) matches++;
                     break;
                 case 'I':
-                    if(IsHideIdle(user) != 0 != negate) matches++;
+                    if((IsHideIdle(user) != 0) != negate) matches++;
                     break;
                 case 'X':
-                    if(IsXtraOp(user) != 0 != negate) matches++;
+                    if((IsXtraOp(user) != 0) != negate) matches++;
                     break;
                 case 'x':
-                    if(IsHiddenHost(user) != 0 != negate) matches++;
+                    if((IsHiddenHost(user) != 0) != negate) matches++;
                     break;
                 case 'a':
-                    if(IsAdmin(user) != 0 != negate) matches++;
+                    if((IsAdmin(user) != 0) != negate) matches++;
                     break;
                 case 'z':
-                    if(IsSSL(user) != 0 != negate) matches++;
+                    if((IsSSL(user) != 0) != negate) matches++;
                     break;
                 case 'D':
-                    if(IsPrivDeaf(user) != 0 != negate) matches++;
+                    if((IsPrivDeaf(user) != 0) != negate) matches++;
                     break;
                 case 'R':
-                    if(IsAccountOnly(user) != 0 != negate) matches++;
+                    if((IsAccountOnly(user) != 0) != negate) matches++;
                     break;
                 case 'W':
-                    if(IsWhoisNotice(user) != 0 != negate) matches++;
+                    if((IsWhoisNotice(user) != 0) != negate) matches++;
                     break;
                 case 'H':
-                    if(IsHideOper(user) != 0 != negate) matches++;
+                    if((IsHideOper(user) != 0) != negate) matches++;
                     break;
                 case 'L':
-                    if(IsHideOper(user) != 0 != negate) matches++;
+                    if((IsHideOper(user) != 0) != negate) matches++;
                     break;
                 case 'q':
-                    if(IsCommonChansOnly(user) != 0 != negate) matches++;
+                    if((IsCommonChansOnly(user) != 0) != negate) matches++;
                     break;
             }
         }
