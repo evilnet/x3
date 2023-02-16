@@ -27,7 +27,7 @@
 #define Block  4096
 #define MAXLOGSEARCHLENGTH 10000
 
-struct userNode *chanserv;
+extern struct userNode *chanserv;
 
 struct logDestination;
 
