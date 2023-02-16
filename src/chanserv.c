@@ -679,7 +679,7 @@ enum note_visible_type
     NOTE_VIS_PRIVILEGED
 };
 
-struct io_fd *socket_io_fd;
+extern struct io_fd *socket_io_fd;
 extern struct cManagerNode cManager;
 
 struct note_type
