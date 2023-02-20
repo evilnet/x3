@@ -1,7 +1,7 @@
 "<INDEX>" {
         "/services/nickserv/disable_nicks" {
                 "/services/nickserv/email_enabled" (
-                        " $b$N$b is the login bot. It provides accounts for use on the network. $N is how you 'log in' to get access in channels registered with $C, and its how ircops are known to $O and $G.",
+                        " $b$N$b is the login bot. It provides accounts for use on the network. $N is how you 'log in' to get access in channels registered with $C, and it's how IRCops are known to $O and $G.",
                         " To get an account: ",
                         " $b/msg $N HELP REGISTER$b ",
                         " To login to your account: ",
@@ -23,7 +23,7 @@
                         " $b$N is $uNOT$u a NickServ$b! We do not 'own' nicks here. See $b/msg $N HELP NOT NICKSERV$b for details."
                 );
                 "!/services/nickserv/email_enabled" (
-                        " $b$N$b is the login bot. It provides accounts for use on the network. $N is how you 'log in' to get access in channels registered with $C, and its how ircops are known to $O and $G.",
+                        " $b$N$b is the login bot. It provides accounts for use on the network. $N is how you 'log in' to get access in channels registered with $C, and it's how IRCops are known to $O and $G.",
                         " To get an account: ",
                         " $b/msg $N HELP REGISTER$b ",
                         " To login to your account: ",
@@ -129,7 +129,7 @@
 
 "NOT NICKSERV" {
                 "/services/nickserv/disable_nicks" (
-                " $N is $unot$u a NickServ. On this network, nicknames are not owned. $N allows you to register a single account to log in to all channels, seperate from your nickname. $b$N$b can tell you what account a user is authenticated to using the $bUSERINFO$b command."
+                " $N is $unot$u a NickServ. On this network, nicknames are not owned. $N allows you to register a single account to log in to all channels, separate from your nickname. $b$N$b can tell you what account a user is authenticated to using the $bUSERINFO$b command."
                 );
 };
 
@@ -193,7 +193,7 @@
 
 "NICK" {
         "!/services/nickserv/disable_nicks" (
-                "You may register IRC nicknames to be associated with your accounts, and will be able to request a KILL for anyone using a nickname registered to you.",
+                "You may register IRC nicknames to be associated with your accounts and will be able to request a KILL for anyone using a nickname registered to you.",
                 "$b$b",
                 "Nick management commands are:",
                 " NICKINFO Find out who has registered a nick.",
@@ -445,7 +445,7 @@
         "0: /services/nickserv/email_required" (
                 "/msg $N@$s REGISTER <account> <password> <email>",
                 "$bDO NOT TYPE THE < and >!$b <> indicates required fields.",
-                "Register is the command to create an an account with $b$N$b. Having an account provides a single login identity for the network, and for use with $b$C$b.",
+                "Register is the command to create an account with $b$N$b. Having an account provides a single login identity for the network, and for use with $b$C$b.",
                 "$bEmail activation is required:$b An email will be sent to the email address you give to verify it. You must provide a valid email address or registration will fail. After you register, check your email for instructions validating your account.",
                 "$b$b",
                 "If you already have an account, login using the $bAUTH$b command: $b/msg $N@$s AUTH <accountname> <password>$b",
@@ -558,10 +558,10 @@
         "/msg $N SET STYLE <style>",
         "Sets the output style that $S and other services will use when sending you messages.",
         "The style can be:",
-        " Normal - userlist has ----- seprators and does not show numeric levels.",
-        " Clean - userlist has no ------ seperators and does not show numeric levels.",
-        " Classic - userlist has ----- seperators and also shows ONLY numeric levels.(SrvX Style)",
-        " Advanced - userlist has ----- seperators and also shows numeric levels.",
+        " Normal - userlist has ----- separators and does not show numeric levels.",
+        " Clean - userlist has no ------ separators and does not show numeric levels.",
+        " Classic - userlist has ----- separators and also shows ONLY numeric levels.(SrvX Style)",
+        " Advanced - userlist has ----- separators and also shows numeric levels.",
         "$b $b",
         "Many other outputs besides userlist are styled to match as well.",
         "$uSee Also:$u set"
@@ -637,7 +637,7 @@
                 " $bHOSTMASK$b - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
                 " $bACCESS$b - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
                 " $bSETWHAT$b - Required for SET action, this is the setting to set",
-                " $bSETVALUE$b - Required for SET action, this is the etting value to set",
+                " $bSETVALUE$b - Required for SET action, this is the setting value to set",
                 "$uSee Also:$u search, search action"
         );
         "!/services/nickserv/disable_nicks" (
@@ -658,7 +658,7 @@
                 " $bHOSTMASK$b - A glob that must match a hostmask for the account (equivalent to HOSTMASK SUPERSET)",
                 " $bACCESS$b - An $O access constraint (<nnn, <=nnn, =nnn, >=nnn or >nnn)",
                 " $bSETWHAT$b - Required for SET action, this is the setting to set",
-                " $bSETVALUE$b - Required for SET action, this is the etting value to set",
+                " $bSETVALUE$b - Required for SET action, this is the setting value to set",
                 "$uSee Also:$u search, search action"
         );
 };
