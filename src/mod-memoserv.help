@@ -1,9 +1,9 @@
 "<INDEX>" (
 	" Hello there!",
-	" Im $b$S$b, your handy message relay service.",
+	" I'm $b$S$b, your handy message relay service.",
 	"$b$b",
 	" With this service you can relay long distance",
-	" messages to other users, wether they be on",
+	" messages to other users, whether they be on",
 	" or offline.",
 	"=---------------------------------------=",
         "  $bSEND$b    - Sends a message.",
@@ -34,9 +34,9 @@
 	"$bNEWNOTIFY$b      - Indicates if $S should notify you instantly when someone sends you a new message. Default is yes.",
         "$bPRIVMSG$b        - If yes, $S will notify you of new messages via message, instead of notice. Default is yes.",
 	"$bPRIVATE$b        - If yes, $S will not allow people to send messages to you (do-not-disturb mode). Default is off.",
-        "$bIGNORERECIEPTS$b - Indicates if $S will always ignore read reciept requests. Default is no.",
+        "$bIGNORERECIEPTS$b - Indicates if $S will always ignore read receipt requests. Default is no.",
         "$bSENDRECIEPTS$b   - Indicates if $S will always send read receipts with your messages. Default is no.",
-        "$bLIMIT$b          - Indicates how many messages $S will accept before denying them. Set to 0 to recieve no messages. Defaults to 50.");
+        "$bLIMIT$b          - Indicates how many messages $S will accept before denying them. Set to 0 to receive no messages. Defaults to 50.");
 
 "OSET" ("/msg $S OSET <nick|*account> [<setting> <value>]",
         "Allows opers/helpers to change a user $S settings. You may set:",
@@ -54,16 +54,16 @@
          "Cancels the messaged marked with <id> as long as you have sent the message.");
 
 "HISTORY" ("/msg $S HISTORY",
-         "Shows you any messages that you have sent, provided that the recipient has not deleted them yet..",
+         "Shows you any messages that you have sent, provided that the recipient has not deleted them.",
          "$uSee Also:$u expiry");
 
 "SEND" ("/msg $S SEND <nick|*account> <-flags> <message>",
-        "Sends a message to an user. Flags can be $br$b to request a read reciept. Take note of the ID number if you wish to cancel the message in the future. The ID number is required in the CANCEL command.",
+        "Sends a message to a user. Flags can be $br$b to request a read receipt. Take note of the ID number if you wish to cancel the message in the future. The ID number is required in the CANCEL command.",
         "You may use *Account instead of Nick as the name argument; the * makes $S use the name of an account directly (useful if the user is not online).",
         "$uSee also:$u read, list");
 
 "READ" ("/msg $S READ <memo id> <-flags>",
-        "Shows you the message behind <memo id>. Flags can be $bi$b to ignore a read reciept request.",
+        "Shows you the message behind <memo id>. Flags can be $bi$b to ignore a read receipt request.",
         "$uSee also:$u send, list");
 
 "DELETE" ("/msg $S DELETE <memo id/*>",
@@ -71,10 +71,10 @@
           "NOTE: You may supply $b*$b or $ball$b as the memo id, which will result in $S deleting all your messages.");
 
 "LIST" ("/msg $S LIST",
-        "This will list all the messages in your inbox. Messages marked with (r) have a read reciept reqiested",
+        "This will list all the messages in your inbox. Messages marked with (r) have a read receipt requested",
         "$uSee also:$u read, send");
         
 "STATUS" ("/msg $S STATUS",
-        "This will list some details about $S's status, i.e the total amount of memo's sent and expired.");
+        "This will list some details about $S's status, i.e the total amount of memos sent and expired.");
 
 "INDEX" "${index}";
