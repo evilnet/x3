@@ -1,6 +1,6 @@
 "<index>" (
 	" Hello there!",
-	" Im $b$S$b, your helper service.",
+	" I'm $b$S$b, your helper service.",
 	"$b$b",
 	" With this service you can request help. Your",
 	" request will be picked up by a helper and you",
@@ -15,14 +15,14 @@
 
 "<userindex>" (
 	" Hello there!",
-	" Im $b$S$b, your helper service.",
+	" I'm $b$S$b, your helper service.",
 	"$b$b",
 	" With this service you can request help. Your",
 	" request will be picked up by a helper and you",
 	" will be assisted.",
 	"=---------------------------------------=",
         "  $bCLOSEREQ$b - Close your current request.",
-        "  $bHELPER$b   - Find out whos currently helping you.",
+        "  $bHELPER$b   - Find out who is currently helping you.",
         "  $bSHOWREQ$b  - Detailed information on your current request.",
 	"  $bWAIT$b     - Find out where you are in the queue.",
 	"$b$b",
@@ -58,7 +58,7 @@
 "USER ACCESS" ("User access levels",
         "There are four levels of user access to $S: $btrial$b helper, $bhelper$b, $bmanager$b, and $bowner$b.",
         "Helpers can use the normal help queue management functions.",
-        "Trial helpers have the same access as helpers, but they do not stop the \"empty alert\" from occuring",
+        "Trial helpers have the same access as helpers, but they do not stop the \"empty alert\" from occurring",
         "Managers also have the ability to use the $ureassign$u command, add and remove helpers, and see stats for any helper.",
         "Owners have those abilities, can add and remove managers, and change queue settings.");
 "OPER" ("IRC operator administration commands",
@@ -346,7 +346,7 @@
         "$bh$b - hours (60 minutes)",
         "$bm$b - minutes (60 seconds)",
         "$bs$b - seconds",
-        "If the unit letter is not givin, seconds are assumed.",
+        "If the unit letter is not given, seconds are assumed.",
         "$b$b",
         "$uExamples$u:",
         "$b5d$b is 5 days.",
