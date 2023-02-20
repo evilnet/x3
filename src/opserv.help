@@ -56,7 +56,7 @@
                 "  $bWHOIS$b   Show details about a user by nick.",
                 "  $bVERSION$b Show the $O version information.",
                 "  $bLOG$b     View $O logs.",
-                "  $bTRACES$b  Powerfull commands for viewing or acting on lists of IRC objects."
+                "  $bTRACES$b  Powerful commands for viewing or acting on lists of IRC objects."
                );
 
 "TRACES"   (
@@ -100,7 +100,7 @@
             " $bROUTING MAP$b       Show what the active routing plan says the network should look like.",
             " $bREROUTE$b           Connect servers to the network, optionally squiting them first to change the routing.",
             " $b$b ",
-            " Start by creating a routing plan, and then adding servers to it, with their listning port, uplink, and a backup uplink. You can view it in $bSTATS ROUTING planname$b. Take care not to create loops, and that you make everything connected. Then set your new plan ACTIVE using $bROUTING SET$b. $O does the rest! See help topic $bROUTING EXAMPLE$b for a working example."
+            " Start by creating a routing plan, and then adding servers to it, with their listening port, uplink, and a backup uplink. You can view it in $bSTATS ROUTING planname$b. Take care not to create loops, and that you make everything connected. Then set your new plan ACTIVE using $bROUTING SET$b. $O does the rest! See help topic $bROUTING EXAMPLE$b for a working example."
             );
 
 "CHANNEL"  (
@@ -126,7 +126,7 @@
             "  $b$b",
             "  $bINVITE$b     Invite someone to a channel.",
             "  $bINVITEME$b   Invite yourself to a channel.",
-            "  $bCLEARBANS$b  Cear all bans from a channel.",
+            "  $bCLEARBANS$b  Clear all bans from a channel.",
             "  $bCLEARMODES$b Clear all modes from a channel."
            );
 
@@ -157,7 +157,7 @@
             "  $bCLONE$b        Create and manipulate a fake user.",
             "  $bCOLLIDE$b      Create a clone, colliding an existing user.",
             "  $bRESERVE$b      Permanently reserve a nick with a clone.",
-            "  $bUNRESERVE$b    Remove a perminant reserved clone.",
+            "  $bUNRESERVE$b    Remove a permanent reserved clone.",
             "  $bJUPE$b         Create dummy server.",
             "  $bUNJUPE$b       Remove a dummy server.",
             "  $b$b",
@@ -200,7 +200,7 @@
              "  $bADDEXEMPT$b     Make an exception to the illegal word list for a channel.",
              "  $bDELEXEMPT$b     Remove an exception of the illegal word list.",
              "  $b$b",
-             "  $bDUMP$b          Drop safetychecked server protocol to the server. ",
+             "  $bDUMP$b          Drop safety-checked server protocol to the server. ",
              "  $bRAW$b           Drop raw server protocol to the server. (DANGEROUS!)",
              "  $b$b",
              "  $bRESETMAX$b      Reset the maximum recorded users. (used in the event of a clone flood)"
@@ -216,7 +216,7 @@
 
 "ADDALERT" ("/msg $O ADDALERT <name> <reaction> [expire <duration>] <criteria>",
         "Adds the specified alert to the $b$O$b alert list.",
-        "Alerts watch for users matching a givin criteria and perform an action on them.",
+        "Alerts watch for users matching a given criteria and perform an action on them.",
         "   <name> - An alphanumeric word to identify this alert in the list",
         "   <reaction> - What to do if a user matches the criteria. See $bALERT REACTION$b.",
         "   <duration> - Duration after which the alert should be deleted. See $bdurations$b.",
@@ -226,7 +226,7 @@
         );
 
 "TIME NOTATION" (
-                 " Many commands require a duration perameter ",
+                 " Many commands require a duration parameter ",
                  " which all use the same syntax: ",
                  "      1s  - 1 second ",
                  "      2m  - 2 minutes ",
@@ -307,10 +307,10 @@
         "$bTEMPSHUN$b: Issue a temporary shun that affects only the targeted users.",
         "$bGAG$b:      Gag all matching users (by default, does not expire).",
         "$bDOMAINS$b:  Display counts of users in each domain (length specified by DEPTH criteria.", 
-        "$bSVSJOIN$b:  Force users to join channel givin in chantarget criteria.",
+        "$bSVSJOIN$b:  Force users to join channel given in chantarget criteria.",
         "$bSVSPART$b:  Force part the matching clients out of the specified target channel.",
         "$bVERSION$b:  Query for the users CTCP VERSION reply.",
-        "$bMARK$b:     Set a nefarius 'mark' named via the mark criteria as if the user were in that dnsbl.",
+        "$bMARK$b:     Set a nefarious 'mark' named via the mark criteria as if the user were in that dnsbl.",
         "Note: By default, IRC operators are not affected by the KILL, GLINE, SHUN or GAG actions.  You can override this by specifying the $bABUSE OPERS$b criteria for a trace.  Even if you do specify $bABUSE OPERS$b, it will not affect opers at your access level or above.",
         "$uSee Also:$u trace criteria, trace"
         );
@@ -601,8 +601,8 @@
         );
 
 "GLINE" ("/msg $O GLINE <user@host> <duration> <reason>",
-        "Issues a GLINE (network ban) on the network for the speicified user@host for the specified duration (making the expiration time: net time + duration).",
-        "duration is in the form nnm, where nn is a number, and m is a charactor representing the unit (eg d for days.)",
+        "Issues a GLINE (network ban) on the network for the specified user@host for the specified duration (making the expiration time: net time + duration).",
+        "duration is in the form nnm, where nn is a number, and m is a character representing the unit (e.g., d for days.)",
         "Access level: $b${level/gline}$b",
         "$uSee Also:$u trace, ungline, ($C) durations"
         );
@@ -675,7 +675,7 @@
         );
 
 "SHUN" ("/msg $O SHUN <user@host> <duration> <reason>",
-        "Issues a SHUN on the network for the speicified user@host for the specified duration (making the expiration time: net time + duration).",
+        "Issues a SHUN on the network for the specified user@host for the specified duration (making the expiration time: net time + duration).",
         "Access level: $b${level/shun}$b",
         "$uSee Also:$u trace, unshun"
         );
@@ -727,7 +727,7 @@
         );
 
 "CLONE" ("/msg $O CLONE <sub-command> <sub-command arguments>",
-        "Creats and manipulates a fake user. Sub-commands for $bclone$b are:",
+        "Creates and manipulates a fake user. Sub-commands for $bclone$b are:",
         "$bADD$b:    Adds a new clone. Arguments: <nickname> <user@host> <info>",
         "$bREMOVE$b: Removes a clone. Arguments: <nickname>",
         "$bJOIN$b:   Joins a clone to a channel. Arguments: <nickname> <channel>",
@@ -777,11 +777,11 @@
         "Adds a server to the routing plan 'plan'.",
         " plan   - The name of a routing plan already created.",
         " server - The name of the server you are adding (full hostname).",
-        " port   - The port that the server listens to connectons on. If you leave this out, the default is taken from $bSET ROUTING DEFAULT_PORT$b.",
+        " port   - The port that the server listens to connections on. If you leave this out, the default is taken from $bSET ROUTING DEFAULT_PORT$b.",
         " uplink - This is the server (full hostname) that you want the server to connect to.",
         " backup uplink - If uplink is offline, this one takes over.",
         " $b$b ",
-        " It is $uvery$u important that the routing plan be from a consistant perspective, without any loops, or disconnected pieces. It helps to pick a server (usually the one $O is liked to) and consider which server each of the servers links to towards $O. For an example see /msg $O HELP ROUTING EXAMPLE.",
+        " It is $uvery$u important that the routing plan be from a consistent perspective, without any loops, or disconnected pieces. It helps to pick a server (usually the one $O is liked to) and consider which server each of the servers links to towards $O. For an example see /msg $O HELP ROUTING EXAMPLE.",
         " If you add a server whose name already exists, the old one will be replaced.",
         "$uSee Also:$u routing, stats routing, routing delserver, routing addplan",
         );
@@ -795,7 +795,7 @@
         "    `-test2.net.org      - test2's uplink is test",
         "      `-test3.net.org    - test3's uplink is test2",
         " $b$b ",
-        " Its important that every entry in your routing plan be specified relitive to the same location. Usually this is the location of X3 itself, but doesn't have to be. In the above example you could do:",
+        " It's important that every entry in your routing plan be specified relative to the same location. Usually this is the location of X3 itself but it does not have to be. In the above example you could do:",
         "  ROUTING ADDPLAN myplan ",
         "  ROUTING ADDSERVER myplan test.net.org:4400 x3.net.services ",
         "  ROUTING ADDSERVER myplan test2.net.org:4400 test.net.org ",
@@ -804,7 +804,7 @@
         "  ROUTING ADDSERVER myplan foobar.net.org:4400 laptop.net.org ",
         "  ROUTING SET ACTIVE myplan ",
         " $b$b ",
-        " If there are loops, or two servers who point to eachother, $O will not be able to use the plan. If there are sections which do not link back to the rest, they will be lost and the plan will not work properly.",
+        " If there are loops, or two servers who point to each other, $O will not be able to use the plan. If there are sections which do not link back to the rest, they will be lost and the plan will not work properly.",
         );
        
 "ROUTING DELSERVER" ("/msg $O ROUTING DELSERVER <plan> <server>",
@@ -841,7 +841,7 @@
 
 "REROUTE" ("/msg $O REROUTE <C|N|T>",
         "Allows $O to make changes to the linkage of the servers on the network. It has 3 modes: Normal, Connect-only, and Test:",
-        " N - Normal mode: Will delink any servers which are not linked to their primary uplink, and try to reconnect them correctly according to the active routing plan. it will also try to connect servers that are completely missing.",
+        " N - Normal mode: Will delink any servers which are not linked to their primary uplink and try to reconnect them correctly according to the active routing plan. it will also try to connect servers that are completely missing.",
         " C - Connect-only:  Will attempt to connect any missing servers to the network, using the active routing plan.",
         " T - Test: Will do the same as normal mode, only all actions will be simulated. No actual rerouting will take place, it will only tell you what it WOULD do in normal mode.",
         " $b$b ",
@@ -867,8 +867,8 @@
         );
 
 "LOG" ("/msg $O LOG <criteria> <value> [<criteria> <value>]...",
-        "Searches services logs based on critera specified and displays the results.",
-        "Criteria and associated values (a search match all specified items):",
+        "Searches services logs based on criteria specified and displays the results.",
+        "Criteria and associated values (a search matches all specified items):",
         "$bBOT$b -         A service bot's name (for example, $O).",
         "$bCHANNEL$b -     The channel where a command was issued (accepts wildcards).",
         "$bNICK$b -        The nickname issuing the command (accepts wildcards).",
@@ -1011,7 +1011,7 @@
 "TRACK" ("/msg $O TRACK <+/-type|all|none>",
         "This specifies what will be tracked in the tracking channel.",
         "Use + to add flags and - to remove types. Use ALL to enable all",
-        "tracking options available, use NONE to completly disable them.",
+        "tracking options available, use NONE to completely disable them.",
         "Available flags are:",
         "auth  - Auths",
         "chanmode - Channel Modes",
@@ -1036,7 +1036,7 @@
         "$uSee Also:$u addtrack deltrack");
 
 "RESETMAX" ("/msg $O RESETMAX",
-        "Resets the max clients number to the current ammount of connected clients. Use with caution.",
+        "Resets the max clients number to the current amount of connected clients. Use with caution.",
         "$uSee Also:$u stats max");
 
 
