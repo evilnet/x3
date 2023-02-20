@@ -31,7 +31,7 @@
             " $bOLIST$b       Show all OPs of a channel.",
             " $bHLIST$b       Show all HALFOPs of a channel.",
             " $bPLIST$b       Show all PALs of a channel.",    
-            " $bLAMERS$b      Show all  LAMERs of a channel.",
+            " $bLAMERS$b      Show all LAMERs of a channel.",
             " $bACCESS$b      Check someone's access level in a channel.",
             " $bCLVL$b        Change a person's access level in a channel.",
             " $bUSET$b        Set a channel user's options (autos, info).",
@@ -112,7 +112,7 @@
             " $bOLIST$b       Show all OPs of a channel.",
             " $bHLIST$b       Show all HALFOPs of a channel.",
             " $bPLIST$b       Show all PALs of a channel.",    
-            " $bLAMERS$b      Show all  LAMERs of a channel.",
+            " $bLAMERS$b      Show all LAMERs of a channel.",
             " $bACCESS$b      Check someone's access level in a channel.",
 );
 "OPER"     ("$bHelper/IRC Operator commands:$b",
@@ -170,7 +170,7 @@
             " supplied it will be ignored.",
             "$b$b",
             " If a command takes additional parameters",
-            " asside from channel, they will be       ",
+            " aside from channel, they will be       ",
             " expected as well.                       ",
             " See $b/msg $C HELP <COMMAND>$b for the  ",
             " exact syntax of each command.           ",
@@ -186,7 +186,7 @@
          "   /AUTH <account> <password>"
          );
 "LEVELS" ("/msg $S LEVELS",
-        "Lists the numerical level equivelents for channel access levels.",
+        "Lists the numerical level equivalents for channel access levels.",
         "$b$b",
         "$S can use either the names (OWNER, COOWNER, MANAGER, OP, HALFOP, and PAL) or numerical values from 1 to 500 to indicate channel access levels. The LEVELS command prints out all the levels and their numerical ranges.",
         "Advanced users can change their style with $N's set style command to view the numerical version in commands like USERS, and may use numbers instead of names for fine-tuning access.",
@@ -265,25 +265,25 @@
         "If a hostmask with wildcards is specified, lists any bans included in that mask.",
         "$uSee Also:$u addlamer, dellamer, addtimedlamer");
 "CALC" ("/msg $C CALC <expression>",
-        "CALC calculates a mathematical expression, and returns the answer.  It",
+        "CALC calculates a mathematical expression and returns the answer.  It",
         "supports +, -, *, /, ^, and () and many other math operations, such as",
         "sqrt[], tan[], etc.",
         "For example: CALC sqrt [5 + .43 * (tan[75])] / 2",
         "If you do not have access in the channel, the answer may be reported",
         "to you privately (via MSG or NOTICE) instead of in the channel.",
         "$uSee Also:$u dice, 8ball");
-"8BALL" ("/msg $C 8BALL [yes no question|what color is..|how many..|where is..]?",
-	"8BALL answers yes or no questions, color queistions, numerical questions, and location questions.",
+"8BALL" ("/msg $C 8BALL [yes/no question|what color is..|how many..|where is..]?",
+	"8BALL answers yes or no questions, color questions, numerical questions, and location questions.",
 	"If you do not have access in the channel, the answer may be reported to you privately instead of in the channel.",
 	"$uSee Also:$u dice, calc");
 "ROULETTE" ("/msg $C ROULETTE",
-        "ROULETTE loads the gun for a game of russion roulette. Use FIRE to shoot it",
+        "ROULETTE loads the gun for a game of Russian roulette. Use FIRE to shoot it",
         "$uSee Also:$u fire, spin");
 "FIRE"  ("/msg $C FIRE",
         "FIRE the gun (after you load it with ROULETTE). WARNING: this may kill you.",
         "$uSee Also:$u roulette, spin");
 "SPIN"  ("/msg $C SPIN",
-        "This plas a game of Wheel-Of-Misfortune. WARNING: this will result in serious injury or death. Do not play this game if you are faint of heart!",
+        "This plays a game of Wheel-Of-Misfortune. WARNING: this will result in serious injury or death. Do not play this game if you are faint of heart!",
         "$uSee Also:$u roulette");
 "CLIST" ("/msg $C CLIST <#channel> [mask]",
         "This command lists all users of level $bCoowner$b on a channel's userlist. If a mask is supplied, only coowners matching the mask will be shown.",
@@ -338,7 +338,7 @@
         "This command will make $C devoice the selected user[s].",
         "$uSee Also:$u addpal, delpal, deop, voice");
 "DNRSEARCH" ("/msg $C DNRSEARCH <action> <criteria> <value> [<criteria> <value> ...]",
-        "Searches through the current do-not-register list for those matching the specified criteria, and applies the specified action to them.  A list of actions can be found in $bhelp dnrsearch action$b and a list of criteria in $bhelp dnrsearch criteria$b.",
+        "Searches through the current do-not-register list for those matching the specified criteria and applies the specified action to them.  A list of actions can be found in $bhelp dnrsearch action$b and a list of criteria in $bhelp dnrsearch criteria$b.",
         "$uSee Also:$u allowregister, dnrsearch action, dnrsearch criteria, noregister");
 "DNRSEARCH ACTION" ("$bDNRSEARCH ACTION$b",
 	"Options for the action in $bdnrsearch$b are:",
@@ -467,7 +467,7 @@
 "OPCHAN" ("/msg $C OPCHAN <#channel>",
         "This command makes $C op itself in the specified channel.");
 "OPEN" ("/msg $C OPEN <#channel>",
-        "This command will make $C remove all modes preventing a user from the specified channel, and remove all bans matching the users hostmask.",
+        "This command will make $C remove all modes preventing a user from the specified channel and remove all bans matching the users hostmask.",
         "$uSee Also:$u unbanme");
 "PEEK" ("/msg $C PEEK <#channel>",
         "Displays the current topic, modes, and ops of the specified channel. Unlike $binfo$b, $bpeek$b displays channel information unrelated to $b$C$b.",
@@ -478,7 +478,7 @@
 
 "REGISTER" (
         "/msg $C REGISTER <#channel>",
-        "Registers a channel to you with $b$C$b.  X3 will protect your channel, preserve your ownership of the channel, and provide handy features such as userlists and stats.",
+        "Registers a channel to you with $b$C$b.  X3 will protect your channel, preserve your ownership of the channel and provide handy features such as userlists & stats.",
         "If the channel exists, you must have ops (+o) and there is a limit to the number of channels you may have at once.",
         "Network staff see /MSG $C HELP STAFF REGISTER",
         "$uSee Also:$u unregister, giveownership");
@@ -620,7 +620,7 @@
         "  $b3$b  Bans will be removed after 4 hours",
         "  $b4$b  Bans will be removed after 24 hours",
         "  $b5$b  Bans will be removed after 1 week",
-        "It should be noted that this setting expires channel bans (mode +b) NOT perminantly banned \"LAMERs\", although it will expire the individual host-bans $C sets on those who match LAMER entries.",
+        "It should be noted that this setting expires channel bans (mode +b) NOT permanently banned \"LAMERs\", although it will expire the individual host-bans $C sets on those who match LAMER entries.",
         "$uSee Also:$u unban, addlamer, addtimedlamer");
 
 "SET PROTECT" ("/msg $C SET <#channel> PROTECT <value>",
@@ -693,7 +693,7 @@
 
 "TRIM" ("/msg $C TRIM <#channel> <target> <duration> [vacation]",
 	"The trim command removes target objects inactive for more than a certain duration from a channel. The target must be a channel access level, a range of access levels (for example, \"300-399\"), \"users\" or \"lamers\". The duration argument specifies the amount of time the target has been inactive for to be removed.",
-        "If the vacation argument is given for the users target, users who are on vacation will be trimmed. By default they are skipped.",
+        "If the vacation argument is given for the users target, users who are on vacation will be trimmed. By default, they are skipped.",
         "$uSee Also:$u durations");
 
 "UNBAN" ("/msg $C UNBAN <#channel> <mask|nick>",
@@ -708,7 +708,7 @@
         "$uSee Also:$u ban, unban");
 "UNREGISTER" ("/msg $C UNREGISTER <#channel> [<confirmation>]",
         "Unregisters a channel that is registered with $b$C$b. $bIMPORTANT$b: Once the channel is unregistered, the userlist $bcannot$b be recovered.",
-        "If you are not network staff, you must add a confimation string to the end of your line to confirm the unregistration.  If you leave it out, $C will show the proper confirmation string.",
+        "If you are not network staff, you must add a confirmation string to the end of your line to confirm the unregistration.  If you leave it out, $C will show the proper confirmation string.",
         "$uSee Also:$u register");
 "UNSUSPEND" ("/msg $C UNSUSPEND <#channel> <nick|*account>",
         "This restores the target's access to the channel (after it has been suspended).",
@@ -747,9 +747,9 @@
 
 "ME"	"I am at your service. /msg $C help command, or /join #help ";
 
-"thanks" ("AfterNET's own X3 is based on the hard work of the origional srvx developers.  They would like to thank the following people for their help in making the origional srvx:",
+"thanks" ("AfterNET's own X3 is based on the hard work of the original srvx developers.  They would like to thank the following people for their help in making the original srvx:",
         "     $bGameSurge IRC Network$b - All the users and staff there bear with our shortcomings and bugs and let us know what needs to be fixed.",
-        "     $bIC5 Networks$b (and JohnM in particular) - Never afraid to critique things, even if we are the 800 pound gorilla.",
+        "     $bIC5 Networks$b (and JohnM in particular) - Never afraid to critique things, even if we are the 800-pound gorilla.",
         "     $bMeeko, eraser, hock(ey), KilledInAction, MadEwokHerd, Milon and Shoat$b - Hardcore beta testing and bug finding on the testnet.",
         "     $bCrips and feigling$b - Reading through all the boring messages and finding ways to make them clearer.",
         "Futher, the X3 team would like to thank:",
@@ -791,28 +791,28 @@
         );
 
 "MODES CHANNEL" (
-        "*a - IRC administrators only. ($bCan only be set by IRC administrators/operators. Can be overriden by /invite.$b)",
-        " b - Bans a user from a channel. ($bCan be overriden by /invite.$b)",
+        "*a - IRC administrators only. ($bCan only be set by IRC administrators/operators. Can be overridden by /invite.$b)",
+        " b - Bans a user from a channel. ($bCan be overridden by /invite.$b)",
         "*c - Incoming colour messages to the channel are blocked.",
         "*e - Excludes a user from being banned from a channel. If they're +b'd and +e'd, they will still be able to join.",
         "*h - Gives a user hop status. ($b%%$b)",
         " i - Invite only. A user must be /invite'd to the channel in order to join.",
-        " k - Channel requires a key in order to join. ($bCan be overriden by /invite.$b)",
-        " l - Limit. Only a certain number of user(s) are allowed to join the channel. ($bCan be overriden by /invite.$b)",
+        " k - Channel requires a key in order to join. ($bCan be overridden by /invite.$b)",
+        " l - Limit. Only a certain number of user(s) are allowed to join the channel. ($bCan be overridden by /invite.$b)",
         " m - Moderated. Nobody other than hops ($b%%$b), ops ($b@$b) or voices ($b+$b) can talk.",
         " n - All external messages will be blocked. ($bMust be in the channel in order to talk.$b)",
         " o - Gives a user op status. ($b@$b)",
         " p - Private. The channel will not appear in /list but will appear in /whois replies.",
-        " r - A user must be registered in order to join the channel. ($bCan be overriden by /invite.$b)",
+        " r - A user must be registered in order to join the channel. ($bCan be overridden by /invite.$b)",
         " s - Secret. The channel will not appear in /list and /whois replies.",
         " t - Only op(s) can change the topic.",
         " v - Gives a user voice status. ($b+$b)",
-        "*z - Persistant channel. Once the last user has left, the channel will not be destroyed. ($bDisabled.$b)",
+        "*z - Persistent channel. Once the last user has left, the channel will not be destroyed. ($bDisabled.$b)",
         "*C - /ctcp messages to the channel are blocked.",
         "*L - Mode(s) will not be displayed in /list.",
         "*M - Only registered user(s) are allowed to talk in a channel. (Excludes hops ($b%%$b), ops ($b@$b) and voices. ($b+$b))",
         "*N - /notices to the channel are blocked.",
-        "*O - IRC operators only. ($bCan only be set by either $C or IRC adminstrators/operators. Can be overriden by /invite.$b)",
+        "*O - IRC operators only. ($bCan only be set by either $C or IRC administrators/operators. Can be overridden by /invite.$b)",
         "*Q - Part and quit messages will not be displayed in a channel.",
         "*S - Bold, colour, reverse and underline code(s) are stripped from incoming messages.",
         "*T - /amsgs to the channel are blocked.",
