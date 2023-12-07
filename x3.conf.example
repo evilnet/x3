@@ -19,7 +19,7 @@
         "address"        "127.0.0.1";  // The IP address of the server
         "port"           "8888";       // What TCP port to connect to
         "password"       "laoo,rpe";  // Both of these passwords must match 
-        "their_password" "laoo,rpe";  //   the one in the ircd C line for X3.
+        "uplink_password" "laoo,rpe";  //   the one in the ircd C line for X3.
         "enabled"        "1";   // Set to 0 to disable connecting to this server
         "max_tries"      "10";  // How many times to attemt reconnect before quitting
         "bind_address"   "127.0.0.1";  // LOCAL IP address we want to connect FROM
@@ -30,7 +30,7 @@
         "address"        "192.168.234.123"; // IP of remote server
         "port"           "8888";
         "password"       "ekrpat";  // C line passwords
-        "their_password" "ekrpat";  // Set same as above
+        "uplink_password" "ekrpat";  // Set same as above
         "enabled"        "0"; // Set this to 1 to use this server..
         "max_tries"      "1";
         "bind_address"   "192.168.1.10";
