@@ -8130,9 +8130,9 @@ static CHANSERV_FUNC(cmd_8ball)
 /*** COLOR *****/
     if((word2) && strcasecmp(word1, "what") == 0 && ((strcasecmp(word2, "color") == 0) || (strcasecmp(word2, "colour") == 0)))
         eightball(eb, 1, accum);
-    else if((word3) && strcasecmp(word1, "what's") == 0 && strcasecmp(word2, "the") == 0 && ((strcasecmp(word2, "color") == 0) || (strcasecmp(word2, "colour") == 0)))
+    else if((word3) && strcasecmp(word1, "what's") == 0 && strcasecmp(word2, "the") == 0 && ((strcasecmp(word3, "color") == 0) || (strcasecmp(word3, "colour") == 0)))
         eightball(eb, 1, accum);
-    else if((word3) && strcasecmp(word1, "whats") == 0 && strcasecmp(word2, "the") == 0 && ((strcasecmp(word2, "color") == 0) || (strcasecmp(word2, "colour") == 0)))
+    else if((word3) && strcasecmp(word1, "whats") == 0 && strcasecmp(word2, "the") == 0 && ((strcasecmp(word3, "color") == 0) || (strcasecmp(word3, "colour") == 0)))
         eightball(eb, 1, accum);
 /*** LOCATION *****/
     else if(
