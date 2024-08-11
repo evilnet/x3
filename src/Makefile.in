@@ -63,7 +63,7 @@ am_slab_read_OBJECTS = slab-read.$(OBJEXT)
 slab_read_OBJECTS = $(am_slab_read_OBJECTS)
 slab_read_LDADD = $(LDADD)
 am_x3_OBJECTS = base64.$(OBJEXT) chanserv.$(OBJEXT) compat.$(OBJEXT) conf.$(OBJEXT) \
-	dict-splay.$(OBJEXT) getopt.$(OBJEXT) getopt1.$(OBJEXT) \
+	dict-splay.$(OBJEXT) eventhooks.$(OBJEXT) getopt.$(OBJEXT) getopt1.$(OBJEXT) \
 	gline.$(OBJEXT) global.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
 	helpfile.$(OBJEXT) ioset.$(OBJEXT) \
 	log.$(OBJEXT) main.$(OBJEXT) math.$(OBJEXT) md5.$(OBJEXT) \
@@ -249,6 +249,7 @@ x3_SOURCES = \
 	compat.c compat.h \
 	conf.c conf.h \
 	dict-splay.c dict.h \
+	eventhooks.c eventhooks.h \
 	getopt.c getopt.h \
 	getopt1.c getopt.h \
 	gline.c gline.h \
@@ -359,6 +360,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/conf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dict-splay.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eventhooks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getopt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getopt1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gline.Po@am__quote@

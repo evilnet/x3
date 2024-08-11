@@ -56,6 +56,7 @@ x3_SOURCES = \
 	compat.c compat.h \
 	conf.c conf.h \
 	dict-splay.c dict.h \
+    eventhooks.c eventhooks.h \
 	getopt.c getopt.h \
 	getopt1.c getopt.h \
 	gline.c gline.h \

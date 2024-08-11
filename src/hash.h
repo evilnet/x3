@@ -23,6 +23,7 @@
 
 #include "common.h"
 #include "dict.h"
+#include "eventhooks.h"
 #include "policer.h"
 #include "recdb.h"
 
@@ -383,6 +384,11 @@ struct route {
     struct routeList *servers;
 };
 
+/* generic hook function args */
+struct funcargs {
+    void *func;
+    void *extra;
+};
 
 extern struct server *self;
 extern dict_t channels;
@@ -412,6 +418,7 @@ void unreg_sasl_input_func(sasl_input_func_t handler, void *extra);
 
 typedef int (*new_user_func_t) (struct userNode *user, void *extra);
 void reg_new_user_func(new_user_func_t handler, void *extra);
+void reg_new_user_func_pos(new_user_func_t handler, void *extra, int pos);
 void call_new_user_funcs(struct userNode *user);
 typedef void (*del_user_func_t) (struct userNode *user, struct userNode *killer, const char *why, void *extra);
 void reg_del_user_func(del_user_func_t handler, void *extra);
@@ -433,6 +440,7 @@ void set_geoip_info(struct userNode *user);
 typedef void (*new_channel_func_t) (struct chanNode *chan, void *extra);
 void reg_new_channel_func(new_channel_func_t handler, void *extra);
 typedef int (*join_func_t) (struct modeNode *mNode, void *extra);
+void reg_join_func_pos(join_func_t handler, void *extra, int pos);
 void reg_join_func(join_func_t handler, void *extra);
 typedef void (*del_channel_func_t) (struct chanNode *chan, void *extra);
 void reg_del_channel_func(del_channel_func_t handler, void *extra);
