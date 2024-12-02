@@ -225,6 +225,7 @@ int main(int argc, char *argv[])
     if (file_out == NULL) {
         /* Create the main process' pid file */
         fprintf(stderr, "Unable to create PID file: %s", strerror(errno));
+        exit(1);
     } else {
         fprintf(file_out, "%i\n", (int)getpid());
         fclose(file_out);
