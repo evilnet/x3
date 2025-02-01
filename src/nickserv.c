@@ -607,11 +607,9 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, stru
     for (n=0; n<unreg_func_used; n++)
         unreg_func_list[n](notify, hi, unreg_func_list_extra[n]);
     while (hi->users) {
-        if (nickserv_conf.sync_log) {
-            uNode = GetUserH(hi->users->nick);
-            if (uNode)
-                irc_delete(uNode);
-        }
+        uNode = GetUserH(hi->users->nick);
+        if (uNode)
+            irc_delete(uNode);
         set_user_handle_info(hi->users, NULL, 0);
     }
     if (notify) {
