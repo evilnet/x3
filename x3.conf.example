@@ -85,6 +85,14 @@
      * the F: lines in ircu's ircd.conf. both can be disabled by commenting them out. */
     //"his_servername" "*.AfterNET.org"; // hidden server name, shown in remote /whois requests
     //"his_servercomment" "AfterNET IRC Network";
+
+    /* this setting specifies that the system clock can be relied upon to be accurate, usually
+     * through the use of an ntp client of some kind. To reliably run an IRC network it is
+     * strongly reccomended that ALL servers run some form of ntp client to keep their clocks
+     * accurate. If however you are willing to accept the potentially negative consequences
+     * of not relying on your system clock to be kept accurate, then feel free to disable this
+     * option by setting it to "0". */
+    "reliable_clock" "1";
 };
 
 /* SERVICES (Bot nicknames) *******************************************
