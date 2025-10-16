@@ -113,8 +113,8 @@
         "SPAMSCAN:           Enables/Disables scanning for spam.",
         "CHANFLOODSCAN:      Enables/Disables scanning for channel flood.",
         "JOINFLOODSCAN:      Enables/Disables scanning for joinflood.",
-        "CAPSMIN:            Atleast this amount min caps and atleast CAPSPERCENT of the total line.",
-        "CAPSPERCENT:        atleast CapsPercent of the total line.",
+        "CAPSMIN:            At least this amount min caps and at least CAPSPERCENT of the total line.",
+        "CAPSPERCENT:        at least CapsPercent of the total line.",
         "$uSee Also:$u set spamlimit, set badreaction, set advreaction, set warnreaction, set advscan, set badwordscan, set spamscan, set chanfloodscan, set joinfloodscan");
 
 "SET EXCEPTLEVEL" ("/msg $X SET <#channel> EXCEPTLEVEL <level>",

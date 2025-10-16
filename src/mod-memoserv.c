@@ -88,7 +88,7 @@ static const struct message_entry msgtab[] = {
     { "MSMSG_MESSAGES_EXPIRED", "$b%lu$b message(s) expired." },
     { "MSMSG_MEMOS_INBOX", "You have $b%d$b new message(s) in your inbox and %d old messages.  Use LIST to list them." },
     { "MSMSG_NEW_MESSAGE", "You have a new message from $b%s$b. Use LIST to see your messages." },
-    { "MSMSG_FULL_INBOX",  "$b%s$b cannot recieve anymore memos as their inbox is full" },
+    { "MSMSG_FULL_INBOX",  "$b%s$b cannot receive anymore memos as their inbox is full" },
     { "MSMSG_DELETED_ALL", "Deleted all of your messages." },
     { "MSMSG_USE_CONFIRM", "Please use DELETE * $bCONFIRM$b to delete $uall$u of your messages." },
 
