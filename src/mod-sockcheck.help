@@ -6,5 +6,5 @@
 "DEFPROXY" ("/msg $O DEFPROXY <definition>",
         "Inserts a proxy check definition into the proxy-check database. Extreme care should be used with this command.");
 "HOSTSCAN" ("/msg $O HOSTSCAN <host|nick>",
-        "Adds the speicified host to the proxy-check queue. If the host is found to have a running proxy, then that host is G-lined for an hour.",
+        "Adds the specified host to the proxy-check queue. If the host is found to have a running proxy, then that host is G-lined for an hour.",
         "$uSee Also:$u trace");

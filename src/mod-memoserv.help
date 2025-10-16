@@ -34,8 +34,8 @@
 	"$bNEWNOTIFY$b      - Indicates if $S should notify you instantly when someone sends you a new message. Default is yes.",
         "$bPRIVMSG$b        - If yes, $S will notify you of new messages via message, instead of notice. Default is yes.",
 	"$bPRIVATE$b        - If yes, $S will not allow people to send messages to you (do-not-disturb mode). Default is off.",
-        "$bIGNORERECIEPTS$b - Indicates if $S will always ignore read receipt requests. Default is no.",
-        "$bSENDRECIEPTS$b   - Indicates if $S will always send read receipts with your messages. Default is no.",
+        "$bIGNORERECEIPTS$b - Indicates if $S will always ignore read receipt requests. Default is no.",
+        "$bSENDRECEIPTS$b   - Indicates if $S will always send read receipts with your messages. Default is no.",
         "$bLIMIT$b          - Indicates how many messages $S will accept before denying them. Set to 0 to receive no messages. Defaults to 50.");
 
 "OSET" ("/msg $S OSET <nick|*account> [<setting> <value>]",
