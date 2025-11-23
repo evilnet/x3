@@ -1,0 +1,858 @@
+/* ***************************************************************** 
+ *   X3 Services Example Configuration file.
+ *  
+ *   Copy it to your x3 runtime dir, and edit to taste.
+ * 
+ * This file allows two kinds of comments.  Whitespaces between 
+ * tokens are ignored.  All strings (even if they're just numbers) 
+ * MUST be enclosed in double quotes.  There must be a semicolon 
+ * after every * key/value pair.
+ */
+
+/* UPLINKS (servers we connect to) *********************************
+ * Each subsection describes one server. X3 will try to connect to
+ * each in turn maxtries times, and then will quit.
+ */
+"uplinks" {
+    // This first entry connects to an ircd on teh same server an X3..
+    "Hub" {  // This can be any string, just used here for your convenience
+        "address"        "%X3_UPLINK_ADDRESS%";  // The IP address of the server
+        "port"           "%X3_UPLINK_PORT%";       // What TCP port to connect to
+        "password"       "%X3_UPLINK_PASSWORD%";  // Both of these passwords must match 
+        "uplink_password" "%X3_UPLINK_PASSWORD%";  //   the one in the ircd C line for X3.
+        "enabled"        "1";   // Set to 0 to disable connecting to this server
+        "max_tries"      "10";  // How many times to attemt reconnect before quitting
+        "bind_address"   "%X3_GENERAL_BIND_ADDRESS%";  // LOCAL IP address we want to connect FROM
+    };
+};
+
+/* SERVER (Details about our existance) **********************************
+ */
+"server" {
+    "hostname" "%X3_GENERAL_NAME%";  // The servers name. (Use this in the ircd's C line)
+    "description" "%X3_GENERAL_DESCRIPTION%"; // Shows up in /links.
+    "network" "%X3_GENERAL_DOMAIN%";
+    "hidden_host" "Users.%X3_GENERAL_DOMAIN%"; // set this if you enabled Nefarious' +x mode
+    /* hidden_host should match the F:HIDDEN_HOST: line in your ircu's ircd.conf;
+     * x3 does not set the host suffix for users, but must know it when making
+     * things like bans, where it should not show the user's real hostname. */
+    "hidden_host_type" "1"; // change this to 2 if you use Nefarious's style 2 host hiding.
+    "key1" "45432"; // Set these key values to the network KEY values you use
+    "key2" "76934"; // for host hiding style 2.
+    "key3" "98336"; // 
+    "prefix" "NETWORK"; // If you use style 2 then this is the name that is prefixed to hosts.
+    "numeric" "%X3_GENERAL_NUMERIC%"; // hint: If you get collisions on link, CHANGE THIS.
+    /* Type handles some changes in Nefarious from version to version.
+     * 4 - nefarious 0.4.x and other ircds
+     * 5 - nefarious 1.0.x and higher (Obselete)
+     * 6 - nefarious 1.1.0 and higher (Obselete)
+     * 7 - nefarious 1.2.0 and higher (Obselete)
+     * 8 - nefarious 1.3.0 and higher (Legacy Version)
+     * 9 - nefarious 2.0.x and higher (Current Version)
+     */
+    "type" "8";
+    "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.
+    "max_users" "256"; // You can save a little memory by setting this to a lower value.
+    "force_n2k" "1"; // Use extended (5-digit) numnick for self, even if 3 are possible.
+    "ping_freq" "60";
+    "ping_timeout" "90";
+    "max_cycles" "30"; // max uplink cycles before giving up
+    // Admin information is traditionally: location, location, email
+    // This shows up on a /admin x3.afternet.services command.
+    "admin" (
+         "%X3_GENERAL_DOMAIN%", 
+         "www.%X3_GENERAL_DOMAIN%", 
+         "Support Staff <support@%X3_GENERAL_DOMAIN%>"
+    );
+    /* extended_accounts -
+     * enable this for nefarious 0.4.x and higher and in ircd.conf add F:EXTENDED_ACCOUNTS:TRUE. 
+     * Sends 'AC R nick account' instead of 'AC nick account' and allows 
+     * for renames, login-on-connect,  etc.  If you use stock ircu set to 0. */
+    "extended_accounts" "1";
+
+    /* the following two settings are for ircu's HEAD_IN_SAND features, and are equivelent to
+     * the F: lines in ircu's ircd.conf. both can be disabled by commenting them out. */
+    //"his_servername" "*.AfterNET.org"; // hidden server name, shown in remote /whois requests
+    //"his_servercomment" "AfterNET IRC Network";
+
+    /* this setting specifies that the system clock can be relied upon to be accurate, usually
+     * through the use of an ntp client of some kind. To reliably run an IRC network it is
+     * strongly reccomended that ALL servers run some form of ntp client to keep their clocks
+     * accurate. If however you are willing to accept the potentially negative consequences
+     * of not relying on your system clock to be kept accurate, then feel free to disable this
+     * option by setting it to "0". */
+    "reliable_clock" "1";
+};
+
+/* SERVICES (Bot nicknames) *******************************************
+ * Each section describes one service nickname and the details of that
+ * bot's features
+ *  You may disable a service by commenting out its "nick" config item.
+ */
+"services" {
+    /* Nickserv is the bot you register with and auth to.
+     * Afternet uses the name "Authserv" without the nickname reservation
+     * features enabled. Some nets call it Nickserv and configure it to 
+     * reserve nicks.
+     */
+    "nickserv" {
+        "nick" "AuthServ";  // The bots nick on IRC
+
+        // If you want to have *@* as the default hostmask, set
+        // default_hostmask. I highly reccomend this, and its required
+        // for login-on-connect to work.
+        "default_hostmask" "1";
+
+        // do we warn users when someone new auths to their account?
+        "warn_clone_auth" "1"; // -X3- warning: foobar has authed to your account
+
+        // default max number of logins allowed on new accounts. Users can set it
+        // to something different using authserv commands.
+        "default_maxlogins" "3";
+        
+        // hard_maxlogins is the ammount the user cant override.
+        "hard_maxlogins" "10";
+
+        //automatically set the following modes when opers auth:
+        // - if it includes o, then are auto remote-opered.
+        "auto_oper" "+oxwgs";
+        "auto_oper_privs" "CHAN_LIMIT SHOW_INVIS SHOW_ALL_INVIS KILL LOCAL_KILL REHASH RESTART DIE JUPE LOCAL_JUPE OPMODE WHOX SEE_CHAN PROPAGATE DISPLAY SEE_OPERS WIDE_GLINE FORCE_OPMODE REMOTEREHASH CHECK SEE_SECRET_CHAN WIDE_SHUN WIDE_ZLINE LIST_CHAN";
+
+        // This names a file that contains easily guessed passwords.
+        // It always contains "password", "<password>" and the user's
+        // account name.
+        // uncomment if you have a dict file.
+         //"dict_file" "/usr/share/dict/words";
+
+        // Minimum number of various types of characters permitted in
+        // a password. Authserv will enforce these.
+        "password_min_length" "4";
+        "password_min_digits" "0";
+        "password_min_upper" "0";
+        "password_min_lower" "0";
+        
+        // What should valid account and nicks look like?
+        // If valid_nick_regex is omitted, valid_account_regex is used
+        // for both nicks and accounts.
+        // Be very carefull changing these. This default is 
+        // basically limited to letters, numbers, dash and underscore.
+        "valid_account_regex" "^[-_a-z0-9A-Z]{2,15}$";
+        "valid_nick_regex" "^[-_a-z][-_a-z0-9]*$";
+
+        // Whats a valid hostname look like for fakehosts?
+        "valid_fakehost_regex" "^[-_a-zA-Z0-9.]+$";
+
+        // Force account names to lowercase? 1=yes 0=no
+        //   WARNING: this will convert when reading them from the db, too.
+        "force_handles_lowercase" "0";
+
+        // "Nickserv" networks, set this to 0. "Authserv" networks,
+        // set it to 1.
+        "disable_nicks" "1"; 
+            // One account may only own this many nicks.
+            "nicks_per_account" "4";
+
+            // Send a warning when someone uses a registered nick?
+            "warn_nick_owned" "0";
+
+            // What to do when someone uses the NickServ "reclaim" command?
+            // This can be one of "none", "warn", "svsnick", or "kill", but
+            // stock ircu does not support svsnick -- you need nefarious.
+            "reclaim_action" "none";
+
+            // What (else) to do when someone uses a registered nick?
+            // This can be anything "reclaim_action" can be, but it makes
+            // more sense to use the "warn_nick_owned" instead of "warn".
+            "auto_reclaim_action" "none";
+
+            // How long to wait before doing the auto_reclaim_action?
+            // This is ignored if "auto_reclaim_action" is "none".
+            "auto_reclaim_delay" "0";
+
+            // Expire nicks
+            "expire_nicks" "0";
+
+            // how often should nicks be expired?
+            "nick_expire_freq" "1d";
+
+            // how long until a nick expires?
+            "nick_expire_delay" "900d";
+
+        // access control for who can change account flags
+        // See /msg authserv help account flags
+        "flag_levels" {
+            "g" "800";    // God mode
+            "lc_h" "800"; // support helper (lower case h)
+            "uc_H" "800"; // net helper (upper case H)
+            "S" "999";    // O3 access suspended
+            "b" "1";      // Bot (Hidden from !staff etc)
+            "I" "999";    // User can impersonate another account using SASL authentication
+        };
+
+        // and for who can change epithets for staff
+        // epithets show up in /whois as another line about the person.
+        "set_epithet_level" "800";
+
+        // what opserv access level do you need to set somebody else's level?
+        "modoper_level" "850";
+
+        // how often should accounts be expired?
+        "account_expire_freq" "1d";
+
+        // how long until an account with access to any channel(s) expires?
+        "account_expire_delay" "900d";
+
+        // how long until an account with no access to any channels expires?
+        "nochan_account_expire_delay" "365d";
+
+        // how long must an account be inactive so it can be ounregistered without force?
+        "ounregister_inactive" "1M";
+
+        // which flags on an account require the ounregister to be used with force?
+        "ounregister_flags" "ShgsfnHbu";
+
+        // If somebody keeps guessing passwords incorrectly, do we gag them?
+        "autogag_enabled" "1";
+        "autogag_duration" "30m";
+        "auth_policer" {
+            "size" "5";
+            "drain-rate" "0.05";
+        };
+
+        // How to integrate with email cookies?
+        // In order to use mail, mail must be enabled and configured
+        // down below in the mail section of this config file.
+        "email_enabled" "1"; // Allow account verification and password reset by email.
+        "email_required" "1"; // if above is 1, require verification to authenticate.
+        "cookie_timeout" "2d"; // how long before we expire cookies?
+        "accounts_per_email" "1"; // How many people can use the same email account.
+
+        "email_search_level" "600"; // minimum OpServ level to search based on email address (search print email *foo*)
+        "email_visible_level" "800"; // minimum OpServ level to see somebody's email address
+        "titlehost_suffix" "AfterNET.Org"; // 'USET title' sets a fake hostname of name.title.titlehost on a user.
+        "set_title_level" "900"; // Access to use 'uset title'.
+        "set_fakehost_level" "1000"; //Access to set a freeform fakehost. (uset fakehost)
+
+        // A list of denied words in the fakehosts
+        "denied_fakehost_words" ("sex",
+                                 "fuck",
+                                 "asshole");
+
+        // This is a hacked in feature which exports every account change to a file sync.log. Afternet uses this and
+        // a bunch of custom PHP scripts to make our websites SQL user db the same as authserv, every 5 minutes.
+        // You have to be a pretty handy person with the shell commands and programming to make use of this..
+        "sync_log" "0";  // Log account changes to a file for syncing w/ a website?
+
+        // Nickserv 'style' setting affects .userlist and other outputs.
+        "default_style" "n"; // can be: n = normal, c = clean, or a = advanced.
+
+
+        // LDAP configuration(s)
+        // THIS IS EXPERIMENTAL! DO NOT USE IT IF YOU ARNT'T A DEVELOPER!!
+        // LDAP stands for light directory access protocol. its what many larger orgs use for central user/password management. Its also the core technology behind windows active directory.
+        // If you have an ldap server, you can configure X3 to use it instead of saving passwords locally.
+
+        //"ldap_enable" "0";
+        //"ldap_uri"  "ldaps://ldap.yournetwork.server:636";
+        //"ldap_base" "ou=Users,dc=afternet,dc=org";
+        //"ldap_dn_fmt" "uid=%s,ou=Users,dc=afternet,dc=org";
+        //"ldap_autocreate" "1"; // automatically create accounts if they exist in ldap but not x3
+        //// If you will be allowing users to register on IRC you need these:
+        //"ldap_admin_dn" "cn=Admin,dc=afternet,dc=org";
+        //"ldap_admin_pass" "xxxxxxxxxxx";
+        //"ldap_object_classes" ( "top", "inetOrgAnonAccount" );
+        ////      NOTE: inetOrgAnon is something I made up. its schema
+        ////      can be found in the tools/ directory. ldap servers wont
+        ////      know what that is by default.
+        //// These configure what I store, and where.
+        //"ldap_field_account" "uid";
+        //"ldap_field_password" "userPassword";
+        //"ldap_field_email" "mail";
+        //"ldap_field_oslevel" "X3AccountLevel";
+        ////      NOTE: X3AccountLevel is a custom LDAP attribute
+        ////      that LDAP servers will not know by default. A custom
+        ////      schema is required to provide it.
+        //// This bit is needed if you want to put ircops into a group:
+        //"ldap_oper_group_dn" "cn=Opers,ou=Groups,dc=afternet,dc=org";
+        //"ldap_oper_group_level" "99";  // must be above this level to be added to oper ldap group
+        //"ldap_field_group_member" "memberUid"; // what field group members are in
+        //"ldap_timeout" "10"; // seconds
+
+    };
+
+    /* 
+     * OpServ is the bot opers use to do glines, look at info etc.
+     * Afternet uses the nickname "O3" for this as its easier to type.
+     */
+    "opserv" {
+        "nick" "O3";
+        // should use of this service be limited to global opers?
+        "privileged" "1"; 
+
+        // fullname for service
+        "description" "Oper Service Bot"; // (for /whois)
+
+        // hostname for service; only used if "description" is also set
+        "hostname" "X3.Services"; // (for /whois)
+
+        // What channel should opserv send debug output to?
+        //   I don't have any idea what debug info goes here. You can configure
+        //   debugging logs in the log section to go to any channel.
+        //   Probably safest to set to your oper channel.
+        "debug_channel" "#TheOps";  // Bot will join this channel, also.
+        "debug_channel_modes" "+tnOS";  // Modes get set every time X3 starts up
+
+        // where to send general alerts (e.g. flood alerts)?
+        "alert_channel" "#TheOps"; // Bot will join this channel, also.
+        "alert_channel_modes" "+"; // Modes get set every time X3 starts up
+
+        // who to tell about staff auths?
+        "staff_auth_channel" "#OperServ"; // Bot will join this channel, also.
+        "staff_auth_channel_modes" "+tnOs"; // modes get set every time X3 starts up
+
+         // which channels should all services autojoin?
+         "autojoin_channels" ("#TheOps", "#OperServ");
+
+        // how many clones to allow from an untrusted host?
+        // Use this carefully, users with half the # of clones will trigger this
+        // when a server pings out and they reconnect before the old connection is noticed
+        // to be dead by the server.. so set it at about twice the # you want to allow to
+        // avoid false positives.
+        "untrusted_max" "6";  // 3 connections and 3 ghosts, 7th connection causes a gline.
+
+        // how long of a g-line should be issued if the max hosts is exceeded?
+        "clone_gline_duration" "2h";  // durations are smhdmy
+
+        // how long to g-line for ?block (or, by default, for trace gline)?
+        "block_gline_duration" "12h";
+
+        // how long to shun for ?sblock (or, by default, for trace shun)?
+        "block_shun_duration" "12h";
+
+        // When a user joins an illegal channel, O3 joins it and locks it down.
+        // how long to keep an illegal channel locked down (seconds)?
+        "purge_lock_delay" "60";
+
+        // ------------------------------------------------------------------
+        // Defcon Settings
+        //
+        // No new channel registrations                       1 
+        // No New Nick Registrations                          2 
+        // No Channel Mode changes                            4 
+        // Force Chan Mode                                    8 
+        // Use Reduced Session Limit                         16 
+        // KILL any new clients trying to connect            32 
+        // Services will ignore everyone but opers           64 
+        // Services will silently ignore everyone but opers 128 
+        // GLINE all new clients trying to connect          256 
+        // No new memos sent to block MemoServ attacks      512
+        // SHUN all new clients trying to connect          1024
+        // 
+        // These are the values are added together to determine each defcon setting: 
+        "DefCon1" "415"; 
+        "DefCon2" "159";
+        "DefCon3" "31";
+        "DefCon4" "23";
+
+        // Default defcon level, 5 is running all normally
+        "DefConLevel" "5";
+
+        // If defcon is limiting sessions then how many sessions should O3 allow?
+        "DefConSessionLimit" "2";
+
+        // Length of glines and shuns set on newly connecting clients, if defcon is glining 
+        // or shunning newly connecting clients
+        "DefConGlineExpire" "5m";
+
+        // Mode to set on all channels if defcon is forcing channel modes on all channels
+        "DefConChanModes" "+r";
+
+        // If not set to 0, defcon will set back to level 5 after this time
+        "DefConTimeOut" "15m";
+
+        // Set to 1 to send a notice to all users when defcon levels are changed
+        "GlobalOnDefcon" "0";
+
+        // If set to 1 along with the notice that the levels are changing an extra
+        // notice will be sent
+        "GlobalOnDefconMore" "0";
+
+        // GlobalOnDefconMore notice.
+        "DefconMessage" "Put your message to send your users here. Dont forget to uncomment GlobalOnDefconMore";
+
+        // This notice will be used if GlobalOnDefcon and GlobalOnDefconMore are off
+        "DefConOffMessage" "Services are now back to normal, sorry for any inconvenience";
+
+        // Reason placed in defcon Glines and Shuns.
+        "DefConGlineReason" "This network is currently not accepting connections, please try again later";
+
+        // ------------------------------------------------------------------
+
+        // To use geoip support in Opserv WHOIS then you will need to install
+        // the c GeoIP api. Its available on http://www.maxmind.com, also on
+        // apt on debian and ubuntu. The dat files can also be obtained
+        // from the earlier URL. Place them in your X3 dir and away you go.
+        // X3 will need a recompile once you install the c api. If there is a
+        // GeoIP City Data file then the GeoIP data file will be ignored. However
+        // bear in mind that the city data file is a lot larger than the plain
+        // country data file so does take a bit longer to query. If you are
+        // expieriencing ping timeouts you may need to tweak X3's I:line.
+        "geoip_data_file" "./GeoIP.dat";
+        "geoip_city_data_file" "";
+
+        // The join-flood policer code goes off all the time when a server
+        // goes down (and everyone reconnects) so i don't reccomend using it.
+        // Automatically moderate join flooded channels?
+        "join_flood_moderate" "0";
+            // channel join flood policer params?
+            "join_policer" {
+                "size" "20";
+                "drain-rate" "1";
+            };
+            // Don't moderate and warn channels unless there are more than
+            // join_flood_moderate_threshold users in the channel. the
+            // value 0 will disable the threshold.
+            "join_flood_moderate_threshold" "50";
+            // new user flood policer params
+            "new_user_policer" {
+                "size" "200";
+                "drain-rate" "3";
+            };
+        // Min opserv level needed to set 'silent' glines in trace/addalert 
+        // (nefarious only)
+        "silent_level" "700";
+    };
+
+    "chanserv" {
+        "nick" "X3";
+
+        // The umodes - add +d if you use nefarious 1.0 and you added 'b:lines'
+        // to pass cmdchar through to chanserv anyway.
+        "modes" "+iok";
+
+        // The off_channel setting takes one of three numerical values:
+        //   0 = off
+        //   1 = use a registered channel mode, have services op themselves
+        //   2 = all of the above, and a channel setting to have ChanServ not
+        //       idle in the channel
+        // NOTE: +z mode, needed for this to work. X3 contains modifications to
+	// try and prevent desynchs. If you use this mode do not use any other service
+	// that uses this mode.
+        "off_channel" "no";
+
+        // Infolines are sent when channel users join the channel. Users set them with USET INFO in X3.
+        // how long should a person be unseen before resending infoline?
+        "info_delay" "120";
+
+        // Greetings can be configured by the channel manager(s) and sent to users who join the channel.
+        // Many people (rightly) find this annoying, so keep them short.
+        // maximum greeting length
+        "max_greetlen" "120";
+
+        // maximum users in a channel userlist
+        "max_chan_users" "512";
+        // maximum bans on a channel banlist
+        "max_chan_bans" "512";
+        // maximum length of a user's infoline
+        "max_userinfo_length" "400";  // hard limit for infolines. This is also the default value.
+
+        // If SET DynLimit is on and there are N users in the channel, ChanServ will
+        // try to keep the limit at N+<adjust_threshold>. This makes the channel
+        // somewhat protected from clone attacks.
+        "adjust_threshold" "5";
+        // .. but ChanServ will only increment or decrement the limit this often.
+        "adjust_delay" "30";  // (seconds)
+
+        // How often to look for expired bans?
+        "ban_timeout_freq" "2m";
+
+        // How often to look for channels that have expired?
+        "chan_expire_freq" "1d";
+
+        // How long is a channel unvisited (by masters or above) before it can be expired?
+        "chan_expire_delay" "30d";
+
+        // How often to look for dnrs that have expired?
+        "dnr_expire_freq" "1h";
+
+        // what !set options should we show when user calls "!set" with no arguments?
+        "set_shows" ("DefaultTopic", "TopicMask", "Greeting", "UserGreeting", "Modes", "PubCmd", "InviteMe", "UserInfo", "EnfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", "CtcpReaction", "BanTimeout", "Protect", "Toys", "DynLimit", "NoDelete");
+
+        // A list of !8ball responses
+        "8ball" (
+                "Are you out of your MIND?",
+                "It won't happen, not a chance, definitely no.",
+                "Outlook seems bleak.",
+                "My sources say no.",
+                "You bet!",
+                "It is decidedly so.",
+                "It's hard to be sure.",
+                "Most definitely.",
+                "In your dreams...",
+                "If the prophets wish it...",
+                "Forecast hazy, try again later.",
+                "I don't know!",
+                "Absolutely!",
+                "Never.",
+                "Yes.",
+                "No.",
+                "Maybe.");
+
+        // This is a list of wheel-of-misfortune results. Remove them to disable.
+        // You must make sure your ircd supports, and has enabled, the features needed
+        // for these.
+        "wheel" ( 
+             "peer", 
+            // "partall",  // needs svspart
+             "gline", 
+            // "shun",     // needs shun
+             "nothing", 
+            // "randjoin", // needs svsjoin and svspart
+            // "abusewhois",  // needs epitaph in /whois support
+             "kickall", 
+            // "nickchange",  // needs svsnick
+             "kill", 
+             "svsignore", 
+             "kickbanall" );
+
+        // channel(s) that support helpers must be in to be helping
+        // if this is a list, any one by itself will do
+        "support_channel" ("#Operations", "#Help");
+
+        // maximum number of channels a user may have. ( FORCE can override )
+        "max_owned" "2";
+
+        // how long between automatic topic and userlist refreshes with TopicRefresh/Resync
+        "refresh_period" "10h";
+
+        // what should !access say for various staff?
+        "irc_operator_epithet" "IRC Operator";
+        "network_helper_epithet" "Network Helper";
+        "support_helper_epithet" "Support Helper";
+
+        // what should a newly registered channel get as its modes?
+        "default_modes" "+nt";
+
+        // minimum opserv access to set, clear or override channel nodelete setting?
+        "nodelete_level" "1";
+
+        // when does god mode time out?
+        "god_timeout" "30m";
+
+        // What should valid registered channels look like?
+        // Be very carefull changing these. This default is 
+        // basically limited to letters, numbers, dash and underscore.
+        "valid_channel_regex" "^#[-_a-z][-_a-z0-9]*$";
+    };
+
+    /* Global is a service bot that can send out network-wide messages for you. I
+     * like to set ours' nick to 'AfterNET', but some people use 'Global'
+     */
+    "global" {
+        "nick" "Global";
+        // should users get community announcements by default or not?
+        // community announcements are a type of global that users may 
+        // opt into (or out of, depending on this setting)
+        "announcements_default" "on";
+    };
+
+
+    "spamserv" {
+        // You may enable this service by removing the double slashes from the config
+        // item. To disable it again add the double slashes back.
+        // "nick" "SpamServ";
+
+        // debug channel
+        "debug_channel" "#operserv";
+        "debug_channel_modes" "+tinms";
+
+        // url of the network rules. if you don't have network rules, remove this key.
+        //"network_rules" "http://www.afternet.org/aup";
+
+        // trigger for spamserv; remove this key to disable the trigger
+        "trigger" "%";
+
+        // ban duration of a short timedban.
+        "short_ban_duration" "15m";
+
+        // ban duration of a long timedban.
+        "long_ban_duration" "1h";
+
+        // duration of a gline. SpamServ will issue it after several violations and a kill.
+        "gline_duration" "1h";
+
+        // users may add "exception_max" exceptions to the list. IRCOps can override "exception_max".
+        "exception_max" "10";
+
+        // minimum & maximum length of an exception.
+        "exception_min_len" "4";
+        "exception_max_len" "12";
+
+        // users may add "badword_max" badwords to the list. IRCOps can override badword_max".
+        "badword_max" "10";
+
+        // minimum & maximum length of an badword.
+        "badword_min_len" "4";
+        "badword_max_len" "12";
+
+        // if someone advertises a channel, which doesn't exist (channel is empty, no users),
+        // SpamServ doesn't punish the user.
+        // enable this setting, if SpamServ has to ignore advertisements of channels, which do not exist.
+        // disable this setting, if SpamServ has to punish the users whenever they advertise.
+        "adv_chan_must_exist" "1";
+
+        // remove all mirc codes from messages before checking for advertisements.
+        // if this setting is disabled and someone spams a url which
+        // contains a bold char, SpamServ doesn't punish him.
+        "strip_mirc_codes" "1";
+
+        // enable this, if SpamServ has to "follow" ChanServ, when a channel moves or merges.
+        // disable it, if it shouldn't be possible to move or merge SpamServ with /msg chanserv move|merge.
+        "allow_move_merge" "1";
+    };
+};
+
+/* MODULES (optional components) *************************************************
+ * These must be explicitly compiled in (see ./configure --help) 
+ * When enabled, they are configured here..
+ */
+"modules" {
+    /* Helpserv is a help-queue tracker module for your #support channels, if 
+     * they are busy. It issues users tickets, and tracks the next available helper.
+     */
+    "helpserv" {
+        // The description/fullname field
+        "description" "Help Queue Manager"; // (for whois)
+
+        // HelpServ bots log all of their requests to this file, with
+        // details on when they were opened, closed, their contents,
+        // helper, etc. The file is written in saxdb format for easy
+        // parsing by external programs. Please note that you cannot
+        // use ?set to change this value while x3 is running.
+        "reqlogfile" "helpservreq.log";
+
+        // How long should a helpserv be inactive (no requests assigned)
+        // before it can be unregistered by the expire command?
+        "expiration" "60d";
+
+        // If a user prefix's this before their helpserv commands then instead
+        // of a request being opened, they will be able to use helpserv commands.
+        "user_escape" "@";
+    };
+    /* SockCheck reads sockcheck.conf and can do configurable scans
+     * to probe for open relays in an attempt to stop drones from using
+     * the network. DO NOT enable this unless you have permission from 
+     * your ISP.. the probes will show up as attacks on everyones firewalls
+     * and you will get a lot of complaints.
+     */
+    "sockcheck" {
+        // disabling this hopefully
+        "max_sockets" "0";  // 64 is a good # of concurrent clients to be checked
+        "max_read" "1024"; // don't read more than 1024 bytes from any client
+        "gline_duration" "1d"; // issue G-lines lasting one hour
+        "max_cache_age" "60"; // only cache results for 60 seconds
+        "bind_address" "192.168.0.10"; // do proxy tests from this address
+    };
+    /* Snoop sends connect, quit, join, and part messages for every user
+     * on the network, and helps in finding drones. Put it somewhere secure
+     * so your users privacy is honored.
+     */
+    "snoop" {
+        // Where to send snoop messages?
+        "channel" "#MrSnoopy";
+        "channel_modes" "+sntim";
+        // Which bot?
+        "bot" "O3";
+        // Show new users and joins from net joins?  (off by default)
+        "show_bursts" "0";
+    };
+    /* Track works just like Snoop except it only sends events for users
+     * who have been specified
+     * DANGER: track is currently very broken, and will crash x3 and possibly corrupt your db file.
+     *  Unless your a developer, dont even compile it in!
+     */
+    "track" {
+        // What to track by default?
+        "snomask" "nick,join,part,kick,new,del,auth,chanmode,umode";
+        // Where to send snoop messages?
+        "channel" "#MrPeanuts";
+        "channel_modes" "+sntOm";
+        // Which bot?
+        "bot" "O3";
+        // Show new users and joins from net joins?  (off by default)
+        "show_bursts" "0";
+    };
+    /* Memoserv lets users send messages to other users accounts.
+     */
+    "memoserv" {
+        "bot" "MemoServ";
+	"modes" "+k";
+        "message_expiry" "30d"; // age when messages are deleted; set
+                                // to 0 to disable message expiration
+        "limit" "30"; // Max amount of messages a person can get.
+    };
+    "qserver" {
+        "bind_address" "127.0.0.1";
+        "port" "7702";
+        "password" "hello";
+    };
+    "blacklist" {
+        // File containing blacklisted client addresses.
+        // "file" "blacklist.txt";
+        // Each line in the file should start with an IP or hostname.
+        // If there is whitespace and a message after that, the
+        // message will override this one:
+        "file_reason" "client is blacklisted";
+        // How long should a blacklist G-line last?
+        "gline_duration" "1h";
+        // If you want to use DNS blacklists, add them here:
+        "dnsbl" {
+             // This DNSBL zone does not exist - you'll have to pick your own.
+             "dnsbl.example.org" {
+                "description" "Example DNSBL entry";
+                "reason" "busted by a dns blacklist";
+                "duration" "1h";
+                // You can stick the client's IP in the G-line message.
+                "reason_2" "Example DNSBL reported %ip%'s address as 127.0.0.2";
+                // .. or the contents of a DNS TXT.
+                "reason_3" "%txt%";
+            };
+        };
+    };
+    "sar" {
+        // You generally will not want to override these defaults.
+        // "resolv_conf" "/etc/resolv.conf";
+        // "services" "/etc/services";
+        // "bind_address" "0.0.0.0";
+        // "bind_port" "0";
+        // The defaults for these are derived from the system config files (above).
+        // "domain" "example.org";
+        // "timeout" "3"; // base timeout for a DNS reply
+        // "retries" "3"; // number of times to retry on different servers or longer timeouts
+        // "ndots" "1";   // number of dots needed in a hostname to bypass search path
+        // "edns0" "0";   // if set, enable EDNS0 extended message sizes
+        // "search" ("example.org", "example.net");
+        // "nameservers" ("127.0.0.1");
+    };
+    /* WebTV allows webtv clients to use common IRC commands.
+     */
+    "webtv" {
+        "bot" "IRC";
+	"modes" "+k";
+
+	// Should clients need to be marked to use this service? 
+	"required_mark" "1";
+	// which marks are valid webtv marks?
+	"valid_marks" ("webtv", "msntv", "msntv2");
+    };
+};
+
+"policers" {
+    "commands-luser" {
+        "size" "5";
+        "drain-rate" "0.5";
+    };
+};
+
+"rlimits" {
+    "data" "50M";
+    "stack" "6M";
+    "vmem" "100M";
+};
+
+/* MAIL (if and how X3 sends mail ) *********************************
+ * Mainly Authserv/Nickserv send mail, See the Nickserv
+ * section for additional mail settings also.
+ */
+"mail" {
+    "enable" "1";
+    "mailer" "/usr/sbin/sendmail";
+    // OR Afternet uses a custom script to keep the services IP hidden: 
+    //    "mailer" "/home/x3user/x3/sendmail.sh";
+    "from_address" "supportrobot@%X3_GENERAL_DOMAIN%";
+    "extra_headers" ("Network-Services: x3");
+    "body_prefix_first" ("Welcome to the network, looks like this is your first email from us.");
+    "body_prefix" ("NET Support - User and Channel registration system");
+    "body_suffix_first" ("", "%X3_GENERAL_DOMAIN% IRC Network", "http://%X3_GENERAL_DOMAIN%");
+    "body_suffix" ("", "NET IRC Network", "http://www.%X3_GENERAL_DOMAIN%", "support@%X3_GENERAL_DOMAIN%","irc://irc.%X3_GENERAL_DOMAIN%/help");
+    // If you are using the smtp mail back-end, you may need to set these:
+    "smtp_server" "localhost";
+    "smtp_service" "smtp";
+    // "smtp_myname" "localhost.domain";
+};
+
+/* DBS (Databases) *************************************************
+ * let you configure what databases go in what files. 
+ * 
+ * This default sets up everything in one big x3.db file.
+ *
+ * If you leave this section out, each database will be in its own file,
+ * and they will be written out every half hour.
+ */
+"dbs" {
+    // This just illustrates how you can jam every database into one huge ("mondo") file.
+    "ChanServ" { "mondo_section" "ChanServ"; };
+    "gline" { "mondo_section" "gline"; };
+    "shun" { "mondo_section" "shun"; };
+    "Global" { "mondo_section" "Global"; };
+    "HelpServ" { "mondo_section" "HelpServ"; };
+    "modcmd" { "mondo_section" "modcmd"; };
+    "NickServ" { "mondo_section" "NickServ"; };
+    "OpServ" { "mondo_section" "OpServ"; };
+    "sendmail" { "mondo_section" "sendmail"; };
+    "SpamServ" { "mondo_section" "SpamServ"; };
+
+    // These are the options if you want a database to be in its own file.
+    "mondo" {
+        // Where to put it?
+        "filename" "x3.db";
+        // How often should it be saved?
+        // (You can disable automatic saves by setting this to 0.)
+        "frequency" "30m";
+    };
+};
+
+/* LOGS (If and how X3 logs data ) ***********************************
+ * LOGS sets up where X3 logs various kinds of info to.
+ */
+"logs" {
+    // Two kinds of items exist in this section.
+
+    // One is a facility configuration subsection.  These have the
+    // name of a log facility (one of "ChanServ", "Global",
+    // "HelpServ", "NickServ", "OpServ", "ProxyCheck", or "x3") and
+    // the value is a subsection. The "x3" log facility is a
+    // catch-all/fall-back facility.
+    "x3" {
+        // The "max_age" option says how long to keep log audit entries.
+        "max_age" "10h";
+        // The "max_count" option says how many log audit entries to keep.
+        "max_count" "1024";
+        // Audit (command tracking) entries are discarded if they exceed
+        // either limit: for example, if entry 500 is 10 minutes old, it
+        // will be discarded next time any audit command is logged.
+    };
+
+    // The other kind of item is a target list.  The name of each is a
+    // description of facility-and-severity combinations, and the value
+    // is a string (or list of strings) that describe where matching
+    // events should be logged.  As a special case, the facility * will
+    // specify how to log events regardless of their true facility, and
+    // the severity * will match all severities for a facility.
+    // Log targets use a psuedo-URI syntax:  one of "file:filename",
+    // "std:[out|err|n]" where n is a valid file descriptor, or
+    // "irc:#channel" (nicknames or server masks can be used instead
+    // of channel names, but should be used with care).
+    // The severity is one of "replay", "debug", "command", "info",
+    // "override", "staff", "warning", "error", or "fatal".
+    // WARNING: If any severity except "replay" for a facility is left
+    // unspecified, it will use the default target (for example,
+    // "file:chanserv.log").  For "replay" severity, you must ALWAYS
+    // list a target to log it -- this is because it is very rarely
+    // useful.
+    "*.*" ("std:out", "file:everything.log"); // does NOT suppress any defaults
+    "*.override,error,fatal" "irc:#TheOps"; // report all uses of staff commands
+    "*.staff" "irc:#MrSnoopy"; // report all uses of staff commands
+    "ChanServ.*" "file:chanserv.log"; // duplicates the default behavior
+    "ProxyCheck.*" (); // stop it from logging anything
+};
