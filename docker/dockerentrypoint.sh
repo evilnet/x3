@@ -1,73 +1,45 @@
 #!/bin/bash
 
-# Apply ENV to ircd.conf
-# ...
+# X3 Docker Entrypoint
+# Reads x3.conf-dist, replaces all %VARIABLE% placeholders with environment
+# variable values, and writes out x3.conf
 
 BASECONFDIST=/x3/x3.conf-dist
 BASECONF=/x3/x3.conf
 
-if [ -z "${X3_GENERAL_NAME}" ]; then
-        X3_GENERAL_NAME="x3.network"
-fi
-if [ -z "${X3_GENERAL_BIND_ADDRESS}" ]; then
-        X3_GENERAL_BIND_ADDRESS="127.0.0.1"
-fi
-if [ -z "${X3_GENERAL_DESCRIPTION}" ]; then
-        X3_GENERAL_DESCRIPTION="Network Services"
-fi
-if [ -z "${X3_GENERAL_DOMAIN}" ]; then
-        X3_GENERAL_DOMAIN="example.com"
-fi
-if [ -z "${X3_GENERAL_NUMERIC}" ]; then
-        X3_GENERAL_NUMERIC="199"
-fi
-if [ -z "${X3_GENERAL_DESCRIPTION}" ]; then
-        X3_GENERAL_CONNECT_PORT="8888"
-fi
-if [ -z "${X3_GENERAL_CONNECT_PASSWORD}" ]; then
-        X3_GENERAL_CONNECT_PASSWORD="abcdefg"
-fi
-if [ -z "${X3_ADMIN_CONTACT}" ]; then
-        X3_GENERAL_BIND_ADDRESS="127.0.0.1"
-fi
-if [ -z "${X3_UPLINK_ADDRESS}" ]; then
-        X3_GENERAL_ADDRESS="172.0.0.1"
-fi
-if [ -z "${X3_UPLINK_PORT}" ]; then
-        X3_UPLINK_PORT="8888"
-fi
-if [ -z "${X3_UPLINK_PASSWORD}" ]; then
-        X3_UPLINK_PASSWORD=100
-fi
+# Set defaults for required variables (can be overridden by environment)
+: "${X3_GENERAL_NAME:=x3.network}"
+: "${X3_GENERAL_BIND_ADDRESS:=127.0.0.1}"
+: "${X3_GENERAL_DESCRIPTION:=Network Services}"
+: "${X3_GENERAL_DOMAIN:=example.com}"
+: "${X3_GENERAL_NUMERIC:=199}"
+: "${X3_UPLINK_ADDRESS:=127.0.0.1}"
+: "${X3_UPLINK_PORT:=8888}"
+: "${X3_UPLINK_PASSWORD:=changeme}"
 
+# Copy the template to the output location
+cp "$BASECONFDIST" "$BASECONF"
 
-#Copy the template to base.conf location
-cp $BASECONFDIST $BASECONF
+# Find all %VARIABLE% placeholders in the config and substitute them
+# with corresponding environment variable values
+grep -oE '%[A-Za-z_][A-Za-z0-9_]*%' "$BASECONF" | sort -u | while read -r placeholder; do
+    # Extract variable name (remove the % signs)
+    varname="${placeholder:1:-1}"
 
-#Modify base.conf template with env variables
-sed -i "s/%X3_GENERAL_NAME%/${X3_GENERAL_NAME}/g" $BASECONF
-sed -i "s/%X3_GENERAL_GENERAL_BIND_ADDRESS%/${X3_GENERAL_GENERAL_BIND_ADDRESS}/g" $BASECONF
-sed -i "s/%X3_GENERAL_DESCRIPTION%/${X3_GENERAL_DESCRIPTION}/g" $BASECONF
-sed -i "s/%X3_GENERAL_DOMAIN%/${X3_GENERAL_DOMAIN}/g" $BASECONF
-sed -i "s/%X3_GENERAL_NUMERIC%/${X3_GENERAL_NUMERIC}/g" $BASECONF
-sed -i "s/%X3_GENERAL_GENERAL_CONNECT_PORT%/${X3_GENERAL_GENERAL_CONNECT_PORT}/g" $BASECONF
-sed -i "s/%X3_GENERAL_CONNECT_PASSWORD%/${X3_GENERAL_CONNECT_PASSWORD}/g" $BASECONF
-sed -i "s/%X3_GENERAL_BIND_ADDRESS%/${X3_GENERAL_BIND_ADDRESS}/g" $BASECONF
-sed -i "s/%X3_GENERAL_ADDRESS%/${X3_GENERAL_ADDRESS}/g" $BASECONF
-sed -i "s/%X3_UPLINK_PORT%/${X3_UPLINK_PORT}/g" $BASECONF
-sed -i "s/%X3_UPLINK_PASSWORD%/${X3_UPLINK_PASSWORD}/g" $BASECONF
-#sed -i "s/%X3_XX%/${X3_XX}/g" $BASECONF
+    # Get the value from environment (indirect expansion)
+    value="${!varname}"
 
-#If cmd is the ircd...
-#if [ "$1" == "/x3/x3" ]; then
-    # Generate a pem file if there isnt one...
-    #if [ ! -f /m ]; then
-        #openssl x509 -subject -dates -fingerprint -noout -in $IRCDPEM
-    #fi
-#fi
+    # Only substitute if the variable is set
+    if [ -n "$value" ]; then
+        # Escape special characters for sed (/, &, \)
+        escaped_value=$(printf '%s\n' "$value" | sed -e 's/[\/&]/\\&/g')
+        sed -i "s|${placeholder}|${escaped_value}|g" "$BASECONF"
+    else
+        echo "Warning: No value set for ${varname}, leaving ${placeholder} unchanged"
+    fi
+done
 
-#Now run CMD from Dockerfile...
+echo "Generated $BASECONF from template"
 
+# Run the command passed to docker (CMD from Dockerfile)
 exec "$@"
-
-

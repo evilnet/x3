@@ -222,8 +222,8 @@
         // How to integrate with email cookies?
         // In order to use mail, mail must be enabled and configured
         // down below in the mail section of this config file.
-        "email_enabled" "1"; // Allow account verification and password reset by email.
-        "email_required" "1"; // if above is 1, require verification to authenticate.
+        "email_enabled" "0"; // Allow account verification and password reset by email.
+        "email_required" "0"; // if above is 1, require verification to authenticate.
         "cookie_timeout" "2d"; // how long before we expire cookies?
         "accounts_per_email" "1"; // How many people can use the same email account.
 
@@ -629,7 +629,7 @@
         // helper, etc. The file is written in saxdb format for easy
         // parsing by external programs. Please note that you cannot
         // use ?set to change this value while x3 is running.
-        "reqlogfile" "helpservreq.log";
+        "reqlogfile" "/x3/data/helpservreq.log";
 
         // How long should a helpserv be inactive (no requests assigned)
         // before it can be unregistered by the expire command?
@@ -805,7 +805,7 @@
     // These are the options if you want a database to be in its own file.
     "mondo" {
         // Where to put it?
-        "filename" "x3.db";
+        "filename" "/x3/data/x3.db";
         // How often should it be saved?
         // (You can disable automatic saves by setting this to 0.)
         "frequency" "30m";
@@ -850,9 +850,9 @@
     // "file:chanserv.log").  For "replay" severity, you must ALWAYS
     // list a target to log it -- this is because it is very rarely
     // useful.
-    "*.*" ("std:out", "file:everything.log"); // does NOT suppress any defaults
+    "*.*" ("std:out", "file:/x3/data/everything.log"); // does NOT suppress any defaults
     "*.override,error,fatal" "irc:#TheOps"; // report all uses of staff commands
     "*.staff" "irc:#MrSnoopy"; // report all uses of staff commands
-    "ChanServ.*" "file:chanserv.log"; // duplicates the default behavior
+    "ChanServ.*" "file:/x3/data/chanserv.log"; // duplicates the default behavior
     "ProxyCheck.*" (); // stop it from logging anything
 };

@@ -10,9 +10,6 @@ RUN mkdir -p /x3
 RUN mkdir -p /x3/x3src
 COPY . /x3/x3src
 
-COPY x3.conf.example /x3/x3.conf-dist
-COPY docker/dockerentrypoint.sh /dockerentrypoint.sh
-
 RUN groupadd -g ${GID} x3
 RUN useradd -u ${UID} -g ${GID} x3
 RUN chown -R x3:x3 /x3
@@ -34,7 +31,10 @@ USER root
 
 USER x3
 
+COPY docker/x3.conf-dist /x3/x3.conf-dist
+COPY docker/dockerentrypoint.sh /dockerentrypoint.sh
+
 ENTRYPOINT ["/dockerentrypoint.sh"]
 
-CMD ["/x3/x3", "-n"]
+CMD ["/x3/x3", "-f", "-d"]
 
