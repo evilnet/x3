@@ -7,6 +7,23 @@
 BASECONFDIST=/x3/x3src/docker/x3.conf-dist
 BASECONF=/x3/data/x3.conf
 
+# Copy .help files and templates from /x3/share/x3 to /x3/data if they don't exist
+echo "Checking for .help files in /x3/data..."
+if [ ! -f /x3/data/chanserv.help ]; then
+    echo "Copying .help files from /x3/share/x3 to /x3/data..."
+    cp /x3/share/x3/*.help /x3/data/ 2>/dev/null || true
+fi
+
+if [ ! -f /x3/data/modpython.py ]; then
+    echo "Copying modpython.py to /x3/data..."
+    cp /x3/share/x3/modpython.py /x3/data/ 2>/dev/null || true
+fi
+
+if [ ! -d /x3/data/plugins ]; then
+    echo "Copying plugins directory to /x3/data..."
+    cp -r /x3/share/x3/plugins /x3/data/ 2>/dev/null || true
+fi
+
 # Only generate config if it doesn't already exist
 if [ -f "$BASECONF" ]; then
     echo "Found existing config at $BASECONF, skipping generation"

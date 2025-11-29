@@ -131,6 +131,7 @@
 #define KEY_LDAP_DN_FMT "ldap_dn_fmt"
 #define KEY_LDAP_VERSION "ldap_version"
 #define KEY_LDAP_AUTOCREATE "ldap_autocreate"
+#define KEY_LDAP_WRITEBACK "ldap_writeback"
 #define KEY_LDAP_ADMIN_DN "ldap_admin_dn"
 #define KEY_LDAP_ADMIN_PASS "ldap_admin_pass"
 #define KEY_LDAP_FIELD_ACCOUNT "ldap_field_account"
@@ -1158,7 +1159,11 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
         cryptpass(passwd, crypted);
     }
 #ifdef WITH_LDAP
-    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+    /* TODO: this should be behind an ldap setting to add existing users to ldap or not
+     * and also, nickserv_register is called from login, so we dont want to add
+     * the ldap account we just logged in with anyway...
+     * 
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
         int rc;
         rc = ldap_do_add(handle, (no_auth || !passwd ? NULL : crypted), NULL);
         if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
@@ -1167,6 +1172,7 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
            return 0;
         }
     }
+    */
 #endif
     hi = register_handle(handle, crypted, 0);
     hi->masks = alloc_string_list(1);
@@ -1496,10 +1502,10 @@ static NICKSERV_FUNC(cmd_register)
     /* Set their email address. */
     if (email_addr) {
 #ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
             int rc;
             if((rc = ldap_do_modify(hi->handle, NULL, email_addr)) != LDAP_SUCCESS) {
-                /* Falied to update email in ldap, but still 
+                /* Falied to update email in ldap, but still
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
             } else {
@@ -1609,10 +1615,10 @@ static NICKSERV_FUNC(cmd_oregister)
     }
     if (email) {
 #ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
             int rc;
             if((rc = ldap_do_modify(hi->handle, NULL, email)) != LDAP_SUCCESS) {
-                /* Falied to update email in ldap, but still 
+                /* Falied to update email in ldap, but still
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL_EMAIL", ldap_err2string(rc));
             } else {
@@ -2717,7 +2723,7 @@ static NICKSERV_FUNC(cmd_odelcookie)
     case ACTIVATION:
         safestrncpy(hi->passwd, hi->cookie->data, sizeof(hi->passwd));
 #ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
             int rc;
             if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
                 /* Falied to update password in ldap, but still
@@ -2827,10 +2833,10 @@ static NICKSERV_FUNC(cmd_cookie)
     switch (hi->cookie->type) {
     case ACTIVATION:
 #ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
             int rc;
             if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
-                /* Falied to update email in ldap, but still 
+                /* Falied to update email in ldap, but still
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
                return 0;
@@ -2845,10 +2851,10 @@ static NICKSERV_FUNC(cmd_cookie)
         break;
     case PASSWORD_CHANGE:
 #ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
             int rc;
             if((rc = ldap_do_modify(hi->handle, hi->cookie->data, NULL)) != LDAP_SUCCESS) {
-                /* Falied to update email in ldap, but still 
+                /* Falied to update email in ldap, but still
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
                return 0;
@@ -2863,10 +2869,10 @@ static NICKSERV_FUNC(cmd_cookie)
         break;
     case EMAIL_CHANGE:
 #ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+        if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
             int rc;
             if((rc = ldap_do_modify(hi->handle, NULL, hi->cookie->data)) != LDAP_SUCCESS) {
-                /* Falied to update email in ldap, but still 
+                /* Falied to update email in ldap, but still
                  * updated it here.. what should we do? */
                reply("NSMSG_LDAP_FAIL_SEND_EMAIL", ldap_err2string(rc));
                return 0;
@@ -2989,8 +2995,8 @@ static NICKSERV_FUNC(cmd_pass)
 	return 0;
     }
     cryptpass(new_pass, crypted);
-#ifdef WITH_LDAP   
-    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+#ifdef WITH_LDAP
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
         int rc;
         if((rc = ldap_do_modify(hi->handle, crypted, NULL)) != LDAP_SUCCESS) {
              reply("NSMSG_LDAP_FAIL", ldap_err2string(rc));
@@ -3474,7 +3480,7 @@ static OPTION_FUNC(opt_password)
 
     cryptpass(argv[1], crypted);
 #ifdef WITH_LDAP
-    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
         int rc;
         if((rc = ldap_do_modify(hi->handle, crypted, NULL)) != LDAP_SUCCESS) {
              if (!(noreply))
@@ -3540,7 +3546,7 @@ static OPTION_FUNC(opt_email)
                 nickserv_make_cookie(user, hi, EMAIL_CHANGE, argv[1], 0);
         else {
 #ifdef WITH_LDAP
-            if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
+            if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
                 int rc;
                 if((rc = ldap_do_modify(hi->handle, NULL, argv[1])) != LDAP_SUCCESS) {
                    if (!(noreply))
@@ -3672,7 +3678,7 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
            return 0;
         }
     }
-    if(nickserv_conf.ldap_enable && *(nickserv_conf.ldap_field_oslevel) && *(nickserv_conf.ldap_admin_dn)) {
+    if(nickserv_conf.ldap_enable && *(nickserv_conf.ldap_field_oslevel) && *(nickserv_conf.ldap_admin_dn) && nickserv_conf.ldap_writeback) {
       int rc;
       if((rc = ldap_do_oslevel(target->handle, new_level, target->opserv_level)) != LDAP_SUCCESS) {
         send_message(user, bot, "NSMSG_LDAP_FAIL", ldap_err2string(rc));
@@ -4706,7 +4712,7 @@ static void
 search_add2ldap_func (struct userNode *source, struct handle_info *match, UNUSED_ARG(struct nickserv_discrim *discrim))
 {
     int rc;
-    if(match->email_addr && match->passwd && match->handle) {
+    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback && match->email_addr && match->passwd && match->handle) {
 	    rc  = ldap_do_add(match->handle, match->passwd, match->email_addr);
 	    if(rc != LDAP_SUCCESS) {
 	       send_message(source, nickserv, "NSMSG_LDAP_FAIL_ADD", match->handle, ldap_err2string(rc));
@@ -5413,6 +5419,9 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_AUTOCREATE, RECDB_QSTRING);
     nickserv_conf.ldap_autocreate = str ? strtoul(str, NULL, 0) : 0;
+
+    str = database_get_data(conf_node, KEY_LDAP_WRITEBACK, RECDB_QSTRING);
+    nickserv_conf.ldap_writeback = str ? strtoul(str, NULL, 0) : 0;
 
     str = database_get_data(conf_node, KEY_LDAP_TIMEOUT, RECDB_QSTRING);
     nickserv_conf.ldap_timeout = str ? strtoul(str, NULL, 0) : 5;

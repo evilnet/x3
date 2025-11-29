@@ -257,6 +257,7 @@
         "ldap_base" "%X3_LDAP_BASE%";
         "ldap_dn_fmt" "%X3_LDAP_DN_FMT%";
         //"ldap_autocreate" "1"; // automatically create accounts if they exist in ldap but not x3
+        //"ldap_writeback" "1"; // synchronize account changes to LDAP
         //// If you will be allowing users to register on IRC you need these:
         "ldap_admin_dn" "%X3_LDAP_ADMIN_DN%";
         "ldap_admin_pass" "%X3_LDAP_ADMIN_PASS%";

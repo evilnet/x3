@@ -4,7 +4,7 @@ ENV GID=1234
 ENV UID=1234
 
 RUN DEBIAN_FRONTEND=noninteractive RUNLEVEL=1 apt-get update 
-RUN DEBIAN_FRONTEND=noninteractive RUNLEVEL=1 apt-get update && apt-get -y install build-essential libssl-dev autoconf2.69 automake1.11 flex byacc gawk git vim procps net-tools libtre5 libtre-dev
+RUN DEBIAN_FRONTEND=noninteractive RUNLEVEL=1 apt-get update && apt-get -y install build-essential libssl-dev autoconf2.69 automake1.11 flex byacc gawk git vim procps net-tools libtre5 libtre-dev libldap2-dev
 
 RUN mkdir -p /x3
 RUN mkdir -p /x3/x3src
@@ -22,13 +22,12 @@ RUN ./configure --prefix=/x3 --sysconfdir=/x3/data --enable-modules=snoop,memose
 
 RUN make
 RUN make install
-WORKDIR /x3
 
 USER root
 #Clean up build
 #RUN apt-get remove -y build-essential && apt-get autoremove -y
 #RUN apt-get clean
-RUN mkdir -p /x3/data && chown x3:x3 /x3/data
+RUN chown -R x3:x3 /x3/bin /x3/data
 
 USER x3
 

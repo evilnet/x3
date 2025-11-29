@@ -203,6 +203,7 @@ struct nickserv_config {
     const char *ldap_dn_fmt;
     unsigned int ldap_version;
     unsigned int ldap_autocreate;
+    unsigned int ldap_writeback;
 
     const char *ldap_admin_dn;
     const char *ldap_admin_pass;
