@@ -143,6 +143,7 @@
 #define KEY_LDAP_OPER_GROUP_LEVEL "ldap_oper_group_level"
 #define KEY_LDAP_FIELD_GROUP_MEMBER "ldap_field_group_member"
 #define KEY_LDAP_TIMEOUT "ldap_timeout"
+#define KEY_LDAP_FILTER "ldap_filter"
 #endif
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
@@ -5452,6 +5453,9 @@ nickserv_conf_read(void)
 
     str = database_get_data(conf_node, KEY_LDAP_FIELD_GROUP_MEMBER, RECDB_QSTRING);
     nickserv_conf.ldap_field_group_member = str ? str : "";
+
+    str = database_get_data(conf_node, KEY_LDAP_FILTER, RECDB_QSTRING);
+    nickserv_conf.ldap_filter = str ? str : "(objectClass=inetOrgPerson)";
 
     free_string_list(nickserv_conf.ldap_object_classes);
     strlist = database_get_data(conf_node, KEY_LDAP_OBJECT_CLASSES, RECDB_STRING_LIST);

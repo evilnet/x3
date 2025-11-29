@@ -146,7 +146,7 @@ int ldap_search_user(const char *account, LDAPMessage **entry)
    struct timeval timeout;
 
    memset(filter, 0, MAXLEN+1);
-   snprintf(filter, MAXLEN, "(&(objectClass=inetOrgPerson)(%s=%s))", nickserv_conf.ldap_field_account, account);
+   snprintf(filter, MAXLEN, "(&%s(%s=%s))", nickserv_conf.ldap_filter, nickserv_conf.ldap_field_account, account);
    /*
     Now we do a search;
     */

@@ -270,6 +270,7 @@
         "ldap_field_password" "%X3_LDAP_FIELD_PASSWORD%";
         "ldap_field_email" "%X3_LDAP_FIELD_EMAIL%";
         "ldap_field_oslevel" "%X3_LDAP_FIELD_OSLEVEL%";
+        "ldap_filter" "%X3_LDAP_FILTER%";
         ////      NOTE: X3AccountLevel is a custom LDAP attribute
         ////      that LDAP servers will not know by default. A custom
         ////      schema is required to provide it.

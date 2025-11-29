@@ -281,6 +281,7 @@
         //"ldap_field_password" "userPassword";
         //"ldap_field_email" "mail";
         //"ldap_field_oslevel" "X3AccountLevel";
+        //"ldap_filter" "(objectClass=inetOrgPerson)"; // LDAP search filter for finding users
         ////      NOTE: X3AccountLevel is a custom LDAP attribute
         ////      that LDAP servers will not know by default. A custom
         ////      schema is required to provide it.
