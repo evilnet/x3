@@ -1,4 +1,4 @@
-AM_CPPFLAGS = @RX_INCLUDES@
+AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\"
 LIBS = @LIBS@ @RX_LIBS@
 TRACK = @TRACK@
 pythonpath = @pythonpath@
@@ -6,7 +6,8 @@ PY_CFLAGS = @PY_CFLAGS@
 PY_LIBS = @PY_LIBS@
 
 
-noinst_PROGRAMS = x3 slab-read
+bin_PROGRAMS = x3
+noinst_PROGRAMS = slab-read
 EXTRA_PROGRAMS = checkdb globtest
 noinst_DATA = \
 	chanserv.help \

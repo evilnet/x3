@@ -146,7 +146,7 @@ int ldap_search_user(const char *account, LDAPMessage **entry)
    struct timeval timeout;
 
    memset(filter, 0, MAXLEN+1);
-   snprintf(filter, MAXLEN, "%s=%s", nickserv_conf.ldap_field_account, account);
+   snprintf(filter, MAXLEN, "(&%s(%s=%s))", nickserv_conf.ldap_filter, nickserv_conf.ldap_field_account, account);
    /*
     Now we do a search;
     */
@@ -156,7 +156,8 @@ int ldap_search_user(const char *account, LDAPMessage **entry)
        log_module(MAIN_LOG, LOG_ERROR, "failed to bind as admin");
        return rc;
     }
-   if( (rc = ldap_search_st(ld, nickserv_conf.ldap_base, LDAP_SCOPE_ONELEVEL, filter, NULL, 0, &timeout, &res)) != LDAP_SUCCESS) {
+   //if( (rc = ldap_search_st(ld, nickserv_conf.ldap_base, LDAP_SCOPE_ONELEVEL, filter, NULL, 0, &timeout, &res)) != LDAP_SUCCESS) {
+   if( (rc = ldap_search_st(ld, nickserv_conf.ldap_base, LDAP_SCOPE_SUBTREE, filter, NULL, 0, &timeout, &res)) != LDAP_SUCCESS) {
        log_module(MAIN_LOG, LOG_ERROR, "search failed: %s   %s: %s", nickserv_conf.ldap_base, filter, ldap_err2string(rc));
        return(rc);
    }
