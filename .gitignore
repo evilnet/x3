@@ -31,3 +31,4 @@ src/x3
 src/*.orig
 x3
 
+.vscode
