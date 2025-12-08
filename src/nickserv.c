@@ -1160,10 +1160,10 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
         cryptpass(passwd, crypted);
     }
 #ifdef WITH_LDAP
-    /* TODO: this should be behind an ldap setting to add existing users to ldap or not
-     * and also, nickserv_register is called from login, so we dont want to add
-     * the ldap account we just logged in with anyway...
-     * 
+    /* When ldap_writeback is enabled, add new registrations to LDAP.
+     * If the user already exists in LDAP (e.g., from LDAP login flow),
+     * LDAP_ALREADY_EXISTS is returned and we continue normally.
+     */
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
         int rc;
         rc = ldap_do_add(handle, (no_auth || !passwd ? NULL : crypted), NULL);
@@ -1173,7 +1173,6 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
            return 0;
         }
     }
-    */
 #endif
     hi = register_handle(handle, crypted, 0);
     hi->masks = alloc_string_list(1);
