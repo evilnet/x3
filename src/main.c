@@ -115,10 +115,10 @@ int main(int argc, char *argv[])
     GC_enable_incremental();
 #endif
 
-    if (!chdir(SYSCONFDIR))
-        log_module(MAIN_LOG, LOG_INFO, "changed to %s\n", SYSCONFDIR);
+    if (!chdir(LOCALSTATEDIR))
+        log_module(MAIN_LOG, LOG_INFO, "changed to %s\n", LOCALSTATEDIR);
     else
-        log_module(MAIN_LOG, LOG_WARNING, "unable to change directory to %s, using current directory instead\n", SYSCONFDIR);
+        log_module(MAIN_LOG, LOG_WARNING, "unable to change directory to %s, using current directory instead\n", LOCALSTATEDIR);
     run_as_daemon = 1;
     debug = 0;
     tools_init();

@@ -605,6 +605,8 @@ eval "exp_sysconfdir=$sysconfdir"
 eval "exp_sysconfdir=$exp_sysconfdir"
 eval "exp_datadir=$datadir"
 eval "exp_datadir=$exp_datadir"
+eval "exp_localstatedir=$localstatedir"
+eval "exp_localstatedir=$exp_localstatedir"
 
 cat <<EOF
 
@@ -638,7 +640,7 @@ X3 is now configured as follows:
   Binaries:           $exp_bindir
   Config files:       $exp_sysconfdir
   Help files:         $exp_datadir/x3
-  Database files:     $exp_sysconfdir
+  Database files:     $exp_localstatedir/x3
 
 Now you can proceed with compiling X3
 
