@@ -1,4 +1,4 @@
-AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\"
+AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\"
 LIBS = @LIBS@ @RX_LIBS@
 TRACK = @TRACK@
 pythonpath = @pythonpath@

@@ -33,6 +33,10 @@
 #include <sys/stat.h>
 #endif
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
 static const struct message_entry msgtab[] = {
     { "HFMSG_MISSING_HELPFILE", "The help file could not be found.  Sorry!" },
     { "HFMSG_HELP_NOT_STRING", "Help file error (help data was not a string)." },
@@ -1125,7 +1129,16 @@ open_helpfile(const char *fname, expand_func_t expand)
 {
     struct helpfile *hf;
     char *slash;
-    dict_t db = parse_database(fname);
+    char fullpath[PATH_MAX];
+    dict_t db;
+
+    if (fname[0] == '/') {
+        db = parse_database(fname);
+    } else {
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", PKGDATADIR, fname);
+        db = parse_database(fullpath);
+    }
+
     hf = calloc(1, sizeof(*hf));
     hf->expand = expand;
     hf->db = alloc_database();

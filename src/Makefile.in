@@ -332,7 +332,7 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\"
+AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\"
 noinst_DATA = \
 	chanserv.help \
 	global.help \
