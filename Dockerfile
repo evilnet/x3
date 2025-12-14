@@ -18,7 +18,7 @@ USER x3
 WORKDIR  /x3/x3src
 
 #RUN ./autogen.sh
-RUN ./configure --prefix=/x3 --sysconfdir=/x3/data --enable-modules=snoop,memoserv,helpserv
+RUN ./configure --prefix=/x3 --sysconfdir=/x3/data --localstatedir=/x3/data --enable-modules=snoop,memoserv,helpserv
 
 RUN make
 RUN make install
