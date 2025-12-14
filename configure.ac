@@ -2,18 +2,17 @@ dnl Process this file with autoconf to create a configure script.
 
 dnl General initialization.
 AC_REVISION([$Id$])
-AC_PREREQ(2.61)
+AC_PREREQ([2.71])
 AC_INIT([X3],[2.0],[evilnet-devel@lists.sourceforge.net])
 CODENAME=X3
 AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_SRCDIR(src/opserv.c)
 dnl AM_CANONICAL_TARGET must be before AM_INIT_AUTOMAKE() or autoconf whines
 AC_CANONICAL_TARGET
-AM_INIT_AUTOMAKE([gnu 1.6])
+AM_INIT_AUTOMAKE([foreign 1.6])
 AM_MAINTAINER_MODE
 
 dnl Compiler/runtime feature checks.
-AC_TYPE_SIGNAL
 AC_C_CONST
 dnl "const" *should* be in the -Werror section, but that breaks Linux. gg gcc.
 
@@ -65,10 +64,7 @@ AC_CHECK_LIB(m, main)
 AC_CHECK_LIB(GeoIP, GeoIP_open)
 
 dnl Checks for header files.
-AC_HEADER_STDC
-
-dnl will be used for portability stuff
-AC_HEADER_TIME
+AC_CHECK_HEADERS_ONCE([sys/time.h])
 AC_STRUCT_TM
 
 dnl Would rather not bail on headers, BSD has alot of the functions elsewhere. -Jedi
@@ -150,19 +146,19 @@ dnl Now figure out how to printf() a time_t
 AC_MSG_CHECKING(for time_t format)
 AC_CACHE_VAL(ac_cv_fmt_time_t, [
 ac_cv_fmt_time_t=no
-AC_COMPILE_IFELSE([#include <sys/types.h>
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
 #include <stdio.h>
 void myfunc(void) {
   time_t test=0;
   printf("%li", test);
-}], ac_cv_fmt_time_t="\"%li\"")
+}]])], [ac_cv_fmt_time_t="\"%li\""])
 if test $ac_cv_fmt_time_t = no; then
-AC_COMPILE_IFELSE([#include <sys/types.h>
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
 #include <stdio.h>
 void myfunc(void) {
   time_t test=0;
   printf("%i", test);
-}], ac_cv_fmt_time_t="\"%i\"")
+}]])], [ac_cv_fmt_time_t="\"%i\""])
 fi
 if test $ac_cv_fmt_time_t = no; then
 AC_MSG_ERROR([Cannot detect format string for time_t
