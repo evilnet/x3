@@ -130,9 +130,9 @@ int main(int argc, char *argv[])
     sigaction(SIGPIPE, &sv, NULL);
     sv.sa_handler = sigaction_rehash;
     sigaction(SIGHUP, &sv, NULL);
-    sv.sa_handler = sigaction_writedb;
-    sigaction(SIGINT, &sv, NULL);
     sv.sa_handler = sigaction_exit;
+    sigaction(SIGINT, &sv, NULL);
+    sv.sa_handler = sigaction_writedb;
     sigaction(SIGQUIT, &sv, NULL);
     sv.sa_handler = sigaction_wait;
     sigaction(SIGCHLD, &sv, NULL);
