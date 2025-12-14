@@ -30,5 +30,7 @@ src/config.h
 src/x3
 src/*.orig
 x3
-
+*~
 .vscode
+autom4te.cache/
+.claude/settings.local.json
