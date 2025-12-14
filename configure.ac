@@ -599,6 +599,13 @@ AC_OUTPUT
 
 dnl Print configuration summary
 
+eval "exp_bindir=$bindir"
+eval "exp_bindir=$exp_bindir"
+eval "exp_sysconfdir=$sysconfdir"
+eval "exp_sysconfdir=$exp_sysconfdir"
+eval "exp_datadir=$datadir"
+eval "exp_datadir=$exp_datadir"
+
 cat <<EOF
 
 Configuration summary
@@ -628,6 +635,10 @@ X3 is now configured as follows:
   python: $python
 
   Install to:         $prefix
+  Binaries:           $exp_bindir
+  Config files:       $exp_sysconfdir
+  Help files:         $exp_datadir/x3
+  Database files:     $exp_sysconfdir
 
 Now you can proceed with compiling X3
 
