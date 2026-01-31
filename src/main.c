@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
     sigaction(SIGHUP, &sv, NULL);
     sv.sa_handler = sigaction_exit;
     sigaction(SIGINT, &sv, NULL);
+    sigaction(SIGTERM, &sv, NULL);
     sv.sa_handler = sigaction_writedb;
     sigaction(SIGQUIT, &sv, NULL);
     sv.sa_handler = sigaction_wait;
