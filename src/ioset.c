@@ -23,6 +23,8 @@
 #include "timeq.h"
 #include "saxdb.h"
 #include "conf.h"
+#include "hash.h"   /* for self */
+#include "proto.h"  /* for irc_squit */
 
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
@@ -86,6 +88,7 @@ extern int uplink_connect(void);
 int clock_skew;
 int do_write_dbs;
 int do_reopen;
+int do_exit;
 static struct io_engine *engine;
 static struct io_fd *active_fd;
 
@@ -603,6 +606,13 @@ ioset_run(void) {
             extern char *services_config;
             conf_read(services_config);
             do_reopen = 0;
+        }
+        if (do_exit) {
+            log_module(MAIN_LOG, LOG_INFO, "Saving databases and exiting on signal.");
+            saxdb_write_all(NULL);
+            irc_squit(self, "Exiting on signal from console.", NULL);
+            quit_services = 1;
+            do_exit = 0;
         }
     }
 }

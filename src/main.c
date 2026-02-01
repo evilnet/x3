@@ -66,15 +66,9 @@ void sigaction_writedb(int x)
     do_write_dbs = 1;
 }
 
-void sigaction_exit(int x)
+void sigaction_exit(UNUSED_ARG(int x))
 {
-#ifndef HAVE_STRSIGNAL
-    log_module(MAIN_LOG, LOG_INFO, "Signal %d -- exiting.", x);
-#else
-    log_module(MAIN_LOG, LOG_INFO, "%s -- exiting.", strsignal(x));
-#endif
-    irc_squit(self, "Exiting on signal from console.", NULL);
-    quit_services = 1;
+    do_exit = 1;
 }
 
 void sigaction_wait(UNUSED_ARG(int x))
@@ -291,6 +285,9 @@ int main(int argc, char *argv[])
         now = time(NULL);
         srand(now);
         ioset_run();
+        /* Save databases on clean shutdown (e.g., SIGTERM from docker stop) */
+        log_module(MAIN_LOG, LOG_INFO, "Saving databases before exit.");
+        saxdb_write_all(NULL);
     }
     return 0;
 }

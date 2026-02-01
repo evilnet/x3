@@ -46,6 +46,7 @@ struct io_fd {
 };
 extern int do_write_dbs;
 extern int do_reopen;
+extern int do_exit;
 
 void ioset_init(void);
 struct io_fd *ioset_add(int fd);
