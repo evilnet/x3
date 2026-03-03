@@ -31,6 +31,7 @@
 #define CMD_ALIST               "ALIST"
 #define CMD_ASLL		"ASLL"
 #define CMD_AWAY                "AWAY"
+#define CMD_BOUNCER_TRANSFER    "BOUNCER_TRANSFER"
 #define CMD_BURST               "BURST"
 #define CMD_CLEARMODE           "CLEARMODE"
 #define CMD_CLOSE               "CLOSE"
@@ -131,6 +132,7 @@
 #define TOK_ALIST               "AL"
 #define TOK_ASLL		"LL"
 #define TOK_AWAY                "A"
+#define TOK_BOUNCER_TRANSFER    "BX"
 #define TOK_BURST               "B"
 #define TOK_CLEARMODE           "CM"
 #define TOK_CLOSE               "CLOSE"
@@ -242,6 +244,7 @@
 #define P10_ADMIN               TYPE(ADMIN)
 #define P10_ASLL		TYPE(ASLL)
 #define P10_AWAY                TYPE(AWAY)
+#define P10_BOUNCER_TRANSFER    TYPE(BOUNCER_TRANSFER)
 #define P10_BURST               TYPE(BURST)
 #define P10_CLEARMODE           TYPE(CLEARMODE)
 #define P10_CLOSE               TYPE(CLOSE)
@@ -1709,6 +1712,76 @@ static CMD_FUNC(cmd_account)
     return 1;
 }
 
+static CMD_FUNC(cmd_bouncer_transfer)
+{
+    /* Minimal BX handler for bouncer alias management.
+     * BX C: create alias (add to numeric array, not to clients dict)
+     * BX X: destroy alias (remove from numeric array)
+     * All other subcommands: ignored (IRCv3 Nefarious handles state sync)
+     */
+    struct server *s;
+    struct userNode *alias, *primary;
+    int n, slen;
+
+    if (argc < 2)
+        return 0;
+
+    if (argv[1][0] == 'C' && argv[1][1] == '\0') {
+        /* BX C <primary_numeric> <alias_numeric> <account> <sessid> :<channels> */
+        if (argc < 5 || !origin || !(GetServerH(origin)))
+            return 0;
+
+        primary = GetUserN(argv[2]);
+        if (!primary)
+            return 0;
+
+        /* Compute server and slot for alias numeric */
+        switch (strlen(argv[3])) {
+        case 5: slen = 2; break;
+        case 4: slen = 1; break;
+        default: return 0;
+        }
+        s = servers_num[base64toint(argv[3], slen)];
+        if (!s)
+            return 0;
+        n = base64toint(argv[3] + slen, strlen(argv[3]) - slen) & s->num_mask;
+
+        /* Create a minimal userNode for the alias */
+        alias = calloc(1, sizeof(*alias));
+        alias->nick = strdup(primary->nick);
+        safestrncpy(alias->ident, primary->ident, sizeof(alias->ident));
+        safestrncpy(alias->hostname, primary->hostname, sizeof(alias->hostname));
+        safestrncpy(alias->numeric, argv[3], sizeof(alias->numeric));
+        alias->timestamp = primary->timestamp;
+        alias->modes = FLAGS_ALIAS;
+        modeList_init(&alias->channels);
+        alias->uplink = s;
+        alias->num_local = n;
+        s->users[n] = alias;
+        /* Do NOT insert into clients dict — GetUserH(nick) should return primary.
+         * Do NOT set handle_info — alias is not a real login, and DelUser's
+         * call_del_user_funcs would corrupt NickServ state on cleanup.
+         * Do NOT increment uplink->clients — alias is not counted. */
+
+    } else if (argv[1][0] == 'X' && argv[1][1] == '\0') {
+        /* BX X <alias_numeric> */
+        if (argc < 3)
+            return 0;
+
+        alias = GetUserN(argv[2]);
+        if (!alias || !IsAlias(alias))
+            return 0;
+
+        /* Remove from numeric array and free */
+        alias->uplink->users[alias->num_local] = NULL;
+        modeList_clean(&alias->channels);
+        free(alias->nick);
+        free(alias);
+    }
+    /* All other BX subcommands (P, N, U): no-op for services */
+    return 1;
+}
+
 static CMD_FUNC(cmd_fakehost)
 {
     struct userNode *user;
@@ -2681,6 +2754,8 @@ init_parse(void)
     conf_register_reload(p10_conf_reload);
 
     irc_func_dict = dict_new();
+    dict_insert(irc_func_dict, CMD_BOUNCER_TRANSFER, cmd_bouncer_transfer);
+    dict_insert(irc_func_dict, TOK_BOUNCER_TRANSFER, cmd_bouncer_transfer);
     dict_insert(irc_func_dict, CMD_BURST, cmd_burst);
     dict_insert(irc_func_dict, TOK_BURST, cmd_burst);
     dict_insert(irc_func_dict, CMD_CREATE, cmd_create);
@@ -3233,6 +3308,17 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
 {
 
     verify(user);
+
+    /* Alias clients (bouncer aliases) are not in the clients dict,
+     * have no channel memberships, no handle_info, and were never
+     * counted in uplink->clients.  Just free and clear the slot. */
+    if (IsAlias(user)) {
+        user->uplink->users[user->num_local] = NULL;
+        modeList_clean(&user->channels);
+        free(user->nick);
+        free(user);
+        return;
+    }
 
     /* mark them as dead, in case anybody cares */
     user->dead = 1;
