@@ -5557,9 +5557,69 @@ handle_account(struct userNode *user, const char *stamp)
     hi = dict_find(nickserv_handle_dict, stamp, NULL);
     if(hi && timestamp && hi->registered != timestamp)
     {
-        log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match %s is not %s.", user->nick, stamp, ctime(&timestamp), 
-ctime(&hi->registered));
-        return;
+#ifdef WITH_LDAP
+        if (nickserv_conf.ldap_enable) {
+            /* Reconcile: LDAP createTimestamp is authoritative */
+            time_t ldap_time = ldap_get_user_create_time(stamp);
+
+            if (ldap_time > 0) {
+                if (ldap_time == timestamp) {
+                    /* Wire matches LDAP — correct saxdb from LDAP */
+                    char buf_wire[26], buf_saxdb[26];
+                    ctime_r(&timestamp, buf_wire);
+                    ctime_r(&hi->registered, buf_saxdb);
+                    log_module(MAIN_LOG, LOG_INFO,
+                               "%s using account %s: wire timestamp %smatches LDAP, "
+                               "correcting saxdb from %s",
+                               user->nick, stamp, buf_wire, buf_saxdb);
+                    hi->registered = ldap_time;
+                } else {
+                    /* Wire doesn't match LDAP — reject */
+                    char buf_wire[26], buf_saxdb[26], buf_ldap[26];
+                    ctime_r(&timestamp, buf_wire);
+                    ctime_r(&hi->registered, buf_saxdb);
+                    ctime_r(&ldap_time, buf_ldap);
+                    log_module(MAIN_LOG, LOG_ERROR,
+                               "%s using account %s: timestamp mismatch! "
+                               "wire=%ssaxdb=%sldap=%s",
+                               user->nick, stamp, buf_wire, buf_saxdb, buf_ldap);
+                    return;
+                }
+            } else {
+                /* LDAP unavailable or no createTimestamp — accept wire if sane */
+                if (timestamp > 946684800 && timestamp <= (time_t)(now + 60)) {
+                    char buf_wire[26], buf_saxdb[26];
+                    ctime_r(&timestamp, buf_wire);
+                    ctime_r(&hi->registered, buf_saxdb);
+                    log_module(MAIN_LOG, LOG_INFO,
+                               "%s using account %s: LDAP lookup failed, "
+                               "accepting wire timestamp %s(was %s)",
+                               user->nick, stamp, buf_wire, buf_saxdb);
+                    hi->registered = timestamp;
+                } else {
+                    char buf_wire[26], buf_saxdb[26];
+                    ctime_r(&timestamp, buf_wire);
+                    ctime_r(&hi->registered, buf_saxdb);
+                    log_module(MAIN_LOG, LOG_WARNING,
+                               "%s using account %s: LDAP lookup failed and wire "
+                               "timestamp %sis out of range (saxdb=%s), rejecting",
+                               user->nick, stamp, buf_wire, buf_saxdb);
+                    return;
+                }
+            }
+        } else
+#endif
+        {
+            /* No LDAP — original behavior: reject on mismatch */
+            char buf_wire[26], buf_saxdb[26];
+            ctime_r(&timestamp, buf_wire);
+            ctime_r(&hi->registered, buf_saxdb);
+            log_module(MAIN_LOG, LOG_WARNING,
+                       "%s using account %s but timestamp does not match: "
+                       "wire=%ssaxdb=%s",
+                       user->nick, stamp, buf_wire, buf_saxdb);
+            return;
+        }
     }
 #else
     hi = dict_find(nickserv_id_dict, stamp, NULL);
@@ -5575,7 +5635,7 @@ ctime(&hi->registered));
         char *mask;
 
         /* First attempt to get the email address from LDAP */
-        if((rc = ldap_get_user_info(stamp, &email) != LDAP_SUCCESS))
+        if(((rc = ldap_get_user_info(stamp, &email)) != LDAP_SUCCESS))
             if(nickserv_conf.email_required)
                 cont = 0;
 
@@ -5594,6 +5654,13 @@ ctime(&hi->registered));
             if(email) {
                 nickserv_set_email_addr(hi, email);
                 free(email);
+            }
+
+            /* Set registered time from LDAP createTimestamp if available */
+            {
+                time_t ldap_time = ldap_get_user_create_time(stamp);
+                if (ldap_time > 0)
+                    hi->registered = ldap_time;
             }
         }
     }

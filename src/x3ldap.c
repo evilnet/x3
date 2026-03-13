@@ -693,4 +693,87 @@ int ldap_user_exists(const char *account)
   return rc;
 }
 
+/*
+ * Parse LDAP generalized time format (YYYYMMDDHHMMSSZ) to epoch seconds.
+ * Returns 0 on failure.
+ */
+static time_t
+parse_ldap_generalized_time(const char *s)
+{
+    int y, mo, d, h, mi, sec;
+    struct tm tm;
+
+    if (!s || sscanf(s, "%4d%2d%2d%2d%2d%2d", &y, &mo, &d, &h, &mi, &sec) != 6)
+        return 0;
+
+    memset(&tm, 0, sizeof(tm));
+    tm.tm_year = y - 1900;
+    tm.tm_mon  = mo - 1;
+    tm.tm_mday = d;
+    tm.tm_hour = h;
+    tm.tm_min  = mi;
+    tm.tm_sec  = sec;
+    tm.tm_isdst = 0;
+
+    return timegm(&tm);
+}
+
+/* Fetch the LDAP createTimestamp for an account.
+ * Returns the epoch timestamp, or 0 on failure.
+ * createTimestamp is an LDAP operational attribute in generalized time format.
+ */
+time_t ldap_get_user_create_time(const char *account)
+{
+    int rc;
+    char filter[MAXLEN+1];
+    LDAPMessage *res, *entry;
+    struct berval **values;
+    struct timeval timeout;
+    time_t result = 0;
+    char *attrs[] = { "createTimestamp", NULL };
+
+    if (!nickserv_conf.ldap_enable)
+        return 0;
+
+    snprintf(filter, MAXLEN, "%s=%s", nickserv_conf.ldap_field_account, account);
+
+    timeout.tv_usec = 0;
+    timeout.tv_sec  = nickserv_conf.ldap_timeout;
+
+    if (!admin_bind && LDAP_SUCCESS != (rc = ldap_do_admin_bind())) {
+        log_module(MAIN_LOG, LOG_ERROR, "ldap_get_user_create_time: failed to bind as admin");
+        return 0;
+    }
+
+    rc = ldap_search_st(ld, nickserv_conf.ldap_base, LDAP_SCOPE_ONELEVEL,
+                        filter, attrs, 0, &timeout, &res);
+    if (rc != LDAP_SUCCESS) {
+        log_module(MAIN_LOG, LOG_ERROR, "ldap_get_user_create_time: search failed for %s: %s",
+                   account, ldap_err2string(rc));
+        return 0;
+    }
+
+    if (ldap_count_entries(ld, res) != 1) {
+        log_module(MAIN_LOG, LOG_DEBUG, "ldap_get_user_create_time: got %d entries for %s",
+                   ldap_count_entries(ld, res), account);
+        ldap_msgfree(res);
+        return 0;
+    }
+
+    entry = ldap_first_entry(ld, res);
+    values = ldap_get_values_len(ld, entry, "createTimestamp");
+    if (values && values[0]) {
+        result = parse_ldap_generalized_time(values[0]->bv_val);
+        log_module(MAIN_LOG, LOG_DEBUG, "ldap_get_user_create_time: %s = %s -> %lu",
+                   account, values[0]->bv_val, (unsigned long)result);
+        ldap_value_free_len(values);
+    } else {
+        log_module(MAIN_LOG, LOG_DEBUG, "ldap_get_user_create_time: no createTimestamp for %s",
+                   account);
+    }
+
+    ldap_msgfree(res);
+    return result;
+}
+
 #endif

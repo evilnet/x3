@@ -1714,10 +1714,11 @@ static CMD_FUNC(cmd_account)
 
 static CMD_FUNC(cmd_bouncer_transfer)
 {
-    /* Minimal BX handler for bouncer alias management.
+    /* BX handler for bouncer alias management.
      * BX C: create alias (add to numeric array, not to clients dict)
+     * BX P: promote alias to primary (transfer identity + numeric routing)
      * BX X: destroy alias (remove from numeric array)
-     * All other subcommands: ignored (IRCv3 Nefarious handles state sync)
+     * Other subcommands (N, U): ignored (IRCv3 Nefarious handles state sync)
      */
     struct server *s;
     struct userNode *alias, *primary;
@@ -1763,6 +1764,111 @@ static CMD_FUNC(cmd_bouncer_transfer)
          * call_del_user_funcs would corrupt NickServ state on cleanup.
          * Do NOT increment uplink->clients — alias is not counted. */
 
+    } else if (argv[1][0] == 'P' && argv[1][1] == '\0') {
+        /* BX P <old_numeric> <new_numeric> <sessid> <nick>
+         * Promote: new_numeric becomes the primary, old_numeric is destroyed.
+         * We need to transfer the user identity (clients dict, handle_info)
+         * from old to new so services route messages correctly. */
+        struct userNode *old_primary, *new_node;
+
+        if (argc < 6)
+            return 0;
+
+        old_primary = GetUserN(argv[2]);
+        new_node = GetUserN(argv[3]);
+
+        if (!old_primary)
+            return 1; /* Already gone, nothing to do */
+
+        if (new_node && IsAlias(new_node)) {
+            /* Alias exists from BX C — transfer identity from old to new.
+             * Move old_primary's clients dict entry, handle_info, channels
+             * to new_node, then destroy old_primary. */
+
+            /* Remove old from clients dict */
+            if (old_primary == dict_find(clients, old_primary->nick, NULL))
+                dict_remove(clients, old_primary->nick);
+
+            /* Transfer identity to alias node */
+            free(new_node->nick);
+            new_node->nick = strdup(old_primary->nick); /* local nick is canonical */
+            safestrncpy(new_node->ident, old_primary->ident, sizeof(new_node->ident));
+            safestrncpy(new_node->hostname, old_primary->hostname, sizeof(new_node->hostname));
+            new_node->handle_info = old_primary->handle_info;
+            new_node->timestamp = old_primary->timestamp;
+            new_node->modes = old_primary->modes & ~FLAGS_ALIAS;
+            new_node->uplink->clients++;
+
+            /* Insert into clients dict under the nick */
+            dict_insert(clients, new_node->nick, new_node);
+
+            /* Update handle_info's authed user linked list:
+             * replace old_primary with new_node in the chain. */
+            if (new_node->handle_info) {
+                struct userNode *prev = NULL, *cur;
+                for (cur = new_node->handle_info->users; cur; prev = cur, cur = cur->next_authed) {
+                    if (cur == old_primary) {
+                        new_node->next_authed = old_primary->next_authed;
+                        if (prev)
+                            prev->next_authed = new_node;
+                        else
+                            new_node->handle_info->users = new_node;
+                        break;
+                    }
+                }
+            }
+
+            /* Destroy old primary — clear its handle_info so DelUser
+             * doesn't call del_user_funcs and corrupt NickServ state. */
+            old_primary->handle_info = NULL;
+            old_primary->uplink->clients--;
+            old_primary->uplink->users[old_primary->num_local] = NULL;
+            while (old_primary->channels.used > 0)
+                DelChannelUser(old_primary, old_primary->channels.list[old_primary->channels.used-1]->channel, NULL, 0);
+            modeList_clean(&old_primary->channels);
+            if (old_primary->version_reply) free(old_primary->version_reply);
+            if (old_primary->sslfp) free(old_primary->sslfp);
+            if (old_primary->mark) free(old_primary->mark);
+            free_string_list(old_primary->marks);
+            if (old_primary->country_code) free(old_primary->country_code);
+            if (old_primary->city) free(old_primary->city);
+            if (old_primary->region) free(old_primary->region);
+            if (old_primary->postal_code) free(old_primary->postal_code);
+            free(old_primary->nick);
+            free(old_primary);
+
+        } else if (!new_node) {
+            /* New numeric unknown (no BX C): swap old_primary's numeric
+             * to the new one in-place.  Client keeps its nick, channels,
+             * handle_info — only the numeric routing changes. */
+
+            /* Compute new server and slot */
+            switch (strlen(argv[3])) {
+            case 5: slen = 2; break;
+            case 4: slen = 1; break;
+            default: return 1;
+            }
+            s = servers_num[base64toint(argv[3], slen)];
+            if (!s)
+                return 1;
+            n = base64toint(argv[3] + slen, strlen(argv[3]) - slen) & s->num_mask;
+
+            /* Remove from old numeric slot */
+            old_primary->uplink->users[old_primary->num_local] = NULL;
+            old_primary->uplink->clients--;
+
+            /* Move to new server/slot */
+            old_primary->uplink = s;
+            old_primary->num_local = n;
+            safestrncpy(old_primary->numeric, argv[3], sizeof(old_primary->numeric));
+            s->users[n] = old_primary;
+            s->clients++;
+
+            /* Don't rename from wire nick — local nick is canonical.
+             * Wire nick mismatch is a desync, not something to propagate. */
+        }
+        /* else: new_node exists but isn't an alias — shouldn't happen, ignore */
+
     } else if (argv[1][0] == 'X' && argv[1][1] == '\0') {
         /* BX X <alias_numeric> */
         if (argc < 3)
@@ -1778,7 +1884,7 @@ static CMD_FUNC(cmd_bouncer_transfer)
         free(alias->nick);
         free(alias);
     }
-    /* All other BX subcommands (P, N, U): no-op for services */
+    /* Other BX subcommands (N, U): no-op for services */
     return 1;
 }
 
