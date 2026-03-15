@@ -1174,9 +1174,16 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
     hi->ignores = alloc_string_list(1);
     hi->users = NULL;
     hi->language = lang_C;
-    hi->registered = now;
     hi->lastseen = now;
     hi->flags = HI_DEFAULT_FLAGS;
+#ifdef WITH_LDAP
+    /* Use LDAP createTimestamp as authoritative registration time */
+    if (nickserv_conf.ldap_enable) {
+        time_t ldap_time = ldap_get_user_create_time(handle);
+        hi->registered = (ldap_time > 0) ? ldap_time : now;
+    } else
+#endif
+    hi->registered = now;
     if (settee && !no_auth)
         set_user_handle_info(settee, hi, 1);
 
