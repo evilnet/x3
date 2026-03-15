@@ -88,10 +88,8 @@
 #define FLAGS_HIDEOPER          0x08000000 /* user is a hidden IRCop +H */
 #define FLAGS_NOLINK            0x10000000 /* user has opted out of channel redirection +L */
 #define FLAGS_COMMONCHANSONLY   0x20000000 /* user only receives PMs from users on same cahnnels +q */
-#define FLAGS_ALIAS             0x40000000 /* bouncer alias — in numeric array, not in clients dict */
 
 #define IsOper(x)               ((x)->modes & FLAGS_OPER)
-#define IsAlias(x)              ((x)->modes & FLAGS_ALIAS)
 #define IsService(x)            ((x)->modes & FLAGS_SERVICE)
 #define IsDeaf(x)               ((x)->modes & FLAGS_DEAF)
 #define IsInvisible(x)          ((x)->modes & FLAGS_INVISIBLE)

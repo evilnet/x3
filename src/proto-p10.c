@@ -1714,61 +1714,22 @@ static CMD_FUNC(cmd_account)
 
 static CMD_FUNC(cmd_bouncer_transfer)
 {
-    /* BX handler for bouncer alias management.
-     * BX C: create alias (add to numeric array, not to clients dict)
-     * BX P: promote alias to primary (transfer identity + numeric routing)
-     * BX X: destroy alias (remove from numeric array)
-     * Other subcommands (N, U): ignored (IRCv3 Nefarious handles state sync)
+    /* BX handler — only BX P (promote) is meaningful for services.
+     * X3 doesn't maintain alias state (BX C/X are IRCv3-only), so
+     * promotion is a simple numeric swap on the primary's userNode.
+     * Other subcommands (C, X, N, U) are no-ops.
      */
     struct server *s;
-    struct userNode *alias, *primary;
     int n, slen;
 
     if (argc < 2)
         return 0;
 
-    if (argv[1][0] == 'C' && argv[1][1] == '\0') {
-        /* BX C <primary_numeric> <alias_numeric> <account> <sessid> :<channels> */
-        if (argc < 5 || !origin || !(GetServerH(origin)))
-            return 0;
-
-        primary = GetUserN(argv[2]);
-        if (!primary)
-            return 0;
-
-        /* Compute server and slot for alias numeric */
-        switch (strlen(argv[3])) {
-        case 5: slen = 2; break;
-        case 4: slen = 1; break;
-        default: return 0;
-        }
-        s = servers_num[base64toint(argv[3], slen)];
-        if (!s)
-            return 0;
-        n = base64toint(argv[3] + slen, strlen(argv[3]) - slen) & s->num_mask;
-
-        /* Create a minimal userNode for the alias */
-        alias = calloc(1, sizeof(*alias));
-        alias->nick = strdup(primary->nick);
-        safestrncpy(alias->ident, primary->ident, sizeof(alias->ident));
-        safestrncpy(alias->hostname, primary->hostname, sizeof(alias->hostname));
-        safestrncpy(alias->numeric, argv[3], sizeof(alias->numeric));
-        alias->timestamp = primary->timestamp;
-        alias->modes = FLAGS_ALIAS;
-        modeList_init(&alias->channels);
-        alias->uplink = s;
-        alias->num_local = n;
-        s->users[n] = alias;
-        /* Do NOT insert into clients dict — GetUserH(nick) should return primary.
-         * Do NOT set handle_info — alias is not a real login, and DelUser's
-         * call_del_user_funcs would corrupt NickServ state on cleanup.
-         * Do NOT increment uplink->clients — alias is not counted. */
-
-    } else if (argv[1][0] == 'P' && argv[1][1] == '\0') {
+    if (argv[1][0] == 'P' && argv[1][1] == '\0') {
         /* BX P <old_numeric> <new_numeric> <sessid> <nick>
-         * Promote: new_numeric becomes the primary, old_numeric is destroyed.
-         * We need to transfer the user identity (clients dict, handle_info)
-         * from old to new so services route messages correctly. */
+         * Promote: swap old_primary's numeric routing to the new server/slot.
+         * The userNode keeps its nick, clients dict entry, handle_info,
+         * channels — only the P10 numeric changes. */
         struct userNode *old_primary, *new_node;
 
         if (argc < 6)
@@ -1816,22 +1777,8 @@ static CMD_FUNC(cmd_bouncer_transfer)
         s->users[n] = old_primary;
         s->clients++;
 
-    } else if (argv[1][0] == 'X' && argv[1][1] == '\0') {
-        /* BX X <alias_numeric> */
-        if (argc < 3)
-            return 0;
-
-        alias = GetUserN(argv[2]);
-        if (!alias || !IsAlias(alias))
-            return 0;
-
-        /* Remove from numeric array and free */
-        alias->uplink->users[alias->num_local] = NULL;
-        modeList_clean(&alias->channels);
-        free(alias->nick);
-        free(alias);
     }
-    /* Other BX subcommands (N, U): no-op for services */
+    /* Other BX subcommands (C, X, N, U): no-op for services */
     return 1;
 }
 
@@ -3368,17 +3315,6 @@ DelUser(struct userNode* user, struct userNode *killer, int announce, const char
 {
 
     verify(user);
-
-    /* Alias clients (bouncer aliases) are not in the clients dict,
-     * have no channel memberships, no handle_info, and were never
-     * counted in uplink->clients.  Just free and clear the slot. */
-    if (IsAlias(user)) {
-        user->uplink->users[user->num_local] = NULL;
-        modeList_clean(&user->channels);
-        free(user->nick);
-        free(user);
-        return;
-    }
 
     /* mark them as dead, in case anybody cares */
     user->dead = 1;
