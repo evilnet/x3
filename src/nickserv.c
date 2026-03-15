@@ -5559,7 +5559,7 @@ handle_account(struct userNode *user, const char *stamp)
     if(colon && colon[1])
     {
         *colon = 0;
-        timestamp = atoi(colon+1);
+        timestamp = strtol(colon+1, NULL, 10);
     }
     hi = dict_find(nickserv_handle_dict, stamp, NULL);
     if(hi && timestamp && hi->registered != timestamp)
@@ -5572,45 +5572,36 @@ handle_account(struct userNode *user, const char *stamp)
             if (ldap_time > 0) {
                 if (ldap_time == timestamp) {
                     /* Wire matches LDAP — correct saxdb from LDAP */
-                    char buf_wire[26], buf_saxdb[26];
-                    ctime_r(&timestamp, buf_wire);
-                    ctime_r(&hi->registered, buf_saxdb);
                     log_module(MAIN_LOG, LOG_INFO,
-                               "%s using account %s: wire timestamp %smatches LDAP, "
-                               "correcting saxdb from %s",
-                               user->nick, stamp, buf_wire, buf_saxdb);
+                               "%s using account %s: wire timestamp %lu matches LDAP, "
+                               "correcting saxdb from %lu",
+                               user->nick, stamp, (unsigned long)timestamp,
+                               (unsigned long)hi->registered);
                     hi->registered = ldap_time;
                 } else {
                     /* Wire doesn't match LDAP — reject */
-                    char buf_wire[26], buf_saxdb[26], buf_ldap[26];
-                    ctime_r(&timestamp, buf_wire);
-                    ctime_r(&hi->registered, buf_saxdb);
-                    ctime_r(&ldap_time, buf_ldap);
                     log_module(MAIN_LOG, LOG_ERROR,
                                "%s using account %s: timestamp mismatch! "
-                               "wire=%ssaxdb=%sldap=%s",
-                               user->nick, stamp, buf_wire, buf_saxdb, buf_ldap);
+                               "wire=%lu saxdb=%lu ldap=%lu",
+                               user->nick, stamp, (unsigned long)timestamp,
+                               (unsigned long)hi->registered, (unsigned long)ldap_time);
                     return;
                 }
             } else {
                 /* LDAP unavailable or no createTimestamp — accept wire if sane */
                 if (timestamp > 946684800 && timestamp <= (time_t)(now + 60)) {
-                    char buf_wire[26], buf_saxdb[26];
-                    ctime_r(&timestamp, buf_wire);
-                    ctime_r(&hi->registered, buf_saxdb);
                     log_module(MAIN_LOG, LOG_INFO,
                                "%s using account %s: LDAP lookup failed, "
-                               "accepting wire timestamp %s(was %s)",
-                               user->nick, stamp, buf_wire, buf_saxdb);
+                               "accepting wire timestamp %lu (was %lu)",
+                               user->nick, stamp, (unsigned long)timestamp,
+                               (unsigned long)hi->registered);
                     hi->registered = timestamp;
                 } else {
-                    char buf_wire[26], buf_saxdb[26];
-                    ctime_r(&timestamp, buf_wire);
-                    ctime_r(&hi->registered, buf_saxdb);
                     log_module(MAIN_LOG, LOG_WARNING,
                                "%s using account %s: LDAP lookup failed and wire "
-                               "timestamp %sis out of range (saxdb=%s), rejecting",
-                               user->nick, stamp, buf_wire, buf_saxdb);
+                               "timestamp %lu is out of range (saxdb=%lu), rejecting",
+                               user->nick, stamp, (unsigned long)timestamp,
+                               (unsigned long)hi->registered);
                     return;
                 }
             }
@@ -5618,13 +5609,11 @@ handle_account(struct userNode *user, const char *stamp)
 #endif
         {
             /* No LDAP — original behavior: reject on mismatch */
-            char buf_wire[26], buf_saxdb[26];
-            ctime_r(&timestamp, buf_wire);
-            ctime_r(&hi->registered, buf_saxdb);
             log_module(MAIN_LOG, LOG_WARNING,
                        "%s using account %s but timestamp does not match: "
-                       "wire=%ssaxdb=%s",
-                       user->nick, stamp, buf_wire, buf_saxdb);
+                       "wire=%lu saxdb=%lu",
+                       user->nick, stamp, (unsigned long)timestamp,
+                       (unsigned long)hi->registered);
             return;
         }
     }

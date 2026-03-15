@@ -1789,15 +1789,47 @@ static CMD_FUNC(cmd_bouncer_transfer)
             if (old_primary == dict_find(clients, old_primary->nick, NULL))
                 dict_remove(clients, old_primary->nick);
 
-            /* Transfer identity to alias node */
+            /* Transfer identity to alias node — copy all userNode fields
+             * from old primary so the promoted node has complete state. */
             free(new_node->nick);
-            new_node->nick = strdup(old_primary->nick); /* local nick is canonical */
+            new_node->nick = strdup(old_primary->nick);
             safestrncpy(new_node->ident, old_primary->ident, sizeof(new_node->ident));
+            safestrncpy(new_node->info, old_primary->info, sizeof(new_node->info));
             safestrncpy(new_node->hostname, old_primary->hostname, sizeof(new_node->hostname));
+            safestrncpy(new_node->fakehost, old_primary->fakehost, sizeof(new_node->fakehost));
+            safestrncpy(new_node->crypthost, old_primary->crypthost, sizeof(new_node->crypthost));
+            safestrncpy(new_node->cryptip, old_primary->cryptip, sizeof(new_node->cryptip));
+            safestrncpy(new_node->sethost, old_primary->sethost, sizeof(new_node->sethost));
+            new_node->ip = old_primary->ip;
             new_node->handle_info = old_primary->handle_info;
             new_node->timestamp = old_primary->timestamp;
+            new_node->idle_since = old_primary->idle_since;
             new_node->modes = old_primary->modes & ~FLAGS_ALIAS;
             new_node->uplink->clients++;
+
+            /* Transfer heap-allocated fields (move, don't copy) */
+            new_node->version_reply = old_primary->version_reply;
+            old_primary->version_reply = NULL;
+            new_node->sslfp = old_primary->sslfp;
+            old_primary->sslfp = NULL;
+            new_node->mark = old_primary->mark;
+            old_primary->mark = NULL;
+            new_node->marks = old_primary->marks;
+            old_primary->marks = NULL;
+            new_node->country_name = old_primary->country_name;
+            old_primary->country_name = NULL;
+            new_node->country_code = old_primary->country_code;
+            old_primary->country_code = NULL;
+            new_node->city = old_primary->city;
+            old_primary->city = NULL;
+            new_node->region = old_primary->region;
+            old_primary->region = NULL;
+            new_node->postal_code = old_primary->postal_code;
+            old_primary->postal_code = NULL;
+            new_node->latitude = old_primary->latitude;
+            new_node->longitude = old_primary->longitude;
+            new_node->dma_code = old_primary->dma_code;
+            new_node->area_code = old_primary->area_code;
 
             /* Insert into clients dict under the nick */
             dict_insert(clients, new_node->nick, new_node);
@@ -1818,24 +1850,20 @@ static CMD_FUNC(cmd_bouncer_transfer)
                 }
             }
 
-            /* Destroy old primary — clear its handle_info so DelUser
-             * doesn't call del_user_funcs and corrupt NickServ state. */
+            /* Destroy old primary — clear handle_info so DelUser doesn't
+             * call del_user_funcs and corrupt NickServ state.  Use
+             * dead_users deferred-free to avoid use-after-free if other
+             * code in this dispatch cycle holds a pointer. */
             old_primary->handle_info = NULL;
             old_primary->uplink->clients--;
             old_primary->uplink->users[old_primary->num_local] = NULL;
             while (old_primary->channels.used > 0)
                 DelChannelUser(old_primary, old_primary->channels.list[old_primary->channels.used-1]->channel, NULL, 0);
             modeList_clean(&old_primary->channels);
-            if (old_primary->version_reply) free(old_primary->version_reply);
-            if (old_primary->sslfp) free(old_primary->sslfp);
-            if (old_primary->mark) free(old_primary->mark);
-            free_string_list(old_primary->marks);
-            if (old_primary->country_code) free(old_primary->country_code);
-            if (old_primary->city) free(old_primary->city);
-            if (old_primary->region) free(old_primary->region);
-            if (old_primary->postal_code) free(old_primary->postal_code);
-            free(old_primary->nick);
-            free(old_primary);
+            if (dead_users.size)
+                userList_append(&dead_users, old_primary);
+            else
+                free_user(old_primary);
 
         } else if (!new_node) {
             /* New numeric unknown (no BX C): swap old_primary's numeric
