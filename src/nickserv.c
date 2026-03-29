@@ -1564,7 +1564,7 @@ static NICKSERV_FUNC(cmd_oregister)
         return 0;
     }
     if (nickserv_conf.email_required) {
-        NICKSERV_MIN_PARMS(3);
+        NICKSERV_MIN_PARMS(4);
         email = argv[3];
         if (argc > 4) {/* take: "acct pass email mask nick" or "acct pass email mask" or "acct pass email nick" */
             if (strchr(argv[4], '@'))
