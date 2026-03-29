@@ -149,37 +149,50 @@ unreg_sasl_input_func(sasl_input_func_t handler, void *extra)
     sif_used--;
 }
 
-new_user_func_t *nuf_list;
-void **nuf_list_extra;
-unsigned int nuf_size = 0, nuf_used = 0;
+void
+nuf_free_ehf(struct eh_func *ehf)
+{
+    if (ehf->extra != NULL)
+        free(ehf->extra);
+}
+
+DEFINE_EH_FUNC_LIST(nuf_list, EH_ADD_TAIL, nuf_free_ehf);
+
+int
+nuf_wrapper(void *extra, void *callextra)
+{
+    struct funcargs *fa = (struct funcargs *)extra;
+    struct userNode *user = (struct userNode *)callextra;
+
+    ((new_user_func_t)fa->func)(user, fa->extra);
+
+    if (user->dead)
+        return EH_STOP;
+
+    return EH_CONT;
+}
+
+void
+reg_new_user_func_pos(new_user_func_t handler, void *extra, int pos)
+{
+    struct funcargs *fa = malloc(sizeof(struct funcargs));
+
+    fa->func = (void *)handler;
+    fa->extra = extra;
+
+    reg_hook_func_pos(&nuf_list, nuf_wrapper, (void *)fa, pos);
+}
 
 void
 reg_new_user_func(new_user_func_t handler, void *extra)
 {
-    if (nuf_used == nuf_size) {
-        if (nuf_size) {
-            nuf_size <<= 1;
-            nuf_list = realloc(nuf_list, nuf_size*sizeof(new_user_func_t));
-            nuf_list_extra = realloc(nuf_list_extra, nuf_size*sizeof(void*));
-        } else {
-            nuf_size = 8;
-            nuf_list = malloc(nuf_size*sizeof(new_user_func_t));
-            nuf_list_extra = malloc(nuf_size*sizeof(void*));
-        }
-    }
-    nuf_list[nuf_used] = handler;
-    nuf_list_extra[nuf_used++] = extra;
+    reg_new_user_func_pos(handler, extra, EH_ADD_DEFAULT);
 }
 
 void
 call_new_user_funcs(struct userNode* user)
 {
-    unsigned int i;
-
-    for (i = 0; i < nuf_used && !(user->dead); ++i)
-    {
-        nuf_list[i](user, nuf_list_extra[i]);
-    }
+    call_hook_func_args(&nuf_list, (void *)user);
 }
 
 static nick_change_func_t *ncf2_list;
@@ -472,26 +485,51 @@ reg_new_channel_func(new_channel_func_t handler, void *extra)
     ncf_list_extra[ncf_used++] = extra;
 }
 
-static join_func_t *jf_list;
-static void **jf_list_extra;
-static unsigned int jf_size = 0, jf_used = 0;
+void
+jf_free_ehf(struct eh_func *ehf)
+{
+    if (ehf->extra != NULL)
+        free(ehf->extra);
+}
+
+DEFINE_EH_FUNC_LIST(jf_list, EH_ADD_TAIL, jf_free_ehf);
+
+int
+jf_wrapper(void *extra, void *callextra)
+{
+    struct funcargs *fa = (struct funcargs *)extra;
+    struct modeNode *mNode = (struct modeNode *)callextra;
+    struct userNode *user = mNode->user;
+
+    ((join_func_t)fa->func)(mNode, fa->extra);
+
+    if (user->dead)
+        return EH_STOP;
+
+    return EH_CONT;
+}
+
+void
+reg_join_func_pos(join_func_t handler, void *extra, int pos)
+{
+    struct funcargs *fa = malloc(sizeof(struct funcargs));
+
+    fa->func = (void *)handler;
+    fa->extra = extra;
+
+    reg_hook_func_pos(&jf_list, jf_wrapper, (void *)fa, pos);
+}
 
 void
 reg_join_func(join_func_t handler, void *extra)
 {
-    if (jf_used == jf_size) {
-	if (jf_size) {
-	    jf_size <<= 1;
-	    jf_list = realloc(jf_list, jf_size*sizeof(join_func_t));
-        jf_list_extra = realloc(jf_list_extra, jf_size*sizeof(void*));
-	} else {
-	    jf_size = 8;
-	    jf_list = malloc(jf_size*sizeof(join_func_t));
-        jf_list_extra = malloc(jf_size*sizeof(void*));
-	}
-    }
-    jf_list[jf_used] = handler;
-    jf_list_extra[jf_used++] = extra;
+    reg_join_func_pos(handler, extra, EH_ADD_DEFAULT);
+}
+
+void
+call_join_funcs(struct modeNode *mNode)
+{
+    call_hook_func_args(&jf_list, (void *)mNode);
 }
 
 int rel_age;
@@ -705,7 +743,6 @@ struct modeNode *
 AddChannelUser(struct userNode *user, struct chanNode* channel)
 {
 	struct modeNode *mNode;
-	unsigned int n;
 
 	mNode = GetUserMode(channel, user);
 	if (mNode)
@@ -737,12 +774,7 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
             irc_join(user, channel);
         }
 
-        for (n=0; (n<jf_used) && !user->dead; n++) {
-            /* Callbacks return true if they kick or kill the user,
-             * and we can continue without removing mNode. */
-            if (jf_list[n](mNode, jf_list_extra[n]))
-                return NULL;
-        }
+        call_join_funcs(mNode);
 
 	return mNode;
 }
@@ -1061,16 +1093,14 @@ hash_cleanup(UNUSED_ARG(void *extra))
 
     free(slf_list);
     free(slf_list_extra);
-    free(nuf_list);
-    free(nuf_list_extra);
+    free_hook_func_list(&nuf_list);
     free(ncf2_list);
     free(ncf2_list_extra);
     free(duf_list);
     free(duf_list_extra);
     free(ncf_list);
     free(ncf_list_extra);
-    free(jf_list);
-    free(jf_list_extra);
+    free_hook_func_list(&jf_list);
     free(dcf_list);
     free(dcf_list_extra);
     free(pf_list);

@@ -316,10 +316,10 @@ snoop_init(void) {
     reg_exit_func(snoop_cleanup, NULL);
     conf_register_reload(snoop_conf_read);
     reg_nick_change_func(snoop_nick_change, NULL);
-    reg_join_func(snoop_join, NULL);
+    reg_join_func_pos(snoop_join, NULL, EH_ADD_HEAD);
     reg_part_func(snoop_part, NULL);
     reg_kick_func(snoop_kick, NULL);
-    reg_new_user_func(snoop_new_user, NULL);
+    reg_new_user_func_pos(snoop_new_user, NULL, EH_ADD_HEAD);
     reg_del_user_func(snoop_del_user, NULL);
     reg_auth_func(snoop_auth, NULL);
     reg_channel_mode_func(snoop_channel_mode, NULL);

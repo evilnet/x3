@@ -16,43 +16,32 @@
 "uplinks" {
     // This first entry connects to an ircd on teh same server an X3..
     "Hub" {  // This can be any string, just used here for your convenience
-        "address"        "127.0.0.1";  // The IP address of the server
-        "port"           "8888";       // What TCP port to connect to
-        "password"       "laoo,rpe";  // Both of these passwords must match 
-        "uplink_password" "laoo,rpe";  //   the one in the ircd C line for X3.
+        "address"        "%X3_UPLINK_ADDRESS%";  // The IP address of the server
+        "port"           "%X3_UPLINK_PORT%";       // What TCP port to connect to
+        "password"       "%X3_UPLINK_PASSWORD%";  // Both of these passwords must match 
+        "uplink_password" "%X3_UPLINK_PASSWORD%";  //   the one in the ircd C line for X3.
         "enabled"        "1";   // Set to 0 to disable connecting to this server
         "max_tries"      "10";  // How many times to attemt reconnect before quitting
-        "bind_address"   "127.0.0.1";  // LOCAL IP address we want to connect FROM
-    };
-    // This next one connects to an ircd on another server
-    "Hub-west" {
-        // IP address and port the server listens on
-        "address"        "192.168.234.123"; // IP of remote server
-        "port"           "8888";
-        "password"       "ekrpat";  // C line passwords
-        "uplink_password" "ekrpat";  // Set same as above
-        "enabled"        "0"; // Set this to 1 to use this server..
-        "max_tries"      "1";
-        "bind_address"   "192.168.1.10";
+        "bind_address"   "%X3_GENERAL_BIND_ADDRESS%";  // LOCAL IP address we want to connect FROM
     };
 };
 
 /* SERVER (Details about our existance) **********************************
  */
 "server" {
-    "hostname" "X3.AfterNET.Services";  // The servers name. (Use this in the ircd's C line)
-    "description" "AfterNET Network Services"; // Shows up in /links.
-    "network" "AfterNET";
-    "hidden_host" "Users.AfterNET.Org"; // set this if you enabled Nefarious' +x mode
+    "hostname" "%X3_GENERAL_NAME%";  // The servers name. (Use this in the ircd's C line)
+    "description" "%X3_GENERAL_DESCRIPTION%"; // Shows up in /links.
+    "network" "%X3_GENERAL_DOMAIN%";
+    "hidden_host" "Users.%X3_GENERAL_DOMAIN%"; // set this if you enabled Nefarious' +x mode
     /* hidden_host should match the F:HIDDEN_HOST: line in your ircu's ircd.conf;
      * x3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
     "hidden_host_type" "1"; // change this to 2 if you use Nefarious's style 2 host hiding.
     "key1" "45432"; // Set these key values to the network KEY values you use
-    "key2" "76934"; // for host hiding style 2. If you are using Nefarious 1.3.0 (type 8)
-    "key3" "98336"; // then these are ignored.
-    "prefix" "AfterNET"; // If you use style 2 then this is the name that is prefixed to hosts.
-    "numeric" "51"; // hint: If you get collisions on link, CHANGE THIS.
+    "key2" "76934"; // for host hiding style 2.
+    "key3" "98336"; // 
+    "prefix" "NETWORK"; // If you use style 2 then this is the name that is prefixed to hosts.
+    "numeric" "%X3_GENERAL_NUMERIC%"; // hint: If you get collisions on link, CHANGE THIS.
     /* Type handles some changes in Nefarious from version to version.
      * 4 - nefarious 0.4.x and other ircds
      * 5 - nefarious 1.0.x and higher (Obselete)
@@ -71,9 +60,9 @@
     // Admin information is traditionally: location, location, email
     // This shows up on a /admin x3.afternet.services command.
     "admin" (
-         "AfterNET IRC Network", 
-         "www.afternet.org", 
-         "Support Staff <support@afternet.org>"
+         "%X3_GENERAL_DOMAIN%", 
+         "www.%X3_GENERAL_DOMAIN%", 
+         "Support Staff <support@%X3_GENERAL_DOMAIN%>"
     );
     /* extended_accounts -
      * enable this for nefarious 0.4.x and higher and in ircd.conf add F:EXTENDED_ACCOUNTS:TRUE. 
@@ -233,8 +222,8 @@
         // How to integrate with email cookies?
         // In order to use mail, mail must be enabled and configured
         // down below in the mail section of this config file.
-        "email_enabled" "1"; // Allow account verification and password reset by email.
-        "email_required" "1"; // if above is 1, require verification to authenticate.
+        "email_enabled" "0"; // Allow account verification and password reset by email.
+        "email_required" "0"; // if above is 1, require verification to authenticate.
         "cookie_timeout" "2d"; // how long before we expire cookies?
         "accounts_per_email" "1"; // How many people can use the same email account.
 
@@ -263,25 +252,25 @@
         // LDAP stands for light directory access protocol. its what many larger orgs use for central user/password management. Its also the core technology behind windows active directory.
         // If you have an ldap server, you can configure X3 to use it instead of saving passwords locally.
 
-        //"ldap_enable" "0";
-        //"ldap_uri"  "ldaps://ldap.yournetwork.server:636";
-        //"ldap_base" "ou=Users,dc=afternet,dc=org";
-        //"ldap_dn_fmt" "uid=%s,ou=Users,dc=afternet,dc=org";
+        "ldap_enable" "%X3_LDAP_ENABLE%";
+        "ldap_uri"  "%X3_LDAP_URI%";
+        "ldap_base" "%X3_LDAP_BASE%";
+        "ldap_dn_fmt" "%X3_LDAP_DN_FMT%";
         //"ldap_autocreate" "1"; // automatically create accounts if they exist in ldap but not x3
         //"ldap_writeback" "1"; // synchronize account changes to LDAP
         //// If you will be allowing users to register on IRC you need these:
-        //"ldap_admin_dn" "cn=Admin,dc=afternet,dc=org";
-        //"ldap_admin_pass" "xxxxxxxxxxx";
+        "ldap_admin_dn" "%X3_LDAP_ADMIN_DN%";
+        "ldap_admin_pass" "%X3_LDAP_ADMIN_PASS%";
         //"ldap_object_classes" ( "top", "inetOrgAnonAccount" );
         ////      NOTE: inetOrgAnon is something I made up. its schema
         ////      can be found in the tools/ directory. ldap servers wont
         ////      know what that is by default.
         //// These configure what I store, and where.
-        //"ldap_field_account" "uid";
-        //"ldap_field_password" "userPassword";
-        //"ldap_field_email" "mail";
-        //"ldap_field_oslevel" "X3AccountLevel";
-        //"ldap_filter" "(objectClass=inetOrgPerson)"; // LDAP search filter for finding users
+        "ldap_field_account" "%X3_LDAP_FIELD_ACCOUNT%";
+        "ldap_field_password" "%X3_LDAP_FIELD_PASSWORD%";
+        "ldap_field_email" "%X3_LDAP_FIELD_EMAIL%";
+        "ldap_field_oslevel" "%X3_LDAP_FIELD_OSLEVEL%";
+        "ldap_filter" "%X3_LDAP_FILTER%";
         ////      NOTE: X3AccountLevel is a custom LDAP attribute
         ////      that LDAP servers will not know by default. A custom
         ////      schema is required to provide it.
@@ -306,7 +295,7 @@
         "description" "Oper Service Bot"; // (for /whois)
 
         // hostname for service; only used if "description" is also set
-        "hostname" "X3.AfterNET.Services"; // (for /whois)
+        "hostname" "X3.Services"; // (for /whois)
 
         // What channel should opserv send debug output to?
         //   I don't have any idea what debug info goes here. You can configure
@@ -539,9 +528,9 @@
         "refresh_period" "10h";
 
         // what should !access say for various staff?
-        "irc_operator_epithet" "AfterNET IRC Operator";
-        "network_helper_epithet" "AfterNET Network Helper";
-        "support_helper_epithet" "AfterNET Support Helper";
+        "irc_operator_epithet" "IRC Operator";
+        "network_helper_epithet" "Network Helper";
+        "support_helper_epithet" "Support Helper";
 
         // what should a newly registered channel get as its modes?
         "default_modes" "+nt";
@@ -580,7 +569,7 @@
         "debug_channel_modes" "+tinms";
 
         // url of the network rules. if you don't have network rules, remove this key.
-        "network_rules" "http://www.afternet.org/aup";
+        //"network_rules" "http://www.afternet.org/aup";
 
         // trigger for spamserv; remove this key to disable the trigger
         "trigger" "%";
@@ -642,7 +631,7 @@
         // helper, etc. The file is written in saxdb format for easy
         // parsing by external programs. Please note that you cannot
         // use ?set to change this value while x3 is running.
-        "reqlogfile" "helpservreq.log";
+        "reqlogfile" "/x3/data/helpservreq.log";
 
         // How long should a helpserv be inactive (no requests assigned)
         // before it can be unregistered by the expire command?
@@ -782,12 +771,12 @@
     "mailer" "/usr/sbin/sendmail";
     // OR Afternet uses a custom script to keep the services IP hidden: 
     //    "mailer" "/home/x3user/x3/sendmail.sh";
-    "from_address" "supportrobot@afternet.org";
-    "extra_headers" ("AfterNET-Services: x3");
-    "body_prefix_first" ("Welcome to AfterNET, looks like this is your first email from us.");
-    "body_prefix" ("AfterNET Support - User and Channel registration system");
-    "body_suffix_first" ("", "AfterNET IRC Network", "http://www.afternet.org");
-    "body_suffix" ("", "AfterNET IRC Network", "http://www.afternet.org", "support@afternet.org","irc://irc.afternet.org/afternet");
+    "from_address" "supportrobot@%X3_GENERAL_DOMAIN%";
+    "extra_headers" ("Network-Services: x3");
+    "body_prefix_first" ("Welcome to the network, looks like this is your first email from us.");
+    "body_prefix" ("NET Support - User and Channel registration system");
+    "body_suffix_first" ("", "%X3_GENERAL_DOMAIN% IRC Network", "http://%X3_GENERAL_DOMAIN%");
+    "body_suffix" ("", "NET IRC Network", "http://www.%X3_GENERAL_DOMAIN%", "support@%X3_GENERAL_DOMAIN%","irc://irc.%X3_GENERAL_DOMAIN%/help");
     // If you are using the smtp mail back-end, you may need to set these:
     "smtp_server" "localhost";
     "smtp_service" "smtp";
@@ -818,7 +807,7 @@
     // These are the options if you want a database to be in its own file.
     "mondo" {
         // Where to put it?
-        "filename" "x3.db";
+        "filename" "/x3/data/x3.db";
         // How often should it be saved?
         // (You can disable automatic saves by setting this to 0.)
         "frequency" "30m";
@@ -863,9 +852,9 @@
     // "file:chanserv.log").  For "replay" severity, you must ALWAYS
     // list a target to log it -- this is because it is very rarely
     // useful.
-    "*.*" ("std:out", "file:everything.log"); // does NOT suppress any defaults
+    "*.*" ("std:out", "file:/x3/data/everything.log"); // does NOT suppress any defaults
     "*.override,error,fatal" "irc:#TheOps"; // report all uses of staff commands
     "*.staff" "irc:#MrSnoopy"; // report all uses of staff commands
-    "ChanServ.*" "file:chanserv.log"; // duplicates the default behavior
+    "ChanServ.*" "file:/x3/data/chanserv.log"; // duplicates the default behavior
     "ProxyCheck.*" (); // stop it from logging anything
 };

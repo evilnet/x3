@@ -12,15 +12,18 @@ x3: src/x3
 	cp ./src/x3 $(srcdir)/src/*.help .
 
 install-exec-local:
-	$(INSTALL) -d -m 755 $(prefix)
-	$(INSTALL) -m 744 ./src/x3 $(prefix)
-	$(INSTALL) -m 644 $(srcdir)/src/*.help $(prefix)
-	$(INSTALL) -m 600 $(srcdir)/x3.conf.example $(prefix)
-	$(INSTALL) -m 644 $(srcdir)/sockcheck.conf.example $(prefix)
-	$(INSTALL) -m 644 $(srcdir)/src/modpython.py $(prefix)
-	./install-r.sh $(srcdir)/src/plugins $(prefix)
+	$(INSTALL) -d -m 755 $(bindir)
+	$(INSTALL) -d -m 755 $(sysconfdir)
+	$(INSTALL) -d -m 755 $(datadir)/x3
+	$(INSTALL) -m 644 $(srcdir)/src/*.help $(datadir)/x3
+	$(INSTALL) -m 600 $(srcdir)/x3.conf.example $(datadir)/x3
+	$(INSTALL) -m 644 $(srcdir)/sockcheck.conf.example $(datadir)/x3
+	$(INSTALL) -m 644 $(srcdir)/src/modpython.py $(datadir)/x3
+	./install-r.sh $(srcdir)/src/plugins $(datadir)/x3/plugins
 	@echo
 	@echo X3-$(VERSION) has been installed to $(prefix)
-	@echo Remember to edit x3.conf.example and sockcheck.conf.example
-	@echo And of course, ./x3 --help before starting.
+	@echo Binaries: $(bindir)
+	@echo Config: $(sysconfdir)
+	@echo Templates: $(datadir)/x3
+	@echo Remember to edit $(sysconfdir)/x3.conf.example
 	@echo

@@ -1,4 +1,4 @@
-AM_CPPFLAGS = @RX_INCLUDES@
+AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\" -DLOCALSTATEDIR=\"@localstatedir@/x3\"
 LIBS = @LIBS@ @RX_LIBS@
 TRACK = @TRACK@
 pythonpath = @pythonpath@
@@ -6,7 +6,8 @@ PY_CFLAGS = @PY_CFLAGS@
 PY_LIBS = @PY_LIBS@
 
 
-noinst_PROGRAMS = x3 slab-read
+bin_PROGRAMS = x3
+noinst_PROGRAMS = slab-read
 EXTRA_PROGRAMS = checkdb globtest
 noinst_DATA = \
 	chanserv.help \
@@ -56,6 +57,7 @@ x3_SOURCES = \
 	compat.c compat.h \
 	conf.c conf.h \
 	dict-splay.c dict.h \
+    eventhooks.c eventhooks.h \
 	getopt.c getopt.h \
 	getopt1.c getopt.h \
 	gline.c gline.h \

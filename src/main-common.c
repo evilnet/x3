@@ -10,7 +10,7 @@ struct log_type *MAIN_LOG;
 int quit_services;
 int max_cycles;
 
-char *services_config = "x3.conf";
+char *services_config = SYSCONFDIR "/x3.conf";
 
 char **services_argv;
 int services_argc;

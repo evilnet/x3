@@ -1409,8 +1409,8 @@ static CMD_FUNC(cmd_server)
         if (srv->hops == 1) {
             log_module(MAIN_LOG, LOG_ERROR, "Server %s claims to have booted at time "FMT_TIME_T".  This is absurd.", srv->name, srv->boot);
         }
-    } else if ((str = conf_get_data("server/reliable_clock", RECDB_QSTRING))
-               && enabled_string(str)) {
+    } else if (((str = conf_get_data("server/reliable_clock", RECDB_QSTRING)) == NULL)
+               || enabled_string(str)) {
         /* If we have a reliable clock, we just keep our current time. */
     } else {
         if (srv->boot <= self->boot) {

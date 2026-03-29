@@ -17,7 +17,7 @@ cd `dirname "$SRC"`
 SRCDIR=`basename "$SRC"`
 find "$SRCDIR" \! -path '*/.*' | \
     while read f; do \
-        d="$DST/${f#foo/}"; \
+        d="$DST/${f#$SRCDIR/}"; \
         mkdir -p "$(dirname "$d")"; \
         if [ -f $f ]; then cp -v $f $d; fi; \
     done

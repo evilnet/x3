@@ -341,13 +341,13 @@
 "ACCOUNTINFO" {
         "/services/nickserv/disable_nicks" (
                 "/msg $N ACCOUNTINFO <nick|*account>",
-                "Displays infomation on the specified account, including the date the account was registered, the last time it was used, its infoline, its flags, its hostmask(s), its channels, and nicknames of users currently using the account.",
+                "Displays information on the specified account, including the date the account was registered, the last time it was used, its infoline, its flags, its hostmask(s), its channels, and nicknames of users currently using the account.",
                 "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
                 "$uSee Also:$u userinfo, account flags"
         );
         "! /services/nickserv/disable_nicks" (
                 "/msg $N ACCOUNTINFO <nick|*account>",
-                "Displays infomation on the specified account, including the date the account was registered, the last time it was used, its infoline, its flags, its hostmask(s), its channels, and nicknames of users currently using the account.",
+                "Displays information on the specified account, including the date the account was registered, the last time it was used, its infoline, its flags, its hostmask(s), its channels, and nicknames of users currently using the account.",
                 "You may use *Account instead of Nick as the name argument; the * makes $N use the name of an account directly (useful if the user is not online).",
                 "$uSee Also:$u nickinfo, userinfo, account flags"
         );

@@ -18,6 +18,15 @@ Installation:
 ----------
 Please read the INSTALL file for installation instructions.
 
+Runtime Signals:
+----------
+X3 responds to the following signals:
+
+  SIGINT  (Ctrl-C)  - Save database and exit
+  SIGQUIT (Ctrl-\)  - Save database only
+  SIGHUP            - Rehash (reload configuration)
+  SIGCHLD           - Reap child processes
+
 Support:
 ----------
 There are several conditions under which we WILL NOT support your use

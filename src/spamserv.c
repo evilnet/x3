@@ -174,8 +174,8 @@ static const struct message_entry msgtab[] = {
 
     { "SSMSG_MUST_BE_HELPING", "You must have security override (helping mode) on to use this command." },
 
-    { "SSMSG_SET_CAPSMIN",            "$bCapsMin$b            %d - atleast this min caps and atleast CapsPercent of the total line." },
-    { "SSMSG_SET_CAPSPERCENT",        "$bCapsPercent$b        %d - atleast CapsPercent of the total line." },
+    { "SSMSG_SET_CAPSMIN",            "$bCapsMin$b            %d - at least this min caps and at least CapsPercent of the total line." },
+    { "SSMSG_SET_CAPSPERCENT",        "$bCapsPercent$b        %d - at least CapsPercent of the total line." },
     { "SSMSG_SET_EXCEPTLEVEL"   ,     "$bExceptLevel$b        %d - level and above will be excepted from all checks." },
     { "SSMSG_SET_EXCEPTADVLEVEL",     "$bExceptAdvLevel$b     %d - and above will be excepted from advertising checks." },
     { "SSMSG_SET_EXCEPTBADWORDLEVEL", "$bExceptBadWordLevel$b %d - and above will be excepted from badword checks." },
