@@ -610,8 +610,22 @@ log_module(struct log_type *type, enum log_severity sev, const char *format, ...
     }
     --type->depth;
     if (sev == LOG_FATAL) {
+        static int fatal_in_progress = 0;
         assert(0 && "fatal message logged");
-        _exit(1);
+        /* First fatal: exit() so atexit handlers run — in particular
+         * saxdb_write_all, to preserve database state on conditions
+         * like RLIMIT_AS mmap exhaustion. saxdb writes atomically
+         * (tmp file + rename), so an interrupted flush can't corrupt
+         * the existing on-disk database.
+         *
+         * Nested fatal (e.g. flush itself hits another allocation
+         * failure): _exit() to avoid exit-within-exit UB. We accept
+         * losing the current flush — the prior timer-driven auto-save
+         * is still valid. */
+        if (fatal_in_progress)
+            _exit(1);
+        fatal_in_progress = 1;
+        exit(1);
     }
 }
 

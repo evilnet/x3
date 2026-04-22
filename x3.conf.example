@@ -767,11 +767,59 @@
     };
 };
 
-"rlimits" {
-    "data" "50M";
-    "stack" "6M";
-    "vmem" "100M";
-};
+/* Resource limits applied via setrlimit() at startup.
+ *
+ * By default, no "rlimits" block is active — X3 inherits system
+ * defaults (typically unlimited on modern Linux, managed by cgroups
+ * or the container runtime). This is the recommended setup: let the
+ * OS handle it.
+ *
+ * If you want in-process rlimits as a runaway-bug tripwire, uncomment
+ * ONE block below. Sized for common network scales.
+ *
+ * vmem is address space (RLIMIT_AS), not RSS — mmap'd GeoIP, slab
+ * arenas, and shared libraries all count toward it, so it needs
+ * significant headroom above expected RSS. data is the heap cap
+ * (RLIMIT_DATA). stack is per-thread (RLIMIT_STACK). Undersized
+ * rlimits are a common cause of "X3 crashed during burst" — if you
+ * set them too low, X3 calls LOG_FATAL on allocation failure and
+ * exits.
+ *
+ * Size tier  Users    data    stack   vmem
+ * ---------  -----    ----    -----   ----
+ * small      ~10k     256M    16M     512M
+ * medium     ~50k     512M    16M     1500M
+ * large      ~100k    768M    32M     2G
+ * xl         ~200k    1G      32M     4G
+ */
+
+// ~10k users / small network or testnet
+//"rlimits" {
+//    "data"  "256M";
+//    "stack" "16M";
+//    "vmem"  "512M";
+//};
+
+// ~50k users / medium network
+//"rlimits" {
+//    "data"  "512M";
+//    "stack" "16M";
+//    "vmem"  "1500M";
+//};
+
+// ~100k users / large network
+//"rlimits" {
+//    "data"  "768M";
+//    "stack" "32M";
+//    "vmem"  "2G";
+//};
+
+// ~200k users / largest feasibly reasonable network
+//"rlimits" {
+//    "data"  "1G";
+//    "stack" "32M";
+//    "vmem"  "4G";
+//};
 
 /* MAIL (if and how X3 sends mail ) *********************************
  * Mainly Authserv/Nickserv send mail, See the Nickserv
