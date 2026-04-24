@@ -31,6 +31,7 @@
 #define CMD_ALIST               "ALIST"
 #define CMD_ASLL		"ASLL"
 #define CMD_AWAY                "AWAY"
+#define CMD_BOUNCER_TRANSFER    "BOUNCER_TRANSFER"
 #define CMD_BURST               "BURST"
 #define CMD_CLEARMODE           "CLEARMODE"
 #define CMD_CLOSE               "CLOSE"
@@ -131,6 +132,7 @@
 #define TOK_ALIST               "AL"
 #define TOK_ASLL		"LL"
 #define TOK_AWAY                "A"
+#define TOK_BOUNCER_TRANSFER    "BX"
 #define TOK_BURST               "B"
 #define TOK_CLEARMODE           "CM"
 #define TOK_CLOSE               "CLOSE"
@@ -242,6 +244,7 @@
 #define P10_ADMIN               TYPE(ADMIN)
 #define P10_ASLL		TYPE(ASLL)
 #define P10_AWAY                TYPE(AWAY)
+#define P10_BOUNCER_TRANSFER    TYPE(BOUNCER_TRANSFER)
 #define P10_BURST               TYPE(BURST)
 #define P10_CLEARMODE           TYPE(CLEARMODE)
 #define P10_CLOSE               TYPE(CLOSE)
@@ -1709,6 +1712,76 @@ static CMD_FUNC(cmd_account)
     return 1;
 }
 
+static CMD_FUNC(cmd_bouncer_transfer)
+{
+    /* BX handler — only BX P (promote) is meaningful for services.
+     * X3 doesn't maintain alias state (BX C/X are IRCv3-only), so
+     * promotion is a simple numeric swap on the primary's userNode.
+     * Other subcommands (C, X, N, U) are no-ops.
+     */
+    struct server *s;
+    int n, slen;
+
+    if (argc < 2)
+        return 0;
+
+    if (argv[1][0] == 'P' && argv[1][1] == '\0') {
+        /* BX P <old_numeric> <new_numeric> <sessid> <nick>
+         * Promote: swap old_primary's numeric routing to the new server/slot.
+         * The userNode keeps its nick, clients dict entry, handle_info,
+         * channels — only the P10 numeric changes. */
+        struct userNode *old_primary, *new_node;
+
+        if (argc < 6)
+            return 0;
+
+        old_primary = GetUserN(argv[2]);
+        new_node = GetUserN(argv[3]);
+
+        if (!old_primary)
+            return 1; /* Already gone, nothing to do */
+
+        /* Numeric swap: move old_primary's numeric routing to the new
+         * server/slot.  The userNode keeps its nick, clients dict entry,
+         * handle_info, channels — only the P10 numeric changes.
+         *
+         * Nefarious never bursts aliases as N tokens (they're introduced
+         * via BX C only), so X3 won't have a node for the alias numeric.
+         * If new_node somehow exists (shouldn't happen), log and ignore. */
+        if (new_node) {
+            log_module(MAIN_LOG, LOG_WARNING,
+                "BX P: new_node %s already exists as %s — ignoring promote",
+                argv[3], new_node->nick);
+            return 1;
+        }
+
+        /* Compute new server and slot */
+        switch (strlen(argv[3])) {
+        case 5: slen = 2; break;
+        case 4: slen = 1; break;
+        default: return 1;
+        }
+        s = servers_num[base64toint(argv[3], slen)];
+        if (!s)
+            return 1;
+        n = base64toint(argv[3] + slen, strlen(argv[3]) - slen) & s->num_mask;
+
+        /* Remove from old numeric slot */
+        old_primary->uplink->users[old_primary->num_local] = NULL;
+        old_primary->uplink->clients--;
+
+        /* Move to new server/slot */
+        old_primary->uplink = s;
+        old_primary->num_local = n;
+        safestrncpy(old_primary->numeric, argv[3], sizeof(old_primary->numeric));
+        s->users[n] = old_primary;
+        s->clients++;
+
+    }
+    /* Other BX subcommands (C, X, N, U): no-op for services */
+    return 1;
+}
+
 static CMD_FUNC(cmd_fakehost)
 {
     struct userNode *user;
@@ -2681,6 +2754,8 @@ init_parse(void)
     conf_register_reload(p10_conf_reload);
 
     irc_func_dict = dict_new();
+    dict_insert(irc_func_dict, CMD_BOUNCER_TRANSFER, cmd_bouncer_transfer);
+    dict_insert(irc_func_dict, TOK_BOUNCER_TRANSFER, cmd_bouncer_transfer);
     dict_insert(irc_func_dict, CMD_BURST, cmd_burst);
     dict_insert(irc_func_dict, TOK_BURST, cmd_burst);
     dict_insert(irc_func_dict, CMD_CREATE, cmd_create);
@@ -2868,6 +2943,13 @@ parse_line(char *line, int recursive)
     char *argv[MAXNUMPARAMS], *origin;
     int argc, cmd, res=0;
     cmd_func_t *func;
+
+    /* Skip IRCv3 S2S message tags if present */
+    if (line[0] == '@') {
+        char *tag_end = strchr(line, ' ');
+        if (tag_end)
+            line = tag_end + 1;
+    }
 
     argc = split_line(line, true, MAXNUMPARAMS, argv);
     cmd = self->uplink || !argv[0][1] || !argv[0][2];
