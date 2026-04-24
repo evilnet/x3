@@ -3,8 +3,8 @@ FROM debian:12
 ENV GID=1234
 ENV UID=1234
 
-RUN DEBIAN_FRONTEND=noninteractive RUNLEVEL=1 apt-get update 
-RUN DEBIAN_FRONTEND=noninteractive RUNLEVEL=1 apt-get update && apt-get -y install build-essential libssl-dev autoconf2.69 automake1.11 flex byacc gawk git vim procps net-tools libtre5 libtre-dev libldap2-dev
+RUN DEBIAN_FRONTEND=noninteractive RUNLEVEL=1 apt-get update
+RUN DEBIAN_FRONTEND=noninteractive RUNLEVEL=1 apt-get update && apt-get -y install build-essential libssl-dev libldap2-dev autoconf2.69 automake1.11 flex byacc gawk git vim procps net-tools libtre5 libtre-dev
 
 RUN mkdir -p /x3
 RUN mkdir -p /x3/x3src
@@ -18,7 +18,7 @@ USER x3
 WORKDIR  /x3/x3src
 
 #RUN ./autogen.sh
-RUN ./configure --prefix=/x3 --sysconfdir=/x3/data --localstatedir=/x3/data --enable-modules=snoop,memoserv,helpserv
+RUN ./configure --prefix=/x3 --sysconfdir=/x3/data --localstatedir=/x3/data --with-ldap --enable-modules=snoop,memoserv,helpserv
 
 RUN make
 RUN make install
@@ -37,4 +37,3 @@ COPY docker/dockerentrypoint.sh /dockerentrypoint.sh
 ENTRYPOINT ["/dockerentrypoint.sh"]
 
 CMD ["/x3/bin/x3", "-c", "/x3/data/x3.conf", "-f", "-d"]
-

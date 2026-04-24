@@ -23,6 +23,17 @@ else
     : "${X3_UPLINK_PORT:=8888}"
     : "${X3_UPLINK_PASSWORD:=changeme}"
 
+    # LDAP defaults (disabled unless overridden)
+    : "${X3_LDAP_ENABLE:=0}"
+    : "${X3_LDAP_URI:=ldap://localhost:389}"
+    : "${X3_LDAP_BASE:=ou=users,dc=example,dc=net}"
+    : "${X3_LDAP_DN_FMT:=uid=%s,ou=users,dc=example,dc=net}"
+    : "${X3_LDAP_ADMIN_DN:=cn=admin,dc=example,dc=net}"
+    : "${X3_LDAP_ADMIN_PASS:=changeme}"
+    : "${X3_LDAP_FIELD_ACCOUNT:=uid}"
+    : "${X3_LDAP_FIELD_PASSWORD:=userPassword}"
+    : "${X3_LDAP_FIELD_EMAIL:=mail}"
+
     # Copy the template to the output location
     cp "$BASECONFDIST" "$BASECONF"
 
