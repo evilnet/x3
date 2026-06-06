@@ -1772,16 +1772,43 @@ static CMD_FUNC(cmd_bouncer_transfer)
         if (!old_primary)
             return 1; /* Already gone, nothing to do */
 
-        /* Numeric swap: move old_primary's numeric routing to the new
-         * server/slot.  The userNode keeps its nick, clients dict entry,
-         * handle_info, channels — only the P10 numeric changes.
+        /* Two BX P shapes need handling:
          *
-         * Nefarious never bursts aliases as N tokens (they're introduced
-         * via BX C only), so X3 won't have a node for the alias numeric.
-         * If new_node somehow exists (shouldn't happen), log and ignore. */
+         * 1. **Numeric swap (new_node absent)** — classic promote-or-
+         *    transfer.  Move old_primary's numeric routing to the new
+         *    server/slot.  The userNode keeps its nick, clients dict
+         *    entry, handle_info, channels — only the P10 numeric changes.
+         *    This is the case the original handler was written for, and
+         *    is what fires when nefarious never bursts an alias to us.
+         *
+         * 2. **In-place conversion / merge (new_node exists with same
+         *    account)** — modern fork peers emit BX P for the case where
+         *    an N-introduced client (old) is being absorbed into an
+         *    existing primary (new), e.g. burst-ordering caused us to
+         *    receive N for the would-be-alias before its BX C.  Both
+         *    nodes exist on X3.  We merge: delete old_primary's
+         *    userNode (channels and dict entry cleaned up via DelUser,
+         *    no QUIT broadcast), keep new_node intact as the surviving
+         *    identity.  Gate strictly on same-handle to avoid
+         *    accidentally merging unrelated collisions.
+         *
+         * 3. **new_node exists but different/no handle** — genuinely
+         *    unexpected.  Keep the original "log and ignore" behaviour
+         *    so we don't silently corrupt state across an account
+         *    mismatch. */
         if (new_node) {
+            if (old_primary->handle_info
+                && old_primary->handle_info == new_node->handle_info) {
+                /* Merge: old absorbed into new.  DelUser with announce=0
+                 * suppresses both QUIT and KILL emission — this is
+                 * internal cleanup, the network isn't supposed to see
+                 * the alias's identity leave. */
+                DelUser(old_primary, NULL, 0, "Bouncer transfer");
+                return 1;
+            }
             log_module(MAIN_LOG, LOG_WARNING,
-                "BX P: new_node %s already exists as %s — ignoring promote",
+                "BX P: new_node %s already exists as %s with mismatched "
+                "handle — ignoring promote",
                 argv[3], new_node->nick);
             return 1;
         }
