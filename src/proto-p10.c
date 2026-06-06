@@ -388,8 +388,13 @@ GetServerN(const char *numeric)
     }
 }
 
-struct userNode*
-GetUserN(const char *numeric) /* using numeric */
+/* Shared internal numeric-to-userNode lookup.  Wraps both the noisy
+ * GetUserN (callers expect success — a miss is bug-worthy) and the
+ * quiet GetUserN_silent (callers know the target can legitimately be
+ * absent — e.g., snoop/track on transient targets, BX P probing for
+ * the alias/primary pair). */
+static struct userNode *
+GetUserN_impl(const char *numeric, int quiet)
 {
     struct userNode *un;
     struct server *s;
@@ -397,24 +402,44 @@ GetUserN(const char *numeric) /* using numeric */
 
     switch (strlen(numeric)) {
     default:
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too long!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too long!", numeric);
         return NULL;
     case 5: slen = 2; ulen = 3; break;
     case 4: slen = 1; ulen = 3; break;
     case 3: slen = 1; ulen = 2; break;
     case 2: case 1: case 0:
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too short!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too short!", numeric);
         return NULL;
     }
     if (!(s = servers_num[base64toint(numeric, slen)])) {
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): couldn't find server (len=%d)!", numeric, slen);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): couldn't find server (len=%d)!", numeric, slen);
         return NULL;
     }
     n = base64toint(numeric+slen, ulen) & s->num_mask;
     if (!(un = s->users[n])) {
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s) couldn't find user!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s) couldn't find user!", numeric);
     }
     return un;
+}
+
+struct userNode*
+GetUserN(const char *numeric) /* using numeric */
+{
+    return GetUserN_impl(numeric, 0);
+}
+
+/* Same as GetUserN but suppresses all warnings on lookup miss.  Use
+ * for callers that legitimately probe numerics which may not exist
+ * (snoop / track tracking transient PRIVMSG/NOTICE targets, BX P
+ * lookup probes during alias reconciliation, etc.). */
+struct userNode*
+GetUserN_silent(const char *numeric)
+{
+    return GetUserN_impl(numeric, 1);
 }
 
 extern struct userNode *opserv;
@@ -1735,8 +1760,14 @@ static CMD_FUNC(cmd_bouncer_transfer)
         if (argc < 6)
             return 0;
 
-        old_primary = GetUserN(argv[2]);
-        new_node = GetUserN(argv[3]);
+        /* Both lookups can legitimately miss — old_primary may have
+         * already been cleaned up by a prior event, new_node is
+         * normally absent (the swap path is the common case) but
+         * may exist for the in-place-conversion / merge case below.
+         * Use the silent variant so neither probe spams the snoop
+         * channel. */
+        old_primary = GetUserN_silent(argv[2]);
+        new_node = GetUserN_silent(argv[3]);
 
         if (!old_primary)
             return 1; /* Already gone, nothing to do */
