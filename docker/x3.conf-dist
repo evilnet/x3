@@ -250,6 +250,11 @@
         // LDAP configuration
         // Uses inetOrgAnonAccount schema (x3/tools/ldap/inetorganon.schema)
         "ldap_enable" "%X3_LDAP_ENABLE%";
+        // ldap_writeback: write new account registrations (incl. credentials) to LDAP.
+        // Required for SASL when LDAP is authoritative — without it nickserv.c gates out
+        // ldap_do_add and accounts land in saxdb only (credential-less). Was missing from
+        // the LDAP-docker templatization.
+        "ldap_writeback" "%X3_LDAP_WRITEBACK%";
         "ldap_uri" "%X3_LDAP_URI%";
         "ldap_base" "%X3_LDAP_BASE%";
         "ldap_dn_fmt" "%X3_LDAP_DN_FMT%";

@@ -25,6 +25,7 @@ else
 
     # LDAP defaults (disabled unless overridden)
     : "${X3_LDAP_ENABLE:=0}"
+    : "${X3_LDAP_WRITEBACK:=0}"
     : "${X3_LDAP_URI:=ldap://localhost:389}"
     : "${X3_LDAP_BASE:=ou=users,dc=example,dc=net}"
     : "${X3_LDAP_DN_FMT:=uid=%s,ou=users,dc=example,dc=net}"
