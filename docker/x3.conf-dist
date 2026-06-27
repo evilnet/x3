@@ -307,7 +307,7 @@
         // when a server pings out and they reconnect before the old connection is noticed
         // to be dead by the server.. so set it at about twice the # you want to allow to
         // avoid false positives.
-        "untrusted_max" "6";  // 3 connections and 3 ghosts, 7th connection causes a gline.
+        "untrusted_max" "%X3_UNTRUSTED_MAX%";  // env-templated (default 6).  0 DISABLES the clone-G-line — set 0 on testbeds where a harness opens many connections from one host (else O3 auto-G-lines that host for clone_gline_duration and the bed appears dead).  3 connections and 3 ghosts, (N+1)th connection causes a gline.
 
         // how long of a g-line should be issued if the max hosts is exceeded?
         "clone_gline_duration" "2h";  // durations are smhdmy

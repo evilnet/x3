@@ -23,6 +23,11 @@ else
     : "${X3_UPLINK_PORT:=8888}"
     : "${X3_UPLINK_PASSWORD:=changeme}"
 
+    # OpServ clone-G-line threshold (untrusted_max).  Default 6 (stock).
+    # 0 disables it — testbeds set X3_UNTRUSTED_MAX=0 in .env.local so harness
+    # connection volume from a single host isn't auto-G-lined.
+    : "${X3_UNTRUSTED_MAX:=6}"
+
     # LDAP defaults (disabled unless overridden)
     : "${X3_LDAP_ENABLE:=0}"
     : "${X3_LDAP_WRITEBACK:=0}"
