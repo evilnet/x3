@@ -81,6 +81,7 @@
 #define CMD_QUIT                "QUIT"
 #define CMD_REHASH              "REHASH"
 #define CMD_REMOVE		"REMOVE"
+#define CMD_RENAME              "RENAME"
 #define CMD_RESET		"RESET"
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
@@ -183,6 +184,7 @@
 #define TOK_QUIT                "Q"
 #define TOK_REHASH              "REHASH"
 #define TOK_REMOVE		"RM"
+#define TOK_RENAME              "RN"
 #define TOK_RESET		"RESET"
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
@@ -2395,6 +2397,34 @@ static CMD_FUNC(cmd_topic)
     return 1;
 }
 
+/* RN <old> <new> :<reason> -- the ircd broadcasts this after an approved
+ * rename has already executed. Authorization happened at AC R query time
+ * (chanserv_rename_allowed, see cmd_account); this handler only migrates
+ * state (design §3a: authorize-at-query, apply-at-RN). The source prefix
+ * is the renaming user and may be unknown to us in edge cases, so it is
+ * not used here. */
+static CMD_FUNC(cmd_rename)
+{
+    struct chanNode *chan;
+    char old_name[CHANNELLEN+1];
+    int was_registered;
+
+    if(argc < 3) return 0;
+    if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
+    if(GetChannel(argv[2])) {
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: target already exists, state diverged",
+                   argv[1], argv[2]);
+        return 1;
+    }
+    was_registered = chan->channel_info != NULL;
+    safestrncpy(old_name, argv[1], sizeof(old_name));
+    RenameChannel(chan, argv[2]);
+    if(was_registered)
+        chanserv_rename_dnr(old_name);
+    return 1;
+}
+
 static CMD_FUNC(cmd_num_topic)
 {
     struct chanNode *cn;
@@ -2873,6 +2903,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_ERROR, cmd_error);
     dict_insert(irc_func_dict, CMD_TOPIC, cmd_topic);
     dict_insert(irc_func_dict, TOK_TOPIC, cmd_topic);
+    dict_insert(irc_func_dict, CMD_RENAME, cmd_rename);
+    dict_insert(irc_func_dict, TOK_RENAME, cmd_rename);
     dict_insert(irc_func_dict, CMD_AWAY, cmd_away);
     dict_insert(irc_func_dict, TOK_AWAY, cmd_away);
     dict_insert(irc_func_dict, CMD_SILENCE, cmd_silence);
