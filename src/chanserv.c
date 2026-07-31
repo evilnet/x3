@@ -2112,11 +2112,21 @@ chanserv_is_dnr(const char *chan_name, struct handle_info *handle)
 void
 chanserv_rename_dnr(const char *old_name)
 {
+    const char *setter;
+
     if(!chanserv_conf.rename_dnr_duration)
         return;
     if(chanserv_is_dnr(old_name, NULL))
         return; /* already covered by a DNR (plain or mask); don't stack */
-    chanserv_add_dnr(old_name, chanserv->nick, now + chanserv_conf.rename_dnr_duration,
+    /* chanserv is NULL when the bot's nick is disabled via the "."
+     * convention (init_chanserv only AddLocalUser()s it when nick !=
+     * NULL) -- but a channel can still be registered (saxdb load doesn't
+     * care whether the bot exists) and RN can still arrive over the
+     * wire. Fall back to a literal setter string rather than dereference
+     * a NULL chanserv; it's a plain string and serializes to saxdb the
+     * same as any other setter value. */
+    setter = chanserv ? chanserv->nick : "ChanServ";
+    chanserv_add_dnr(old_name, setter, now + chanserv_conf.rename_dnr_duration,
                       "Channel was renamed");
 }
 
