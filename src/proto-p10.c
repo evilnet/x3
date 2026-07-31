@@ -531,10 +531,12 @@ irc_server(struct server *srv)
 
     inttobase64(extranum, srv->num_mask, (srv->numeric[1] || (srv->num_mask >= 64*64)) ? 3 : 2);
     if (srv == self) {
-        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6o :%s",
+        /* r = rename-capable: ircd delivers RN only to r-advertising peers
+         * (upstream); harmless on the fork which routes via IsService */
+        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6or :%s",
                 srv->name, srv->hops+1, srv->boot, srv->link_time, srv->numeric, extranum, srv->description);
     } else {
-        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6o :%s",
+        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6or :%s",
                 self->numeric, srv->name, srv->hops+1, srv->boot, srv->link_time, (srv->self_burst ? 'J' : 'P'), srv->numeric, extranum, srv->description);
     }
 }
@@ -1742,15 +1744,20 @@ static CMD_FUNC(cmd_account)
              * shape (AC <servnum> A <cookie>) used above. Never GetUserN() the
              * cookie; argv[3] is opaque to us. This disambiguates from the legit
              * legacy account stamp "AC <target> R <account>" (argc==4), which
-             * keeps falling through to call_account_func() below unchanged. */
+             * keeps falling through to call_account_func() below unchanged.
+             *
+             * The reply itself carries an explicit RENAME discriminator token
+             * after the A/D type so ircd m_account.c can route it by cookie
+             * without a FindNServer() guess — a decimal cookie can otherwise
+             * alias a server numeric (F2). */
             const char *reason = "Permission denied";
             struct chanNode *chan = GetChannel(argv[4]);
             /* user is GetUserN(argv[1]) from the prologue above, which already
              * returns early when NULL — the check here is paranoia. */
             if(user && chan && chanserv_rename_allowed(user, chan, argv[6], &reason))
-                putsock("%s " P10_ACCOUNT " %s A", self->numeric, argv[3]);
+                putsock("%s " P10_ACCOUNT " %s A RENAME", self->numeric, argv[3]);
             else
-                putsock("%s " P10_ACCOUNT " %s D :%s", self->numeric, argv[3], reason);
+                putsock("%s " P10_ACCOUNT " %s D RENAME :%s", self->numeric, argv[3], reason);
             return 1;
         }
         call_account_func(user, argv[3]);   /* legacy account stamp — unchanged */
