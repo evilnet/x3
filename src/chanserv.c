@@ -1737,12 +1737,12 @@ unregister_channel(struct chanData *channel, const char *reason)
 
     timeq_del(0, NULL, channel, TIMEQ_IGNORE_FUNC | TIMEQ_IGNORE_WHEN);
 
-    if(off_channel > 0)
-    {
-      mod_chanmode_init(&change);
-      change.modes_clear |= MODE_REGISTERED;
-      mod_chanmode_announce(chanserv, channel->channel, &change);
-    }
+    /* Always clear the ircd's registration marker (+R) on unregistration,
+     * independent of off_channel (which only governs whether ChanServ
+     * itself leaves the channel). */
+    mod_chanmode_init(&change);
+    change.modes_clear |= MODE_REGISTERED;
+    mod_chanmode_announce(chanserv, channel->channel, &change);
 
     wipe_adduser_pending(channel->channel, NULL);
 
@@ -2641,8 +2641,10 @@ static CHANSERV_FUNC(cmd_register)
     cData = register_channel(channel, user->handle_info->handle);
     scan_user_presence(add_channel_user(cData, handle, UL_OWNER, 0, NULL, 0), NULL);
     cData->modes = chanserv_conf.default_modes;
-    if(off_channel > 0)
-      cData->modes.modes_set |= MODE_REGISTERED;
+    /* Always announce the ircd's registration marker (+R) on registration;
+     * off_channel only governs whether ChanServ itself joins/leaves the
+     * channel below, not whether the ircd learns it's registered. */
+    cData->modes.modes_set |= MODE_REGISTERED;
     if (IsOffChannel(cData))
     {
         mod_chanmode_announce(chanserv, channel, &cData->modes);
@@ -2832,16 +2834,15 @@ static CHANSERV_FUNC(cmd_move)
     else if(!IsSuspended(channel->channel_info))
         chanserv_join = 1;
 
-    if(off_channel > 0)
-    {
-        /* Clear MODE_REGISTERED from old channel, add it to new. */
-        change.argc = 0;
-        change.modes_clear = MODE_REGISTERED;
-        mod_chanmode_announce(chanserv, channel, &change);
-        change.modes_clear = 0;
-        change.modes_set = MODE_REGISTERED;
-        mod_chanmode_announce(chanserv, target, &change);
-    }
+    /* Clear MODE_REGISTERED from old channel, add it to new. Always, not
+     * just under off_channel -- the ircd's +R must follow registration
+     * regardless of whether ChanServ itself occupies the channel. */
+    change.argc = 0;
+    change.modes_clear = MODE_REGISTERED;
+    mod_chanmode_announce(chanserv, channel, &change);
+    change.modes_clear = 0;
+    change.modes_set = MODE_REGISTERED;
+    mod_chanmode_announce(chanserv, target, &change);
 
     /* Move the channel_info to the target channel; it
        shouldn't be necessary to clear timeq callbacks
@@ -8545,6 +8546,28 @@ handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
     if(channel->members.used > cData->max)
         cData->max = channel->members.used;
 
+    /* Self-heal the ircd's +R (MODE_REGISTERED) marker for a channel we
+     * know is registered (channel_info set, not suspended -- both already
+     * checked above) but which the ircd doesn't currently show as such.
+     * This covers ircd restarts (fresh channel, no memory of +R), X3
+     * restarts racing a channel's first post-restart JOIN before the
+     * BURST/DB-load path re-set it, and channel re-creation. Unlike the
+     * join-flood/burst guards below (dynamic-limit timer resets,
+     * automode, greetings) this isn't gated on user->uplink->burst: it
+     * sends no message to the user and touches no timer, it only
+     * corrects channel state, and mod_chanmode_announce() applies the
+     * change to channel->modes immediately, so only the first joiner
+     * (burst or not) actually triggers the wire MODE -- every later
+     * handle_join() call in the same burst sees MODE_REGISTERED already
+     * set and no-ops here. */
+    if(!(channel->modes & MODE_REGISTERED))
+    {
+        struct mod_chanmode reg_change;
+        mod_chanmode_init(&reg_change);
+        reg_change.modes_set = MODE_REGISTERED;
+        mod_chanmode_announce(chanserv, channel, &reg_change);
+    }
+
 #ifdef notdef
     /* Check for bans.  If they're joining through a ban, one of two
      * cases applies:
@@ -9726,8 +9749,11 @@ chanserv_channel_read(const char *key, struct record_data *hir)
        && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE, 0))) 
     {
         cData->modes = *modes;
-        if(off_channel > 0)
-          cData->modes.modes_set |= MODE_REGISTERED;
+        /* Always re-assert +R on DB-load reregistration; see
+         * unregister_channel()/register path. When this block doesn't run
+         * at all (channel has no stored KEY_MODES), handle_join()'s
+         * heal-on-join covers it instead. */
+        cData->modes.modes_set |= MODE_REGISTERED;
         if(cData->modes.argc > 1)
             cData->modes.argc = 1;
         mod_chanmode_announce(chanserv, cNode, &cData->modes);
