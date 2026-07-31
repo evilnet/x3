@@ -221,6 +221,14 @@ struct banData *add_channel_ban(struct chanData *channel, const char *mask, char
  * set to a static user-visible string. */
 int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason);
 
+/* Called by the RN handler in proto-p10.c (cmd_rename) after a registered
+ * channel is renamed, to place a timed do-not-register entry on the old
+ * name. No-op if chanserv_conf.rename_dnr_duration is 0, or if old_name
+ * is already covered by an existing (non-expired) DNR. proto-p10.c must
+ * not reach into chanserv's DNR internals (plain_dnrs/mask_dnrs/etc are
+ * file-static) — this wrapper is the exported escape hatch. */
+void chanserv_rename_dnr(const char *old_name);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);

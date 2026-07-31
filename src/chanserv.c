@@ -61,6 +61,7 @@
 #define KEY_NODELETE_LEVEL          "nodelete_level"
 #define KEY_MAX_USERINFO_LENGTH     "max_userinfo_length"
 #define KEY_GIVEOWNERSHIP_PERIOD    "giveownership_timeout"
+#define KEY_RENAME_DNR_DURATION     "rename_dnr_duration"
 #define KEY_VALID_CHANNEL_REGEX     "valid_channel_regex"
 
 /* ChanServ database */
@@ -631,6 +632,7 @@ static struct
     unsigned int    greeting_length;
     unsigned int        refresh_period;
     unsigned int        giveownership_period;
+    unsigned long   rename_dnr_duration;
 
     unsigned int        max_owned;
     unsigned int    max_chan_users;
@@ -2105,6 +2107,17 @@ chanserv_is_dnr(const char *chan_name, struct handle_info *handle)
     dnr = list.used ? list.list[0] : NULL;
     free(list.list);
     return dnr;
+}
+
+void
+chanserv_rename_dnr(const char *old_name)
+{
+    if(!chanserv_conf.rename_dnr_duration)
+        return;
+    if(chanserv_is_dnr(old_name, NULL))
+        return; /* already covered by a DNR (plain or mask); don't stack */
+    chanserv_add_dnr(old_name, chanserv->nick, now + chanserv_conf.rename_dnr_duration,
+                      "Channel was renamed");
 }
 
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
@@ -9202,6 +9215,8 @@ chanserv_conf_read(void)
     chanserv_conf.refresh_period = str ? ParseInterval(str) : 3*60*60;
     str = database_get_data(conf_node, KEY_GIVEOWNERSHIP_PERIOD, RECDB_QSTRING);
     chanserv_conf.giveownership_period = str ? ParseInterval(str) : 0;
+    str = database_get_data(conf_node, KEY_RENAME_DNR_DURATION, RECDB_QSTRING);
+    chanserv_conf.rename_dnr_duration = str ? ParseInterval(str) : 86400;
     str = database_get_data(conf_node, KEY_CTCP_SHORT_BAN_DURATION, RECDB_QSTRING);
     chanserv_conf.ctcp_short_ban_duration = str ? str : "3m";
     str = database_get_data(conf_node, KEY_CTCP_LONG_BAN_DURATION, RECDB_QSTRING);
