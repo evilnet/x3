@@ -398,6 +398,43 @@ spamserv_cs_move_merge(struct userNode *user, struct chanNode *channel, struct c
 	return 0;
 }
 
+static void
+spamserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
+{
+	struct chanInfo *cInfo = get_chanInfo(old_chan->name);
+	dict_iterator_t it;
+	struct userInfo *uInfo;
+	struct spamNode *sNode;
+	struct floodNode *fNode;
+
+	if(cInfo)
+	{
+		cInfo->channel = new_chan;
+
+		dict_remove(registered_channels_dict, old_chan->name);
+		dict_insert(registered_channels_dict, strdup(new_chan->name), cInfo);
+	}
+
+	for(it = dict_first(connected_users_dict); it; it = iter_next(it))
+	{
+		uInfo = iter_data(it);
+		if(!uInfo)
+			continue;
+
+		for(sNode = uInfo->spam; sNode; sNode = sNode->next)
+			if(sNode->channel == old_chan)
+				sNode->channel = new_chan;
+
+		for(fNode = uInfo->flood; fNode; fNode = fNode->next)
+			if(fNode->channel == old_chan)
+				fNode->channel = new_chan;
+
+		for(fNode = uInfo->joinflood; fNode; fNode = fNode->next)
+			if(fNode->channel == old_chan)
+				fNode->channel = new_chan;
+	}
+}
+
 void
 spamserv_cs_unregister(struct userNode *user, struct chanNode *channel, enum cs_unreg type, char *reason)
 {
@@ -3249,6 +3286,7 @@ init_spamserv(const char *nick)
 	reg_nick_change_func(spamserv_nick_change_func, NULL);
 	reg_join_func(spamserv_user_join, NULL);
 	reg_part_func(spamserv_user_part, NULL);
+	reg_channel_rename_func(spamserv_channel_rename, NULL);
 
 	timeq_add(now + FLOOD_TIMEQ_FREQ, timeq_flood, NULL);
 	timeq_add(now + JOINFLOOD_TIMEQ_FREQ, timeq_joinflood, NULL);
