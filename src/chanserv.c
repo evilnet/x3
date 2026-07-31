@@ -8341,6 +8341,64 @@ chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UN
             chanserv_conf.support_channels.list[ii] = new_chan;
 }
 
+/* Rename authorization check for the AC R RENAME query (proto-p10.c
+ * cmd_account). Owner-only, mirroring cmd_move's DNR gating against the
+ * NEW name — minus the IsHelping/"force" bypass, since this path has no
+ * force; staff bypass comes only from _GetChannelUser()'s override=1
+ * synthetic access entry. */
+int
+chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason)
+{
+    struct chanData *cData;
+    struct userData *uData;
+    struct do_not_register *dnr;
+
+    if(!user->handle_info)
+    {
+        *reason = "You must be authenticated";
+        return 0;
+    }
+
+    if(!(cData = chan->channel_info))
+        return 1; /* Nothing registered here to protect. */
+
+    if(IsProtected(cData) || IsSuspended(cData))
+    {
+        *reason = "Channel may not be renamed";
+        return 0;
+    }
+
+    uData = _GetChannelUser(cData, user->handle_info, 1, 0);
+    if(!uData || (uData->access < UL_OWNER))
+    {
+        *reason = "You must be the channel owner";
+        return 0;
+    }
+
+    if(opserv_bad_channel(new_name))
+    {
+        *reason = "New channel name is not allowed";
+        return 0;
+    }
+
+    if(GetChannel(new_name) && GetChannel(new_name)->channel_info)
+    {
+        *reason = "New channel name is already registered";
+        return 0;
+    }
+
+    for(uData = cData->users; uData; uData = uData->next)
+    {
+        if((uData->access == UL_OWNER) && (dnr = chanserv_is_dnr(new_name, uData->handle)))
+        {
+            *reason = "New channel name is blocked (do-not-register)";
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 int
 trace_check_bans(struct userNode *user, struct chanNode *chan)
 {

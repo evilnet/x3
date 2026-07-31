@@ -1706,7 +1706,28 @@ static CMD_FUNC(cmd_account)
         return 1;
     }
     else if(!strcmp(argv[2],"R"))
-       call_account_func(user, argv[3]);
+    {
+        if(argc >= 7 && !strcmp(argv[5],"RENAME"))
+        {
+            /* Rename permission query: AC <unum> R <cookie> <#chan> RENAME <new>.
+             * Reply shape: cookie FIRST (ircd m_account.c keys pending renames on
+             * parv[1] not being a server numeric) — deliberately NOT the LOC reply
+             * shape (AC <servnum> A <cookie>) used above. Never GetUserN() the
+             * cookie; argv[3] is opaque to us. This disambiguates from the legit
+             * legacy account stamp "AC <target> R <account>" (argc==4), which
+             * keeps falling through to call_account_func() below unchanged. */
+            const char *reason = "Permission denied";
+            struct chanNode *chan = GetChannel(argv[4]);
+            /* user is GetUserN(argv[1]) from the prologue above, which already
+             * returns early when NULL — the check here is paranoia. */
+            if(user && chan && chanserv_rename_allowed(user, chan, argv[6], &reason))
+                putsock("%s " P10_ACCOUNT " %s A", self->numeric, argv[3]);
+            else
+                putsock("%s " P10_ACCOUNT " %s D :%s", self->numeric, argv[3], reason);
+            return 1;
+        }
+        call_account_func(user, argv[3]);   /* legacy account stamp — unchanged */
+    }
     else
         call_account_func(user, argv[2]); /* For backward compatability */
     return 1;
