@@ -10144,7 +10144,6 @@ init_chanserv(const char *nick)
     if (nick) {
         reg_server_link_func(handle_server_link, NULL);
         reg_new_channel_func(handle_new_channel, NULL);
-        reg_channel_rename_func(chanserv_channel_rename, NULL);
         reg_join_func(handle_join, NULL);
         reg_part_func(handle_part, NULL);
         reg_kick_func(handle_kick, NULL);
@@ -10154,6 +10153,13 @@ init_chanserv(const char *nick)
         reg_auth_func(handle_auth, NULL);
     }
 
+    /* Registered channels load from the DB regardless of whether the
+     * ChanServ bot nick is enabled ("." convention); an RN arriving over
+     * the wire must still repoint channel_info->channel via RenameChannel,
+     * or the DB is left holding a stale pointer into a freed chanNode
+     * (use-after-free at the next saxdb write). Keep this outside if(nick).
+     */
+    reg_channel_rename_func(chanserv_channel_rename, NULL);
     reg_handle_rename_func(handle_rename, NULL);
     reg_unreg_func(handle_unreg, NULL);
 
