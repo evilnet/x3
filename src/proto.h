@@ -84,6 +84,7 @@ struct cManagerNode
 #ifdef WITH_PROTOCOL_P10
 struct server* GetServerN(const char *numeric);
 struct userNode* GetUserN(const char *numeric);
+struct userNode* GetUserN_silent(const char *numeric);
 #endif
 
 /* Basic protocol parsing support. */
