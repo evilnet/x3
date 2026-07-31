@@ -445,6 +445,12 @@ void reg_join_func(join_func_t handler, void *extra);
 typedef void (*del_channel_func_t) (struct chanNode *chan, void *extra);
 void reg_del_channel_func(del_channel_func_t handler, void *extra);
 
+typedef void (*channel_rename_func_t)(struct chanNode *old_chan,
+                                      struct chanNode *new_chan, void *extra);
+void reg_channel_rename_func(channel_rename_func_t handler, void *extra);
+/* Returns the NEW node, or NULL (bad name / target exists). Old node freed. */
+struct chanNode *RenameChannel(struct chanNode *channel, const char *new_name);
+
 struct chanNode* AddChannel(const char *name, time_t time_, const char *modes, char *banlist, char *exemptlist);
 void LockChannel(struct chanNode *channel);
 void UnlockChannel(struct chanNode *channel);
