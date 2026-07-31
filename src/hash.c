@@ -767,8 +767,8 @@ RenameChannel(struct chanNode *channel, const char *new_name)
     struct chanNode *nNode;
     unsigned int n;
 
-    if (!IsChannelName(new_name) || GetChannel(new_name))
-        return NULL;
+    if (!IsChannelName(new_name) || GetChannel(new_name) || strlen(new_name) > CHANNELLEN)
+        return NULL; /* IsChannelName has no length cap; an overlong name would enter fixed-buffer sprintf paths downstream */
     nNode = calloc(1, sizeof(*nNode) + strlen(new_name));
     /* Copy the fixed head wholesale: modes, limit, LOCKS (inherited — chanserv
      * registration lock + alert/support locks count on this node), keys,

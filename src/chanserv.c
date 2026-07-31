@@ -8382,6 +8382,12 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
         return 0;
     }
 
+    if(strlen(new_name) > CHANNELLEN)
+    {
+        *reason = "New channel name is too long";
+        return 0;
+    }
+
     if(!(cData = chan->channel_info))
         return 1; /* Nothing registered here to protect. */
 
