@@ -1822,10 +1822,68 @@ static CMD_FUNC(cmd_bouncer_transfer)
         if (new_node) {
             if (old_primary->handle_info
                 && old_primary->handle_info == new_node->handle_info) {
-                /* Merge: old absorbed into new.  DelUser with announce=0
-                 * suppresses both QUIT and KILL emission — this is
-                 * internal cleanup, the network isn't supposed to see
-                 * the alias's identity leave. */
+                /* Merge: old absorbed into new.  Before deleting
+                 * old_primary, transfer its channel memberships onto
+                 * new_node.  This mirrors nefarious's own both-exist
+                 * swap semantics (upstream m_bouncer_transfer.c:88-113,
+                 * fork bouncer_session.c:7070-7078): the ghost's
+                 * channels must survive on the merged identity.
+                 *
+                 * Ordering is load-bearing: this MUST run before
+                 * DelUser().  DelUser's own cleanup loop
+                 * (DelChannelUser(..., NULL, 0)) lets an unregistered
+                 * channel self-destruct when its last member leaves
+                 * (see DelChannelUser's tail, hash.c). If old_primary
+                 * were deleted first while still holding memberships
+                 * new_node lacks, any unregistered channel where
+                 * old_primary was the only member in X3's view would
+                 * be destroyed here — even though the surviving
+                 * identity (and the rest of the network) is still in
+                 * it.  Transferring first means old_primary's channel
+                 * list is already empty by the time DelUser runs, so
+                 * that loop body never executes.
+                 *
+                 * Walk old_primary->channels the same way DelUser's
+                 * loop does: always pop the last element, since
+                 * AddChannelUser/DelChannelUser mutate both the
+                 * channel's member list and the user's channel list
+                 * out from under us. */
+                while (old_primary->channels.used > 0) {
+                    struct modeNode *mn = old_primary->channels.list[old_primary->channels.used - 1];
+                    struct chanNode *chan = mn->channel;
+
+                    if (!GetUserMode(chan, new_node)) {
+                        /* AddChannelUser() only fires irc_join() when
+                         * the joining user IsLocal() (i.e. an X3
+                         * service bot) — new_node here is always a
+                         * network user, so no JOIN hits the wire.  It
+                         * unconditionally runs call_join_funcs()
+                         * though, which fires the same on-join hooks
+                         * (chanserv presence/ban/oplevel bookkeeping)
+                         * a real join would.  The numeric-swap path
+                         * above never touches channel membership at
+                         * all, so there's no existing both-exist
+                         * precedent that's hook-free; there's no
+                         * lower-level "add to channel, no hooks"
+                         * primitive to reach for instead.  Correctness
+                         * of membership state takes priority, so we
+                         * accept the hook firing here as a known
+                         * side effect rather than leaving the ghost's
+                         * channels to be silently dropped. */
+                        struct modeNode *new_mn = AddChannelUser(new_node, chan);
+                        new_mn->modes = mn->modes;
+                        new_mn->oplevel = mn->oplevel;
+                    }
+
+                    /* No announce (reason NULL), same call shape
+                     * DelUser's own loop uses: this is internal
+                     * bookkeeping, not a real part. */
+                    DelChannelUser(old_primary, chan, NULL, 0);
+                }
+
+                /* DelUser with announce=0 suppresses both QUIT and KILL
+                 * emission — this is internal cleanup, the network
+                 * isn't supposed to see the alias's identity leave. */
                 DelUser(old_primary, NULL, 0, "Bouncer transfer");
                 return 1;
             }
