@@ -2990,6 +2990,34 @@ opserv_channel_delete(struct chanNode *chan, UNUSED_ARG(void *extra))
 }
 
 static void
+opserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
+{
+    dict_iterator_t it;
+    unsigned int i;
+
+    if (opserv_conf.debug_channel == old_chan)
+        opserv_conf.debug_channel = new_chan;
+    if (opserv_conf.alert_channel == old_chan)
+        opserv_conf.alert_channel = new_chan;
+    if (opserv_conf.staff_auth_channel == old_chan)
+        opserv_conf.staff_auth_channel = new_chan;
+
+    for (it = dict_first(opserv_user_alerts); it; it = iter_next(it)) {
+        struct opserv_user_alert *alert = iter_data(it);
+        for (i = 0; i < alert->discrim->channel_count; i++)
+            if (alert->discrim->channels[i] == old_chan)
+                alert->discrim->channels[i] = new_chan;
+    }
+
+    /* Same removal shape as opserv_channel_delete's purge-lock timer, but we
+     * do NOT re-add: the purge-lock re-evaluates against the renamed node on
+     * its own schedule. */
+    timeq_del(0, opserv_part_channel, old_chan, TIMEQ_IGNORE_WHEN | TIMEQ_IGNORE_FUNC);
+
+    new_chan->bad_channel = opserv_bad_channel(new_chan->name);
+}
+
+static void
 opserv_notice_handler(struct userNode *user, struct userNode *bot, const char *text, UNUSED_ARG(int server_qualified))
 {
     char *cmd; 
@@ -7565,8 +7593,9 @@ init_opserv(const char *nick)
     reg_new_user_func(opserv_new_user_check, NULL);
     reg_nick_change_func(opserv_alert_check_nick, NULL);
     reg_del_user_func(opserv_user_cleanup, NULL);
-    reg_new_channel_func(opserv_channel_check, NULL); 
+    reg_new_channel_func(opserv_channel_check, NULL);
     reg_del_channel_func(opserv_channel_delete, NULL);
+    reg_channel_rename_func(opserv_channel_rename, NULL);
     reg_join_func(opserv_join_check, NULL);
     reg_auth_func(opserv_staff_alert, NULL);
     reg_auth_func(opserv_alert_check_account, NULL);

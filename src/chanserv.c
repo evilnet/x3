@@ -8321,6 +8321,26 @@ handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
         SetChannelTopic(channel, chanserv, chanserv, channel->channel_info->topic, 1);
 }
 
+static void
+chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
+{
+    struct adduserPending *ap;
+    unsigned int ii;
+
+    /* memcpy() moved channel_info onto new_chan, but the chanData's back
+     * pointer still targets the old node. */
+    if (new_chan->channel_info)
+        new_chan->channel_info->channel = new_chan;
+
+    for (ap = adduser_pendings; ap; ap = ap->next)
+        if (ap->channel == old_chan)
+            ap->channel = new_chan;
+
+    for (ii = 0; ii < chanserv_conf.support_channels.used; ++ii)
+        if (chanserv_conf.support_channels.list[ii] == old_chan)
+            chanserv_conf.support_channels.list[ii] = new_chan;
+}
+
 int
 trace_check_bans(struct userNode *user, struct chanNode *chan)
 {
@@ -10035,6 +10055,7 @@ init_chanserv(const char *nick)
     if (nick) {
         reg_server_link_func(handle_server_link, NULL);
         reg_new_channel_func(handle_new_channel, NULL);
+        reg_channel_rename_func(chanserv_channel_rename, NULL);
         reg_join_func(handle_join, NULL);
         reg_part_func(handle_part, NULL);
         reg_kick_func(handle_kick, NULL);
