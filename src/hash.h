@@ -42,7 +42,7 @@
 #define MODE_REGONLY            0x00001000 /* ircu +r */
 #define MODE_NOCOLORS           0x00002000 /* +c */
 #define MODE_NOCTCPS            0x00004000 /* +C */
-#define MODE_REGISTERED         0x00008000 /* Bahamut +r */
+#define MODE_REGISTERED         0x00008000 /* server-settable channel registration marker; wire letter +R (nefarious channel.c MODE_REGISTERED) -- NOT Bahamut +r, and NOT the fork's +z persist exmode */
 #define MODE_STRIPCOLOR         0x00010000 /* +S Strip mirc color codes */
 #define MODE_MODUNREG           0x00020000 /* +M mod unregister */
 #define MODE_NONOTICE           0x00040000 /* +N no notices */
