@@ -216,6 +216,11 @@ struct do_not_register
 struct userData *_GetChannelUser(struct chanData *channel, struct handle_info *handle, int override, int allow_suspended);
 struct banData *add_channel_ban(struct chanData *channel, const char *mask, char *owner, time_t set, time_t triggered, time_t expires, char *reason);
 
+/* Rename authorization check, used by the AC R RENAME query handler in
+ * proto-p10.c (cmd_account). Returns 1 = allow; 0 = deny with *reason
+ * set to a static user-visible string. */
+int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);
