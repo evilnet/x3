@@ -2419,7 +2419,16 @@ static CMD_FUNC(cmd_rename)
     }
     was_registered = chan->channel_info != NULL;
     safestrncpy(old_name, argv[1], sizeof(old_name));
-    RenameChannel(chan, argv[2]);
+    if(!RenameChannel(chan, argv[2])) {
+        /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
+         * left the old node untouched/unfreed -- nothing was actually
+         * renamed, so don't mark the (still current) old name do-not-
+         * register. */
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: rejected by RenameChannel",
+                   argv[1], argv[2]);
+        return 1;
+    }
     if(was_registered)
         chanserv_rename_dnr(old_name);
     return 1;
