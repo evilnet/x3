@@ -8439,7 +8439,8 @@ handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
     if(channel->members.used > cData->max)
         cData->max = channel->members.used;
 
-    /* Self-heal the ircd's +R (MODE_REGISTERED) marker for a channel we
+    /* Self-heal the ircd's registered marker (MODE_REGISTERED, wire +z
+     * for now -- see the z->R transition plan) for a channel we
      * know is registered (channel_info set, not suspended -- both already
      * checked above) but which the ircd doesn't currently show as such.
      * This covers ircd restarts (fresh channel, no memory of +R), X3
