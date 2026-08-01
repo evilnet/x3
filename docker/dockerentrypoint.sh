@@ -39,6 +39,23 @@ else
     # connection volume from a single host isn't auto-G-lined.
     : "${X3_UNTRUSTED_MAX:=6}"
 
+    # OpServ / ChanServ / Global identity + limits
+    : "${X3_OPSERV_NICK:=O3}"
+    : "${X3_OPSERV_HOSTNAME:=X3.Services}"
+    : "${X3_DEBUG_CHANNEL:=#TheOps}"
+    : "${X3_ALERT_CHANNEL:=#TheOps}"
+    : "${X3_STAFF_AUTH_CHANNEL:=#OperServ}"
+    : "${X3_CLONE_GLINE_DURATION:=2h}"
+    : "${X3_CHANSERV_NICK:=X3}"
+    : "${X3_OFF_CHANNEL:=no}"
+    : "${X3_MAX_OWNED:=2}"
+    : "${X3_MAX_CHAN_USERS:=512}"
+    # Value is a conf list body: each channel stays individually quoted.
+    : "${X3_SUPPORT_CHANNEL:=\"#Operations\", \"#Help\"}"
+    : "${X3_GLOBAL_NICK:=Global}"
+    # Also used by the snoop module (templatized with the other modules).
+    : "${X3_SNOOP_CHANNEL:=#MrSnoopy}"
+
     # NickServ (AuthServ) defaults
     : "${X3_NICKSERV_NICK:=AuthServ}"
     : "${X3_DEFAULT_MAXLOGINS:=3}"

@@ -278,7 +278,7 @@
      * Afternet uses the nickname "O3" for this as its easier to type.
      */
     "opserv" {
-        "nick" "O3";
+        "nick" "%X3_OPSERV_NICK%";
         // should use of this service be limited to global opers?
         "privileged" "1"; 
 
@@ -286,21 +286,21 @@
         "description" "Oper Service Bot"; // (for /whois)
 
         // hostname for service; only used if "description" is also set
-        "hostname" "X3.Services"; // (for /whois)
+        "hostname" "%X3_OPSERV_HOSTNAME%"; // (for /whois)
 
         // What channel should opserv send debug output to?
         //   I don't have any idea what debug info goes here. You can configure
         //   debugging logs in the log section to go to any channel.
         //   Probably safest to set to your oper channel.
-        "debug_channel" "#TheOps";  // Bot will join this channel, also.
+        "debug_channel" "%X3_DEBUG_CHANNEL%";  // Bot will join this channel, also.
         "debug_channel_modes" "+tnOS";  // Modes get set every time X3 starts up
 
         // where to send general alerts (e.g. flood alerts)?
-        "alert_channel" "#TheOps"; // Bot will join this channel, also.
+        "alert_channel" "%X3_ALERT_CHANNEL%"; // Bot will join this channel, also.
         "alert_channel_modes" "+"; // Modes get set every time X3 starts up
 
         // who to tell about staff auths?
-        "staff_auth_channel" "#OperServ"; // Bot will join this channel, also.
+        "staff_auth_channel" "%X3_STAFF_AUTH_CHANNEL%"; // Bot will join this channel, also.
         "staff_auth_channel_modes" "+tnOs"; // modes get set every time X3 starts up
 
          // which channels should all services autojoin?
@@ -314,7 +314,7 @@
         "untrusted_max" "%X3_UNTRUSTED_MAX%";  // env-templated (default 6).  0 DISABLES the clone-G-line — set 0 on testbeds where a harness opens many connections from one host (else O3 auto-G-lines that host for clone_gline_duration and the bed appears dead).  3 connections and 3 ghosts, (N+1)th connection causes a gline.
 
         // how long of a g-line should be issued if the max hosts is exceeded?
-        "clone_gline_duration" "2h";  // durations are smhdmy
+        "clone_gline_duration" "%X3_CLONE_GLINE_DURATION%";  // durations are smhdmy
 
         // how long to g-line for ?block (or, by default, for trace gline)?
         "block_gline_duration" "12h";
@@ -417,7 +417,7 @@
     };
 
     "chanserv" {
-        "nick" "X3";
+        "nick" "%X3_CHANSERV_NICK%";
 
         // The umodes - add +d if you use nefarious 1.0 and you added 'b:lines'
         // to pass cmdchar through to chanserv anyway.
@@ -431,7 +431,7 @@
         // NOTE: +z mode, needed for this to work. X3 contains modifications to
 	// try and prevent desynchs. If you use this mode do not use any other service
 	// that uses this mode.
-        "off_channel" "no";
+        "off_channel" "%X3_OFF_CHANNEL%";
 
         // Infolines are sent when channel users join the channel. Users set them with USET INFO in X3.
         // how long should a person be unseen before resending infoline?
@@ -443,7 +443,7 @@
         "max_greetlen" "120";
 
         // maximum users in a channel userlist
-        "max_chan_users" "512";
+        "max_chan_users" "%X3_MAX_CHAN_USERS%";
         // maximum bans on a channel banlist
         "max_chan_bans" "512";
         // maximum length of a user's infoline
@@ -510,10 +510,10 @@
 
         // channel(s) that support helpers must be in to be helping
         // if this is a list, any one by itself will do
-        "support_channel" ("#Operations", "#Help");
+        "support_channel" (%X3_SUPPORT_CHANNEL%);
 
         // maximum number of channels a user may have. ( FORCE can override )
-        "max_owned" "2";
+        "max_owned" "%X3_MAX_OWNED%";
 
         // how long between automatic topic and userlist refreshes with TopicRefresh/Resync
         "refresh_period" "10h";
@@ -542,7 +542,7 @@
      * like to set ours' nick to 'AfterNET', but some people use 'Global'
      */
     "global" {
-        "nick" "Global";
+        "nick" "%X3_GLOBAL_NICK%";
         // should users get community announcements by default or not?
         // community announcements are a type of global that users may 
         // opt into (or out of, depending on this setting)
@@ -892,8 +892,8 @@
     // list a target to log it -- this is because it is very rarely
     // useful.
     "*.*" ("std:out", "file:/x3/data/everything.log"); // does NOT suppress any defaults
-    "*.override,error,fatal" "irc:#TheOps"; // report all uses of staff commands
-    "*.staff" "irc:#MrSnoopy"; // report all uses of staff commands
+    "*.override,error,fatal" "irc:%X3_DEBUG_CHANNEL%"; // report all uses of staff commands
+    "*.staff" "irc:%X3_SNOOP_CHANNEL%"; // report all uses of staff commands
     "ChanServ.*" "file:/x3/data/chanserv.log"; // duplicates the default behavior
     "ProxyCheck.*" (); // stop it from logging anything
 };
