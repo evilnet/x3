@@ -2180,7 +2180,9 @@ static CMD_FUNC(cmd_burst)
     if (!cData) {
         if (cNode->modes & MODE_REGISTERED) {
             irc_join(opserv, cNode);
-            irc_mode(opserv, cNode, "-R");
+            /* Strip both registered-marker letters: 'z' is what we emit
+             * today, 'R' may ride along in fork bursts (persist-mirror). */
+            irc_mode(opserv, cNode, "-zR");
             irc_part(opserv, cNode, "");
         }
     }
@@ -3802,13 +3804,24 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'a': do_chan_mode(MODE_ADMINSONLY); break;
         case 'Z': do_chan_mode(MODE_SSLONLY); break;
 	case 'L': do_chan_mode(MODE_HIDEMODE); break;
-	case 'R':
-	  /* MODE_REGISTERED wire letter (nefarious channel.c MODE_REGISTERED,
-	   * server-origin-only). MCP_REGISTERED is passed by the ChanServ
-	   * MODE-lock/mode-command call sites to forbid a user-typed mode
-	   * string from toggling registration state; server-origin calls
-	   * (cmd_mode, AddChannel/BURST via MCP_FROM_SERVER) don't set it,
-	   * so the ircd is free to correct our copy. */
+	case 'z': /* X3's historical/current wire letter for this bit (the
+	           * bit itself descends from Bahamut's +r concept; the 'z'
+	           * mapping is X3's own) */
+	case 'R': /* nefarious MODE_REGISTERED marker; fork bursts it once
+	           * the persist-mirror sets the bit */
+	  /* MODE_REGISTERED: parse LIBERALLY (both letters), emit
+	   * conservatively ('z' only -- see mod_chanmode_format below and
+	   * the registered-mode z->R transition plan). On nefarious, 'z'
+	   * is the persist exmode: services-settable only, and X3's
+	   * emitting it on registered channels doubles as the keep-alive
+	   * those channels want. 'R' is upstream's inert registered
+	   * marker, given real semantics on the fork; parsing it too keeps
+	   * us coherent when a fork server bursts +R alongside +z.
+	   * MCP_REGISTERED is passed by the ChanServ MODE-lock/mode-command
+	   * call sites to forbid a user-typed mode string from toggling
+	   * registration state; server-origin calls (cmd_mode,
+	   * AddChannel/BURST via MCP_FROM_SERVER) don't set it, so the
+	   * ircd is free to correct our copy. */
 	  if (!(flags & MCP_REGISTERED)) {
               do_chan_mode(MODE_REGISTERED);
 	  } else {
@@ -3816,13 +3829,6 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
               return NULL;
 	  }
 	  break;
-	/* 'z' intentionally NOT a case here: on the fork it is the persist
-	 * exmode, unrelated to registration. Falling through to the
-	 * default case makes it silently ignored on server-origin mode
-	 * strings (MCP_FROM_SERVER, e.g. incoming BURST/MODE) and rejects
-	 * the whole string on user-typed ones -- identical treatment to
-	 * every other letter this parser doesn't recognize. Do NOT parse
-	 * it as MODE_REGISTERED here. */
 #undef do_chan_mode
         case 'l':
             if (add) {
@@ -4048,7 +4054,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(REGISTERED, 'z'); /* emit 'z' (not 'R') until the z->R transition; parse accepts both */
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -4105,7 +4111,7 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(REGISTERED, 'z'); /* emit 'z' (not 'R') until the z->R transition; parse accepts both */
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -4181,7 +4187,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(REGISTERED, 'z'); /* emit 'z' (not 'R') until the z->R transition; parse accepts both */
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -4206,7 +4212,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(REGISTERED, 'z'); /* emit 'z' (not 'R') until the z->R transition; parse accepts both */
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 
@@ -4273,8 +4279,7 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'O': cleared |= MODE_OPERSONLY; break;
         case 'a': cleared |= MODE_ADMINSONLY; break;
         case 'R': cleared |= MODE_REGISTERED; break;
-        /* 'z' is the fork's persist exmode, not MODE_REGISTERED; unmatched
-         * letters here are already silently ignored (no default needed). */
+        case 'z': cleared |= MODE_REGISTERED; break; /* current wire letter; 'R' kept for the transition */
         case 'Z': cleared |= MODE_SSLONLY; break;
 	case 'L': cleared |= MODE_HIDEMODE; break;
         }
