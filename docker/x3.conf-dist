@@ -36,11 +36,13 @@
     /* hidden_host should match the F:HIDDEN_HOST: line in your ircu's ircd.conf;
      * x3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
-    "hidden_host_type" "1"; // change this to 2 if you use Nefarious's style 2 host hiding.
-    "key1" "45432"; // Set these key values to the network KEY values you use
-    "key2" "76934"; // for host hiding style 2.
-    "key3" "98336"; // 
-    "prefix" "NETWORK"; // If you use style 2 then this is the name that is prefixed to hosts.
+    "hidden_host_type" "%X3_HIDDEN_HOST_TYPE%"; // change this to 2 if you use Nefarious's style 2 host hiding.
+    // MUST match the ircd's HOST_HIDING_KEY* F:lines; change in production —
+    // stock keys make style-2 cloaks predictable.
+    "key1" "%X3_HIDDEN_HOST_KEY1%"; // Set these key values to the network KEY values you use
+    "key2" "%X3_HIDDEN_HOST_KEY2%"; // for host hiding style 2.
+    "key3" "%X3_HIDDEN_HOST_KEY3%"; // 
+    "prefix" "%X3_HIDDEN_HOST_PREFIX%"; // If you use style 2 then this is the name that is prefixed to hosts.
     "numeric" "%X3_GENERAL_NUMERIC%"; // hint: If you get collisions on link, CHANGE THIS.
     /* Type handles some changes in Nefarious from version to version.
      * 4 - nefarious 0.4.x and other ircds
@@ -50,7 +52,7 @@
      * 8 - nefarious 1.3.0 and higher (Legacy Version)
      * 9 - nefarious 2.0.x and higher (Current Version)
      */
-    "type" "8";
+    "type" "%X3_SERVER_TYPE%"; // 8 = Nefarious 1.3.x; 9 = Nefarious 2.0.x (nefarious2) — must match your ircd.
     "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.
     "max_users" "256"; // You can save a little memory by setting this to a lower value.
     "force_n2k" "1"; // Use extended (5-digit) numnick for self, even if 3 are possible.
