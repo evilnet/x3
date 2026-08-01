@@ -54,8 +54,11 @@ else
 
         # Only substitute if the variable is set
         if [ -n "$value" ]; then
-            # Escape special characters for sed (/, &, \)
-            escaped_value=$(printf '%s\n' "$value" | sed -e 's/[\/&]/\\&/g')
+            # Escape for use as a sed replacement with '|' as the s///
+            # delimiter: backslash FIRST (so the escapes we add next are not
+            # themselves re-escaped), then '&' (whole-match backreference)
+            # and the '|' delimiter itself.  '/' needs no escaping here.
+            escaped_value=$(printf '%s\n' "$value" | sed -e 's/\\/\\\\/g' -e 's/&/\\&/g' -e 's/|/\\|/g')
             sed -i "s|${placeholder}|${escaped_value}|g" "$BASECONF"
         else
             echo "Warning: No value set for ${varname}, leaving ${placeholder} unchanged"
