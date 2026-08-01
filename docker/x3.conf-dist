@@ -640,11 +640,12 @@
      */
     "sockcheck" {
         // disabling this hopefully
-        "max_sockets" "0";  // 64 is a good # of concurrent clients to be checked
+        "max_sockets" "%X3_SOCKCHECK_MAX_SOCKETS%";  // 64 is a good # of concurrent clients to be checked
         "max_read" "1024"; // don't read more than 1024 bytes from any client
-        "gline_duration" "1d"; // issue G-lines lasting one hour
+        "gline_duration" "%X3_SOCKCHECK_GLINE_DURATION%"; // issue G-lines lasting one hour
         "max_cache_age" "60"; // only cache results for 60 seconds
-        "bind_address" "192.168.0.10"; // do proxy tests from this address
+        // set only if you need a specific source IP — bogus default removed
+        //"bind_address" "192.168.0.10"; // do proxy tests from this address
     };
     /* Snoop sends connect, quit, join, and part messages for every user
      * on the network, and helps in finding drones. Put it somewhere secure
@@ -652,10 +653,10 @@
      */
     "snoop" {
         // Where to send snoop messages?
-        "channel" "#MrSnoopy";
+        "channel" "%X3_SNOOP_CHANNEL%";
         "channel_modes" "+sntim";
         // Which bot?
-        "bot" "O3";
+        "bot" "%X3_OPSERV_NICK%";
         // Show new users and joins from net joins?  (off by default)
         "show_bursts" "0";
     };
@@ -668,7 +669,7 @@
         // What to track by default?
         "snomask" "nick,join,part,kick,new,del,auth,chanmode,umode";
         // Where to send snoop messages?
-        "channel" "#MrPeanuts";
+        "channel" "%X3_TRACK_CHANNEL%";
         "channel_modes" "+sntOm";
         // Which bot?
         "bot" "O3";
@@ -678,16 +679,16 @@
     /* Memoserv lets users send messages to other users accounts.
      */
     "memoserv" {
-        "bot" "MemoServ";
+        "bot" "%X3_MEMOSERV_BOT%";
 	"modes" "+k";
-        "message_expiry" "30d"; // age when messages are deleted; set
+        "message_expiry" "%X3_MEMO_EXPIRY%"; // age when messages are deleted; set
                                 // to 0 to disable message expiration
-        "limit" "30"; // Max amount of messages a person can get.
+        "limit" "%X3_MEMO_LIMIT%"; // Max amount of messages a person can get.
     };
     "qserver" {
         "bind_address" "127.0.0.1";
         "port" "7702";
-        "password" "hello";
+        "password" "%X3_QSERVER_PASSWORD%";
     };
     "blacklist" {
         // File containing blacklisted client addresses.
@@ -697,7 +698,7 @@
         // message will override this one:
         "file_reason" "client is blacklisted";
         // How long should a blacklist G-line last?
-        "gline_duration" "1h";
+        "gline_duration" "%X3_BLACKLIST_GLINE_DURATION%";
         // If you want to use DNS blacklists, add them here:
         "dnsbl" {
              // This DNSBL zone does not exist - you'll have to pick your own.

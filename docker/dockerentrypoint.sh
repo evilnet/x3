@@ -56,6 +56,18 @@ else
     # Also used by the snoop module (templatized with the other modules).
     : "${X3_SNOOP_CHANNEL:=#MrSnoopy}"
 
+    # Modules
+    : "${X3_SOCKCHECK_MAX_SOCKETS:=0}"
+    : "${X3_SOCKCHECK_GLINE_DURATION:=1d}"
+    : "${X3_TRACK_CHANNEL:=#MrPeanuts}"
+    : "${X3_MEMOSERV_BOT:=MemoServ}"
+    : "${X3_MEMO_EXPIRY:=30d}"
+    : "${X3_MEMO_LIMIT:=30}"
+    # qserver: no shipped literal credential — generate a random password
+    # when the deployment doesn't provide one.
+    : "${X3_QSERVER_PASSWORD:=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)}"
+    : "${X3_BLACKLIST_GLINE_DURATION:=1h}"
+
     # NickServ (AuthServ) defaults
     : "${X3_NICKSERV_NICK:=AuthServ}"
     : "${X3_DEFAULT_MAXLOGINS:=3}"
