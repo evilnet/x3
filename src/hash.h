@@ -42,7 +42,7 @@
 #define MODE_REGONLY            0x00001000 /* ircu +r */
 #define MODE_NOCOLORS           0x00002000 /* +c */
 #define MODE_NOCTCPS            0x00004000 /* +C */
-#define MODE_REGISTERED         0x00008000 /* server-settable channel registration marker; emitted as +z (nefarious persist exmode doubles as the registered keep-alive), parsed from both +z and +R pending the z->R transition -- NOT Bahamut +r */
+#define MODE_REGISTERED         0x00008000 /* server-settable channel registration marker; wire letter +R (nefarious channel.c MODE_REGISTERED) -- NOT Bahamut +r, and NOT the fork's +z persist exmode */
 #define MODE_STRIPCOLOR         0x00010000 /* +S Strip mirc color codes */
 #define MODE_MODUNREG           0x00020000 /* +M mod unregister */
 #define MODE_NONOTICE           0x00040000 /* +N no notices */
@@ -56,6 +56,10 @@
 #define MODE_APASS		0x04000000 /* +A adminpass */
 #define MODE_UPASS		0x08000000 /* +U userpass */
 #define MODE_ADMINSONLY         0x10000000 /* +a Admins only */
+#define MODE_PERSIST            0x20000000 /* +z nefarious persist exmode (server-settable; channel survives while
+                                            * empty). ChanServ sets it alongside +R when off_channel>0 -- i.e.
+                                            * exactly when no bot presence holds the channel open. NOT the
+                                            * registered marker; that is MODE_REGISTERED (+R). */
 #define MODE_REMOVE             0x80000000
 
 #define FLAGS_OPER		0x00000001 /* Operator +o */
