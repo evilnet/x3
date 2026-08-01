@@ -98,7 +98,7 @@
      * reserve nicks.
      */
     "nickserv" {
-        "nick" "AuthServ";  // The bots nick on IRC
+        "nick" "%X3_NICKSERV_NICK%";  // The bots nick on IRC
 
         // If you want to have *@* as the default hostmask, set
         // default_hostmask. I highly reccomend this, and its required
@@ -110,15 +110,15 @@
 
         // default max number of logins allowed on new accounts. Users can set it
         // to something different using authserv commands.
-        "default_maxlogins" "3";
+        "default_maxlogins" "%X3_DEFAULT_MAXLOGINS%";
         
         // hard_maxlogins is the ammount the user cant override.
-        "hard_maxlogins" "10";
+        "hard_maxlogins" "%X3_HARD_MAXLOGINS%";
 
         //automatically set the following modes when opers auth:
         // - if it includes o, then are auto remote-opered.
-        "auto_oper" "+oxwgs";
-        "auto_oper_privs" "CHAN_LIMIT SHOW_INVIS SHOW_ALL_INVIS KILL LOCAL_KILL REHASH RESTART DIE JUPE LOCAL_JUPE OPMODE WHOX SEE_CHAN PROPAGATE DISPLAY SEE_OPERS WIDE_GLINE FORCE_OPMODE REMOTEREHASH CHECK SEE_SECRET_CHAN WIDE_SHUN WIDE_ZLINE LIST_CHAN";
+        "auto_oper" "%X3_AUTO_OPER%";
+        "auto_oper_privs" "%X3_AUTO_OPER_PRIVS%";
 
         // This names a file that contains easily guessed passwords.
         // It always contains "password", "<password>" and the user's
@@ -128,10 +128,10 @@
 
         // Minimum number of various types of characters permitted in
         // a password. Authserv will enforce these.
-        "password_min_length" "4";
-        "password_min_digits" "0";
-        "password_min_upper" "0";
-        "password_min_lower" "0";
+        "password_min_length" "%X3_PASSWD_MIN_LENGTH%";
+        "password_min_digits" "%X3_PASSWD_MIN_DIGITS%";
+        "password_min_upper" "%X3_PASSWD_MIN_UPPER%";
+        "password_min_lower" "%X3_PASSWD_MIN_LOWER%";
         
         // What should valid account and nicks look like?
         // If valid_nick_regex is omitted, valid_account_regex is used
@@ -224,14 +224,14 @@
         // How to integrate with email cookies?
         // In order to use mail, mail must be enabled and configured
         // down below in the mail section of this config file.
-        "email_enabled" "0"; // Allow account verification and password reset by email.
-        "email_required" "0"; // if above is 1, require verification to authenticate.
-        "cookie_timeout" "2d"; // how long before we expire cookies?
-        "accounts_per_email" "1"; // How many people can use the same email account.
+        "email_enabled" "%X3_EMAIL_ENABLED%"; // Allow account verification and password reset by email.
+        "email_required" "%X3_EMAIL_REQUIRED%"; // if above is 1, require verification to authenticate.
+        "cookie_timeout" "%X3_COOKIE_TIMEOUT%"; // how long before we expire cookies?
+        "accounts_per_email" "%X3_ACCOUNTS_PER_EMAIL%"; // How many people can use the same email account.
 
         "email_search_level" "600"; // minimum OpServ level to search based on email address (search print email *foo*)
         "email_visible_level" "800"; // minimum OpServ level to see somebody's email address
-        "titlehost_suffix" "AfterNET.Org"; // 'USET title' sets a fake hostname of name.title.titlehost on a user.
+        "titlehost_suffix" "%X3_TITLEHOST_SUFFIX%"; // 'USET title' sets a fake hostname of name.title.titlehost on a user.
         "set_title_level" "900"; // Access to use 'uset title'.
         "set_fakehost_level" "1000"; //Access to set a freeform fakehost. (uset fakehost)
 
@@ -260,14 +260,16 @@
         "ldap_uri" "%X3_LDAP_URI%";
         "ldap_base" "%X3_LDAP_BASE%";
         "ldap_dn_fmt" "%X3_LDAP_DN_FMT%";
-        "ldap_autocreate" "1";
+        "ldap_autocreate" "%X3_LDAP_AUTOCREATE%";
         "ldap_admin_dn" "%X3_LDAP_ADMIN_DN%";
         "ldap_admin_pass" "%X3_LDAP_ADMIN_PASS%";
         "ldap_object_classes" ( "top", "inetOrgAnonAccount" );
         "ldap_field_account" "%X3_LDAP_FIELD_ACCOUNT%";
         "ldap_field_password" "%X3_LDAP_FIELD_PASSWORD%";
         "ldap_field_email" "%X3_LDAP_FIELD_EMAIL%";
-        "ldap_timeout" "10";
+        "ldap_field_oslevel" "%X3_LDAP_FIELD_OSLEVEL%";
+        "ldap_filter" "%X3_LDAP_FILTER%";
+        "ldap_timeout" "%X3_LDAP_TIMEOUT%";
 
     };
 

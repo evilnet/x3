@@ -39,6 +39,23 @@ else
     # connection volume from a single host isn't auto-G-lined.
     : "${X3_UNTRUSTED_MAX:=6}"
 
+    # NickServ (AuthServ) defaults
+    : "${X3_NICKSERV_NICK:=AuthServ}"
+    : "${X3_DEFAULT_MAXLOGINS:=3}"
+    : "${X3_HARD_MAXLOGINS:=10}"
+    : "${X3_AUTO_OPER:=+oxwgs}"
+    : "${X3_AUTO_OPER_PRIVS:=CHAN_LIMIT SHOW_INVIS SHOW_ALL_INVIS KILL LOCAL_KILL REHASH RESTART DIE JUPE LOCAL_JUPE OPMODE WHOX SEE_CHAN PROPAGATE DISPLAY SEE_OPERS WIDE_GLINE FORCE_OPMODE REMOTEREHASH CHECK SEE_SECRET_CHAN WIDE_SHUN WIDE_ZLINE LIST_CHAN}"
+    : "${X3_PASSWD_MIN_LENGTH:=4}"
+    : "${X3_PASSWD_MIN_DIGITS:=0}"
+    : "${X3_PASSWD_MIN_UPPER:=0}"
+    : "${X3_PASSWD_MIN_LOWER:=0}"
+    : "${X3_EMAIL_ENABLED:=0}"
+    : "${X3_EMAIL_REQUIRED:=0}"
+    : "${X3_COOKIE_TIMEOUT:=2d}"
+    : "${X3_ACCOUNTS_PER_EMAIL:=1}"
+    # Derived from X3_GENERAL_DOMAIN (set above) unless overridden.
+    : "${X3_TITLEHOST_SUFFIX:=${X3_GENERAL_DOMAIN}}"
+
     # LDAP defaults (disabled unless overridden)
     : "${X3_LDAP_ENABLE:=0}"
     : "${X3_LDAP_WRITEBACK:=0}"
@@ -50,6 +67,10 @@ else
     : "${X3_LDAP_FIELD_ACCOUNT:=uid}"
     : "${X3_LDAP_FIELD_PASSWORD:=userPassword}"
     : "${X3_LDAP_FIELD_EMAIL:=mail}"
+    : "${X3_LDAP_FIELD_OSLEVEL:=X3AccountLevel}"
+    : "${X3_LDAP_FILTER:=(objectClass=inetOrgPerson)}"
+    : "${X3_LDAP_AUTOCREATE:=1}"
+    : "${X3_LDAP_TIMEOUT:=10}"
 
     # Copy the template to the output location
     cp "$BASECONFDIST" "$BASECONF"
