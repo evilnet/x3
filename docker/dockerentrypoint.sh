@@ -68,6 +68,18 @@ else
     : "${X3_QSERVER_PASSWORD:=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)}"
     : "${X3_BLACKLIST_GLINE_DURATION:=1h}"
 
+    # Mail — disabled by default: the image ships no MTA at
+    # /usr/sbin/sendmail, so "enabled" only meant every cookie mail
+    # failed at sendmail exec time.  Set X3_MAIL_ENABLE=1 (and a working
+    # mailer or SMTP server) to turn it on.
+    : "${X3_MAIL_ENABLE:=0}"
+    : "${X3_MAIL_MAILER:=/usr/sbin/sendmail}"
+    : "${X3_MAIL_SMTP_SERVER:=localhost}"
+    : "${X3_MAIL_SMTP_SERVICE:=smtp}"
+
+    # Databases
+    : "${X3_DB_SAVE_FREQUENCY:=30m}"
+
     # NickServ (AuthServ) defaults
     : "${X3_NICKSERV_NICK:=AuthServ}"
     : "${X3_DEFAULT_MAXLOGINS:=3}"

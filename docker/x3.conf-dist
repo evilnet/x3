@@ -807,19 +807,19 @@
  * section for additional mail settings also.
  */
 "mail" {
-    "enable" "1";
-    "mailer" "/usr/sbin/sendmail";
+    "enable" "%X3_MAIL_ENABLE%";
+    "mailer" "%X3_MAIL_MAILER%";
     // OR Afternet uses a custom script to keep the services IP hidden: 
     //    "mailer" "/home/x3user/x3/sendmail.sh";
     "from_address" "supportrobot@%X3_GENERAL_DOMAIN%";
-    "extra_headers" ("Network-Services: x3");
+    "extra_headers" ("X-Mailer: X3-Services");
     "body_prefix_first" ("Welcome to the network, looks like this is your first email from us.");
-    "body_prefix" ("NET Support - User and Channel registration system");
+    "body_prefix" ("%X3_GENERAL_DOMAIN% Support - User and Channel registration system");
     "body_suffix_first" ("", "%X3_GENERAL_DOMAIN% IRC Network", "http://%X3_GENERAL_DOMAIN%");
-    "body_suffix" ("", "NET IRC Network", "http://www.%X3_GENERAL_DOMAIN%", "support@%X3_GENERAL_DOMAIN%","irc://irc.%X3_GENERAL_DOMAIN%/help");
+    "body_suffix" ("", "%X3_GENERAL_DOMAIN% IRC Network", "http://www.%X3_GENERAL_DOMAIN%", "support@%X3_GENERAL_DOMAIN%","irc://irc.%X3_GENERAL_DOMAIN%/help");
     // If you are using the smtp mail back-end, you may need to set these:
-    "smtp_server" "localhost";
-    "smtp_service" "smtp";
+    "smtp_server" "%X3_MAIL_SMTP_SERVER%";
+    "smtp_service" "%X3_MAIL_SMTP_SERVICE%";
     // "smtp_myname" "localhost.domain";
 };
 
@@ -850,7 +850,7 @@
         "filename" "/x3/data/x3.db";
         // How often should it be saved?
         // (You can disable automatic saves by setting this to 0.)
-        "frequency" "30m";
+        "frequency" "%X3_DB_SAVE_FREQUENCY%";
     };
 };
 
