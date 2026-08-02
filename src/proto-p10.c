@@ -2178,12 +2178,46 @@ static CMD_FUNC(cmd_burst)
     cData = cNode->channel_info;
 
     if (!cData) {
-        if (cNode->modes & (MODE_REGISTERED | MODE_PERSIST)) {
-            /* Channel is not registered with us but carries server-managed
-             * markers: strip the registration marker AND any stale persist
-             * exmode (only ChanServ sets +z, on registered channels). */
+        /* Channel is not registered with us but carries server-managed
+         * markers.  The two markers no longer have the same truth value, so
+         * they are decided separately:
+         *
+         *  -R  ALWAYS.  MODE_REGISTERED on a channel we hold no channel_info
+         *      for is stale in every scenario there is, relocation included:
+         *      relocate_execute() clears R on the tombstone itself, and our
+         *      own husk has channel_info NULL by construction, so an R that
+         *      arrives on a burst for either is drift to be corrected.
+         *
+         *  -z  ONLY when the name does NOT carry the relocation fingerprint.
+         *      The old premise -- "only ChanServ sets +z, on registered
+         *      channels" -- stopped being true when relocate_execute() began
+         *      marking tombstones EXMODE_PERSIST: a live tombstone is +z AND
+         *      unregistered by construction, and that persist bit is the only
+         *      thing keeping the ircd from collecting the channel the moment
+         *      it empties.  Stripping it there would dissolve a tombstone
+         *      early and take the +L redirect and the member status snapshots
+         *      with it, mid-grace, network-wide.  Any OTHER unregistered +z
+         *      is still stale and still gets stripped.
+         *
+         * KNOWN BOUNDED HOLE: the fingerprint is a live DNR carrying
+         * chanserv_rename_dnr()'s reason, and DNRs live in saxdb, which is
+         * written on a save tick (db_backup_frequency) and at clean shutdown.
+         * A burst arriving after an X3 crash that lost the DNR sees no
+         * fingerprint and strips a legitimate tombstone's z.  Blast radius is
+         * one early tombstone dissolve -- the relocation itself already
+         * happened on every server -- which degrades exactly to pre-relocate
+         * behaviour, and it is the same window that already disarms the husk
+         * re-arm hook.  The clean fix is an explicit ircd-side dissolve /
+         * tombstone signal on the wire, recorded as deferred future work
+         * (new wire surface on a frozen RN shape). */
+        int strip_r = (cNode->modes & MODE_REGISTERED) ? 1 : 0;
+        int strip_z = (cNode->modes & MODE_PERSIST)
+                      && !chanserv_is_relocation_dnr(cNode->name);
+
+        if (strip_r || strip_z) {
             irc_join(opserv, cNode);
-            irc_mode(opserv, cNode, "-zR");
+            irc_mode(opserv, cNode,
+                     (strip_r && strip_z) ? "-zR" : (strip_z ? "-z" : "-R"));
             irc_part(opserv, cNode, "");
         }
     }

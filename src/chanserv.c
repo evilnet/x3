@@ -2240,16 +2240,22 @@ chanserv_relocate_tombstone(const char *old_name, time_t timestamp)
  * the later ones no-ops.  A network that runs with rename_dnr_duration 0 (no
  * DNR) or relocate_grace 0 gets no re-arm at all, which is the same
  * pre-existing "husk lives until its last member quits" behaviour. */
-static void
-chanserv_relocate_husk_check(struct chanNode *channel, UNUSED_ARG(void *extra))
+int
+chanserv_is_relocation_dnr(const char *chan_name)
 {
     struct do_not_register *dnr;
 
+    if(!(dnr = chanserv_is_dnr(chan_name, NULL)))
+        return 0;
+    return !strcmp(dnr->reason, RENAME_DNR_REASON);
+}
+
+static void
+chanserv_relocate_husk_check(struct chanNode *channel, UNUSED_ARG(void *extra))
+{
     if(channel->channel_info || !(channel->modes & MODE_PERSIST))
         return;
-    if(!(dnr = chanserv_is_dnr(channel->name, NULL)))
-        return;
-    if(strcmp(dnr->reason, RENAME_DNR_REASON))
+    if(!chanserv_is_relocation_dnr(channel->name))
         return;
 
     log_module(CS_LOG, LOG_INFO,

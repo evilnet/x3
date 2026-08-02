@@ -244,6 +244,16 @@ void chanserv_rename_dnr(const char *old_name);
 void chanserv_relocate_bots(struct chanNode *new_chan);
 void chanserv_relocate_tombstone(const char *old_name, time_t timestamp);
 
+/* Does this channel NAME currently carry the relocation fingerprint -- a
+ * live do-not-register stamped with chanserv_rename_dnr()'s own reason?
+ *
+ * The DNR tables are file-static in chanserv.c and the reason string is a
+ * private constant, so callers outside chanserv get this predicate rather
+ * than the lookup.  Used by the burst re-arm hook and by cmd_burst's
+ * unregistered-channel correction, which must not strip the persist exmode
+ * off a live tombstone.  Returns 1 = looks like a relocation tombstone name. */
+int chanserv_is_relocation_dnr(const char *chan_name);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);
