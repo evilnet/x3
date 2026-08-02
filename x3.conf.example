@@ -488,6 +488,20 @@
         // How often to look for dnrs that have expired?
         "dnr_expire_freq" "1h";
 
+        // How long a channel's OLD name stays do-not-register after a
+        // RENAME/relocation, so nobody can re-register the vacated name
+        // out from under the move. Set to 0 to disable.
+        "rename_dnr_duration" "1d";
+
+        // How long X3 keeps a relocation tombstone's member view before
+        // sweeping its husk. (seconds)
+        // MUST be kept in step with the ircd's RELOCATE_GRACE feature: a
+        // value lower than the ircd's dissolves X3's view of the tombstone
+        // early, while the ircd still considers it live; a value higher
+        // just delays X3's own cleanup. Default matches the ircd's default
+        // of 900.
+        "relocate_grace" "900";
+
         // what !set options should we show when user calls "!set" with no arguments?
         "set_shows" ("DefaultTopic", "TopicMask", "Greeting", "UserGreeting", "Modes", "PubCmd", "InviteMe", "UserInfo", "EnfOps", "EnfModes", "EnfTopic", "TopicSnarf", "Setters", "CtcpReaction", "BanTimeout", "Protect", "Toys", "DynLimit", "NoDelete");
 
