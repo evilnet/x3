@@ -65,6 +65,13 @@
 #define KEY_RELOCATE_GRACE          "relocate_grace"
 #define KEY_VALID_CHANNEL_REGEX     "valid_channel_regex"
 
+/* The reason string chanserv_rename_dnr() stamps on the do-not-register it
+ * places on a renamed/relocated channel's old name.  It is not just a
+ * message: chanserv_relocate_husk_check() reads it back as the fingerprint
+ * that identifies a relocation tombstone after an X3 restart.  Changing it
+ * breaks that re-arm for every DNR already in the saxdb. */
+#define RENAME_DNR_REASON           "Channel was renamed"
+
 /* Slack added to relocate_grace before X3 reaps a relocation husk, so a
  * config that is a little out of step with the ircd's FEAT_RELOCATE_GRACE
  * errs on the late side. See chanserv_relocate_tombstone(). */
@@ -2136,7 +2143,7 @@ chanserv_rename_dnr(const char *old_name)
      * same as any other setter value. */
     setter = chanserv ? chanserv->nick : "ChanServ";
     chanserv_add_dnr(old_name, setter, now + chanserv_conf.rename_dnr_duration,
-                      "Channel was renamed");
+                      RENAME_DNR_REASON);
 }
 
 /* A relocation tombstone we are waiting to reap out of X3's channel dict.
@@ -2201,6 +2208,55 @@ chanserv_relocate_tombstone(const char *old_name, time_t timestamp)
      * the grace period. */
     timeq_add(now + chanserv_conf.relocate_grace + RELOCATE_SWEEP_MARGIN,
               chanserv_relocate_husk_expire, husk);
+}
+
+/* Re-arm the husk sweep for a tombstone we are meeting for the first time --
+ * which in practice means one that outlived an X3 restart, since the timer
+ * armed by cmd_rename dies with the process and the ircd's own dissolve is
+ * invisible to services (its grace-expiry PARTs are local-only on every
+ * server, and nothing else is emitted).  Runs as a new-channel hook, so it
+ * sees every channel learned from a BURST.
+ *
+ * There is no relocation flag on the wire to test, so this is a heuristic
+ * over state X3 already tracks.  A channel that is
+ *
+ *   +z (persist)  AND  unregistered  AND  DNR'd with the rename reason
+ *
+ * is a relocation tombstone with very little room left for anything else: the
+ * persist bit on a services network is set by ChanServ for its own registered
+ * channels (off_channel) or by relocate_execute() on a tombstone, and the
+ * first of those is registered by definition -- so persist WITHOUT a
+ * registration already excludes the ordinary case.  The DNR with our own
+ * rename reason is then the fingerprint proper: only chanserv_rename_dnr()
+ * writes it, and only for a name a rename or relocation just vacated.
+ *
+ * The bounds, deliberately: a false positive costs a timer that silently
+ * removes X3-side memberships from an unregistered channel roughly
+ * relocate_grace after it is learned.  It emits nothing on the wire, so it
+ * can only make X3's view catch up or briefly lag -- never the network's --
+ * and the sweep re-authenticates the node by name AND creation timestamp
+ * first, so it cannot follow a name onto a different channel.  Repeated
+ * bursts of the same husk arm redundant timers; the identity re-check makes
+ * the later ones no-ops.  A network that runs with rename_dnr_duration 0 (no
+ * DNR) or relocate_grace 0 gets no re-arm at all, which is the same
+ * pre-existing "husk lives until its last member quits" behaviour. */
+static void
+chanserv_relocate_husk_check(struct chanNode *channel, UNUSED_ARG(void *extra))
+{
+    struct do_not_register *dnr;
+
+    if(channel->channel_info || !(channel->modes & MODE_PERSIST))
+        return;
+    if(!(dnr = chanserv_is_dnr(channel->name, NULL)))
+        return;
+    if(strcmp(dnr->reason, RENAME_DNR_REASON))
+        return;
+
+    log_module(CS_LOG, LOG_INFO,
+               "Channel %s looks like a relocation tombstone (persist, "
+               "unregistered, rename DNR); re-arming its husk sweep.",
+               channel->name);
+    chanserv_relocate_tombstone(channel->name, channel->timestamp);
 }
 
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
@@ -2852,24 +2908,33 @@ chanserv_relocate_bots(struct chanNode *new_chan)
 {
     extern struct userNode *spamserv;
     struct chanData *cData = new_chan->channel_info;
+    struct modeNode *mn_cs, *mn_ss;
 
-    /* Nothing to re-op when there is no registration to serve, when the
-     * channel is suspended (the bots stay out of it by design), or when the
-     * bot nick is disabled via the "." convention. */
+    /* Nothing to do when there is no registration to serve, when the channel
+     * is suspended (the bots stay out of it by design), or when the bot nick
+     * is disabled via the "." convention. */
     if(!cData || IsSuspended(cData) || !chanserv)
         return;
     /* cmd_rename's consent path has already walked our local users over to
      * the new node with real JOINs, so ChanServ's presence here is the test
      * for "was ChanServ in the community at all" -- an off_channel
      * registration has no bot to re-op and must not gain one. */
-    if(!GetUserMode(new_chan, chanserv))
+    if(!(mn_cs = GetUserMode(new_chan, chanserv)))
         return;
 
-    /* AddChannelUser() inside is idempotent (it returns the existing
-     * modeNode), so this is purely the +o the ircd does not give a joining
-     * service.  Same call cmd_move makes after moving a registration onto a
-     * channel the bots have just entered. */
-    ss_cs_join_channel(new_chan, spamserv && GetUserMode(new_chan, spamserv));
+    /* That same follow already re-asserted whatever modes each bot held in
+     * the tombstone, generically, so in the ordinary case the bots are
+     * already opped here and this must NOT fire -- a second identical MODE on
+     * the wire is pure noise.  What is left is the repair case: a REGISTERED
+     * channel whose ChanServ (or SpamServ) was somehow not opped in the old
+     * channel.  There the registration's own invariant outranks mirroring the
+     * husk, and ss_cs_join_channel() restores it (its AddChannelUser() is
+     * idempotent -- it returns the existing modeNode). */
+    mn_ss = spamserv ? GetUserMode(new_chan, spamserv) : NULL;
+    if((mn_cs->modes & MODE_CHANOP) && (!mn_ss || (mn_ss->modes & MODE_CHANOP)))
+        return;
+
+    ss_cs_join_channel(new_chan, mn_ss != NULL);
 }
 
 static CHANSERV_FUNC(cmd_move)
@@ -10308,6 +10373,11 @@ init_chanserv(const char *nick)
      * (use-after-free at the next saxdb write). Keep this outside if(nick).
      */
     reg_channel_rename_func(chanserv_channel_rename, NULL);
+    /* Outside if(nick) for the same reason: a relocation tombstone learned
+     * from a BURST has to be recognised and reaped whether or not the
+     * ChanServ bot nick exists -- the DNR table it is fingerprinted against
+     * loads from the DB either way. */
+    reg_new_channel_func(chanserv_relocate_husk_check, NULL);
     reg_handle_rename_func(handle_rename, NULL);
     reg_unreg_func(handle_unreg, NULL);
 

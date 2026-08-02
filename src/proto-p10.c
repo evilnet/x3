@@ -2513,6 +2513,29 @@ relocate_move_member(struct modeNode *mn, struct chanNode *newchan)
     DelChannelUser(user, oldchan, NULL, 0);
 }
 
+/* Re-assert one member's status modes on the new node, for real.  Used for
+ * our own service bots: they follow a relocation with an ordinary JOIN, and
+ * the ircd does not carry a joining client's modes over -- so without this a
+ * bot that was opped in the old channel lands unopped in the new one.  The
+ * ircd force-accepts modes from a +k service (m_mode.c:305-306), which is why
+ * a plain announce is enough and no OPMODE is needed.
+ *
+ * Callers MUST have already written the snapshot into the new modeNode: this
+ * announce ends in mod_chanmode_apply(), which ORs the bits in, so it can
+ * only ever ADD to X3's view -- it cannot clear a spurious auto-op. */
+static void
+relocate_reassert_modes(struct userNode *user, struct chanNode *chan,
+                        struct modeNode *mn, long modes)
+{
+    struct mod_chanmode *change = mod_chanmode_alloc(1);
+
+    change->argc = 1;
+    change->args[0].mode = modes;
+    change->args[0].u.member = mn;
+    mod_chanmode_announce(user, chan, change);
+    mod_chanmode_free(change);
+}
+
 /* RN <old> <new> [C] :<reason> -- the ircd broadcasts this after an approved
  * rename has already executed. Authorization happened at AC R query time
  * (chanserv_rename_allowed, see cmd_account); this handler only migrates
@@ -2631,8 +2654,30 @@ static CMD_FUNC(cmd_rename)
                  * nor +F) in agreement with ours.  The JOIN carries the new
                  * node's timestamp, which RelocateChannel() took from the old
                  * channel and therefore matches the creationtime the ircd
-                 * gave the new channel. */
+                 * gave the new channel.
+                 *
+                 * Status modes do NOT ride along with a JOIN, so they are
+                 * snapshotted here and re-asserted below -- for EVERY bot,
+                 * not just ChanServ and SpamServ: HelpServ, OpServ and module
+                 * bots hold ops in their own channels too and would otherwise
+                 * arrive powerless.  The overwrite is separately load-bearing
+                 * on the UNREGISTERED path: AddChannelUser() hands
+                 * MODE_CHANOP to the first member of a channel that is
+                 * neither +R nor +A, which the ircd did not do -- writing the
+                 * snapshot back (rather than OR-ing) is what keeps that
+                 * phantom op out of X3's view.  Same discipline as
+                 * relocate_move_member(). */
+                long botmodes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
+                short botoplevel = mn->oplevel;
+                struct modeNode *botmn;
+
                 AddChannelUser(user, newchan);
+                if((botmn = GetUserMode(newchan, user))) {
+                    botmn->modes = botmodes;
+                    botmn->oplevel = botoplevel;
+                    if(botmodes)
+                        relocate_reassert_modes(user, newchan, botmn, botmodes);
+                }
                 DelChannelUser(user, chan, reason, 0);
                 nmoved++;
                 continue;
