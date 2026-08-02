@@ -62,7 +62,13 @@
 #define KEY_MAX_USERINFO_LENGTH     "max_userinfo_length"
 #define KEY_GIVEOWNERSHIP_PERIOD    "giveownership_timeout"
 #define KEY_RENAME_DNR_DURATION     "rename_dnr_duration"
+#define KEY_RELOCATE_GRACE          "relocate_grace"
 #define KEY_VALID_CHANNEL_REGEX     "valid_channel_regex"
+
+/* Slack added to relocate_grace before X3 reaps a relocation husk, so a
+ * config that is a little out of step with the ircd's FEAT_RELOCATE_GRACE
+ * errs on the late side. See chanserv_relocate_tombstone(). */
+#define RELOCATE_SWEEP_MARGIN       60
 
 /* ChanServ database */
 #define KEY_VERSION_CONTROL         "version_control"
@@ -633,6 +639,7 @@ static struct
     unsigned int        refresh_period;
     unsigned int        giveownership_period;
     unsigned long   rename_dnr_duration;
+    unsigned long   relocate_grace;
 
     unsigned int        max_owned;
     unsigned int    max_chan_users;
@@ -2132,6 +2139,70 @@ chanserv_rename_dnr(const char *old_name)
                       "Channel was renamed");
 }
 
+/* A relocation tombstone we are waiting to reap out of X3's channel dict.
+ * Keyed by NAME plus the creation timestamp captured at relocation time:
+ * the pointer would dangle (the husk can be collected the moment its last
+ * member leaves) and the name alone is not an identity -- a brand new
+ * channel can be created on the old name once the ircd's grace period ends
+ * and its redirect is gone.  Same re-authentication the ircd's own
+ * relocate_tombstone_sweep() performs before it touches anything. */
+struct relocate_husk {
+    time_t timestamp;
+    char name[1];
+};
+
+static void
+chanserv_relocate_husk_expire(void *data)
+{
+    struct relocate_husk *husk = data;
+    struct chanNode *chan = GetChannel(husk->name);
+    unsigned int n;
+
+    if(chan && !chan->channel_info && chan->timestamp == husk->timestamp)
+    {
+        /* Silent removal, no wire traffic, MCP_FROM_SERVER in spirit: the
+         * ircd already parted every one of these members locally on every
+         * server when its own grace timer fired, and told nobody -- this is
+         * X3 catching up with a decision that has already happened, not X3
+         * parting anyone.  Held across the walk so the last removal cannot
+         * free the node before we are done with it; the UnlockChannel() is
+         * then what collects it, through the ordinary empty-channel path. */
+        LockChannel(chan);
+        for(n = chan->members.used; n > 0; )
+            DelChannelUser(chan->members.list[--n]->user, chan, NULL, 0);
+        if(chan->members.used)
+            log_module(CS_LOG, LOG_WARNING,
+                       "Relocation husk %s still holds %u member(s) after its "
+                       "sweep; leaving the node in place.",
+                       husk->name, chan->members.used);
+        UnlockChannel(chan);
+    }
+    free(husk);
+}
+
+void
+chanserv_relocate_tombstone(const char *old_name, time_t timestamp)
+{
+    struct relocate_husk *husk;
+
+    if(!chanserv_conf.relocate_grace)
+        return;
+
+    husk = malloc(sizeof(*husk) + strlen(old_name));
+    strcpy(husk->name, old_name);
+    husk->timestamp = timestamp;
+
+    /* relocate_grace mirrors the ircd's FEAT_RELOCATE_GRACE (default 900);
+     * the extra margin is deliberate slack in the safe direction.  Sweeping
+     * LATE only means X3 carries a stale husk a little longer -- it is
+     * unregistered, has no bots in it and nothing consults it.  Sweeping
+     * EARLY would blank X3's view of members who are still legitimately
+     * sitting in the ircd's live tombstone, talking, for the remainder of
+     * the grace period. */
+    timeq_add(now + chanserv_conf.relocate_grace + RELOCATE_SWEEP_MARGIN,
+              chanserv_relocate_husk_expire, husk);
+}
+
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
 {
     struct do_not_register *dnr;
@@ -2774,6 +2845,31 @@ ss_cs_join_channel(struct chanNode *channel, int spamserv_join)
 
     mod_chanmode_announce(chanserv, channel, change);
        mod_chanmode_free(change);
+}
+
+void
+chanserv_relocate_bots(struct chanNode *new_chan)
+{
+    extern struct userNode *spamserv;
+    struct chanData *cData = new_chan->channel_info;
+
+    /* Nothing to re-op when there is no registration to serve, when the
+     * channel is suspended (the bots stay out of it by design), or when the
+     * bot nick is disabled via the "." convention. */
+    if(!cData || IsSuspended(cData) || !chanserv)
+        return;
+    /* cmd_rename's consent path has already walked our local users over to
+     * the new node with real JOINs, so ChanServ's presence here is the test
+     * for "was ChanServ in the community at all" -- an off_channel
+     * registration has no bot to re-op and must not gain one. */
+    if(!GetUserMode(new_chan, chanserv))
+        return;
+
+    /* AddChannelUser() inside is idempotent (it returns the existing
+     * modeNode), so this is purely the +o the ircd does not give a joining
+     * service.  Same call cmd_move makes after moving a registration onto a
+     * channel the bots have just entered. */
+    ss_cs_join_channel(new_chan, spamserv && GetUserMode(new_chan, spamserv));
 }
 
 static CHANSERV_FUNC(cmd_move)
@@ -9272,6 +9368,13 @@ chanserv_conf_read(void)
     chanserv_conf.giveownership_period = str ? ParseInterval(str) : 0;
     str = database_get_data(conf_node, KEY_RENAME_DNR_DURATION, RECDB_QSTRING);
     chanserv_conf.rename_dnr_duration = str ? ParseInterval(str) : 86400;
+    /* Must track the ircd's FEAT_RELOCATE_GRACE (same 900s default): it is
+     * how long the ircd keeps a relocation tombstone alive, and therefore
+     * how long X3's matching husk is still a truthful view of who is in it.
+     * Set to 0 to disable the husk sweep entirely (the node then survives
+     * until its last member quits). */
+    str = database_get_data(conf_node, KEY_RELOCATE_GRACE, RECDB_QSTRING);
+    chanserv_conf.relocate_grace = str ? ParseInterval(str) : 900;
     str = database_get_data(conf_node, KEY_CTCP_SHORT_BAN_DURATION, RECDB_QSTRING);
     chanserv_conf.ctcp_short_ban_duration = str ? str : "3m";
     str = database_get_data(conf_node, KEY_CTCP_LONG_BAN_DURATION, RECDB_QSTRING);

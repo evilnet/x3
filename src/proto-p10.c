@@ -2465,19 +2465,85 @@ static CMD_FUNC(cmd_topic)
     return 1;
 }
 
-/* RN <old> <new> :<reason> -- the ircd broadcasts this after an approved
+/** Relocation marker, as the parameter immediately before the trailing
+ * reason (evilnet/channel-relocate):
+ *
+ *     classic:     RN <old> <new> :<reason>
+ *     relocation:  RN <old> <new> C :<reason>
+ *
+ * Honoured ONLY in the five-parameter shape (argv[0] is the command token,
+ * so that is argc > 4), exactly as the ircd's ms_rename() honours it only
+ * for parc > 4.  A four-parameter "RN #a #b :C" is a CLASSIC rename whose
+ * reason happens to be the letter C: reading a marker there would make X3
+ * partition a membership the ircd force-moved, which is permanent state
+ * divergence.  The ircd guarantees the trailing reason parameter is always
+ * emitted (possibly empty), so the shorter shape never carries a marker. */
+#define RELOCATE_MARKER "C"
+
+/* Move one member's record from the old node to the new one, preserving
+ * everything the ircd's add_user_to_channel() preserves for a mover.  No
+ * wire traffic: the ircd already moved this user on every server off the
+ * RN marker, so an emitted JOIN/PART here would be a second, contradictory
+ * event.  Same transfer-before-delete discipline as the BX P merge above --
+ * and here it is load-bearing for a second reason: DelChannelUser() collects
+ * an unregistered channel that just lost its last member, and the caller
+ * holds the old node across this loop precisely so that cannot happen
+ * mid-partition. */
+static void
+relocate_move_member(struct modeNode *mn, struct chanNode *newchan)
+{
+    struct userNode *user = mn->user;
+    struct chanNode *oldchan = mn->channel;
+    long modes = mn->modes;
+    short oplevel = mn->oplevel;
+    time_t idle_since = mn->idle_since;
+    struct modeNode *newmn;
+
+    AddChannelUser(user, newchan);
+    /* Re-look-up rather than trusting AddChannelUser()'s return value: it
+     * ends in call_join_funcs(), which ignores handler return codes, and
+     * chanserv's join handler can KickChannelUser() a user who matches a
+     * stored ban -- freeing the very modeNode we were handed.  The member
+     * state was snapshotted above for the same reason. */
+    if((newmn = GetUserMode(newchan, user))) {
+        newmn->modes = modes;
+        newmn->oplevel = oplevel;
+        newmn->idle_since = idle_since;
+    }
+    DelChannelUser(user, oldchan, NULL, 0);
+}
+
+/* RN <old> <new> [C] :<reason> -- the ircd broadcasts this after an approved
  * rename has already executed. Authorization happened at AC R query time
  * (chanserv_rename_allowed, see cmd_account); this handler only migrates
- * state (design §3a: authorize-at-query, apply-at-RN). The source prefix
- * is the renaming user and may be unknown to us in edge cases, so it is
- * not used here. */
+ * state (design §3a: authorize-at-query, apply-at-RN).
+ *
+ * Classic path: the channel is re-keyed in place, everyone comes along.
+ *
+ * Consent path (the C marker): the channel SPLITS.  Registration, channel
+ * state and the module holders move to the new name; the old node survives
+ * as an unregistered tombstone husk holding the members who did not consent.
+ * Movers are the ircd's mover set and nothing else -- the RN source user
+ * (issuing the rename is consent) plus every user with umode +F -- because
+ * X3's membership view has to match what relocate_execute() did on every
+ * server, member for member.  X3's own service bots are a separate class:
+ * they follow the REGISTRATION, wire-visibly, on their own JOIN/PART (see
+ * below), which is the spec's ordinary consent primitive rather than a
+ * silent move.
+ *
+ * The source prefix is a nick here (parse_line resolves the numeric before
+ * dispatch) and may resolve to nothing at all -- a server-sourced RN has no
+ * issuer, which is exactly how the ircd treats it too. */
 static CMD_FUNC(cmd_rename)
 {
     struct chanNode *chan;
     char old_name[CHANNELLEN+1];
+    time_t old_timestamp;
     int was_registered;
+    int relocate;
 
     if(argc < 3) return 0;
+    relocate = (argc > 4) && !strcmp(argv[3], RELOCATE_MARKER);
     if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
     if(GetChannel(argv[2])) {
         log_module(MAIN_LOG, LOG_ERROR,
@@ -2487,16 +2553,122 @@ static CMD_FUNC(cmd_rename)
     }
     was_registered = chan->channel_info != NULL;
     safestrncpy(old_name, argv[1], sizeof(old_name));
-    if(!RenameChannel(chan, argv[2])) {
-        /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
-         * left the old node untouched/unfreed -- nothing was actually
-         * renamed, so don't mark the (still current) old name do-not-
-         * register. */
-        log_module(MAIN_LOG, LOG_ERROR,
-                   "RENAME %s -> %s: rejected by RenameChannel",
-                   argv[1], argv[2]);
-        return 1;
+    old_timestamp = chan->timestamp;
+
+    if(!relocate) {
+        if(!RenameChannel(chan, argv[2])) {
+            /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
+             * left the old node untouched/unfreed -- nothing was actually
+             * renamed, so don't mark the (still current) old name do-not-
+             * register. */
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: rejected by RenameChannel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+    } else {
+        struct userNode *issuer = origin ? GetUserH(origin) : NULL;
+        struct chanNode *newchan;
+        struct userNode **movers;
+        unsigned int nmovers = 0, nmoved = 0, nstayers, n;
+        char reason[MAXLEN];
+
+        if(!(newchan = RelocateChannel(chan, argv[2]))) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: rejected by RelocateChannel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+
+        /* Hold the husk across the partition.  RelocateChannel() moved every
+         * lock to the new node, so without this the first DelChannelUser()
+         * that empties the (now unregistered) old node would free it under
+         * the loop.  The matching UnlockChannel() at the tail is what lets an
+         * emptied husk be collected -- normally, and by the normal path. */
+        LockChannel(chan);
+
+        snprintf(reason, sizeof(reason), "Channel relocated to %s.", newchan->name);
+
+        /* Classify first, move second -- the same two-pass split the ircd's
+         * relocate_execute() makes, for the same reason: pass two runs
+         * AddChannelUser()/DelChannelUser(), which fire join and part hooks
+         * into every service, and a hook is free to mutate the very member
+         * list a single fused walk would still be indexing.  Pass one only
+         * reads it, so it sees a stable list; pass two re-resolves each
+         * candidate through GetUserMode() and skips anyone a hook has since
+         * taken out.
+         *
+         * The candidate set is the ircd's mover set exactly -- the RN source
+         * user (issuing the rename is consent) plus every user with umode +F
+         * -- plus our own local service bots, which are not a mover class at
+         * all but a separate wire-visible follow (see pass two). */
+        movers = malloc(sizeof(*movers) * (chan->members.used + 1));
+        for(n = 0; n < chan->members.used; n++) {
+            struct userNode *user = chan->members.list[n]->user;
+
+            if(IsLocal(user) || user == issuer || IsFollow(user))
+                movers[nmovers++] = user;
+        }
+
+        for(n = 0; n < nmovers; n++) {
+            struct userNode *user = movers[n];
+            struct modeNode *mn = GetUserMode(chan, user);
+
+            if(!mn)
+                continue;   /* a hook fired by an earlier iteration removed them */
+
+            if(IsLocal(user)) {
+                /* Our own service bots.  The rename hooks just re-pointed
+                 * every module holder (chanserv's channel_info and support
+                 * channels, opserv's alert/debug channels, helpserv's
+                 * helpchan, spamserv's chanInfo) at the new node, so a bot
+                 * left sitting in the husk would be a bot whose own service
+                 * believes it is somewhere else.  They follow, and unlike the
+                 * movers they do it ON THE WIRE: AddChannelUser()/
+                 * DelChannelUser() emit a real JOIN and PART for a local
+                 * user, which is what keeps the ircd's view (where nothing
+                 * moved a service bot, because a bot is neither the issuer
+                 * nor +F) in agreement with ours.  The JOIN carries the new
+                 * node's timestamp, which RelocateChannel() took from the old
+                 * channel and therefore matches the creationtime the ircd
+                 * gave the new channel. */
+                AddChannelUser(user, newchan);
+                DelChannelUser(user, chan, reason, 0);
+                nmoved++;
+                continue;
+            }
+
+            relocate_move_member(mn, newchan);
+            nmoved++;
+        }
+        free(movers);
+        nstayers = chan->members.used;
+
+        /* Re-assert ChanServ's (and SpamServ's) ops on the new node: the bots
+         * followed with a plain JOIN above, and the ircd does not op a
+         * joining service.  No-op when the registration is off-channel or
+         * suspended -- i.e. when no bot followed. */
+        chanserv_relocate_bots(newchan);
+
+        /* X3-side tombstone expiry.  The ircd dissolves its tombstone at
+         * grace expiry with local-only PARTs (sendcmdto_channel_butserv_*),
+         * so NONE of them reach us: without this timer the husk would sit in
+         * X3's channel dict with a stale member list until every one of those
+         * users happened to quit, and a fresh channel created on the old name
+         * after the grace period would collide with it. */
+        chanserv_relocate_tombstone(old_name, old_timestamp);
+
+        /* The one line an operator reading logs after a relocation wants:
+         * who moved, who did not, and whether the registration went with
+         * them.  A partition is not an error, so it is not logged as one. */
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RELOCATE %s -> %s: %u moved, %u left in the tombstone%s",
+                   old_name, newchan->name, nmoved, nstayers,
+                   was_registered ? " (registration followed)" : "");
+
+        UnlockChannel(chan);    /* may collect an already-empty husk; chan is dead after this */
     }
+
     if(was_registered)
         chanserv_rename_dnr(old_name);
     return 1;
@@ -3708,6 +3880,11 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
         case 'H': do_user_mode(FLAGS_HIDEOPER); break;
         case 'L': do_user_mode(FLAGS_NOLINK); break;
         case 'q': do_user_mode(FLAGS_COMMONCHANSONLY); break;
+        /* evilnet/channel-relocate: pre-consent to being moved by a channel
+         * relocation.  cmd_rename's consent path reads it to decide who
+         * follows, and MUST agree with the ircd (s_user.c userModeList 'F'
+         * -> FLAG_RELOCATE_FOLLOW) member for member. */
+        case 'F': do_user_mode(FLAGS_FOLLOW); break;
 	}
 #undef do_user_mode
     }

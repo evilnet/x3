@@ -793,6 +793,96 @@ RenameChannel(struct chanNode *channel, const char *new_name)
     return nNode;
 }
 
+struct chanNode *
+RelocateChannel(struct chanNode *channel, const char *new_name)
+{
+    struct chanNode *nNode;
+    unsigned int n;
+
+    /* Same guards RenameChannel() applies, and for the same reasons. */
+    if (!IsChannelName(new_name) || GetChannel(new_name) || strlen(new_name) > CHANNELLEN)
+        return NULL;
+
+    /* The new node carries the OLD node's creation timestamp: the ircd's
+     * relocate_execute() does exactly this (newchan->creationtime =
+     * chptr->creationtime), and our own irc_join() puts that timestamp on
+     * the wire when a service bot follows the community over.  Create it
+     * with AddChannel() rather than by hand so the new-channel hooks
+     * (opserv's join policer / bad-channel check) run for it the way they
+     * do for any other channel we learn about; they see channel_info == NULL
+     * and so do nothing registration-shaped this early. */
+    nNode = AddChannel(new_name, channel->timestamp, NULL, NULL, NULL);
+    if (!nNode)
+        return NULL;
+
+    /* ---- State transfer ----
+     * The same set of fields RenameChannel()'s memcpy() carries wholesale,
+     * copied explicitly because here BOTH nodes have to survive.  Deliberately
+     * excluded: name[] (the dict key -- not re-keyed, that is the whole point)
+     * and members (the caller partitions those). */
+    nNode->modes = channel->modes;
+    nNode->limit = channel->limit;
+    strcpy(nNode->key, channel->key);
+    strcpy(nNode->upass, channel->upass);
+    strcpy(nNode->apass, channel->apass);
+    strcpy(nNode->topic, channel->topic);
+    strcpy(nNode->topic_nick, channel->topic_nick);
+    nNode->topic_time = channel->topic_time;
+    nNode->join_policer = channel->join_policer;
+    nNode->join_flooded = channel->join_flooded;
+    nNode->channel_help = channel->channel_help;
+
+    /* Locks MOVE, all of them.  Every lock holder (chanserv's registration
+     * lock, opserv's alert-discrim channels, chanserv's support channels) is
+     * also a rename-hook registrant that re-points its holder at the new node
+     * below -- so a lock left behind would pin a husk nobody references, and
+     * a lock not moved would leave the new node collectable out from under a
+     * live reference.  This is what RenameChannel()'s memcpy() did implicitly. */
+    nNode->locks = channel->locks;
+    channel->locks = 0;
+
+    /* Ban and exempt lists MOVE (ownership transfer, no deep copy): the
+     * tombstone is unregistered and about to dissolve, so X3 keeps no
+     * enforcement state for it.  The ircd COPIES its ban lists instead, which
+     * matters there (the tombstone still enforces bans for its stayers) but
+     * not here (services enforce through channel_info, which the new node now
+     * owns). */
+    for (n = 0; n < channel->banlist.used; n++)
+        banList_append(&nNode->banlist, channel->banlist.list[n]);
+    channel->banlist.used = 0;
+    for (n = 0; n < channel->exemptlist.used; n++)
+        exemptList_append(&nNode->exemptlist, channel->exemptlist.list[n]);
+    channel->exemptlist.used = 0;
+
+    /* ---- Tombstone the old node ----
+     * Mirrors ircd relocate_execute() exactly, and nothing here goes on the
+     * wire: every server ran that same code off the RN marker, so these bits
+     * are already clear network-wide.  Registration, the oplevel credentials
+     * and the +l limit belong to the community, which is now at the new name;
+     * the persist marker is what keeps the ircd's tombstone alive across the
+     * grace period. */
+    channel->modes &= ~(MODE_REGISTERED | MODE_APASS | MODE_UPASS | MODE_LIMIT);
+    channel->modes |= MODE_PERSIST;
+    channel->limit = 0;
+    channel->apass[0] = '\0';
+    channel->upass[0] = '\0';
+
+    /* ---- Registration follows the community ---- */
+    nNode->channel_info = channel->channel_info;
+    channel->channel_info = NULL;
+
+    /* Hooks run with the registration ALREADY on the new node (chanserv's
+     * hook re-points channel_info->channel through it) and with both nodes
+     * alive -- which is the contract they were written for, RenameChannel()
+     * having kept the old node alive across them too.  Every registrant
+     * re-points at the REGISTRATION, which is what moved; see the audit in
+     * the task-5 report. */
+    for (n = 0; n < crf_used; n++)
+        crf_list[n](channel, nNode, crf_list_extra[n]);
+
+    return nNode;
+}
+
 struct modeNode *
 AddChannelUser(struct userNode *user, struct chanNode* channel)
 {

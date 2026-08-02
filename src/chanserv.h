@@ -229,6 +229,21 @@ int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const 
  * file-static) — this wrapper is the exported escape hatch. */
 void chanserv_rename_dnr(const char *old_name);
 
+/* evilnet/channel-relocate, both called by cmd_rename's consent path in
+ * proto-p10.c after the channel has been split.
+ *
+ * chanserv_relocate_bots() re-asserts ChanServ's (and SpamServ's) ops on the
+ * new node, once the bots have followed the registration there.  No-op for an
+ * off-channel or suspended registration.
+ *
+ * chanserv_relocate_tombstone() arms the X3-side reap of the old node.  The
+ * ircd dissolves its tombstone with local-only PARTs that never reach us, so
+ * this is the only thing that stops the husk's member list going stale
+ * forever.  old_name/timestamp identify the husk at fire time; a channel
+ * re-created on that name in the meantime is left alone. */
+void chanserv_relocate_bots(struct chanNode *new_chan);
+void chanserv_relocate_tombstone(const char *old_name, time_t timestamp);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);
