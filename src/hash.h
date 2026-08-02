@@ -100,6 +100,7 @@
 #define FLAGS_HIDEOPER          0x08000000 /* user is a hidden IRCop +H */
 #define FLAGS_NOLINK            0x10000000 /* user has opted out of channel redirection +L */
 #define FLAGS_COMMONCHANSONLY   0x20000000 /* user only receives PMs from users on same cahnnels +q */
+#define FLAGS_FOLLOW            0x40000000 /* user auto-follows channel relocations +F (evilnet/channel-relocate) */
 
 #define IsOper(x)               ((x)->modes & FLAGS_OPER)
 #define IsService(x)            ((x)->modes & FLAGS_SERVICE)
@@ -130,6 +131,7 @@
 #define IsHideOper(x)           ((x)->modes & FLAGS_HIDEOPER)
 #define IsNoRedirect(x)         ((x)->modes & FLAGS_NOLINK)
 #define IsCommonChansOnly(x)    ((x)->modes & FLAGS_COMMONCHANSONLY)
+#define IsFollow(x)             ((x)->modes & FLAGS_FOLLOW)
 
 #define NICKLEN         30
 #define USERLEN         10
@@ -468,6 +470,12 @@ struct chanNode *RenameChannel(struct chanNode *channel, const char *new_name);
  * channel-deletion path, so del_channel hooks run.  Returns 1 if the node
  * was deleted, 0 if it is in use and was left alone. */
 int DelUnusedChannel(struct chanNode *channel);
+/* Consent split (evilnet/channel-relocate): everything RenameChannel() does
+ * EXCEPT the dict re-key and the membership move -- BOTH nodes survive, the
+ * old one as an unregistered tombstone husk. Returns the NEW node, or NULL
+ * (bad name / target exists); on NULL the old node is untouched. The caller
+ * owns the membership partition afterwards (see cmd_rename in proto-p10.c). */
+struct chanNode *RelocateChannel(struct chanNode *channel, const char *new_name);
 
 struct chanNode* AddChannel(const char *name, time_t time_, const char *modes, char *banlist, char *exemptlist);
 void LockChannel(struct chanNode *channel);
