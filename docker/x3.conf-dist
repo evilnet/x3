@@ -36,11 +36,13 @@
     /* hidden_host should match the F:HIDDEN_HOST: line in your ircu's ircd.conf;
      * x3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
-    "hidden_host_type" "1"; // change this to 2 if you use Nefarious's style 2 host hiding.
-    "key1" "45432"; // Set these key values to the network KEY values you use
-    "key2" "76934"; // for host hiding style 2.
-    "key3" "98336"; // 
-    "prefix" "NETWORK"; // If you use style 2 then this is the name that is prefixed to hosts.
+    "hidden_host_type" "%X3_HIDDEN_HOST_TYPE%"; // change this to 2 if you use Nefarious's style 2 host hiding.
+    // MUST match the ircd's HOST_HIDING_KEY* F:lines; change in production —
+    // stock keys make style-2 cloaks predictable.
+    "key1" "%X3_HIDDEN_HOST_KEY1%"; // Set these key values to the network KEY values you use
+    "key2" "%X3_HIDDEN_HOST_KEY2%"; // for host hiding style 2.
+    "key3" "%X3_HIDDEN_HOST_KEY3%"; // 
+    "prefix" "%X3_HIDDEN_HOST_PREFIX%"; // If you use style 2 then this is the name that is prefixed to hosts.
     "numeric" "%X3_GENERAL_NUMERIC%"; // hint: If you get collisions on link, CHANGE THIS.
     /* Type handles some changes in Nefarious from version to version.
      * 4 - nefarious 0.4.x and other ircds
@@ -50,7 +52,7 @@
      * 8 - nefarious 1.3.0 and higher (Legacy Version)
      * 9 - nefarious 2.0.x and higher (Current Version)
      */
-    "type" "8";
+    "type" "%X3_SERVER_TYPE%"; // 8 = Nefarious 1.3.x; 9 = Nefarious 2.0.x (nefarious2) — must match your ircd.
     "host_in_topic" "1"; //Set to 1 if your Nefarious server have the HOST_IN_TOPIC F:line set to TRUE.
     "max_users" "256"; // You can save a little memory by setting this to a lower value.
     "force_n2k" "1"; // Use extended (5-digit) numnick for self, even if 3 are possible.
@@ -96,7 +98,7 @@
      * reserve nicks.
      */
     "nickserv" {
-        "nick" "AuthServ";  // The bots nick on IRC
+        "nick" "%X3_NICKSERV_NICK%";  // The bots nick on IRC
 
         // If you want to have *@* as the default hostmask, set
         // default_hostmask. I highly reccomend this, and its required
@@ -108,15 +110,15 @@
 
         // default max number of logins allowed on new accounts. Users can set it
         // to something different using authserv commands.
-        "default_maxlogins" "3";
+        "default_maxlogins" "%X3_DEFAULT_MAXLOGINS%";
         
         // hard_maxlogins is the ammount the user cant override.
-        "hard_maxlogins" "10";
+        "hard_maxlogins" "%X3_HARD_MAXLOGINS%";
 
         //automatically set the following modes when opers auth:
         // - if it includes o, then are auto remote-opered.
-        "auto_oper" "+oxwgs";
-        "auto_oper_privs" "CHAN_LIMIT SHOW_INVIS SHOW_ALL_INVIS KILL LOCAL_KILL REHASH RESTART DIE JUPE LOCAL_JUPE OPMODE WHOX SEE_CHAN PROPAGATE DISPLAY SEE_OPERS WIDE_GLINE FORCE_OPMODE REMOTEREHASH CHECK SEE_SECRET_CHAN WIDE_SHUN WIDE_ZLINE LIST_CHAN";
+        "auto_oper" "%X3_AUTO_OPER%";
+        "auto_oper_privs" "%X3_AUTO_OPER_PRIVS%";
 
         // This names a file that contains easily guessed passwords.
         // It always contains "password", "<password>" and the user's
@@ -126,10 +128,10 @@
 
         // Minimum number of various types of characters permitted in
         // a password. Authserv will enforce these.
-        "password_min_length" "4";
-        "password_min_digits" "0";
-        "password_min_upper" "0";
-        "password_min_lower" "0";
+        "password_min_length" "%X3_PASSWD_MIN_LENGTH%";
+        "password_min_digits" "%X3_PASSWD_MIN_DIGITS%";
+        "password_min_upper" "%X3_PASSWD_MIN_UPPER%";
+        "password_min_lower" "%X3_PASSWD_MIN_LOWER%";
         
         // What should valid account and nicks look like?
         // If valid_nick_regex is omitted, valid_account_regex is used
@@ -222,14 +224,14 @@
         // How to integrate with email cookies?
         // In order to use mail, mail must be enabled and configured
         // down below in the mail section of this config file.
-        "email_enabled" "0"; // Allow account verification and password reset by email.
-        "email_required" "0"; // if above is 1, require verification to authenticate.
-        "cookie_timeout" "2d"; // how long before we expire cookies?
-        "accounts_per_email" "1"; // How many people can use the same email account.
+        "email_enabled" "%X3_EMAIL_ENABLED%"; // Allow account verification and password reset by email.
+        "email_required" "%X3_EMAIL_REQUIRED%"; // if above is 1, require verification to authenticate.
+        "cookie_timeout" "%X3_COOKIE_TIMEOUT%"; // how long before we expire cookies?
+        "accounts_per_email" "%X3_ACCOUNTS_PER_EMAIL%"; // How many people can use the same email account.
 
         "email_search_level" "600"; // minimum OpServ level to search based on email address (search print email *foo*)
         "email_visible_level" "800"; // minimum OpServ level to see somebody's email address
-        "titlehost_suffix" "AfterNET.Org"; // 'USET title' sets a fake hostname of name.title.titlehost on a user.
+        "titlehost_suffix" "%X3_TITLEHOST_SUFFIX%"; // 'USET title' sets a fake hostname of name.title.titlehost on a user.
         "set_title_level" "900"; // Access to use 'uset title'.
         "set_fakehost_level" "1000"; //Access to set a freeform fakehost. (uset fakehost)
 
@@ -250,17 +252,24 @@
         // LDAP configuration
         // Uses inetOrgAnonAccount schema (x3/tools/ldap/inetorganon.schema)
         "ldap_enable" "%X3_LDAP_ENABLE%";
+        // ldap_writeback: write new account registrations (incl. credentials) to LDAP.
+        // Required for SASL when LDAP is authoritative — without it nickserv.c gates out
+        // ldap_do_add and accounts land in saxdb only (credential-less). Was missing from
+        // the LDAP-docker templatization.
+        "ldap_writeback" "%X3_LDAP_WRITEBACK%";
         "ldap_uri" "%X3_LDAP_URI%";
         "ldap_base" "%X3_LDAP_BASE%";
         "ldap_dn_fmt" "%X3_LDAP_DN_FMT%";
-        "ldap_autocreate" "1";
+        "ldap_autocreate" "%X3_LDAP_AUTOCREATE%";
         "ldap_admin_dn" "%X3_LDAP_ADMIN_DN%";
         "ldap_admin_pass" "%X3_LDAP_ADMIN_PASS%";
         "ldap_object_classes" ( "top", "inetOrgAnonAccount" );
         "ldap_field_account" "%X3_LDAP_FIELD_ACCOUNT%";
         "ldap_field_password" "%X3_LDAP_FIELD_PASSWORD%";
         "ldap_field_email" "%X3_LDAP_FIELD_EMAIL%";
-        "ldap_timeout" "10";
+        "ldap_field_oslevel" "%X3_LDAP_FIELD_OSLEVEL%";
+        "ldap_filter" "%X3_LDAP_FILTER%";
+        "ldap_timeout" "%X3_LDAP_TIMEOUT%";
 
     };
 
@@ -269,7 +278,7 @@
      * Afternet uses the nickname "O3" for this as its easier to type.
      */
     "opserv" {
-        "nick" "O3";
+        "nick" "%X3_OPSERV_NICK%";
         // should use of this service be limited to global opers?
         "privileged" "1"; 
 
@@ -277,21 +286,21 @@
         "description" "Oper Service Bot"; // (for /whois)
 
         // hostname for service; only used if "description" is also set
-        "hostname" "X3.Services"; // (for /whois)
+        "hostname" "%X3_OPSERV_HOSTNAME%"; // (for /whois)
 
         // What channel should opserv send debug output to?
         //   I don't have any idea what debug info goes here. You can configure
         //   debugging logs in the log section to go to any channel.
         //   Probably safest to set to your oper channel.
-        "debug_channel" "#TheOps";  // Bot will join this channel, also.
+        "debug_channel" "%X3_DEBUG_CHANNEL%";  // Bot will join this channel, also.
         "debug_channel_modes" "+tnOS";  // Modes get set every time X3 starts up
 
         // where to send general alerts (e.g. flood alerts)?
-        "alert_channel" "#TheOps"; // Bot will join this channel, also.
+        "alert_channel" "%X3_ALERT_CHANNEL%"; // Bot will join this channel, also.
         "alert_channel_modes" "+"; // Modes get set every time X3 starts up
 
         // who to tell about staff auths?
-        "staff_auth_channel" "#OperServ"; // Bot will join this channel, also.
+        "staff_auth_channel" "%X3_STAFF_AUTH_CHANNEL%"; // Bot will join this channel, also.
         "staff_auth_channel_modes" "+tnOs"; // modes get set every time X3 starts up
 
          // which channels should all services autojoin?
@@ -302,10 +311,10 @@
         // when a server pings out and they reconnect before the old connection is noticed
         // to be dead by the server.. so set it at about twice the # you want to allow to
         // avoid false positives.
-        "untrusted_max" "6";  // 3 connections and 3 ghosts, 7th connection causes a gline.
+        "untrusted_max" "%X3_UNTRUSTED_MAX%";  // env-templated (default 6).  0 DISABLES the clone-G-line — set 0 on testbeds where a harness opens many connections from one host (else O3 auto-G-lines that host for clone_gline_duration and the bed appears dead).  3 connections and 3 ghosts, (N+1)th connection causes a gline.
 
         // how long of a g-line should be issued if the max hosts is exceeded?
-        "clone_gline_duration" "2h";  // durations are smhdmy
+        "clone_gline_duration" "%X3_CLONE_GLINE_DURATION%";  // durations are smhdmy
 
         // how long to g-line for ?block (or, by default, for trace gline)?
         "block_gline_duration" "12h";
@@ -408,7 +417,7 @@
     };
 
     "chanserv" {
-        "nick" "X3";
+        "nick" "%X3_CHANSERV_NICK%";
 
         // The umodes - add +d if you use nefarious 1.0 and you added 'b:lines'
         // to pass cmdchar through to chanserv anyway.
@@ -422,7 +431,7 @@
         // NOTE: +z mode, needed for this to work. X3 contains modifications to
 	// try and prevent desynchs. If you use this mode do not use any other service
 	// that uses this mode.
-        "off_channel" "no";
+        "off_channel" "%X3_OFF_CHANNEL%";
 
         // Infolines are sent when channel users join the channel. Users set them with USET INFO in X3.
         // how long should a person be unseen before resending infoline?
@@ -434,7 +443,7 @@
         "max_greetlen" "120";
 
         // maximum users in a channel userlist
-        "max_chan_users" "512";
+        "max_chan_users" "%X3_MAX_CHAN_USERS%";
         // maximum bans on a channel banlist
         "max_chan_bans" "512";
         // maximum length of a user's infoline
@@ -501,10 +510,10 @@
 
         // channel(s) that support helpers must be in to be helping
         // if this is a list, any one by itself will do
-        "support_channel" ("#Operations", "#Help");
+        "support_channel" (%X3_SUPPORT_CHANNEL%);
 
         // maximum number of channels a user may have. ( FORCE can override )
-        "max_owned" "2";
+        "max_owned" "%X3_MAX_OWNED%";
 
         // how long between automatic topic and userlist refreshes with TopicRefresh/Resync
         "refresh_period" "10h";
@@ -533,7 +542,7 @@
      * like to set ours' nick to 'AfterNET', but some people use 'Global'
      */
     "global" {
-        "nick" "Global";
+        "nick" "%X3_GLOBAL_NICK%";
         // should users get community announcements by default or not?
         // community announcements are a type of global that users may 
         // opt into (or out of, depending on this setting)
@@ -631,11 +640,12 @@
      */
     "sockcheck" {
         // disabling this hopefully
-        "max_sockets" "0";  // 64 is a good # of concurrent clients to be checked
+        "max_sockets" "%X3_SOCKCHECK_MAX_SOCKETS%";  // 64 is a good # of concurrent clients to be checked
         "max_read" "1024"; // don't read more than 1024 bytes from any client
-        "gline_duration" "1d"; // issue G-lines lasting one hour
+        "gline_duration" "%X3_SOCKCHECK_GLINE_DURATION%"; // issue G-lines lasting one hour
         "max_cache_age" "60"; // only cache results for 60 seconds
-        "bind_address" "192.168.0.10"; // do proxy tests from this address
+        // set only if you need a specific source IP — bogus default removed
+        //"bind_address" "192.168.0.10"; // do proxy tests from this address
     };
     /* Snoop sends connect, quit, join, and part messages for every user
      * on the network, and helps in finding drones. Put it somewhere secure
@@ -643,10 +653,10 @@
      */
     "snoop" {
         // Where to send snoop messages?
-        "channel" "#MrSnoopy";
+        "channel" "%X3_SNOOP_CHANNEL%";
         "channel_modes" "+sntim";
         // Which bot?
-        "bot" "O3";
+        "bot" "%X3_OPSERV_NICK%";
         // Show new users and joins from net joins?  (off by default)
         "show_bursts" "0";
     };
@@ -659,7 +669,7 @@
         // What to track by default?
         "snomask" "nick,join,part,kick,new,del,auth,chanmode,umode";
         // Where to send snoop messages?
-        "channel" "#MrPeanuts";
+        "channel" "%X3_TRACK_CHANNEL%";
         "channel_modes" "+sntOm";
         // Which bot?
         "bot" "O3";
@@ -669,16 +679,16 @@
     /* Memoserv lets users send messages to other users accounts.
      */
     "memoserv" {
-        "bot" "MemoServ";
+        "bot" "%X3_MEMOSERV_BOT%";
 	"modes" "+k";
-        "message_expiry" "30d"; // age when messages are deleted; set
+        "message_expiry" "%X3_MEMO_EXPIRY%"; // age when messages are deleted; set
                                 // to 0 to disable message expiration
-        "limit" "30"; // Max amount of messages a person can get.
+        "limit" "%X3_MEMO_LIMIT%"; // Max amount of messages a person can get.
     };
     "qserver" {
         "bind_address" "127.0.0.1";
         "port" "7702";
-        "password" "hello";
+        "password" "%X3_QSERVER_PASSWORD%";
     };
     "blacklist" {
         // File containing blacklisted client addresses.
@@ -688,7 +698,7 @@
         // message will override this one:
         "file_reason" "client is blacklisted";
         // How long should a blacklist G-line last?
-        "gline_duration" "1h";
+        "gline_duration" "%X3_BLACKLIST_GLINE_DURATION%";
         // If you want to use DNS blacklists, add them here:
         "dnsbl" {
              // This DNSBL zone does not exist - you'll have to pick your own.
@@ -797,19 +807,19 @@
  * section for additional mail settings also.
  */
 "mail" {
-    "enable" "1";
-    "mailer" "/usr/sbin/sendmail";
+    "enable" "%X3_MAIL_ENABLE%";
+    "mailer" "%X3_MAIL_MAILER%";
     // OR Afternet uses a custom script to keep the services IP hidden: 
     //    "mailer" "/home/x3user/x3/sendmail.sh";
     "from_address" "supportrobot@%X3_GENERAL_DOMAIN%";
-    "extra_headers" ("Network-Services: x3");
+    "extra_headers" ("X-Mailer: X3-Services");
     "body_prefix_first" ("Welcome to the network, looks like this is your first email from us.");
-    "body_prefix" ("NET Support - User and Channel registration system");
+    "body_prefix" ("%X3_GENERAL_DOMAIN% Support - User and Channel registration system");
     "body_suffix_first" ("", "%X3_GENERAL_DOMAIN% IRC Network", "http://%X3_GENERAL_DOMAIN%");
-    "body_suffix" ("", "NET IRC Network", "http://www.%X3_GENERAL_DOMAIN%", "support@%X3_GENERAL_DOMAIN%","irc://irc.%X3_GENERAL_DOMAIN%/help");
+    "body_suffix" ("", "%X3_GENERAL_DOMAIN% IRC Network", "http://www.%X3_GENERAL_DOMAIN%", "support@%X3_GENERAL_DOMAIN%","irc://irc.%X3_GENERAL_DOMAIN%/help");
     // If you are using the smtp mail back-end, you may need to set these:
-    "smtp_server" "localhost";
-    "smtp_service" "smtp";
+    "smtp_server" "%X3_MAIL_SMTP_SERVER%";
+    "smtp_service" "%X3_MAIL_SMTP_SERVICE%";
     // "smtp_myname" "localhost.domain";
 };
 
@@ -840,7 +850,7 @@
         "filename" "/x3/data/x3.db";
         // How often should it be saved?
         // (You can disable automatic saves by setting this to 0.)
-        "frequency" "30m";
+        "frequency" "%X3_DB_SAVE_FREQUENCY%";
     };
 };
 
@@ -883,8 +893,8 @@
     // list a target to log it -- this is because it is very rarely
     // useful.
     "*.*" ("std:out", "file:/x3/data/everything.log"); // does NOT suppress any defaults
-    "*.override,error,fatal" "irc:#TheOps"; // report all uses of staff commands
-    "*.staff" "irc:#MrSnoopy"; // report all uses of staff commands
+    "*.override,error,fatal" "irc:%X3_DEBUG_CHANNEL%"; // report all uses of staff commands
+    "*.staff" "irc:%X3_SNOOP_CHANNEL%"; // report all uses of staff commands
     "ChanServ.*" "file:/x3/data/chanserv.log"; // duplicates the default behavior
     "ProxyCheck.*" (); // stop it from logging anything
 };
