@@ -2656,14 +2656,15 @@ static CMD_FUNC(cmd_rename)
          * taken out.
          *
          * The candidate set is the ircd's mover set exactly -- the RN source
-         * user (issuing the rename is consent) plus every user with umode +F
-         * -- plus our own local service bots, which are not a mover class at
-         * all but a separate wire-visible follow (see pass two). */
+         * user (issuing the rename is consent) -- plus our own local service
+         * bots, which are not a mover class at all but a separate
+         * wire-visible follow (see pass two).  Every other member stays in
+         * the tombstone and follows by their own JOIN (design "D"). */
         movers = malloc(sizeof(*movers) * (chan->members.used + 1));
         for(n = 0; n < chan->members.used; n++) {
             struct userNode *user = chan->members.list[n]->user;
 
-            if(IsLocal(user) || user == issuer || IsFollow(user))
+            if(IsLocal(user) || user == issuer)
                 movers[nmovers++] = user;
         }
 
@@ -3959,11 +3960,6 @@ void mod_usermode(struct userNode *user, const char *mode_change) {
         case 'H': do_user_mode(FLAGS_HIDEOPER); break;
         case 'L': do_user_mode(FLAGS_NOLINK); break;
         case 'q': do_user_mode(FLAGS_COMMONCHANSONLY); break;
-        /* evilnet/channel-relocate: pre-consent to being moved by a channel
-         * relocation.  cmd_rename's consent path reads it to decide who
-         * follows, and MUST agree with the ircd (s_user.c userModeList 'F'
-         * -> FLAG_RELOCATE_FOLLOW) member for member. */
-        case 'F': do_user_mode(FLAGS_FOLLOW); break;
 	}
 #undef do_user_mode
     }

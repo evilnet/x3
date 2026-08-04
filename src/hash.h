@@ -92,7 +92,6 @@
 #define FLAGS_HIDEOPER          0x08000000 /* user is a hidden IRCop +H */
 #define FLAGS_NOLINK            0x10000000 /* user has opted out of channel redirection +L */
 #define FLAGS_COMMONCHANSONLY   0x20000000 /* user only receives PMs from users on same cahnnels +q */
-#define FLAGS_FOLLOW            0x40000000 /* user auto-follows channel relocations +F (evilnet/channel-relocate) */
 
 #define IsOper(x)               ((x)->modes & FLAGS_OPER)
 #define IsService(x)            ((x)->modes & FLAGS_SERVICE)
@@ -123,7 +122,6 @@
 #define IsHideOper(x)           ((x)->modes & FLAGS_HIDEOPER)
 #define IsNoRedirect(x)         ((x)->modes & FLAGS_NOLINK)
 #define IsCommonChansOnly(x)    ((x)->modes & FLAGS_COMMONCHANSONLY)
-#define IsFollow(x)             ((x)->modes & FLAGS_FOLLOW)
 
 #define NICKLEN         30
 #define USERLEN         10
