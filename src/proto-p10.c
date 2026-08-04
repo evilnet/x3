@@ -81,6 +81,7 @@
 #define CMD_QUIT                "QUIT"
 #define CMD_REHASH              "REHASH"
 #define CMD_REMOVE		"REMOVE"
+#define CMD_RENAME              "RENAME"
 #define CMD_RESET		"RESET"
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
@@ -183,6 +184,7 @@
 #define TOK_QUIT                "Q"
 #define TOK_REHASH              "REHASH"
 #define TOK_REMOVE		"RM"
+#define TOK_RENAME              "RN"
 #define TOK_RESET		"RESET"
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
@@ -388,8 +390,13 @@ GetServerN(const char *numeric)
     }
 }
 
-struct userNode*
-GetUserN(const char *numeric) /* using numeric */
+/* Shared internal numeric-to-userNode lookup.  Wraps both the noisy
+ * GetUserN (callers expect success — a miss is bug-worthy) and the
+ * quiet GetUserN_silent (callers know the target can legitimately be
+ * absent — e.g., snoop/track on transient targets, BX P probing for
+ * the alias/primary pair). */
+static struct userNode *
+GetUserN_impl(const char *numeric, int quiet)
 {
     struct userNode *un;
     struct server *s;
@@ -397,24 +404,44 @@ GetUserN(const char *numeric) /* using numeric */
 
     switch (strlen(numeric)) {
     default:
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too long!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too long!", numeric);
         return NULL;
     case 5: slen = 2; ulen = 3; break;
     case 4: slen = 1; ulen = 3; break;
     case 3: slen = 1; ulen = 2; break;
     case 2: case 1: case 0:
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too short!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too short!", numeric);
         return NULL;
     }
     if (!(s = servers_num[base64toint(numeric, slen)])) {
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): couldn't find server (len=%d)!", numeric, slen);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): couldn't find server (len=%d)!", numeric, slen);
         return NULL;
     }
     n = base64toint(numeric+slen, ulen) & s->num_mask;
     if (!(un = s->users[n])) {
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s) couldn't find user!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s) couldn't find user!", numeric);
     }
     return un;
+}
+
+struct userNode*
+GetUserN(const char *numeric) /* using numeric */
+{
+    return GetUserN_impl(numeric, 0);
+}
+
+/* Same as GetUserN but suppresses all warnings on lookup miss.  Use
+ * for callers that legitimately probe numerics which may not exist
+ * (snoop / track tracking transient PRIVMSG/NOTICE targets, BX P
+ * lookup probes during alias reconciliation, etc.). */
+struct userNode*
+GetUserN_silent(const char *numeric)
+{
+    return GetUserN_impl(numeric, 1);
 }
 
 extern struct userNode *opserv;
@@ -504,10 +531,12 @@ irc_server(struct server *srv)
 
     inttobase64(extranum, srv->num_mask, (srv->numeric[1] || (srv->num_mask >= 64*64)) ? 3 : 2);
     if (srv == self) {
-        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6o :%s",
+        /* r = rename-capable: ircd delivers RN only to r-advertising peers
+         * (upstream); harmless on the fork which routes via IsService */
+        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6or :%s",
                 srv->name, srv->hops+1, srv->boot, srv->link_time, srv->numeric, extranum, srv->description);
     } else {
-        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6o :%s",
+        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6or :%s",
                 self->numeric, srv->name, srv->hops+1, srv->boot, srv->link_time, (srv->self_burst ? 'J' : 'P'), srv->numeric, extranum, srv->description);
     }
 }
@@ -1706,7 +1735,33 @@ static CMD_FUNC(cmd_account)
         return 1;
     }
     else if(!strcmp(argv[2],"R"))
-       call_account_func(user, argv[3]);
+    {
+        if(argc >= 7 && !strcmp(argv[5],"RENAME"))
+        {
+            /* Rename permission query: AC <unum> R <cookie> <#chan> RENAME <new>.
+             * Reply shape: cookie FIRST (ircd m_account.c keys pending renames on
+             * parv[1] not being a server numeric) — deliberately NOT the LOC reply
+             * shape (AC <servnum> A <cookie>) used above. Never GetUserN() the
+             * cookie; argv[3] is opaque to us. This disambiguates from the legit
+             * legacy account stamp "AC <target> R <account>" (argc==4), which
+             * keeps falling through to call_account_func() below unchanged.
+             *
+             * The reply itself carries an explicit RENAME discriminator token
+             * after the A/D type so ircd m_account.c can route it by cookie
+             * without a FindNServer() guess — a decimal cookie can otherwise
+             * alias a server numeric (F2). */
+            const char *reason = "Permission denied";
+            struct chanNode *chan = GetChannel(argv[4]);
+            /* user is GetUserN(argv[1]) from the prologue above, which already
+             * returns early when NULL — the check here is paranoia. */
+            if(user && chan && chanserv_rename_allowed(user, chan, argv[6], &reason))
+                putsock("%s " P10_ACCOUNT " %s A RENAME", self->numeric, argv[3]);
+            else
+                putsock("%s " P10_ACCOUNT " %s D RENAME :%s", self->numeric, argv[3], reason);
+            return 1;
+        }
+        call_account_func(user, argv[3]);   /* legacy account stamp — unchanged */
+    }
     else
         call_account_func(user, argv[2]); /* For backward compatability */
     return 1;
@@ -1735,22 +1790,113 @@ static CMD_FUNC(cmd_bouncer_transfer)
         if (argc < 6)
             return 0;
 
-        old_primary = GetUserN(argv[2]);
-        new_node = GetUserN(argv[3]);
+        /* Both lookups can legitimately miss — old_primary may have
+         * already been cleaned up by a prior event, new_node is
+         * normally absent (the swap path is the common case) but
+         * may exist for the in-place-conversion / merge case below.
+         * Use the silent variant so neither probe spams the snoop
+         * channel. */
+        old_primary = GetUserN_silent(argv[2]);
+        new_node = GetUserN_silent(argv[3]);
 
         if (!old_primary)
             return 1; /* Already gone, nothing to do */
 
-        /* Numeric swap: move old_primary's numeric routing to the new
-         * server/slot.  The userNode keeps its nick, clients dict entry,
-         * handle_info, channels — only the P10 numeric changes.
+        /* Two BX P shapes need handling:
          *
-         * Nefarious never bursts aliases as N tokens (they're introduced
-         * via BX C only), so X3 won't have a node for the alias numeric.
-         * If new_node somehow exists (shouldn't happen), log and ignore. */
+         * 1. **Numeric swap (new_node absent)** — classic promote-or-
+         *    transfer.  Move old_primary's numeric routing to the new
+         *    server/slot.  The userNode keeps its nick, clients dict
+         *    entry, handle_info, channels — only the P10 numeric changes.
+         *    This is the case the original handler was written for, and
+         *    is what fires when nefarious never bursts an alias to us.
+         *
+         * 2. **In-place conversion / merge (new_node exists with same
+         *    account)** — modern fork peers emit BX P for the case where
+         *    an N-introduced client (old) is being absorbed into an
+         *    existing primary (new), e.g. burst-ordering caused us to
+         *    receive N for the would-be-alias before its BX C.  Both
+         *    nodes exist on X3.  We merge: delete old_primary's
+         *    userNode (channels and dict entry cleaned up via DelUser,
+         *    no QUIT broadcast), keep new_node intact as the surviving
+         *    identity.  Gate strictly on same-handle to avoid
+         *    accidentally merging unrelated collisions.
+         *
+         * 3. **new_node exists but different/no handle** — genuinely
+         *    unexpected.  Keep the original "log and ignore" behaviour
+         *    so we don't silently corrupt state across an account
+         *    mismatch. */
         if (new_node) {
+            if (old_primary->handle_info
+                && old_primary->handle_info == new_node->handle_info) {
+                /* Merge: old absorbed into new.  Before deleting
+                 * old_primary, transfer its channel memberships onto
+                 * new_node.  This mirrors nefarious's own both-exist
+                 * swap semantics (upstream m_bouncer_transfer.c:88-113,
+                 * fork bouncer_session.c:7070-7078): the ghost's
+                 * channels must survive on the merged identity.
+                 *
+                 * Ordering is load-bearing: this MUST run before
+                 * DelUser().  DelUser's own cleanup loop
+                 * (DelChannelUser(..., NULL, 0)) lets an unregistered
+                 * channel self-destruct when its last member leaves
+                 * (see DelChannelUser's tail, hash.c). If old_primary
+                 * were deleted first while still holding memberships
+                 * new_node lacks, any unregistered channel where
+                 * old_primary was the only member in X3's view would
+                 * be destroyed here — even though the surviving
+                 * identity (and the rest of the network) is still in
+                 * it.  Transferring first means old_primary's channel
+                 * list is already empty by the time DelUser runs, so
+                 * that loop body never executes.
+                 *
+                 * Walk old_primary->channels the same way DelUser's
+                 * loop does: always pop the last element, since
+                 * AddChannelUser/DelChannelUser mutate both the
+                 * channel's member list and the user's channel list
+                 * out from under us. */
+                while (old_primary->channels.used > 0) {
+                    struct modeNode *mn = old_primary->channels.list[old_primary->channels.used - 1];
+                    struct chanNode *chan = mn->channel;
+
+                    if (!GetUserMode(chan, new_node)) {
+                        /* AddChannelUser() only fires irc_join() when
+                         * the joining user IsLocal() (i.e. an X3
+                         * service bot) — new_node here is always a
+                         * network user, so no JOIN hits the wire.  It
+                         * unconditionally runs call_join_funcs()
+                         * though, which fires the same on-join hooks
+                         * (chanserv presence/ban/oplevel bookkeeping)
+                         * a real join would.  The numeric-swap path
+                         * above never touches channel membership at
+                         * all, so there's no existing both-exist
+                         * precedent that's hook-free; there's no
+                         * lower-level "add to channel, no hooks"
+                         * primitive to reach for instead.  Correctness
+                         * of membership state takes priority, so we
+                         * accept the hook firing here as a known
+                         * side effect rather than leaving the ghost's
+                         * channels to be silently dropped. */
+                        struct modeNode *new_mn = AddChannelUser(new_node, chan);
+                        new_mn->modes = mn->modes;
+                        new_mn->oplevel = mn->oplevel;
+                    }
+
+                    /* No announce (reason NULL), same call shape
+                     * DelUser's own loop uses: this is internal
+                     * bookkeeping, not a real part. */
+                    DelChannelUser(old_primary, chan, NULL, 0);
+                }
+
+                /* DelUser with announce=0 suppresses both QUIT and KILL
+                 * emission — this is internal cleanup, the network
+                 * isn't supposed to see the alias's identity leave. */
+                DelUser(old_primary, NULL, 0, "Bouncer transfer");
+                return 1;
+            }
             log_module(MAIN_LOG, LOG_WARNING,
-                "BX P: new_node %s already exists as %s — ignoring promote",
+                "BX P: new_node %s already exists as %s with mismatched "
+                "handle — ignoring promote",
                 argv[3], new_node->nick);
             return 1;
         }
@@ -2032,9 +2178,46 @@ static CMD_FUNC(cmd_burst)
     cData = cNode->channel_info;
 
     if (!cData) {
-        if (cNode->modes & MODE_REGISTERED) {
+        /* Channel is not registered with us but carries server-managed
+         * markers.  The two markers no longer have the same truth value, so
+         * they are decided separately:
+         *
+         *  -R  ALWAYS.  MODE_REGISTERED on a channel we hold no channel_info
+         *      for is stale in every scenario there is, relocation included:
+         *      relocate_execute() clears R on the tombstone itself, and our
+         *      own husk has channel_info NULL by construction, so an R that
+         *      arrives on a burst for either is drift to be corrected.
+         *
+         *  -z  ONLY when the name does NOT carry the relocation fingerprint.
+         *      The old premise -- "only ChanServ sets +z, on registered
+         *      channels" -- stopped being true when relocate_execute() began
+         *      marking tombstones EXMODE_PERSIST: a live tombstone is +z AND
+         *      unregistered by construction, and that persist bit is the only
+         *      thing keeping the ircd from collecting the channel the moment
+         *      it empties.  Stripping it there would dissolve a tombstone
+         *      early and take the +L redirect and the member status snapshots
+         *      with it, mid-grace, network-wide.  Any OTHER unregistered +z
+         *      is still stale and still gets stripped.
+         *
+         * KNOWN BOUNDED HOLE: the fingerprint is a live DNR carrying
+         * chanserv_rename_dnr()'s reason, and DNRs live in saxdb, which is
+         * written on a save tick (db_backup_frequency) and at clean shutdown.
+         * A burst arriving after an X3 crash that lost the DNR sees no
+         * fingerprint and strips a legitimate tombstone's z.  Blast radius is
+         * one early tombstone dissolve -- the relocation itself already
+         * happened on every server -- which degrades exactly to pre-relocate
+         * behaviour, and it is the same window that already disarms the husk
+         * re-arm hook.  The clean fix is an explicit ircd-side dissolve /
+         * tombstone signal on the wire, recorded as deferred future work
+         * (new wire surface on a frozen RN shape). */
+        int strip_r = (cNode->modes & MODE_REGISTERED) ? 1 : 0;
+        int strip_z = (cNode->modes & MODE_PERSIST)
+                      && !chanserv_is_relocation_dnr(cNode->name);
+
+        if (strip_r || strip_z) {
             irc_join(opserv, cNode);
-            irc_mode(opserv, cNode, "-z");
+            irc_mode(opserv, cNode,
+                     (strip_r && strip_z) ? "-zR" : (strip_z ? "-z" : "-R"));
             irc_part(opserv, cNode, "");
         }
     }
@@ -2313,6 +2496,261 @@ static CMD_FUNC(cmd_topic)
 
     SetChannelTopic(cn, user, user, argv[argc-1], 0);
     cn->topic_time = topic_ts;
+    return 1;
+}
+
+/** Relocation marker, as the parameter immediately before the trailing
+ * reason (evilnet/channel-relocate):
+ *
+ *     classic:     RN <old> <new> :<reason>
+ *     relocation:  RN <old> <new> C :<reason>
+ *
+ * Honoured ONLY in the five-parameter shape (argv[0] is the command token,
+ * so that is argc > 4), exactly as the ircd's ms_rename() honours it only
+ * for parc > 4.  A four-parameter "RN #a #b :C" is a CLASSIC rename whose
+ * reason happens to be the letter C: reading a marker there would make X3
+ * partition a membership the ircd force-moved, which is permanent state
+ * divergence.  The ircd guarantees the trailing reason parameter is always
+ * emitted (possibly empty), so the shorter shape never carries a marker. */
+#define RELOCATE_MARKER "C"
+
+/* Move one member's record from the old node to the new one, preserving
+ * everything the ircd's add_user_to_channel() preserves for a mover.  No
+ * wire traffic: the ircd already moved this user on every server off the
+ * RN marker, so an emitted JOIN/PART here would be a second, contradictory
+ * event.  Same transfer-before-delete discipline as the BX P merge above --
+ * and here it is load-bearing for a second reason: DelChannelUser() collects
+ * an unregistered channel that just lost its last member, and the caller
+ * holds the old node across this loop precisely so that cannot happen
+ * mid-partition. */
+static void
+relocate_move_member(struct modeNode *mn, struct chanNode *newchan)
+{
+    struct userNode *user = mn->user;
+    struct chanNode *oldchan = mn->channel;
+    long modes = mn->modes;
+    short oplevel = mn->oplevel;
+    time_t idle_since = mn->idle_since;
+    struct modeNode *newmn;
+
+    AddChannelUser(user, newchan);
+    /* Re-look-up rather than trusting AddChannelUser()'s return value: it
+     * ends in call_join_funcs(), which ignores handler return codes, and
+     * chanserv's join handler can KickChannelUser() a user who matches a
+     * stored ban -- freeing the very modeNode we were handed.  The member
+     * state was snapshotted above for the same reason. */
+    if((newmn = GetUserMode(newchan, user))) {
+        newmn->modes = modes;
+        newmn->oplevel = oplevel;
+        newmn->idle_since = idle_since;
+    }
+    DelChannelUser(user, oldchan, NULL, 0);
+}
+
+/* Re-assert one member's status modes on the new node, for real.  Used for
+ * our own service bots: they follow a relocation with an ordinary JOIN, and
+ * the ircd does not carry a joining client's modes over -- so without this a
+ * bot that was opped in the old channel lands unopped in the new one.  The
+ * ircd force-accepts modes from a +k service (m_mode.c:305-306), which is why
+ * a plain announce is enough and no OPMODE is needed.
+ *
+ * Callers MUST have already written the snapshot into the new modeNode: this
+ * announce ends in mod_chanmode_apply(), which ORs the bits in, so it can
+ * only ever ADD to X3's view -- it cannot clear a spurious auto-op. */
+static void
+relocate_reassert_modes(struct userNode *user, struct chanNode *chan,
+                        struct modeNode *mn, long modes)
+{
+    struct mod_chanmode *change = mod_chanmode_alloc(1);
+
+    change->argc = 1;
+    change->args[0].mode = modes;
+    change->args[0].u.member = mn;
+    mod_chanmode_announce(user, chan, change);
+    mod_chanmode_free(change);
+}
+
+/* RN <old> <new> [C] :<reason> -- the ircd broadcasts this after an approved
+ * rename has already executed. Authorization happened at AC R query time
+ * (chanserv_rename_allowed, see cmd_account); this handler only migrates
+ * state (design §3a: authorize-at-query, apply-at-RN).
+ *
+ * Classic path: the channel is re-keyed in place, everyone comes along.
+ *
+ * Consent path (the C marker): the channel SPLITS.  Registration, channel
+ * state and the module holders move to the new name; the old node survives
+ * as an unregistered tombstone husk holding the members who did not consent.
+ * Movers are the ircd's mover set and nothing else -- the RN source user
+ * (issuing the rename is consent) plus every user with umode +F -- because
+ * X3's membership view has to match what relocate_execute() did on every
+ * server, member for member.  X3's own service bots are a separate class:
+ * they follow the REGISTRATION, wire-visibly, on their own JOIN/PART (see
+ * below), which is the spec's ordinary consent primitive rather than a
+ * silent move.
+ *
+ * The source prefix is a nick here (parse_line resolves the numeric before
+ * dispatch) and may resolve to nothing at all -- a server-sourced RN has no
+ * issuer, which is exactly how the ircd treats it too. */
+static CMD_FUNC(cmd_rename)
+{
+    struct chanNode *chan;
+    char old_name[CHANNELLEN+1];
+    time_t old_timestamp;
+    int was_registered;
+    int relocate;
+
+    if(argc < 3) return 0;
+    relocate = (argc > 4) && !strcmp(argv[3], RELOCATE_MARKER);
+    if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
+    if(GetChannel(argv[2])) {
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: target already exists, state diverged",
+                   argv[1], argv[2]);
+        return 1;
+    }
+    was_registered = chan->channel_info != NULL;
+    safestrncpy(old_name, argv[1], sizeof(old_name));
+    old_timestamp = chan->timestamp;
+
+    if(!relocate) {
+        if(!RenameChannel(chan, argv[2])) {
+            /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
+             * left the old node untouched/unfreed -- nothing was actually
+             * renamed, so don't mark the (still current) old name do-not-
+             * register. */
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: rejected by RenameChannel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+    } else {
+        struct userNode *issuer = origin ? GetUserH(origin) : NULL;
+        struct chanNode *newchan;
+        struct userNode **movers;
+        unsigned int nmovers = 0, nmoved = 0, nstayers, n;
+        char reason[MAXLEN];
+
+        if(!(newchan = RelocateChannel(chan, argv[2]))) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: rejected by RelocateChannel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+
+        /* Hold the husk across the partition.  RelocateChannel() moved every
+         * lock to the new node, so without this the first DelChannelUser()
+         * that empties the (now unregistered) old node would free it under
+         * the loop.  The matching UnlockChannel() at the tail is what lets an
+         * emptied husk be collected -- normally, and by the normal path. */
+        LockChannel(chan);
+
+        snprintf(reason, sizeof(reason), "Channel relocated to %s.", newchan->name);
+
+        /* Classify first, move second -- the same two-pass split the ircd's
+         * relocate_execute() makes, for the same reason: pass two runs
+         * AddChannelUser()/DelChannelUser(), which fire join and part hooks
+         * into every service, and a hook is free to mutate the very member
+         * list a single fused walk would still be indexing.  Pass one only
+         * reads it, so it sees a stable list; pass two re-resolves each
+         * candidate through GetUserMode() and skips anyone a hook has since
+         * taken out.
+         *
+         * The candidate set is the ircd's mover set exactly -- the RN source
+         * user (issuing the rename is consent) -- plus our own local service
+         * bots, which are not a mover class at all but a separate
+         * wire-visible follow (see pass two).  Every other member stays in
+         * the tombstone and follows by their own JOIN (design "D"). */
+        movers = malloc(sizeof(*movers) * (chan->members.used + 1));
+        for(n = 0; n < chan->members.used; n++) {
+            struct userNode *user = chan->members.list[n]->user;
+
+            if(IsLocal(user) || user == issuer)
+                movers[nmovers++] = user;
+        }
+
+        for(n = 0; n < nmovers; n++) {
+            struct userNode *user = movers[n];
+            struct modeNode *mn = GetUserMode(chan, user);
+
+            if(!mn)
+                continue;   /* a hook fired by an earlier iteration removed them */
+
+            if(IsLocal(user)) {
+                /* Our own service bots.  The rename hooks just re-pointed
+                 * every module holder (chanserv's channel_info and support
+                 * channels, opserv's alert/debug channels, helpserv's
+                 * helpchan, spamserv's chanInfo) at the new node, so a bot
+                 * left sitting in the husk would be a bot whose own service
+                 * believes it is somewhere else.  They follow, and unlike the
+                 * movers they do it ON THE WIRE: AddChannelUser()/
+                 * DelChannelUser() emit a real JOIN and PART for a local
+                 * user, which is what keeps the ircd's view (where nothing
+                 * moved a service bot, because a bot is neither the issuer
+                 * nor +F) in agreement with ours.  The JOIN carries the new
+                 * node's timestamp, which RelocateChannel() took from the old
+                 * channel and therefore matches the creationtime the ircd
+                 * gave the new channel.
+                 *
+                 * Status modes do NOT ride along with a JOIN, so they are
+                 * snapshotted here and re-asserted below -- for EVERY bot,
+                 * not just ChanServ and SpamServ: HelpServ, OpServ and module
+                 * bots hold ops in their own channels too and would otherwise
+                 * arrive powerless.  The overwrite is separately load-bearing
+                 * on the UNREGISTERED path: AddChannelUser() hands
+                 * MODE_CHANOP to the first member of a channel that is
+                 * neither +R nor +A, which the ircd did not do -- writing the
+                 * snapshot back (rather than OR-ing) is what keeps that
+                 * phantom op out of X3's view.  Same discipline as
+                 * relocate_move_member(). */
+                long botmodes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
+                short botoplevel = mn->oplevel;
+                struct modeNode *botmn;
+
+                AddChannelUser(user, newchan);
+                if((botmn = GetUserMode(newchan, user))) {
+                    botmn->modes = botmodes;
+                    botmn->oplevel = botoplevel;
+                    if(botmodes)
+                        relocate_reassert_modes(user, newchan, botmn, botmodes);
+                }
+                DelChannelUser(user, chan, reason, 0);
+                nmoved++;
+                continue;
+            }
+
+            relocate_move_member(mn, newchan);
+            nmoved++;
+        }
+        free(movers);
+        nstayers = chan->members.used;
+
+        /* Re-assert ChanServ's (and SpamServ's) ops on the new node: the bots
+         * followed with a plain JOIN above, and the ircd does not op a
+         * joining service.  No-op when the registration is off-channel or
+         * suspended -- i.e. when no bot followed. */
+        chanserv_relocate_bots(newchan);
+
+        /* X3-side tombstone expiry.  The ircd dissolves its tombstone at
+         * grace expiry with local-only PARTs (sendcmdto_channel_butserv_*),
+         * so NONE of them reach us: without this timer the husk would sit in
+         * X3's channel dict with a stale member list until every one of those
+         * users happened to quit, and a fresh channel created on the old name
+         * after the grace period would collide with it. */
+        chanserv_relocate_tombstone(old_name, old_timestamp);
+
+        /* The one line an operator reading logs after a relocation wants:
+         * who moved, who did not, and whether the registration went with
+         * them.  A partition is not an error, so it is not logged as one. */
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RELOCATE %s -> %s: %u moved, %u left in the tombstone%s",
+                   old_name, newchan->name, nmoved, nstayers,
+                   was_registered ? " (registration followed)" : "");
+
+        UnlockChannel(chan);    /* may collect an already-empty husk; chan is dead after this */
+    }
+
+    if(was_registered)
+        chanserv_rename_dnr(old_name);
     return 1;
 }
 
@@ -2794,6 +3232,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_ERROR, cmd_error);
     dict_insert(irc_func_dict, CMD_TOPIC, cmd_topic);
     dict_insert(irc_func_dict, TOK_TOPIC, cmd_topic);
+    dict_insert(irc_func_dict, CMD_RENAME, cmd_rename);
+    dict_insert(irc_func_dict, TOK_RENAME, cmd_rename);
     dict_insert(irc_func_dict, CMD_AWAY, cmd_away);
     dict_insert(irc_func_dict, TOK_AWAY, cmd_away);
     dict_insert(irc_func_dict, CMD_SILENCE, cmd_silence);
@@ -3617,9 +4057,30 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'a': do_chan_mode(MODE_ADMINSONLY); break;
         case 'Z': do_chan_mode(MODE_SSLONLY); break;
 	case 'L': do_chan_mode(MODE_HIDEMODE); break;
-	case 'z':
+	case 'R':
+	  /* MODE_REGISTERED wire letter (nefarious channel.c MODE_REGISTERED,
+	   * server-origin-only). MCP_REGISTERED is passed by the ChanServ
+	   * MODE-lock/mode-command call sites to forbid a user-typed mode
+	   * string from toggling registration state; server-origin calls
+	   * (cmd_mode, AddChannel/BURST via MCP_FROM_SERVER) don't set it,
+	   * so the ircd is free to correct our copy. */
 	  if (!(flags & MCP_REGISTERED)) {
               do_chan_mode(MODE_REGISTERED);
+	  } else {
+              mod_chanmode_free(change);
+              return NULL;
+	  }
+	  break;
+	case 'z':
+	  /* Nefarious persist exmode: server-settable-only channel
+	   * keep-alive, tracked as MODE_PERSIST -- NOT the registered
+	   * marker (historical X3 misread it as MODE_REGISTERED).
+	   * Same guard as 'R': user-typed mode strings (MCP_REGISTERED
+	   * call sites, i.e. ChanServ modelock/mode-command) may not
+	   * toggle a server-managed marker; server-origin strings parse
+	   * it so our copy tracks the ircd. */
+	  if (!(flags & MCP_REGISTERED)) {
+              do_chan_mode(MODE_PERSIST);
 	  } else {
               mod_chanmode_free(change);
               return NULL;
@@ -3850,7 +4311,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -3907,7 +4369,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -3983,7 +4446,8 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -4008,7 +4472,8 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 
@@ -4074,7 +4539,8 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'T': cleared |= MODE_NOAMSG; break;
         case 'O': cleared |= MODE_OPERSONLY; break;
         case 'a': cleared |= MODE_ADMINSONLY; break;
-        case 'z': cleared |= MODE_REGISTERED; break;
+        case 'R': cleared |= MODE_REGISTERED; break;
+        case 'z': cleared |= MODE_PERSIST; break;
         case 'Z': cleared |= MODE_SSLONLY; break;
 	case 'L': cleared |= MODE_HIDEMODE; break;
         }

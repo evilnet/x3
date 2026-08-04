@@ -4915,6 +4915,36 @@ static void helpserv_db_cleanup(UNUSED_ARG(void *extra)) {
         fclose(reqlog_f);
 }
 
+static void
+helpserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
+{
+    dict_iterator_t it;
+    struct helpserv_bot *hs;
+    struct helpserv_botlist *botlist;
+    unsigned int i;
+
+    for (it = dict_first(helpserv_bots_dict); it; it = iter_next(it)) {
+        hs = iter_data(it);
+
+        if (hs->helpchan == old_chan)
+            hs->helpchan = new_chan;
+
+        for (i = 0; i < PGSRC_COUNT; i++)
+            if (hs->page_targets[i] == old_chan)
+                hs->page_targets[i] = new_chan;
+    }
+
+    /* helpserv_bots_bychan_dict is keyed on the interior helpchan->name
+     * pointer; only bots whose helpchan was the renamed channel need the
+     * dict entry re-keyed (there is at most one entry, shared by every bot
+     * on that channel). */
+    botlist = dict_find(helpserv_bots_bychan_dict, old_chan->name, NULL);
+    if (botlist) {
+        dict_remove2(helpserv_bots_bychan_dict, old_chan->name, 1);
+        dict_insert(helpserv_bots_bychan_dict, new_chan->name, botlist);
+    }
+}
+
 int helpserv_init() {
     HS_LOG = log_register_type("HelpServ", "file:helpserv.log");
     conf_register_reload(helpserv_conf_read);
@@ -5022,6 +5052,7 @@ int helpserv_init() {
     reg_part_func(handle_part, NULL); /* also deals with kick */
     reg_nick_change_func(handle_nickchange, NULL);
     reg_del_user_func(handle_quit, NULL);
+    reg_channel_rename_func(helpserv_channel_rename, NULL);
 
     reg_auth_func(handle_nickserv_auth, NULL);
     reg_handle_rename_func(handle_nickserv_rename, NULL);

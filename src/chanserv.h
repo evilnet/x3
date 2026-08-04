@@ -216,6 +216,44 @@ struct do_not_register
 struct userData *_GetChannelUser(struct chanData *channel, struct handle_info *handle, int override, int allow_suspended);
 struct banData *add_channel_ban(struct chanData *channel, const char *mask, char *owner, time_t set, time_t triggered, time_t expires, char *reason);
 
+/* Rename authorization check, used by the AC R RENAME query handler in
+ * proto-p10.c (cmd_account). Returns 1 = allow; 0 = deny with *reason
+ * set to a static user-visible string. */
+int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason);
+
+/* Called by the RN handler in proto-p10.c (cmd_rename) after a registered
+ * channel is renamed, to place a timed do-not-register entry on the old
+ * name. No-op if chanserv_conf.rename_dnr_duration is 0, or if old_name
+ * is already covered by an existing (non-expired) DNR. proto-p10.c must
+ * not reach into chanserv's DNR internals (plain_dnrs/mask_dnrs/etc are
+ * file-static) — this wrapper is the exported escape hatch. */
+void chanserv_rename_dnr(const char *old_name);
+
+/* evilnet/channel-relocate, both called by cmd_rename's consent path in
+ * proto-p10.c after the channel has been split.
+ *
+ * chanserv_relocate_bots() re-asserts ChanServ's (and SpamServ's) ops on the
+ * new node, once the bots have followed the registration there.  No-op for an
+ * off-channel or suspended registration.
+ *
+ * chanserv_relocate_tombstone() arms the X3-side reap of the old node.  The
+ * ircd dissolves its tombstone with local-only PARTs that never reach us, so
+ * this is the only thing that stops the husk's member list going stale
+ * forever.  old_name/timestamp identify the husk at fire time; a channel
+ * re-created on that name in the meantime is left alone. */
+void chanserv_relocate_bots(struct chanNode *new_chan);
+void chanserv_relocate_tombstone(const char *old_name, time_t timestamp);
+
+/* Does this channel NAME currently carry the relocation fingerprint -- a
+ * live do-not-register stamped with chanserv_rename_dnr()'s own reason?
+ *
+ * The DNR tables are file-static in chanserv.c and the reason string is a
+ * private constant, so callers outside chanserv get this predicate rather
+ * than the lookup.  Used by the burst re-arm hook and by cmd_burst's
+ * unregistered-channel correction, which must not strip the persist exmode
+ * off a live tombstone.  Returns 1 = looks like a relocation tombstone name. */
+int chanserv_is_relocation_dnr(const char *chan_name);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);
