@@ -61,6 +61,7 @@
 #define KEY_NODELETE_LEVEL          "nodelete_level"
 #define KEY_MAX_USERINFO_LENGTH     "max_userinfo_length"
 #define KEY_GIVEOWNERSHIP_PERIOD    "giveownership_timeout"
+#define KEY_RENAME_DNR_DURATION     "rename_dnr_duration"
 #define KEY_VALID_CHANNEL_REGEX     "valid_channel_regex"
 
 /* ChanServ database */
@@ -631,6 +632,7 @@ static struct
     unsigned int    greeting_length;
     unsigned int        refresh_period;
     unsigned int        giveownership_period;
+    unsigned long   rename_dnr_duration;
 
     unsigned int        max_owned;
     unsigned int    max_chan_users;
@@ -2105,6 +2107,27 @@ chanserv_is_dnr(const char *chan_name, struct handle_info *handle)
     dnr = list.used ? list.list[0] : NULL;
     free(list.list);
     return dnr;
+}
+
+void
+chanserv_rename_dnr(const char *old_name)
+{
+    const char *setter;
+
+    if(!chanserv_conf.rename_dnr_duration)
+        return;
+    if(chanserv_is_dnr(old_name, NULL))
+        return; /* already covered by a DNR (plain or mask); don't stack */
+    /* chanserv is NULL when the bot's nick is disabled via the "."
+     * convention (init_chanserv only AddLocalUser()s it when nick !=
+     * NULL) -- but a channel can still be registered (saxdb load doesn't
+     * care whether the bot exists) and RN can still arrive over the
+     * wire. Fall back to a literal setter string rather than dereference
+     * a NULL chanserv; it's a plain string and serializes to saxdb the
+     * same as any other setter value. */
+    setter = chanserv ? chanserv->nick : "ChanServ";
+    chanserv_add_dnr(old_name, setter, now + chanserv_conf.rename_dnr_duration,
+                      "Channel was renamed");
 }
 
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
@@ -8321,6 +8344,90 @@ handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
         SetChannelTopic(channel, chanserv, chanserv, channel->channel_info->topic, 1);
 }
 
+static void
+chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
+{
+    struct adduserPending *ap;
+    unsigned int ii;
+
+    /* memcpy() moved channel_info onto new_chan, but the chanData's back
+     * pointer still targets the old node. */
+    if (new_chan->channel_info)
+        new_chan->channel_info->channel = new_chan;
+
+    for (ap = adduser_pendings; ap; ap = ap->next)
+        if (ap->channel == old_chan)
+            ap->channel = new_chan;
+
+    for (ii = 0; ii < chanserv_conf.support_channels.used; ++ii)
+        if (chanserv_conf.support_channels.list[ii] == old_chan)
+            chanserv_conf.support_channels.list[ii] = new_chan;
+}
+
+/* Rename authorization check for the AC R RENAME query (proto-p10.c
+ * cmd_account). Owner-only, mirroring cmd_move's DNR gating against the
+ * NEW name — minus the IsHelping/"force" bypass, since this path has no
+ * force; staff bypass comes only from _GetChannelUser()'s override=1
+ * synthetic access entry. */
+int
+chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason)
+{
+    struct chanData *cData;
+    struct userData *uData;
+    struct do_not_register *dnr;
+
+    if(!user->handle_info)
+    {
+        *reason = "You must be authenticated";
+        return 0;
+    }
+
+    if(strlen(new_name) > CHANNELLEN)
+    {
+        *reason = "New channel name is too long";
+        return 0;
+    }
+
+    if(!(cData = chan->channel_info))
+        return 1; /* Nothing registered here to protect. */
+
+    if(IsProtected(cData) || IsSuspended(cData))
+    {
+        *reason = "Channel may not be renamed";
+        return 0;
+    }
+
+    uData = _GetChannelUser(cData, user->handle_info, 1, 0);
+    if(!uData || (uData->access < UL_OWNER))
+    {
+        *reason = "You must be the channel owner";
+        return 0;
+    }
+
+    if(opserv_bad_channel(new_name))
+    {
+        *reason = "New channel name is not allowed";
+        return 0;
+    }
+
+    if(GetChannel(new_name) && GetChannel(new_name)->channel_info)
+    {
+        *reason = "New channel name is already registered";
+        return 0;
+    }
+
+    for(uData = cData->users; uData; uData = uData->next)
+    {
+        if((uData->access == UL_OWNER) && (dnr = chanserv_is_dnr(new_name, uData->handle)))
+        {
+            *reason = "New channel name is blocked (do-not-register)";
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 int
 trace_check_bans(struct userNode *user, struct chanNode *chan)
 {
@@ -9124,6 +9231,8 @@ chanserv_conf_read(void)
     chanserv_conf.refresh_period = str ? ParseInterval(str) : 3*60*60;
     str = database_get_data(conf_node, KEY_GIVEOWNERSHIP_PERIOD, RECDB_QSTRING);
     chanserv_conf.giveownership_period = str ? ParseInterval(str) : 0;
+    str = database_get_data(conf_node, KEY_RENAME_DNR_DURATION, RECDB_QSTRING);
+    chanserv_conf.rename_dnr_duration = str ? ParseInterval(str) : 86400;
     str = database_get_data(conf_node, KEY_CTCP_SHORT_BAN_DURATION, RECDB_QSTRING);
     chanserv_conf.ctcp_short_ban_duration = str ? str : "3m";
     str = database_get_data(conf_node, KEY_CTCP_LONG_BAN_DURATION, RECDB_QSTRING);
@@ -10044,6 +10153,13 @@ init_chanserv(const char *nick)
         reg_auth_func(handle_auth, NULL);
     }
 
+    /* Registered channels load from the DB regardless of whether the
+     * ChanServ bot nick is enabled ("." convention); an RN arriving over
+     * the wire must still repoint channel_info->channel via RenameChannel,
+     * or the DB is left holding a stale pointer into a freed chanNode
+     * (use-after-free at the next saxdb write). Keep this outside if(nick).
+     */
+    reg_channel_rename_func(chanserv_channel_rename, NULL);
     reg_handle_rename_func(handle_rename, NULL);
     reg_unreg_func(handle_unreg, NULL);
 

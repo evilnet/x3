@@ -81,6 +81,7 @@
 #define CMD_QUIT                "QUIT"
 #define CMD_REHASH              "REHASH"
 #define CMD_REMOVE		"REMOVE"
+#define CMD_RENAME              "RENAME"
 #define CMD_RESET		"RESET"
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
@@ -183,6 +184,7 @@
 #define TOK_QUIT                "Q"
 #define TOK_REHASH              "REHASH"
 #define TOK_REMOVE		"RM"
+#define TOK_RENAME              "RN"
 #define TOK_RESET		"RESET"
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
@@ -504,10 +506,12 @@ irc_server(struct server *srv)
 
     inttobase64(extranum, srv->num_mask, (srv->numeric[1] || (srv->num_mask >= 64*64)) ? 3 : 2);
     if (srv == self) {
-        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6o :%s",
+        /* r = rename-capable: ircd delivers RN only to r-advertising peers
+         * (upstream); harmless on the fork which routes via IsService */
+        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6or :%s",
                 srv->name, srv->hops+1, srv->boot, srv->link_time, srv->numeric, extranum, srv->description);
     } else {
-        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6o :%s",
+        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6or :%s",
                 self->numeric, srv->name, srv->hops+1, srv->boot, srv->link_time, (srv->self_burst ? 'J' : 'P'), srv->numeric, extranum, srv->description);
     }
 }
@@ -1706,7 +1710,33 @@ static CMD_FUNC(cmd_account)
         return 1;
     }
     else if(!strcmp(argv[2],"R"))
-       call_account_func(user, argv[3]);
+    {
+        if(argc >= 7 && !strcmp(argv[5],"RENAME"))
+        {
+            /* Rename permission query: AC <unum> R <cookie> <#chan> RENAME <new>.
+             * Reply shape: cookie FIRST (ircd m_account.c keys pending renames on
+             * parv[1] not being a server numeric) — deliberately NOT the LOC reply
+             * shape (AC <servnum> A <cookie>) used above. Never GetUserN() the
+             * cookie; argv[3] is opaque to us. This disambiguates from the legit
+             * legacy account stamp "AC <target> R <account>" (argc==4), which
+             * keeps falling through to call_account_func() below unchanged.
+             *
+             * The reply itself carries an explicit RENAME discriminator token
+             * after the A/D type so ircd m_account.c can route it by cookie
+             * without a FindNServer() guess — a decimal cookie can otherwise
+             * alias a server numeric (F2). */
+            const char *reason = "Permission denied";
+            struct chanNode *chan = GetChannel(argv[4]);
+            /* user is GetUserN(argv[1]) from the prologue above, which already
+             * returns early when NULL — the check here is paranoia. */
+            if(user && chan && chanserv_rename_allowed(user, chan, argv[6], &reason))
+                putsock("%s " P10_ACCOUNT " %s A RENAME", self->numeric, argv[3]);
+            else
+                putsock("%s " P10_ACCOUNT " %s D RENAME :%s", self->numeric, argv[3], reason);
+            return 1;
+        }
+        call_account_func(user, argv[3]);   /* legacy account stamp — unchanged */
+    }
     else
         call_account_func(user, argv[2]); /* For backward compatability */
     return 1;
@@ -2316,6 +2346,43 @@ static CMD_FUNC(cmd_topic)
     return 1;
 }
 
+/* RN <old> <new> :<reason> -- the ircd broadcasts this after an approved
+ * rename has already executed. Authorization happened at AC R query time
+ * (chanserv_rename_allowed, see cmd_account); this handler only migrates
+ * state (design §3a: authorize-at-query, apply-at-RN). The source prefix
+ * is the renaming user and may be unknown to us in edge cases, so it is
+ * not used here. */
+static CMD_FUNC(cmd_rename)
+{
+    struct chanNode *chan;
+    char old_name[CHANNELLEN+1];
+    int was_registered;
+
+    if(argc < 3) return 0;
+    if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
+    if(GetChannel(argv[2])) {
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: target already exists, state diverged",
+                   argv[1], argv[2]);
+        return 1;
+    }
+    was_registered = chan->channel_info != NULL;
+    safestrncpy(old_name, argv[1], sizeof(old_name));
+    if(!RenameChannel(chan, argv[2])) {
+        /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
+         * left the old node untouched/unfreed -- nothing was actually
+         * renamed, so don't mark the (still current) old name do-not-
+         * register. */
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: rejected by RenameChannel",
+                   argv[1], argv[2]);
+        return 1;
+    }
+    if(was_registered)
+        chanserv_rename_dnr(old_name);
+    return 1;
+}
+
 static CMD_FUNC(cmd_num_topic)
 {
     struct chanNode *cn;
@@ -2794,6 +2861,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_ERROR, cmd_error);
     dict_insert(irc_func_dict, CMD_TOPIC, cmd_topic);
     dict_insert(irc_func_dict, TOK_TOPIC, cmd_topic);
+    dict_insert(irc_func_dict, CMD_RENAME, cmd_rename);
+    dict_insert(irc_func_dict, TOK_RENAME, cmd_rename);
     dict_insert(irc_func_dict, CMD_AWAY, cmd_away);
     dict_insert(irc_func_dict, TOK_AWAY, cmd_away);
     dict_insert(irc_func_dict, CMD_SILENCE, cmd_silence);
