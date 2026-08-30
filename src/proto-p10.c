@@ -2032,9 +2032,12 @@ static CMD_FUNC(cmd_burst)
     cData = cNode->channel_info;
 
     if (!cData) {
-        if (cNode->modes & MODE_REGISTERED) {
+        if (cNode->modes & (MODE_REGISTERED | MODE_PERSIST)) {
+            /* Channel is not registered with us but carries server-managed
+             * markers: strip the registration marker AND any stale persist
+             * exmode (only ChanServ sets +z, on registered channels). */
             irc_join(opserv, cNode);
-            irc_mode(opserv, cNode, "-z");
+            irc_mode(opserv, cNode, "-zR");
             irc_part(opserv, cNode, "");
         }
     }
@@ -3617,9 +3620,30 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'a': do_chan_mode(MODE_ADMINSONLY); break;
         case 'Z': do_chan_mode(MODE_SSLONLY); break;
 	case 'L': do_chan_mode(MODE_HIDEMODE); break;
-	case 'z':
+	case 'R':
+	  /* MODE_REGISTERED wire letter (nefarious channel.c MODE_REGISTERED,
+	   * server-origin-only). MCP_REGISTERED is passed by the ChanServ
+	   * MODE-lock/mode-command call sites to forbid a user-typed mode
+	   * string from toggling registration state; server-origin calls
+	   * (cmd_mode, AddChannel/BURST via MCP_FROM_SERVER) don't set it,
+	   * so the ircd is free to correct our copy. */
 	  if (!(flags & MCP_REGISTERED)) {
               do_chan_mode(MODE_REGISTERED);
+	  } else {
+              mod_chanmode_free(change);
+              return NULL;
+	  }
+	  break;
+	case 'z':
+	  /* Nefarious persist exmode: server-settable-only channel
+	   * keep-alive, tracked as MODE_PERSIST -- NOT the registered
+	   * marker (historical X3 misread it as MODE_REGISTERED).
+	   * Same guard as 'R': user-typed mode strings (MCP_REGISTERED
+	   * call sites, i.e. ChanServ modelock/mode-command) may not
+	   * toggle a server-managed marker; server-origin strings parse
+	   * it so our copy tracks the ircd. */
+	  if (!(flags & MCP_REGISTERED)) {
+              do_chan_mode(MODE_PERSIST);
 	  } else {
               mod_chanmode_free(change);
               return NULL;
@@ -3850,7 +3874,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -3907,7 +3932,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -3983,7 +4009,8 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 #undef DO_MODE_CHAR
@@ -4008,7 +4035,8 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(NOAMSG, 'T');
         DO_MODE_CHAR(OPERSONLY, 'O');
         DO_MODE_CHAR(ADMINSONLY, 'a');
-        DO_MODE_CHAR(REGISTERED, 'z');
+        DO_MODE_CHAR(REGISTERED, 'R');
+        DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
 
@@ -4074,7 +4102,8 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'T': cleared |= MODE_NOAMSG; break;
         case 'O': cleared |= MODE_OPERSONLY; break;
         case 'a': cleared |= MODE_ADMINSONLY; break;
-        case 'z': cleared |= MODE_REGISTERED; break;
+        case 'R': cleared |= MODE_REGISTERED; break;
+        case 'z': cleared |= MODE_PERSIST; break;
         case 'Z': cleared |= MODE_SSLONLY; break;
 	case 'L': cleared |= MODE_HIDEMODE; break;
         }
