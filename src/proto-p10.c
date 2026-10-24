@@ -2081,6 +2081,24 @@ static CMD_FUNC(cmd_burst)
     return res;
 }
 
+/* A MARK names its user by nick.  After a netjoin nick collision the nick
+ * names whoever survived, so a mark the loser's server sent about the loser
+ * arrives here for the survivor.  A mark about a connection (its client
+ * certificate fingerprint, its CTCP version) is known only to the server the
+ * user is on, which is the mark's source on every path: accept it only from
+ * there.  Applying it set the loser's fingerprint on the survivor, and the
+ * certificate auto-login then logged the survivor into the loser's account.
+ */
+static int
+mark_from_uplink(struct userNode *target, const char *origin, const char *type)
+{
+    if (origin && target->uplink == GetServerH(origin))
+        return 1;
+    log_module(MAIN_LOG, LOG_WARNING, "Ignoring %s mark for %s from %s: the user is on %s.",
+               type, target->nick, origin ? origin : "(unknown)", target->uplink->name);
+    return 0;
+}
+
 /* TODO:
  * This is a stub that doesn't actually do anything. It should be completed
  * so that bans on *!*@markname.* match users as it does in nefarious
@@ -2138,6 +2156,8 @@ static CMD_FUNC(cmd_mark)
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose version mark is changing.", argv[1]);
             return 0;
         }
+        if (!mark_from_uplink(target, origin, "CVERSION"))
+            return 1;
 
         char *version = unsplit_string(argv + 3, argc - 3, NULL);
         if(!version)
@@ -2157,6 +2177,8 @@ static CMD_FUNC(cmd_mark)
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose SSL fingerprint mark is changing.", argv[1]);
             return 0;
         }
+        if (!mark_from_uplink(target, origin, "SSLCLIFP"))
+            return 1;
 
         char *sslfp = unsplit_string(argv + 3, argc - 3, NULL);
         if(!sslfp)
