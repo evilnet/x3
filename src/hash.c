@@ -739,8 +739,12 @@ DelChannel(struct chanNode *channel)
     free(channel);
 }
 
-struct modeNode *
-AddChannelUser(struct userNode *user, struct chanNode* channel)
+/* run_hooks = 0 records a membership the network already has without
+ * firing the join hooks (ChanServ greetings, auto-modes, ban checks):
+ * for a member X3 learns of by a bookkeeping event such as a BX P merge,
+ * not by a JOIN. */
+static struct modeNode *
+AddChannelUser_impl(struct userNode *user, struct chanNode* channel, int run_hooks)
 {
 	struct modeNode *mNode;
 
@@ -774,9 +778,22 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
             irc_join(user, channel);
         }
 
-        call_join_funcs(mNode);
+        if (run_hooks)
+            call_join_funcs(mNode);
 
 	return mNode;
+}
+
+struct modeNode *
+AddChannelUser(struct userNode *user, struct chanNode* channel)
+{
+    return AddChannelUser_impl(user, channel, 1);
+}
+
+struct modeNode *
+AddChannelUserNoHooks(struct userNode *user, struct chanNode* channel)
+{
+    return AddChannelUser_impl(user, channel, 0);
 }
 
 static part_func_t *pf_list;

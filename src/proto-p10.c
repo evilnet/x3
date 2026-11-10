@@ -1769,8 +1769,13 @@ static CMD_FUNC(cmd_bouncer_transfer)
         old_primary = GetUserN_silent(argv[2]);
         new_node = GetUserN_silent(argv[3]);
 
-        if (!old_primary)
-            return 1; /* Already gone, nothing to do */
+        if (!old_primary) {
+            /* Usually already gone by a prior event; but a miss can also
+             * mean X3 never saw this user (a desync), so leave a trace. */
+            log_module(MAIN_LOG, LOG_DEBUG,
+                "BX P: old primary %s not found — nothing to transfer", argv[2]);
+            return 1;
+        }
 
         /* Two BX P shapes need handling:
          *
@@ -1781,24 +1786,27 @@ static CMD_FUNC(cmd_bouncer_transfer)
          *    This is the case the original handler was written for, and
          *    is what fires when nefarious never bursts an alias to us.
          *
-         * 2. **In-place conversion / merge (new_node exists with same
-         *    account)** — modern fork peers emit BX P for the case where
+         * 2. **In-place conversion / merge (new_node exists)** — modern
+         *    fork peers emit BX P for the case where
          *    an N-introduced client (old) is being absorbed into an
          *    existing primary (new), e.g. burst-ordering caused us to
          *    receive N for the would-be-alias before its BX C.  Both
          *    nodes exist on X3.  We merge: delete old_primary's
          *    userNode (channels and dict entry cleaned up via DelUser,
          *    no QUIT broadcast), keep new_node intact as the surviving
-         *    identity.  Gate strictly on same-handle to avoid
-         *    accidentally merging unrelated collisions.
-         *
-         * 3. **new_node exists but different/no handle** — genuinely
-         *    unexpected.  Keep the original "log and ignore" behaviour
-         *    so we don't silently corrupt state across an account
-         *    mismatch. */
+         *    identity.  Every server applies this merge unconditionally
+         *    (nefarious m_bouncer_transfer.c both-exist branch), so X3
+         *    applies it unconditionally too: ignoring it would leave a
+         *    userNode on a numeric the network has already freed.  An
+         *    account mismatch -- or a handle X3 has not learned yet under
+         *    burst-order skew -- is only logged. */
         if (new_node) {
-            if (old_primary->handle_info
-                && old_primary->handle_info == new_node->handle_info) {
+            if (old_primary->handle_info != new_node->handle_info)
+                log_module(MAIN_LOG, LOG_WARNING,
+                    "BX P: merging %s (%s) into %s (%s) across different "
+                    "or unknown accounts, as the servers do",
+                    argv[2], old_primary->nick, argv[3], new_node->nick);
+            {
                 /* Merge: old absorbed into new.  Before deleting
                  * old_primary, transfer its channel memberships onto
                  * new_node.  This mirrors nefarious's own both-exist
@@ -1830,24 +1838,13 @@ static CMD_FUNC(cmd_bouncer_transfer)
                     struct chanNode *chan = mn->channel;
 
                     if (!GetUserMode(chan, new_node)) {
-                        /* AddChannelUser() only fires irc_join() when
-                         * the joining user IsLocal() (i.e. an X3
-                         * service bot) — new_node here is always a
-                         * network user, so no JOIN hits the wire.  It
-                         * unconditionally runs call_join_funcs()
-                         * though, which fires the same on-join hooks
-                         * (chanserv presence/ban/oplevel bookkeeping)
-                         * a real join would.  The numeric-swap path
-                         * above never touches channel membership at
-                         * all, so there's no existing both-exist
-                         * precedent that's hook-free; there's no
-                         * lower-level "add to channel, no hooks"
-                         * primitive to reach for instead.  Correctness
-                         * of membership state takes priority, so we
-                         * accept the hook firing here as a known
-                         * side effect rather than leaving the ghost's
-                         * channels to be silently dropped. */
-                        struct modeNode *new_mn = AddChannelUser(new_node, chan);
+                        /* The network did not see a JOIN: record the
+                         * membership without the join hooks, or ChanServ
+                         * would greet, auto-op or ban-check a user who is
+                         * already in the channel on every server.  Like
+                         * the servers, a membership new_node already has
+                         * keeps its own modes. */
+                        struct modeNode *new_mn = AddChannelUserNoHooks(new_node, chan);
                         new_mn->modes = mn->modes;
                         new_mn->oplevel = mn->oplevel;
                     }
@@ -1864,11 +1861,6 @@ static CMD_FUNC(cmd_bouncer_transfer)
                 DelUser(old_primary, NULL, 0, "Bouncer transfer");
                 return 1;
             }
-            log_module(MAIN_LOG, LOG_WARNING,
-                "BX P: new_node %s already exists as %s with mismatched "
-                "handle — ignoring promote",
-                argv[3], new_node->nick);
-            return 1;
         }
 
         /* Compute new server and slot */
