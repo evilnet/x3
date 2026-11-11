@@ -358,6 +358,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_IDENTITY_RESET", "Account $b%s$b was recreated in Keycloak (id %s, was %s): its data has been reset." },
     { "NSMSG_IDENTITY_STALE", "Account $b%s$b was announced with the Keycloak id it had before (%s, now %s): login refused." },
     { "NSMSG_IDENTITY_MISMATCH", "Account $b%s$b was announced with a different Keycloak id (%s, stored %s): login refused. REBIND the account if the user was recreated." },
+    { "NSMSG_IDENTITY_SUSPENDED", "Account $b%s$b was announced with a different Keycloak id (%s, stored %s): login refused. The account is suspended, so it was not reset." },
     { "NSMSG_RECLAIMED_NONE", "You cannot manually reclaim a nick." },
     { "NSMSG_RECLAIMED_WARN", "Sent a request for %s to change their nick." },
     { "NSMSG_RECLAIMED_SVSNICK", "Forcibly changed %s's nick." },
@@ -5898,11 +5899,14 @@ handle_account(struct userNode *user, const char *stamp)
     hi = dict_find(nickserv_handle_dict, stamp, NULL);
     /* The identity first: a stored Keycloak id that differs from the
      * announced one is a recreated account under the same name, and the
-     * handle starts over -- the timestamp check below then sees the fresh
-     * record -- but only when keycloak_id_reset is on; by default the
-     * mismatch is logged, told to opers and the bind refused.  No id
-     * on the wire, or none stored yet, checks nothing here (fail open; an
-     * id is adopted once the login goes through). */
+     * handle starts over -- but only when keycloak_id_reset is on, and
+     * never a suspended handle; by default the mismatch is logged, told to
+     * opers and the bind refused.  A reset is final for this announcement:
+     * nothing below may refuse the login that caused it, so the timestamp
+     * check is skipped for it (the fresh record is not suspended, and the
+     * autocreate does not apply to a handle that exists).  No id on the
+     * wire, or none stored yet, checks nothing here (fail open; an id is
+     * adopted once the login goes through). */
     if (hi && wire_id[0] && hi->kc_id && strcmp(hi->kc_id, wire_id)) {
         if (handle_kcid_was_replaced(hi, wire_id)) {
             /* A session from before the id was replaced (a burst replay, an
@@ -5919,8 +5923,34 @@ handle_account(struct userNode *user, const char *stamp)
                                 stamp, wire_id, hi->kc_id);
             return;
         }
-        else if (nickserv_conf.kc_id_reset)
+        else if (nickserv_conf.kc_id_reset && HANDLE_FLAGGED(hi, SUSPENDED)) {
+            /* A suspended handle is not reset: the fresh record would not
+             * be suspended, so deleting and recreating the Keycloak user
+             * would be a way out of a suspension.  Refuse the bind as the
+             * default mode does, before anything is destroyed, and say
+             * why.  The handle keeps its data, its stored id and its
+             * suspension; lifting the suspension lets the next such login
+             * reset it, REBIND binds it to the new id as it is. */
+            log_module(MAIN_LOG, LOG_WARNING,
+                       "%s announced account %s with a different Keycloak id%s "
+                       "(%s, stored %s): bind refused, and the account is "
+                       "suspended so keycloak_id_reset does not apply",
+                       user->nick, stamp,
+                       user->uplink->burst ? " during a burst" : "",
+                       wire_id, hi->kc_id);
+            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_SUSPENDED",
+                                stamp, wire_id, hi->kc_id);
+            return;
+        }
+        else if (nickserv_conf.kc_id_reset) {
             hi = nickserv_reset_handle(hi, wire_id, user);
+            /* The wire timestamp was the old record's, or was not X3's at
+             * all; the fresh record's date is this instant and no login
+             * has carried it yet.  Comparing the two would refuse the very
+             * login the handle was just reset for, and leave the name
+             * wiped with nobody on it. */
+            timestamp = 0;
+        }
         else {
             /* The default: the wire is not talking about this handle.  Log
              * it, tell opers, keep the stored id and the data, and refuse
