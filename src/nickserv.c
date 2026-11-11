@@ -2162,9 +2162,22 @@ handle_kcid_from_uuid(const char *uuid, char out[23])
  * from the stored one is refused and reported to opers (handle_account;
  * with keycloak_id_reset on it resets the account instead), so this is
  * for correcting a binding so that the user can log in again, or clearing
- * one so the next login adopts whatever it carries.  Not an OSET option
- * on purpose: SEARCH SET applies OSET options without the outranking
- * check that get_victim_oper enforces here. */
+ * one so the next login adopts whatever it carries.
+ *
+ * Setting an id other than the stored one, or clearing a stored one (*),
+ * detaches the sessions logged in at the time and remembers the id as a
+ * replaced one.  Detaching is X3's own bookkeeping (set_user_handle_info
+ * with no handle): the user is not disconnected, nothing is sent to the
+ * ircd, and the ircd goes on showing the account; X3 just stops treating
+ * the connection as logged in to it.  Without both steps a clear would
+ * hand the binding back to the previous owner: a session of theirs that
+ * is still connected announces the old id again at the next burst replay
+ * or alias attach, the handle would adopt it, and the user the clear was
+ * meant for would be refused.  To go back to a replaced id, set it with
+ * REBIND <id>.
+ *
+ * Not an OSET option on purpose: SEARCH SET applies OSET options without
+ * the outranking check that get_victim_oper enforces here. */
 static NICKSERV_FUNC(cmd_rebind)
 {
     struct handle_info *hi;
@@ -2174,10 +2187,23 @@ static NICKSERV_FUNC(cmd_rebind)
     if (!(hi = get_victim_oper(user, argv[1])))
         return 0;
     if (!strcmp(argv[2], "*")) {
-        free(hi->kc_id);
-        hi->kc_id = NULL;
-        handle_kcid_forget_replaced(hi);
+        unsigned int detached = 0;
+
+        if (hi->kc_id) {
+            struct userNode *u;
+
+            /* The list takes the string over.  With no id stored there is
+             * nothing to clear, and nobody logged in under one. */
+            handle_kcid_remember(hi, hi->kc_id);
+            hi->kc_id = NULL;
+            while ((u = hi->users)) {
+                set_user_handle_info(u, NULL, 0);
+                detached++;
+            }
+        }
         reply("NSMSG_REBIND_CLEARED", hi->handle);
+        if (detached)
+            reply("NSMSG_REBIND_DETACHED", detached);
         return 1;
     }
     /* Either form: the UUID the Keycloak admin console shows, or the
@@ -5908,23 +5934,27 @@ handle_account(struct userNode *user, const char *stamp)
      * autocreate does not apply to a handle that exists).  No id on the
      * wire, or none stored yet, checks nothing here (fail open; an id is
      * adopted once the login goes through). */
+    if (hi && wire_id[0] && handle_kcid_was_replaced(hi, wire_id)) {
+        /* A session from before the id was replaced (a burst replay, an
+         * alias attach, the ircd's login cache): the previous owner's,
+         * not the handle's.  Refused, and not taken for yet another
+         * recreate either.  This holds with no id stored too -- after
+         * REBIND * -- or the handle would adopt the id it was just cleared
+         * of.  (A replaced id is never the current one.) */
+        const char *now_id = hi->kc_id ? hi->kc_id : "none";
+
+        log_module(MAIN_LOG, LOG_WARNING,
+                   "%s announced account %s with the Keycloak id it had before%s "
+                   "(%s, now %s): bind refused",
+                   user->nick, stamp,
+                   user->uplink->burst ? " during a burst" : "",
+                   wire_id, now_id);
+        global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_STALE",
+                            stamp, wire_id, now_id);
+        return;
+    }
     if (hi && wire_id[0] && hi->kc_id && strcmp(hi->kc_id, wire_id)) {
-        if (handle_kcid_was_replaced(hi, wire_id)) {
-            /* A session from before the id was replaced (a burst replay, an
-             * alias attach, the ircd's login cache): the previous owner's,
-             * not the handle's.  Refused, and not taken for yet another
-             * recreate either. */
-            log_module(MAIN_LOG, LOG_WARNING,
-                       "%s announced account %s with the Keycloak id it had before%s "
-                       "(%s, now %s): bind refused",
-                       user->nick, stamp,
-                       user->uplink->burst ? " during a burst" : "",
-                       wire_id, hi->kc_id);
-            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_STALE",
-                                stamp, wire_id, hi->kc_id);
-            return;
-        }
-        else if (nickserv_conf.kc_id_reset && HANDLE_FLAGGED(hi, SUSPENDED)) {
+        if (nickserv_conf.kc_id_reset && HANDLE_FLAGGED(hi, SUSPENDED)) {
             /* A suspended handle is not reset: the fresh record would not
              * be suspended, so deleting and recreating the Keycloak user
              * would be a way out of a suspension.  Refuse the bind as the
