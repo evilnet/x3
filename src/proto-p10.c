@@ -4042,7 +4042,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
 static int
 clear_chanmode(struct chanNode *channel, const char *modes)
 {
-    unsigned int cleared;
+    chan_mode_t cleared;
 
     for (cleared = 0; *modes; modes++) {
         switch (*modes) {
