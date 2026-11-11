@@ -1276,17 +1276,17 @@ chanserv_marker_modes(void)
 
 /* Set whichever of its markers a registered channel does not carry yet.
  * Does nothing when they are all there, so it can be called wherever a
- * registered channel may have (re)appeared without them. */
+ * registered channel may have (re)appeared without them.
+ *
+ * Suspension makes no difference here: a suspended channel is still a
+ * registered one, and the ircd has to know that.  It only hands a
+ * channel RENAME to X3 to arbitrate when the channel has +R, so a
+ * suspended channel without it could be renamed by any of its chanops. */
 static void
 chanserv_assert_markers(struct chanNode *channel)
 {
     struct mod_chanmode change;
     chan_mode_t missing;
-
-    /* ChanServ does not newly mark a channel while it is suspended.  (It
-     * does not unmark one either: suspending leaves the markers alone.) */
-    if(channel->channel_info && IsSuspended(channel->channel_info))
-        return;
 
     missing = chanserv_marker_modes() & ~channel->modes;
     if(!missing)
@@ -2881,9 +2881,7 @@ static CHANSERV_FUNC(cmd_move)
      * follow registration regardless of whether ChanServ itself occupies
      * the channel. The persist exmode (+z) moves too, but is only SET
      * when off_channel>0 (bot presence otherwise holds the channel).
-     * The target is not registered yet at this point (its channel_info is
-     * moved below), so the markers follow a suspended registration too,
-     * as they always have. */
+     * A suspended registration takes its markers along like any other. */
     change.argc = 0;
     change.modes_clear = CHANSERV_MARKER_MODES;
     mod_chanmode_announce(chanserv, channel, &change);
@@ -8504,17 +8502,13 @@ handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
     unsigned int modes = 0, info = 0;
     char *greeting;
 
-    if(IsLocal(user) || !channel || !channel->channel_info || IsSuspended(channel->channel_info))
+    if(IsLocal(user) || !channel || !channel->channel_info)
         return 0;
-
-    cData = channel->channel_info;
-    if(channel->members.used > cData->max)
-        cData->max = channel->members.used;
 
     /* Self-heal the ircd's server-managed markers (+R always; +z persist
      * when off_channel>0, since no bot presence then) for a channel we
-     * know is registered (channel_info set, not suspended -- both already
-     * checked above) but which the ircd doesn't currently show as such.
+     * know is registered (channel_info set, checked above) but which the
+     * ircd doesn't currently show as such.
      * This covers ircd restarts (fresh channel, no memory of +R), X3
      * restarts racing a channel's first post-restart JOIN before the
      * BURST/DB-load path re-set it, and channel re-creation. Unlike the
@@ -8525,8 +8519,18 @@ handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
      * change to channel->modes immediately, so only the first joiner
      * (burst or not) actually triggers the wire MODE -- every later
      * handle_join() call in the same burst sees the markers already
-     * set and no-ops here. */
+     * set and no-ops here.
+     * This is the one thing handle_join() does for a suspended channel
+     * too: ChanServ has left it, so it empties and is created afresh more
+     * readily than any other registered channel. */
     chanserv_assert_markers(channel);
+
+    if(IsSuspended(channel->channel_info))
+        return 0;
+
+    cData = channel->channel_info;
+    if(channel->members.used > cData->max)
+        cData->max = channel->members.used;
 
 #ifdef notdef
     /* Check for bans.  If they're joining through a ban, one of two
@@ -9719,7 +9723,9 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     }
 
     /* Re-assert +R (and +z when off_channel>0) on every channel read from
-     * the database, whether or not it has a stored mode lock. */
+     * the database, whether or not it has a stored mode lock, and whether
+     * or not it is suspended (the mode lock above is not announced for a
+     * suspended channel; the markers are). */
     chanserv_assert_markers(cNode);
 
     obj = database_get_data(channel, KEY_USERS, RECDB_OBJECT);
