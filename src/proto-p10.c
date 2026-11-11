@@ -1849,7 +1849,13 @@ static CMD_FUNC(cmd_bouncer_transfer)
                  * loop does: always pop the last element, since
                  * AddChannelUser/DelChannelUser mutate both the
                  * channel's member list and the user's channel list
-                 * out from under us. */
+                 * out from under us.
+                 *
+                 * Mark old_primary dead first, as DelUser() does before
+                 * its loop: the part hooks then treat these removals as
+                 * a quit's, and mod-snoop and mod-track do not report a
+                 * PART the network never saw. */
+                old_primary->dead = 1;
                 while (old_primary->channels.used > 0) {
                     struct modeNode *mn = old_primary->channels.list[old_primary->channels.used - 1];
                     struct chanNode *chan = mn->channel;
