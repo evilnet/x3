@@ -2346,6 +2346,11 @@ static CMD_FUNC(cmd_topic)
     return 1;
 }
 
+/* Marker the ircd puts before the trailing reason of a relocation-mode
+ * RN (ircd/m_rename.c RELOCATE_MARKER, sent when its RENAME_CONSENT
+ * feature is on). */
+#define RENAME_RELOCATE_MARKER  "C"
+
 /* RN <old> <new> :<reason> -- the ircd broadcasts this after an approved
  * rename has already executed. Authorization happened at AC R query time
  * (chanserv_rename_allowed, see cmd_account); this handler only migrates
@@ -2359,6 +2364,27 @@ static CMD_FUNC(cmd_rename)
     int was_registered;
 
     if(argc < 3) return 0;
+    /* RN <old> <new> C :<reason> is a relocation, not a rename: only the
+     * issuer moved to <new>, and <old> lives on as a tombstone that still
+     * holds every other member. Applying it as a classic rename would move
+     * the whole membership and the registration to <new> and leave us with
+     * members the network does not have there. This build has no
+     * relocation support, so apply nothing.
+     *
+     * The test is the one the ircd's own receiver (ms_rename) uses: the
+     * marker counts only in the five-parameter shape, i.e. argv[3] is
+     * exactly "C" AND a separate trailing reason follows it. The ircd
+     * always sends that trailing parameter (":" alone when the reason is
+     * empty), and split_line() keeps an empty trailing parameter, so a
+     * relocation always arrives with argc == 5. "RN <old> <new> :C" has
+     * argc == 4: a classic rename whose reason happens to be the letter
+     * C, which must stay a classic rename. */
+    if(argc > 4 && !strcmp(argv[3], RENAME_RELOCATE_MARKER)) {
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: relocation-mode rename received, which this build does not support; not applied",
+                   argv[1], argv[2]);
+        return 1;
+    }
     if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
     if(GetChannel(argv[2])) {
         log_module(MAIN_LOG, LOG_ERROR,
