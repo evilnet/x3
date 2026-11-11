@@ -8484,6 +8484,15 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
         return 0;
     }
 
+    /* The registration moves with the rename, so the new name has to be
+     * one REGISTER would accept (cmd_register refuses on REG_NOMATCH). */
+    if(chanserv_conf.valid_channel_regex_set
+       && regexec(&chanserv_conf.valid_channel_regex, new_name, 0, 0, 0) == REG_NOMATCH)
+    {
+        *reason = "New channel name is not allowed";
+        return 0;
+    }
+
     /* Registered at all -- a suspended registration still owns its name. */
     if((target = GetChannel(new_name)) && target->channel_info)
     {
