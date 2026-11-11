@@ -9945,10 +9945,7 @@ write_dnrs_helper(struct saxdb_context *ctx, struct dict *dnrs)
         if(dnr->set)
             saxdb_write_int(ctx, KEY_DNR_SET, dnr->set);
         if(dnr->expires)
-        {
-            dict_remove(dnrs, iter_key(it));
             saxdb_write_int(ctx, KEY_EXPIRES, dnr->expires);
-        }
         saxdb_write_string(ctx, KEY_DNR_SETTER, dnr->setter);
         saxdb_write_string(ctx, KEY_DNR_REASON, dnr->reason);
         saxdb_end_record(ctx);
