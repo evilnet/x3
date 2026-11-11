@@ -761,6 +761,20 @@ DelChannel(struct chanNode *channel)
     free(channel);
 }
 
+int
+DelUnusedChannel(struct chanNode *channel)
+{
+    /* locks counts the holders that keep a node by pointer and expect it
+     * to stay (ChanServ registration and support channels, OpServ alert
+     * channels); UnlockChannel() is what deletes an empty node once the
+     * last of them lets go.  A node with members, a registration or a
+     * lock is in use and is not ours to remove. */
+    if (channel->members.used || channel->channel_info || channel->locks)
+        return 0;
+    DelChannel(channel);
+    return 1;
+}
+
 struct chanNode *
 RenameChannel(struct chanNode *channel, const char *new_name)
 {

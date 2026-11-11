@@ -450,6 +450,11 @@ typedef void (*channel_rename_func_t)(struct chanNode *old_chan,
 void reg_channel_rename_func(channel_rename_func_t handler, void *extra);
 /* Returns the NEW node, or NULL (bad name / target exists). Old node freed. */
 struct chanNode *RenameChannel(struct chanNode *channel, const char *new_name);
+/* Deletes a channel node that nothing here depends on: no members, no
+ * registration (channel_info) and no locks.  Goes through the normal
+ * channel-deletion path, so del_channel hooks run.  Returns 1 if the node
+ * was deleted, 0 if it is in use and was left alone. */
+int DelUnusedChannel(struct chanNode *channel);
 
 struct chanNode* AddChannel(const char *name, time_t time_, const char *modes, char *banlist, char *exemptlist);
 void LockChannel(struct chanNode *channel);

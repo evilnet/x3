@@ -2359,7 +2359,7 @@ static CMD_FUNC(cmd_topic)
  * not used here. */
 static CMD_FUNC(cmd_rename)
 {
-    struct chanNode *chan;
+    struct chanNode *chan, *dest;
     char old_name[CHANNELLEN+1];
     int was_registered;
 
@@ -2386,11 +2386,51 @@ static CMD_FUNC(cmd_rename)
         return 1;
     }
     if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
-    if(GetChannel(argv[2])) {
-        log_module(MAIN_LOG, LOG_ERROR,
-                   "RENAME %s -> %s: target already exists, state diverged",
-                   argv[1], argv[2]);
-        return 1;
+    if((dest = GetChannel(argv[2]))) {
+        /* The ircd executes a rename only when <new> does not exist on the
+         * network, so a node we still hold under that name is stale. If
+         * nothing here depends on it -- no members, no registration, no
+         * locks -- drop it and apply the rename. Anything else would mean
+         * discarding members or folding one registration into another,
+         * which is not this handler's call: refuse, and say what is in
+         * the way so the divergence can be repaired by hand. */
+        if(dest == chan) {
+            /* Names differing only in case are one channel to us and to
+             * the ircd, which refuses such a rename; never treat the
+             * channel being renamed as its own stale destination. */
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, old and new name are the same channel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+        if(dest->channel_info) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination is a registered channel here; state diverged",
+                       argv[1], argv[2]);
+            return 1;
+        }
+        if(dest->members.used) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination has %u member(s) here; state diverged",
+                       argv[1], argv[2], dest->members.used);
+            return 1;
+        }
+        if(dest->locks) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination is locked here (%u lock(s)); state diverged",
+                       argv[1], argv[2], dest->locks);
+            return 1;
+        }
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RENAME %s -> %s: removing stale empty channel %s to make way",
+                   argv[1], argv[2], dest->name);
+        if(!DelUnusedChannel(dest)) {
+            /* Unreachable while the tests above match DelUnusedChannel's. */
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination could not be removed; state diverged",
+                       argv[1], argv[2]);
+            return 1;
+        }
     }
     was_registered = chan->channel_info != NULL;
     safestrncpy(old_name, argv[1], sizeof(old_name));
