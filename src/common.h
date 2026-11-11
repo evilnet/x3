@@ -312,6 +312,37 @@ int relocate_expiry_parse(const char *text, time_t *expires);
 /* Judge a deadline against the clock; cuts *expires when the answer is
  * RELOCATE_EXPIRY_CLAMPED and leaves it alone otherwise. */
 enum relocate_expiry_kind relocate_expiry_check(time_t *expires, time_t when);
+
+/* One deadline from two, for a tombstone two parties each hold a deadline
+ * for: the LATER.  Symmetric, idempotent and associative, so everybody
+ * ends with the same deadline in whatever order they hear the others. */
+time_t relocate_deadline_merge(time_t a, time_t b);
+
+/* A tombstone announced after its channel's BURST,
+ *
+ *     <server> RT <old> <old-creation-ts> <new> <expires>
+ *
+ * and what it means to a receiver, by what the receiver holds. */
+struct relocate_announce_facts {
+    int channel_exists;     /* a channel of the old name exists here */
+    int ts_matches;         /* ... with the creation timestamp announced */
+    int have_record;        /* a tombstone record is kept for it */
+    int same_target;        /* ... and its target is the one announced */
+};
+
+enum relocate_announce_verdict {
+    RELOCATE_ANNOUNCE_NO_CHANNEL = 0,   /* nothing: no such channel here */
+    RELOCATE_ANNOUNCE_OTHER_CHANNEL,    /* nothing: the channel of that name
+                                         * here is another one (creation
+                                         * timestamps differ) */
+    RELOCATE_ANNOUNCE_BUILD,            /* make the record */
+    RELOCATE_ANNOUNCE_MERGE,            /* the same tombstone: keep one
+                                         * deadline (relocate_deadline_merge()) */
+    RELOCATE_ANNOUNCE_CROSS             /* the channel was relocated to two
+                                         * different names: the crossing rule */
+};
+
+enum relocate_announce_verdict relocate_announce_decide(const struct relocate_announce_facts *facts);
 #define enabled_string(string)  (!irccasecmp((string), "on") || !strcmp((string), "1") || !irccasecmp((string), "enabled"))
 #define disabled_string(string) (!irccasecmp((string), "off") || !strcmp((string), "0") || !irccasecmp((string), "disabled"))
 #define true_string(string)     (!irccasecmp((string), "true") || !strcmp((string), "1") || !irccasecmp((string), "yes"))

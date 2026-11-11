@@ -82,6 +82,7 @@
 #define CMD_REHASH              "REHASH"
 #define CMD_REMOVE		"REMOVE"
 #define CMD_RENAME              "RENAME"
+#define CMD_TOMBSTONE           "TOMBSTONE"
 #define CMD_RESET		"RESET"
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
@@ -185,6 +186,7 @@
 #define TOK_REHASH              "REHASH"
 #define TOK_REMOVE		"RM"
 #define TOK_RENAME              "RN"
+#define TOK_TOMBSTONE           "RT"
 #define TOK_RESET		"RESET"
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
@@ -353,6 +355,10 @@ static unsigned int num_privmsg_funcs;
 static privmsg_func_t *notice_funcs;
 static unsigned int num_notice_funcs;
 static struct dict *unbursted_channels;
+/* Channels a server burst unregistered with +z and +L, by name, with the
+ * name of the server whose burst it was: the decision whether that +z is
+ * stale waits for the end of that server's burst.  See cmd_burst. */
+static struct dict *burst_persist_pending;
 static const char *his_servername;
 static const char *his_servercomment;
 static int extended_accounts;
@@ -1512,6 +1518,67 @@ static CMD_FUNC(cmd_server)
 }
 
 
+/* Take the server-managed markers a burst should not have carried off a
+ * channel: on the wire, and on our copy.  irc_mode() only sends; a bit
+ * left on our copy makes a later REGISTER find the marker "already set"
+ * and never send what the ircd no longer has. */
+static void
+burst_strip_markers(struct chanNode *cNode, int strip_r, int strip_z)
+{
+    if (!strip_r && !strip_z)
+        return;
+    irc_join(opserv, cNode);
+    irc_mode(opserv, cNode,
+             (strip_r && strip_z) ? "-zR" : (strip_z ? "-z" : "-R"));
+    irc_part(opserv, cNode, "");
+    if (strip_r)
+        cNode->modes &= ~(chan_mode_t)MODE_REGISTERED;
+    if (strip_z)
+        cNode->modes &= ~(chan_mode_t)MODE_PERSIST;
+}
+
+/* cmd_burst left the +z of an unregistered +z +L channel alone because a
+ * tombstone's announcement (RT) may follow its BURST.  Remember it until
+ * the bursting server is done. */
+static void
+burst_persist_defer(struct chanNode *cNode, const char *server_name)
+{
+    if (!burst_persist_pending) {
+        burst_persist_pending = dict_new();
+        dict_set_free_keys(burst_persist_pending, free);
+        dict_set_free_data(burst_persist_pending, free);
+    }
+    if (!dict_find(burst_persist_pending, cNode->name, NULL))
+        dict_insert(burst_persist_pending, strdup(cNode->name), strdup(server_name));
+}
+
+/* A server has finished its burst: every announcement that belongs to it
+ * has been read.  A channel of that burst that is still unregistered, +z
+ * and not a tombstone chanserv tracks got no announcement.  It is either
+ * the tombstone of an ircd that does not announce, which chanserv can
+ * recognise in some cases (chanserv_relocate_husk_fallback()), or it
+ * carries a stale +z, which is stripped now.  Entries of a server that is
+ * no longer linked are settled as well; its burst will never end. */
+static void
+burst_persist_settle(struct server *sender)
+{
+    dict_iterator_t it, next;
+    struct chanNode *cNode;
+
+    for (it = dict_first(burst_persist_pending); it; it = next) {
+        next = iter_next(it);
+        if (irccasecmp(iter_data(it), sender->name) && GetServerH(iter_data(it)))
+            continue;
+        if ((cNode = GetChannel(iter_key(it)))
+            && !cNode->channel_info
+            && (cNode->modes & MODE_PERSIST)
+            && !chanserv_relocate_husk_live(cNode)
+            && !chanserv_relocate_husk_fallback(cNode))
+            burst_strip_markers(cNode, 0, 1);
+        dict_remove(burst_persist_pending, iter_key(it));
+    }
+}
+
 static CMD_FUNC(cmd_eob)
 {
     struct server *sender;
@@ -1534,6 +1601,7 @@ static CMD_FUNC(cmd_eob)
         //activate_routing(NULL, NULL, NULL);
         routing_init();
     }
+    burst_persist_settle(sender);
     sender->self_burst = 0;
     recalc_bursts(sender);
     call_server_link_funcs(sender);
@@ -2334,60 +2402,48 @@ static CMD_FUNC(cmd_burst)
 
     if (!cData) {
         /* Channel is not registered with us but carries server-managed
-         * markers.  The two markers no longer have the same truth value, so
+         * markers.  The two markers do not have the same truth value, so
          * they are decided separately:
          *
-         *  -R  ALWAYS.  MODE_REGISTERED on a channel we hold no channel_info
-         *      for is stale in every scenario there is, relocation included:
-         *      relocate_execute() clears R on the tombstone itself, and our
-         *      own husk has channel_info NULL by construction, so an R that
-         *      arrives on a burst for either is drift to be corrected.
+         *  -R  ALWAYS, and now.  MODE_REGISTERED on a channel we hold no
+         *      channel_info for is stale in every scenario there is,
+         *      relocation included: relocate_execute() clears R on the
+         *      tombstone itself, and our own husk has channel_info NULL by
+         *      construction, so an R that arrives on a burst for either is
+         *      drift to be corrected -- and on a tombstone it has to be
+         *      gone before the deadline, where the ircd reads it.
          *
-         *  -z  ONLY when the channel is not a relocation tombstone we are
-         *      tracking.  The old premise -- "only ChanServ sets +z, on
-         *      registered channels" -- stopped being true when
-         *      relocate_execute() began marking tombstones EXMODE_PERSIST: a
-         *      live tombstone is +z AND unregistered by construction.  The
+         *  -z  ONLY when the channel is not a relocation tombstone.  A live
+         *      tombstone is +z AND unregistered by construction, and the
          *      ircd treats the channel as its tombstone only while that bit
-         *      is there; with it gone it cancels the grace-expiry sweep and
-         *      leaves the members in what is then an ordinary channel that
-         *      still redirects.  Any OTHER unregistered +z is still stale
-         *      and still gets stripped.
+         *      is there; with it gone it cancels the sweep and leaves the
+         *      members in what is then an ordinary channel that still
+         *      redirects (and an EMPTY tombstone is destroyed by the -z).
+         *      Any other unregistered +z is stale and is stripped.
          *
-         * "Tracking" is chanserv's own record of the husk: made when the RN
-         * arrived, or -- the AddChannel() above runs chanserv's new-channel
-         * hook -- on this very burst, for a tombstone that outlived an X3
-         * restart and is recognised by its +z, +L and the rename DNR on its
-         * name.  That last part has holes, listed at
-         * chanserv_relocate_husk_check(): a tombstone it does not recognise
-         * is stripped here, and since nothing tracks it X3 does not sweep it
-         * either, which is what the ircd then does too.
+         * Which it is, the BURST alone does not say.  A tombstone chanserv
+         * already tracks (the RN reached us; this is a netjoin) is known
+         * now and left alone.  For one that outlived an X3 restart the ircd
+         * sends the record itself right after the channel's BURST,
          *
-         * KNOWN BOUNDED HOLE: DNRs live in saxdb, which is written on a save
-         * tick (db_backup_frequency) and at clean shutdown.  A burst arriving
-         * after an X3 crash that lost the DNR is the same case: the +z is
-         * stripped and nobody is swept.  The clean fix is an explicit
-         * ircd-side dissolve / tombstone signal on the wire, recorded as
-         * deferred future work (new wire surface on a frozen RN shape). */
-        int strip_r = (cNode->modes & MODE_REGISTERED) ? 1 : 0;
-        int strip_z = (cNode->modes & MODE_PERSIST)
-                      && !chanserv_relocate_husk_live(cNode);
+         *     AB B #old 1731000000 +tnzL #new ABAAC
+         *     AB RT #old 1731000000 #new 1731340900
+         *
+         * so the strip must not run ahead of that line.  A tombstone is
+         * always +L as well: a +z channel without +L is none and is
+         * stripped now.  One with +L waits for the end of the bursting
+         * server's burst (burst_persist_defer(), burst_persist_settle()),
+         * by which time its announcement, if there is one, has built the
+         * record. */
+        int strip_z = 0;
 
-        if (strip_r || strip_z) {
-            irc_join(opserv, cNode);
-            irc_mode(opserv, cNode,
-                     (strip_r && strip_z) ? "-zR" : (strip_z ? "-z" : "-R"));
-            irc_part(opserv, cNode, "");
-            /* irc_mode() only sends; take the bits off our copy too, or a
-             * later REGISTER finds the marker "already set" here and never
-             * sends the +R the ircd no longer has.  Only the bits that were
-             * stripped: a live tombstone's +z stays on our copy as on the
-             * wire. */
-            if (strip_r)
-                cNode->modes &= ~(chan_mode_t)MODE_REGISTERED;
-            if (strip_z)
-                cNode->modes &= ~(chan_mode_t)MODE_PERSIST;
+        if ((cNode->modes & MODE_PERSIST) && !chanserv_relocate_husk_live(cNode)) {
+            if (cNode->modes & MODE_HIDEMODE)
+                burst_persist_defer(cNode, origin);
+            else
+                strip_z = 1;
         }
+        burst_strip_markers(cNode, (cNode->modes & MODE_REGISTERED) ? 1 : 0, strip_z);
     }
 
     /* Burst channel members in now. */
@@ -3182,6 +3238,40 @@ static CMD_FUNC(cmd_destruct)
     return 1;
 }
 
+/* <server> RT <old> <old-creation-ts> <new> <expires> (TOMBSTONE): a server
+ * announces a relocation tombstone it holds, right after the channel's
+ * BURST, and every server passes the line on as it came.
+ *
+ *     AB RT #old 1731000000 #new 1731340900
+ *
+ * <old-creation-ts> is the tombstone channel's creation timestamp at the
+ * sender -- with the name, the channel's identity, as in BURST; <new> is
+ * where it redirects; <expires> is the deadline, the RN's field.  This is
+ * how the husk of a tombstone that outlived an X3 restart, a lost uplink
+ * or a netsplit is armed again; see cmd_burst for the order of the two
+ * lines.
+ *
+ * Refused is what every server refuses from the line alone (ms_tombstone):
+ * a source that is not a server, fewer than four fields, a name that is
+ * no channel name, a channel redirecting to itself, a timestamp or
+ * deadline that is not a number. */
+static CMD_FUNC(cmd_tombstone)
+{
+    time_t chan_ts, expires;
+
+    if (argc < 5 || !origin || !GetServerH(origin))
+        return 0;
+    if (argv[1][0] != '#' || !IsChannelName(argv[3]) || strlen(argv[3]) > CHANNELLEN)
+        return 0;
+    if (!irccasecmp(argv[1], argv[3]))
+        return 0;
+    if (!relocate_expiry_parse(argv[2], &chan_ts) || !relocate_expiry_parse(argv[4], &expires))
+        return 0;
+
+    chanserv_relocate_announced(argv[1], chan_ts, argv[3], expires);
+    return 1;
+}
+
 static CMD_FUNC(cmd_num_topic)
 {
     struct chanNode *cn;
@@ -3561,6 +3651,7 @@ parse_cleanup(UNUSED_ARG(void *extra))
     num_notice_funcs = 0;
     free(mcf_list);
     dict_delete(irc_func_dict);
+    dict_delete(burst_persist_pending);
     for (nn=0; nn<dead_users.used; nn++)
         free_user(dead_users.list[nn]);
     userList_clean(&dead_users);
@@ -3677,6 +3768,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_TOPIC, cmd_topic);
     dict_insert(irc_func_dict, CMD_RENAME, cmd_rename);
     dict_insert(irc_func_dict, TOK_RENAME, cmd_rename);
+    dict_insert(irc_func_dict, CMD_TOMBSTONE, cmd_tombstone);
+    dict_insert(irc_func_dict, TOK_TOMBSTONE, cmd_tombstone);
     dict_insert(irc_func_dict, CMD_AWAY, cmd_away);
     dict_insert(irc_func_dict, TOK_AWAY, cmd_away);
     dict_insert(irc_func_dict, CMD_SILENCE, cmd_silence);

@@ -2225,7 +2225,7 @@ chanserv_is_dnr(const char *chan_name, struct handle_info *handle)
  * Together with a registration's renamed_from notes it is what tells this
  * registration's own rename DNR from any other (chanserv_own_rename_dnr());
  * databases carry it, so it stays as it is.  It is also the fingerprint
- * chanserv_relocate_husk_check() reads back to identify a relocation
+ * chanserv_relocate_husk_fallback() reads back to identify a relocation
  * tombstone after an X3 restart: changing it breaks that re-arm for every
  * DNR already in the saxdb. */
 #define RENAME_DNR_REASON "Channel was renamed"
@@ -2468,7 +2468,8 @@ chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan)
  * later joins the still-live tombstone on the network is not swept. */
 struct relocate_husk {
     struct chanNode *channel;
-    char new_name[CHANNELLEN+1];    /* empty when re-armed from a burst */
+    char new_name[CHANNELLEN+1];    /* empty when guessed from a burst; see
+                                     * chanserv_relocate_husk_fallback() */
     time_t expires;                 /* the deadline, network time, as the
                                      * RN carried it */
 };
@@ -2693,58 +2694,178 @@ chanserv_is_relocation_dnr(const char *chan_name)
     return !strcmp(dnr->reason, RENAME_DNR_REASON);
 }
 
-/* Start tracking a tombstone we are meeting for the first time -- which in
- * practice means one that outlived an X3 restart or a lost uplink, since
- * the record made by cmd_rename dies with the process (or with the node,
- * when every member X3 knew of went away with the link).  Runs as a
- * new-channel hook, so it sees every channel learned from a BURST.
+/* A tombstone of an ircd that does not announce its tombstones.
  *
- * There is no relocation flag on the wire to test, so this is a heuristic
- * over state X3 already tracks.  A channel that is
+ * A tombstone that outlives an X3 restart or a lost uplink is met again in
+ * a BURST, as a channel with +z and +L.  The ircd now follows that BURST
+ * with the record itself (RT, chanserv_relocate_announced()), and that is
+ * how a husk is re-armed.  An ircd from before the announcement sends the
+ * BURST alone; for it, and only for it, this heuristic is kept.  cmd_eob
+ * calls it when the bursting server has finished and no announcement came
+ * for a channel that was burst unregistered with +z and +L -- every
+ * announcement of that burst has been read by then, so against an ircd
+ * that announces, this is reached only for a channel that is no tombstone.
+ *
+ * A channel that is
  *
  *   +z (persist)  AND  +L (redirect)  AND  unregistered
  *   AND  DNR'd with the rename reason
  *
  * is a relocation tombstone with very little room left for anything else.
  * Persist and the redirect are what the ircd itself requires of a
- * tombstone; a channel that arrives without either is not one any more,
- * whatever it was.  The persist bit on a services network is otherwise set
- * by ChanServ for its own registered channels (off_channel), and those are
- * registered by definition.  The DNR with our own rename reason is then
- * the fingerprint proper: only chanserv_rename_dnr() writes it, and only
- * for a name a rename or relocation just vacated.
+ * tombstone.  The persist bit on a services network is otherwise set by
+ * ChanServ for its own registered channels (off_channel), and those are
+ * registered by definition.  The DNR with our own rename reason is the
+ * fingerprint proper: only chanserv_rename_dnr() writes it, and only for a
+ * name a rename or relocation just vacated.
  *
- * What this does not recognise, because no DNR with that reason exists for
+ * What it does not recognise, because no DNR with that reason exists for
  * the name: the tombstone of a channel that was not registered, one made
- * with rename_dnr_duration 0, and one whose name another DNR already
- * covered.  cmd_burst then strips the +z as stale, the ircd cancels its
- * sweep because of that, and with no record here X3 does not sweep either:
- * the members stay, in both views.
+ * with rename_dnr_duration 0, one whose name another DNR already covered,
+ * and one whose DNR was lost with an X3 that crashed before its database
+ * was written.  The caller then strips the +z as stale, such an ircd
+ * cancels its sweep because of that, and with no record here X3 does not
+ * sweep either: the members stay, in both views.
  *
- * A false positive costs X3's view of the members of an unregistered
- * channel roughly relocate_grace after it is learned -- and only if the
- * channel still has +z and +L then.  A burst does not say when the
- * tombstone's deadline is, so X3 counts its own relocate_grace from the
- * burst and after a restart sweeps late by up to the time the tombstone
+ * The burst does not say when the deadline is, so X3 counts its own
+ * relocate_grace from now and sweeps late by up to the time the tombstone
  * had already lived; a DESTRUCT, a re-creation of the name or a rename onto
- * it ends that sooner (chanserv_relocate_husk_dissolve()). */
-static void
-chanserv_relocate_husk_check(struct chanNode *channel, UNUSED_ARG(void *extra))
+ * it ends that sooner (chanserv_relocate_husk_dissolve()).  A false positive
+ * costs X3's view of the members of an unregistered channel at that point,
+ * and only if the channel still has +z and +L then.
+ *
+ * Returns 1 when the channel was taken for a tombstone (it may have been
+ * swept already, with relocate_grace 0, and the node may be gone), 0 when
+ * it was not. */
+int
+chanserv_relocate_husk_fallback(struct chanNode *channel)
 {
     if(channel->channel_info
        || !(channel->modes & MODE_PERSIST)
        || !(channel->modes & MODE_HIDEMODE))
-        return;
+        return 0;
     if(relocate_husk_find(channel))
-        return;
+        return 1;
     if(!chanserv_is_relocation_dnr(channel->name))
-        return;
+        return 0;
 
     log_module(CS_LOG, LOG_INFO,
                "Channel %s looks like a relocation tombstone (persist, "
-               "redirect, unregistered, rename DNR); tracking it.",
+               "redirect, unregistered, rename DNR) and its burst came "
+               "without an announcement; tracking it by relocate_grace.",
                channel->name);
     chanserv_relocate_tombstone(channel, NULL, chanserv_relocate_own_deadline());
+    return 1;
+}
+
+/* Take off X3's copy of a tombstone what the ircd takes off its own without
+ * a MODE (relocate_tombstone_normalise()): the limit and the channel
+ * passwords. */
+static void
+relocate_husk_normalise(struct chanNode *channel)
+{
+    channel->modes &= ~(chan_mode_t)(MODE_LIMIT | MODE_APASS | MODE_UPASS);
+    channel->limit = 0;
+    channel->apass[0] = '\0';
+    channel->upass[0] = '\0';
+}
+
+/* RT <old> <old-creation-ts> <new> <expires>: a server announces a
+ * tombstone it holds, after the channel's BURST (cmd_tombstone has checked
+ * the line).  The ircd's relocate_announced(); the case is decided by
+ * relocate_announce_decide(), which is the ircd's own.
+ *
+ * - No channel of that name here, or one with another creation timestamp:
+ *   nothing.  The announcement is about a channel X3 does not hold.
+ * - The channel, no record: BUILD.  The BURST gave the channel its +z and
+ *   +L; this is the record, armed for the announced deadline (cut if it is
+ *   absurd; already past: the deadline's work is done at once).  Also for a
+ *   channel that is registered here: whether a registered tombstone is
+ *   kept is decided at its deadline.  The marks are not imposed on a
+ *   channel that arrived without them; the record then ends as "no longer
+ *   a tombstone", as the announcing server's does.
+ * - The channel and a record with the same target: MERGE, the later
+ *   deadline.  A record X3 guessed from a burst (no target, its own grace)
+ *   is not a second opinion: the announcement replaces target and deadline.
+ * - The channel and a record with another target: two relocations of the
+ *   channel crossed. */
+void
+chanserv_relocate_announced(const char *old_name, time_t chan_ts, const char *target, time_t expires)
+{
+    struct relocate_announce_facts facts;
+    struct chanNode *channel = GetChannel(old_name);
+    struct relocate_husk *husk = channel ? relocate_husk_find(channel) : NULL;
+    int guessed = husk && !husk->new_name[0];
+
+    memset(&facts, 0, sizeof(facts));
+    facts.channel_exists = (channel != NULL);
+    facts.ts_matches = (channel && (channel->timestamp == chan_ts));
+    facts.have_record = (husk != NULL);
+    facts.same_target = (husk && (guessed || !irccasecmp(husk->new_name, target)));
+
+    /* An absurd deadline is cut as an RN's is; one that is past ends the
+     * record as soon as it is settled below. */
+    relocate_expiry_check(&expires, now);
+
+    switch(relocate_announce_decide(&facts))
+    {
+    case RELOCATE_ANNOUNCE_NO_CHANNEL:
+    case RELOCATE_ANNOUNCE_OTHER_CHANNEL:
+        log_module(CS_LOG, LOG_DEBUG,
+                   "Announced tombstone %s ("FMT_TIME_T") -> %s not taken: %s.",
+                   old_name, chan_ts, target,
+                   channel ? "the channel here has another creation timestamp"
+                           : "no such channel here");
+        return;
+
+    case RELOCATE_ANNOUNCE_BUILD:
+        log_module(CS_LOG, LOG_INFO,
+                   "Relocation tombstone %s -> %s announced, deadline "FMT_TIME_T"; tracking it.",
+                   channel->name, target, expires);
+        if((channel->modes & MODE_PERSIST) && (channel->modes & MODE_HIDEMODE))
+            relocate_husk_normalise(channel);
+        chanserv_relocate_tombstone(channel, target, expires);
+        return;
+
+    case RELOCATE_ANNOUNCE_MERGE:
+        if((channel->modes & MODE_PERSIST) && (channel->modes & MODE_HIDEMODE))
+            relocate_husk_normalise(channel);
+        if(guessed)
+        {
+            safestrncpy(husk->new_name, target, sizeof(husk->new_name));
+            husk->expires = expires;
+        }
+        else
+            husk->expires = relocate_deadline_merge(husk->expires, expires);
+        relocate_husk_settle(husk);
+        return;
+
+    case RELOCATE_ANNOUNCE_CROSS:
+        log_module(CS_LOG, LOG_WARNING,
+                   "Announced tombstone %s -> %s: X3 holds it as relocated to %s; left as it is.",
+                   channel->name, target, husk->new_name);
+        return;
+    }
+}
+
+/* New-channel hook; it also runs when a BURST with an older timestamp
+ * replaces a channel X3 already holds (AddChannel() wipes the node and
+ * calls the hooks again).  A record for the node at that point is the
+ * second case: the channel of that name is another server's from here on,
+ * and the tombstone X3 held for the losing channel is over
+ * (relocate_tombstone_burst_lost()).  If the winning channel is itself a
+ * tombstone, its announcement follows and builds a new record. */
+static void
+chanserv_relocate_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
+{
+    struct relocate_husk *husk = relocate_husk_find(channel);
+
+    if(!husk)
+        return;
+    log_module(CS_LOG, LOG_INFO,
+               "Relocation husk %s lost a BURST on timestamp; no longer tracked.",
+               channel->name);
+    relocate_husk_forget(husk);
 }
 
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
@@ -11118,11 +11239,9 @@ init_chanserv(const char *nick)
      * (use-after-free at the next saxdb write). Keep this outside if(nick).
      */
     reg_channel_rename_func(chanserv_channel_rename, NULL);
-    /* Outside if(nick) for the same reason: a relocation tombstone learned
-     * from a BURST has to be recognised and reaped whether or not the
-     * ChanServ bot nick exists -- the DNR table it is fingerprinted against
-     * loads from the DB either way. */
-    reg_new_channel_func(chanserv_relocate_husk_check, NULL);
+    /* Outside if(nick) for the same reason: a relocation tombstone has to
+     * be tracked and reaped whether or not the ChanServ bot nick exists. */
+    reg_new_channel_func(chanserv_relocate_new_channel, NULL);
     reg_del_channel_func(chanserv_relocate_husk_gone, NULL);
     relocate_husks = dict_new();
     dict_set_free_data(relocate_husks, free);

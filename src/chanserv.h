@@ -280,6 +280,19 @@ void chanserv_relocate_bots(struct chanNode *new_chan);
 int chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t expires);
 time_t chanserv_relocate_own_deadline(void);
 
+/* RT: a server announced a tombstone after the channel's BURST.  Builds the
+ * record, merges its deadline into one X3 already has, or does nothing
+ * when the announcement is not about a channel X3 holds; see the function.
+ * `expires' is the deadline as received. */
+void chanserv_relocate_announced(const char *old_name, time_t chan_ts, const char *target, time_t expires);
+
+/* For cmd_eob: a channel was burst unregistered with +z and +L and no
+ * announcement followed.  Recognises the tombstone of an ircd that does not
+ * announce (by the rename DNR on its name) and tracks it by relocate_grace.
+ * Returns 1 when it did (the node may be gone when this returns), 0 when
+ * the channel is not a tombstone X3 can recognise. */
+int chanserv_relocate_husk_fallback(struct chanNode *channel);
+
 /* Is this channel a tombstone X3 is tracking that still looks like one --
  * unregistered, +z, +L?  That is the test the ircd applies before it
  * sweeps one (m_rename.c relocate_tombstone_channel()), on the state X3

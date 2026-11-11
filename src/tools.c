@@ -462,6 +462,26 @@ relocate_expiry_check(time_t *expires, time_t when)
     return RELOCATE_EXPIRY_LIVE;
 }
 
+time_t
+relocate_deadline_merge(time_t a, time_t b)
+{
+    return (a > b) ? a : b;
+}
+
+enum relocate_announce_verdict
+relocate_announce_decide(const struct relocate_announce_facts *facts)
+{
+    if (!facts->channel_exists)
+        return RELOCATE_ANNOUNCE_NO_CHANNEL;
+    if (!facts->ts_matches)
+        return RELOCATE_ANNOUNCE_OTHER_CHANNEL;
+    if (!facts->have_record)
+        return RELOCATE_ANNOUNCE_BUILD;
+
+    return facts->same_target ? RELOCATE_ANNOUNCE_MERGE
+                              : RELOCATE_ANNOUNCE_CROSS;
+}
+
 char *
 ircstrlower(char *str) {
     size_t ii;
