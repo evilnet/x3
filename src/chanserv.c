@@ -6210,6 +6210,13 @@ chanserv_expire_suspension(void *data)
         ss_cs_join_channel(channel, 1);
     }
 
+    /* The mode lock was not enforced during the suspension: bring the
+     * channel back to it now, as the database load does, rather than at
+     * the next change that violates it.  After ChanServ's join and op;
+     * an off-channel registration gets it too. */
+    if(suspended->cData->modes.modes_set || suspended->cData->modes.modes_clear)
+        mod_chanmode_announce(chanserv, channel, &suspended->cData->modes);
+
     /* Mark everyone currently in the channel as present. */
     for(ii = 0; ii < channel->members.used; ++ii)
     {
