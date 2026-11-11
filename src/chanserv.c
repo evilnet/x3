@@ -1848,14 +1848,14 @@ expire_dnrs(UNUSED_ARG(void *data))
         dnr = iter_data(it);
         next = iter_next(it);
         if(dnr->expires && dnr->expires <= now)
-            dict_remove(plain_dnrs, dnr->chan_name + 1);
+            dict_remove(plain_dnrs, iter_key(it));
     }
     for(it = dict_first(mask_dnrs); it; it = next)
     {
         dnr = iter_data(it);
         next = iter_next(it);
         if(dnr->expires && dnr->expires <= now)
-            dict_remove(mask_dnrs, dnr->chan_name + 1);
+            dict_remove(mask_dnrs, iter_key(it));
     }
 
     if(chanserv_conf.dnr_expire_frequency)
