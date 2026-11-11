@@ -1100,10 +1100,16 @@ irc_silence(struct userNode *who, const char *mask, int add)
     putsock("%s " P10_SILENCE " %s %s%s", self->numeric, who->numeric, add ? "+" : "-", mask);
 }
 
+/* Set around the join of one of our bots into a channel that exists on
+ * the network although the bot is the first member X3 holds for it, so
+ * that irc_join() does not announce the join as a CREATE.  The only such
+ * channel is the new name of a relocated channel; see cmd_rename. */
+static int join_existing_channel;
+
 void
 irc_join(struct userNode *who, struct chanNode *what)
 {
-    if (what->members.used == 1) {
+    if (what->members.used == 1 && !join_existing_channel) {
         putsock("%s " P10_CREATE " %s "FMT_TIME_T,
                 who->numeric, what->name, what->timestamp);
     } else {
@@ -2959,79 +2965,103 @@ static CMD_FUNC(cmd_rename)
 
         snprintf(reason, sizeof(reason), "Channel relocated to %s.", newchan->name);
 
-        /* Classify first, move second -- the same two-pass split the ircd's
-         * relocate_execute() makes, for the same reason: pass two runs
-         * AddChannelUser()/DelChannelUser(), which fire join and part hooks
-         * into every service, and a hook is free to mutate the very member
-         * list a single fused walk would still be indexing.  Pass one only
-         * reads it, so it sees a stable list; pass two re-resolves each
-         * candidate through GetUserMode() and skips anyone a hook has since
-         * taken out.
+        /* The issuer first, and before any bot.  On the network the issuer
+         * is already in the new channel: the ircd created it for them and
+         * moved them in off this same RN, so the channel exists there, with
+         * the old channel's creation time.  Our record of the new channel
+         * has to have that member before a bot of ours joins it, because
+         * irc_join() announces the first member X3 holds for a channel with
+         * CREATE -- and a CREATE stamped with the old channel's (old)
+         * timestamp, for a channel that exists, is one the ircd bounces as
+         * a HACK: it takes the op back (m_create.c, TS_LAG_TIME) and X3
+         * would be left believing its bot was opped. */
+        if(issuer && !IsLocal(issuer) && GetUserMode(chan, issuer)) {
+            relocate_move_member(GetUserMode(chan, issuer), newchan);
+            nmoved++;
+        }
+
+        /* Then our own service bots.  Classify first, move second -- the
+         * same two-pass split the ircd's relocate_execute() makes, for the
+         * same reason: pass two runs AddChannelUser()/DelChannelUser(),
+         * which fire join and part hooks into every service, and a hook is
+         * free to mutate the very member list a single fused walk would
+         * still be indexing.  Pass one only reads it, so it sees a stable
+         * list; pass two re-resolves each candidate through GetUserMode()
+         * and skips anyone a hook has since taken out.
          *
-         * The candidate set is the ircd's mover set exactly -- the RN source
-         * user (issuing the rename is consent) -- plus our own local service
-         * bots, which are not a mover class at all but a separate
-         * wire-visible follow (see pass two).  Every other member stays in
-         * the tombstone and follows by their own JOIN (design "D"). */
+         * The bots are not a mover class at all but a separate wire-visible
+         * follow (see pass two).  Every other member stays in the tombstone
+         * and follows by their own JOIN (design "D"). */
         movers = malloc(sizeof(*movers) * (chan->members.used + 1));
         for(n = 0; n < chan->members.used; n++) {
             struct userNode *user = chan->members.list[n]->user;
 
-            if(IsLocal(user) || user == issuer)
+            if(IsLocal(user))
                 movers[nmovers++] = user;
         }
 
         for(n = 0; n < nmovers; n++) {
             struct userNode *user = movers[n];
             struct modeNode *mn = GetUserMode(chan, user);
+            struct modeNode *botmn;
+            long botmodes;
+            short botoplevel;
 
             if(!mn)
                 continue;   /* a hook fired by an earlier iteration removed them */
 
-            if(IsLocal(user)) {
-                /* Our own service bots.  The rename hooks just re-pointed
-                 * every module holder (chanserv's channel_info and support
-                 * channels, opserv's alert/debug channels, helpserv's
-                 * helpchan, spamserv's chanInfo) at the new node, so a bot
-                 * left sitting in the husk would be a bot whose own service
-                 * believes it is somewhere else.  They follow, and unlike the
-                 * movers they do it ON THE WIRE: AddChannelUser()/
-                 * DelChannelUser() emit a real JOIN and PART for a local
-                 * user, which is what keeps the ircd's view (where nothing
-                 * moved a service bot, because a bot is neither the issuer
-                 * nor +F) in agreement with ours.  The JOIN carries the new
-                 * node's timestamp, which RelocateChannel() took from the old
-                 * channel and therefore matches the creationtime the ircd
-                 * gave the new channel.
-                 *
-                 * Status modes do NOT ride along with a JOIN, so they are
-                 * snapshotted here and re-asserted below -- for EVERY bot,
-                 * not just ChanServ and SpamServ: HelpServ, OpServ and module
-                 * bots hold ops in their own channels too and would otherwise
-                 * arrive powerless.  The overwrite is separately load-bearing
-                 * on the UNREGISTERED path: AddChannelUser() hands
-                 * MODE_CHANOP to the first member of a channel that is
-                 * neither +R nor +A, which the ircd did not do -- writing the
-                 * snapshot back (rather than OR-ing) is what keeps that
-                 * phantom op out of X3's view.  Same discipline as
-                 * relocate_move_member(). */
-                long botmodes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
-                short botoplevel = mn->oplevel;
-                struct modeNode *botmn;
+            /* Our own service bots.  The rename hooks just re-pointed
+             * every module holder (chanserv's channel_info and support
+             * channels, opserv's alert/debug channels, helpserv's
+             * helpchan, spamserv's chanInfo) at the new node, so a bot
+             * left sitting in the husk would be a bot whose own service
+             * believes it is somewhere else.  They follow, and unlike the
+             * movers they do it ON THE WIRE: AddChannelUser()/
+             * DelChannelUser() emit a real JOIN and PART for a local
+             * user, which is what keeps the ircd's view (where nothing
+             * moved a service bot, because a bot is neither the issuer
+             * nor +F) in agreement with ours.  The JOIN carries the new
+             * node's timestamp, which RelocateChannel() took from the old
+             * channel and therefore matches the creationtime the ircd
+             * gave the new channel.
+             *
+             * It has to be a JOIN and never a CREATE (see above), also
+             * when there was no issuer to record first -- an RN whose
+             * source we do not know, or one that was not in the channel
+             * here -- and the bot is the first member X3 holds for the
+             * new channel: hence join_existing_channel.  To a JOIN with
+             * the channel's own timestamp the ircd adds the bot without
+             * ops (m_join.c ms_join) and changes nothing else -- as long
+             * as the channel has a member or is +z there.  A relocation
+             * with no issuer at all (a server-sourced RN; nothing sends
+             * one today) leaves the new channel empty on the network, and
+             * ms_join clears the modes of an empty channel that is not
+             * persistent when somebody joins it.
+             *
+             * Status modes do NOT ride along with a JOIN, so they are
+             * snapshotted here and re-asserted below -- for EVERY bot,
+             * not just ChanServ and SpamServ: HelpServ, OpServ and module
+             * bots hold ops in their own channels too and would otherwise
+             * arrive powerless.  The overwrite is separately load-bearing
+             * when the bot is the first member we hold: AddChannelUser()
+             * hands MODE_CHANOP to the first member of a channel that is
+             * neither +R nor +A, which the ircd did not do -- writing the
+             * snapshot back (rather than OR-ing) is what keeps that
+             * phantom op out of X3's view.  Same discipline as
+             * relocate_move_member(). */
+            botmodes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
+            botoplevel = mn->oplevel;
 
-                AddChannelUser(user, newchan);
-                if((botmn = GetUserMode(newchan, user))) {
-                    botmn->modes = botmodes;
-                    botmn->oplevel = botoplevel;
-                    if(botmodes)
-                        relocate_reassert_modes(user, newchan, botmn, botmodes);
-                }
-                DelChannelUser(user, chan, reason, 0);
-                nmoved++;
-                continue;
+            join_existing_channel = 1;
+            AddChannelUser(user, newchan);
+            join_existing_channel = 0;
+            if((botmn = GetUserMode(newchan, user))) {
+                botmn->modes = botmodes;
+                botmn->oplevel = botoplevel;
+                if(botmodes)
+                    relocate_reassert_modes(user, newchan, botmn, botmodes);
             }
-
-            relocate_move_member(mn, newchan);
+            DelChannelUser(user, chan, reason, 0);
             nmoved++;
         }
         free(movers);
