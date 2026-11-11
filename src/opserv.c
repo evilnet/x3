@@ -5427,7 +5427,14 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
     } else if (irccasecmp(argv[i], "marked") == 0) {
         discrim->mask_mark = argv[++i];
     } else if (irccasecmp(argv[i], "certfp") == 0) {
+        char *src, *dst;
+
+        /* The ircd sends bare hex; accept the AB:CD:... form openssl prints. */
         discrim->sslfp = argv[++i];
+        for (src = dst = discrim->sslfp; *src; src++)
+            if (*src != ':')
+                *dst++ = *src;
+        *dst = '\0';
     } else if (irccasecmp(argv[i], "chantarget") == 0) {
             if(!IsChannelName(argv[i+1])) {
                 send_message(user, bot, "MSG_NOT_CHANNEL_NAME");

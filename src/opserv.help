@@ -346,7 +346,7 @@
         "$bSILENT$b yes/no            If yes, AUTO is prepended to the gline message, making the gline silent in nefarious ircd.",
         "$bVERSION$b version          If they have been queried using the VERSION action and responded, they are matched if the reply they give matches.",
         "$bMARKED$b mark              If they have a dnsbl mark matching mark. (e.g. from an X line or alert)",
-        "$bCERTFP$b fingerprint       If their SSL client certificate fingerprint matches fingerprint (case-insensitive; * matches anyone presenting a client certificate).",
+        "$bCERTFP$b fingerprint       If their SSL client certificate fingerprint matches fingerprint (case-insensitive, colons ignored; * matches anyone presenting a client certificate).",
         "$bCHANTARGET$b #channel      For use with SVSJOIN action, this specifies the channel they are svsjoined to.",
         "$bCHECKRESTRICTIONS$b yes/no For use with SVSJOIN action, this specifies to check channel modes like bans, invite, limits, and key before the SVSJOIN is issued.",
         "$bMARK$b mark                For use with the MARK action, this is what they are marked with.",
