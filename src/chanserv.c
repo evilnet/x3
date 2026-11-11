@@ -2925,8 +2925,9 @@ chanserv_is_relocation_dnr(const char *chan_name)
  * What it does not recognise, because no DNR with that reason exists for
  * the name: the tombstone of a channel that was not registered, one made
  * with rename_dnr_duration 0, one whose name another DNR already covered,
- * and one whose DNR was lost with an X3 that crashed before its database
- * was written.  The caller then strips the +z as stale, such an ircd
+ * one whose name has a wildcard character (chanserv_rename_dnr() places no
+ * DNR for such a name), and one whose DNR was lost with an X3 that crashed
+ * before its database was written.  The caller then strips the +z as stale, such an ircd
  * cancels its sweep because of that, and with no record here X3 does not
  * sweep either: the members stay, in both views.
  *

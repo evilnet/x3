@@ -2876,7 +2876,13 @@ static CMD_FUNC(cmd_topic)
  * for a second reason: DelChannelUser() collects a channel that just lost
  * its last member unless +z keeps it, and the caller holds the node the
  * member leaves across the partition, so that cannot happen midway
- * whatever that node's modes are. */
+ * whatever that node's modes are.
+ *
+ * Unlike the BX P merge, the user is not marked dead first.  There the
+ * old client is about to be deleted and the network saw no PART; here the
+ * user lives on, and the ircd parts them from the old channel in front of
+ * the members who stay (relocate_execute()), so the PART the part hooks
+ * report is one the network sent. */
 static void
 relocate_move_member(struct modeNode *mn, struct chanNode *newchan)
 {
