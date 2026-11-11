@@ -2172,6 +2172,46 @@ static CMD_FUNC(cmd_mark)
     return 1;
 }
 
+/* Return the channel TS carried by a server-sourced channel MODE
+ * (argv[1] is the channel, argv[2] the mode string), or 0 if it
+ * carries none.
+ *
+ * Nefarious appends the channel TS after the mode parameters on every
+ * server-to-server MODE it builds from a modebuf, but not on the MODE
+ * it sends for AUTOCHANMODES when a channel is created
+ * ("Bj M #chan +nt"), so the last argument is only a TS if it is left
+ * over once the mode string's parameters are accounted for.
+ * Nefarious's parameter modes are b, e, h, o, v, k, A and U in both
+ * directions, plus l and L only when they are being set.  Like
+ * Nefarious's mode_parse(), only take a TS that starts with a digit. */
+static time_t
+server_chanmode_ts(unsigned int argc, char **argv)
+{
+    const char *mode;
+    unsigned int params = 0;
+    int add = 1;
+
+    if (argc < 4)
+        return 0;
+    for (mode = argv[2]; *mode; mode++) {
+        switch (*mode) {
+        case '+': add = 1; break;
+        case '-': add = 0; break;
+        case 'b': case 'e': case 'h': case 'o': case 'v':
+        case 'k': case 'A': case 'U':
+            params++;
+            break;
+        case 'l': case 'L':
+            if (add)
+                params++;
+            break;
+        }
+    }
+    if (argc <= 3 + params || !isdigit((unsigned char)argv[argc-1][0]))
+        return 0;
+    return (time_t)strtoul(argv[argc-1], NULL, 10);
+}
+
 static CMD_FUNC(cmd_mode)
 {
     struct chanNode *cn;
@@ -2214,7 +2254,9 @@ static CMD_FUNC(cmd_mode)
             mn->idle_since = now;
     } else {
         /* If it came from a server, reset timestamp to re-sync. */
-        cn->timestamp = atoi(argv[argc-1]);
+        time_t ts = server_chanmode_ts(argc, argv);
+        if (ts)
+            cn->timestamp = ts;
     }
 
     if (checkDefCon(DEFCON_NO_MODE_CHANGE) && !IsOper(un)) {
