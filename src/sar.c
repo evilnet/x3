@@ -1780,9 +1780,11 @@ ipv6_ntop(char *output, unsigned int out_size, const struct sockaddr *sa, UNUSED
         addr16 = (sin6->sin6_addr.s6_addr[ii * 2] << 8) | sin6->sin6_addr.s6_addr[ii * 2 + 1];
         if (!addr16)
             curr_zeros++;
-        else if (curr_zeros > max_zeros) {
-            max_start = ii - curr_zeros;
-            max_zeros = curr_zeros;
+        else {
+            if (curr_zeros > max_zeros) {
+                max_start = ii - curr_zeros;
+                max_zeros = curr_zeros;
+            }
             curr_zeros = 0;
         }
     }
