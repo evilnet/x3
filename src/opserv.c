@@ -2993,7 +2993,7 @@ static void
 opserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
 {
     dict_iterator_t it;
-    unsigned int i;
+    unsigned int i, pending;
 
     if (opserv_conf.debug_channel == old_chan)
         opserv_conf.debug_channel = new_chan;
@@ -3009,10 +3009,15 @@ opserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUS
                 alert->discrim->channels[i] = new_chan;
     }
 
-    /* Same removal shape as opserv_channel_delete's purge-lock timer, but we
-     * do NOT re-add: the purge-lock re-evaluates against the renamed node on
-     * its own schedule. */
-    timeq_del(0, opserv_part_channel, old_chan, TIMEQ_IGNORE_WHEN | TIMEQ_IGNORE_FUNC);
+    /* A channel O3 has shut down carries the purge-lock timer that parts O3
+     * once purge_lock_delay is up, and its data is the node.  Move it to
+     * the new node: nothing else ever schedules that part, so dropping it
+     * would leave O3 holding the renamed channel (+si, *!*@* banned) for
+     * good.  The delay restarts from now. */
+    pending = timeq_size();
+    timeq_del(0, opserv_part_channel, old_chan, TIMEQ_IGNORE_WHEN);
+    if (timeq_size() < pending)
+        timeq_add(now + opserv_conf.purge_lock_delay, opserv_part_channel, new_chan);
 
     new_chan->bad_channel = opserv_bad_channel(new_chan->name);
 }
