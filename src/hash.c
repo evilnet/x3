@@ -766,8 +766,10 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
 	modeList_append(&channel->members, mNode);
 	modeList_append(&user->channels, mNode);
 
+        /* The ircd ops whoever joins an empty channel, unless the channel
+         * has an Apass or is held open by +z (m_join.c); +R plays no part. */
         if (channel->members.used == 1
-            && !(channel->modes & MODE_REGISTERED)
+            && !(channel->modes & MODE_PERSIST)
             && !(channel->modes & MODE_APASS)) {
             mNode->modes |= MODE_CHANOP;
         }
@@ -859,9 +861,11 @@ DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reas
     /* free memory */
     free(mNode);
 
-    /* A single check for APASS only should be enough here */
+    /* A single check for APASS only should be enough here.  +z is what
+     * keeps an empty channel alive on the ircd; +R does not, and a channel
+     * registered here is held by ChanServ's lock instead. */
     if (!deleting && !channel->members.used && !channel->locks
-        && !(channel->modes & MODE_REGISTERED) && !(channel->modes & MODE_APASS))
+        && !(channel->modes & MODE_PERSIST) && !(channel->modes & MODE_APASS))
         DelChannel(channel);
 }
 
