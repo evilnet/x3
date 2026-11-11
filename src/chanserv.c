@@ -8366,9 +8366,26 @@ chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UN
 
 /* Rename authorization check for the AC R RENAME query (proto-p10.c
  * cmd_account). Owner-only, mirroring cmd_move's DNR gating against the
- * NEW name — minus the IsHelping/"force" bypass, since this path has no
- * force; staff bypass comes only from _GetChannelUser()'s override=1
- * synthetic access entry. */
+ * NEW name, minus cmd_move's "force" argument (this path has none).
+ *
+ * Who passes the ownership test below. The access entry comes from
+ * _GetChannelUser(cData, handle, override=1, allow_suspended=0), the same
+ * call cmd_unregister makes:
+ *
+ *  - Requester without security override (the HELPING flag, "god" mode):
+ *    judged by their real, unsuspended entry on the channel's user list,
+ *    which must be UL_OWNER (500) or above.
+ *
+ *  - Requester WITH security override on: _GetChannelUser() does not
+ *    look at the channel's user list at all; it returns a synthetic entry
+ *    at UL_HELPER (600). That is above UL_OWNER, so the test passes
+ *    whether or not they are on the user list. This is a staff bypass of
+ *    the ownership requirement, and of nothing else: the protected,
+ *    suspended, forbidden-name, registered-destination and DNR checks
+ *    all still apply, and the ircd only sends the query for a requester
+ *    who is a chanop in the channel. A real owner with override on gets
+ *    the same synthetic entry and passes as well; the override never
+ *    lowers anyone's access. */
 int
 chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason)
 {
