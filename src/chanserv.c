@@ -9611,17 +9611,21 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     str = database_get_data(channel, KEY_MAXSETINFO, RECDB_QSTRING);
     cData->maxsetinfo = str ? strtoul(str, NULL, 0) : chanserv_conf.max_userinfo_length;
 
-    if(!IsSuspended(cData)
-       && (str = database_get_data(channel, KEY_MODES, RECDB_QSTRING))
+    /* The mode lock is loaded for a suspended channel too: it is part of
+     * the registration, and one that is not loaded is not written back,
+     * so the next database write would drop it for good.  Only the
+     * announce is skipped while ChanServ is out of the channel. */
+    if((str = database_get_data(channel, KEY_MODES, RECDB_QSTRING))
        && (argc = split_line(str, 0, ArrayLength(argv), argv))
-       && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE, 0))) 
+       && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE, 0)))
     {
         cData->modes = *modes;
         if(off_channel > 0)
           cData->modes.modes_set |= MODE_REGISTERED;
         if(cData->modes.argc > 1)
             cData->modes.argc = 1;
-        mod_chanmode_announce(chanserv, cNode, &cData->modes);
+        if(!IsSuspended(cData))
+            mod_chanmode_announce(chanserv, cNode, &cData->modes);
         mod_chanmode_free(modes);
     }
 
