@@ -2915,9 +2915,9 @@ static CMD_FUNC(cmd_rename)
      * executes a rename only onto a name that does not exist on the
      * network, so its tombstone there is gone -- dissolved at the end of
      * its grace period by PARTs that are never sent to us, with our own
-     * sweep still to come (or never to come, without a deadline).  The
-     * members we show in it are the ones that sweep would remove; remove
-     * them now and let the rename through, instead of refusing it below
+     * sweep still to come.  The members we show in it are the ones that
+     * sweep would remove; remove them now and let the rename through,
+     * instead of refusing it below
      * for a destination "with members".  Only a husk that still looks like
      * a tombstone qualifies: one that lost its +z or +L, or was registered,
      * is an ordinary channel whose members are real, and is refused below

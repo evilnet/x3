@@ -274,8 +274,8 @@ void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, c
  * tombstone lives on.
  *
  * chanserv_relocate_own_deadline() is the deadline X3 makes up when it is
- * given none: its own relocate_grace from now (with relocate_grace 0, a
- * value that tells chanserv_relocate_tombstone() there is none). */
+ * given none: its own relocate_grace from now (with relocate_grace 0, now:
+ * dissolved at once). */
 void chanserv_relocate_bots(struct chanNode *new_chan);
 int chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t expires);
 time_t chanserv_relocate_own_deadline(void);

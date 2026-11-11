@@ -68,9 +68,6 @@
 /* Seconds X3 waits past a relocation tombstone's deadline before it does
  * the deadline's work on its own copy.  See relocate_husk_settle(). */
 #define RELOCATE_SWEEP_MARGIN       5
-/* "No deadline": what relocate_grace 0 makes of a relocation that came
- * without one.  Not a value the wire can carry. */
-#define RELOCATE_NO_DEADLINE        ((time_t)-1)
 
 /* ChanServ database */
 #define KEY_VERSION_CONTROL         "version_control"
@@ -2473,8 +2470,7 @@ struct relocate_husk {
     struct chanNode *channel;
     char new_name[CHANNELLEN+1];    /* empty when re-armed from a burst */
     time_t expires;                 /* the deadline, network time, as the
-                                     * RN carried it; RELOCATE_NO_DEADLINE:
-                                     * never swept on a clock */
+                                     * RN carried it */
 };
 
 /* Keyed by the node's own name (an interior pointer; the record never
@@ -2623,8 +2619,6 @@ static int
 relocate_husk_settle(struct relocate_husk *husk)
 {
     timeq_del(0, chanserv_relocate_husk_expire, husk, TIMEQ_IGNORE_WHEN);
-    if(husk->expires == RELOCATE_NO_DEADLINE)
-        return 1;
     if(husk->expires <= now)
     {
         relocate_husk_deadline(husk, "its deadline had already passed");
@@ -2637,9 +2631,8 @@ relocate_husk_settle(struct relocate_husk *husk)
 time_t
 chanserv_relocate_own_deadline(void)
 {
-    /* relocate_grace 0: no deadline, and no sweep on a clock. */
-    if(!chanserv_conf.relocate_grace)
-        return RELOCATE_NO_DEADLINE;
+    /* relocate_grace 0 is a deadline of "now": the tombstone is dissolved
+     * at once, as the ircd dissolves its own with RELOCATE_GRACE 0. */
     return relocate_expiry_from_grace(now, chanserv_conf.relocate_grace);
 }
 
@@ -10152,8 +10145,7 @@ chanserv_conf_read(void)
      * when it is given no deadline -- the five-parameter RN of an ircd from
      * before the deadline travelled, a tombstone met in a burst -- and for
      * those it should match that ircd's RELOCATE_GRACE (same 900s default).
-     * 0 disables the husk sweep for those cases (the node then survives
-     * until its last member quits). */
+     * 0 is no grace at all, as on the ircd: the husk is swept at once. */
     str = database_get_data(conf_node, KEY_RELOCATE_GRACE, RECDB_QSTRING);
     chanserv_conf.relocate_grace = str ? ParseInterval(str) : 900;
     str = database_get_data(conf_node, KEY_CTCP_SHORT_BAN_DURATION, RECDB_QSTRING);
