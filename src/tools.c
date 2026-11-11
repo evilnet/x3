@@ -109,9 +109,11 @@ irc_ntop(char *output, unsigned int out_size, const irc_in_addr_t *addr)
         for (max_start = max_zeros = curr_zeros = ii = 0; ii < 8; ++ii) {
             if (!addr->in6[ii])
                 curr_zeros++;
-            else if (curr_zeros > max_zeros) {
-                max_start = ii - curr_zeros;
-                max_zeros = curr_zeros;
+            else {
+                if (curr_zeros > max_zeros) {
+                    max_start = ii - curr_zeros;
+                    max_zeros = curr_zeros;
+                }
                 curr_zeros = 0;
             }
         }

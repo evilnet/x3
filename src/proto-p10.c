@@ -560,9 +560,11 @@ irc_p10_ntop(char *output, const irc_in_addr_t *ip)
         for (max_start = zero = ii, max_zeros = curr_zeros = 0; ii < 8; ++ii) {
             if (!ip->in6[ii])
                 curr_zeros++;
-            else if (curr_zeros > max_zeros) {
-                max_start = ii - curr_zeros;
-                max_zeros = curr_zeros;
+            else {
+                if (curr_zeros > max_zeros) {
+                    max_start = ii - curr_zeros;
+                    max_zeros = curr_zeros;
+                }
                 curr_zeros = 0;
             }
         }
