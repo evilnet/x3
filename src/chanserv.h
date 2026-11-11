@@ -251,8 +251,10 @@ void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, c
 /* evilnet/channel-relocate, both called by cmd_rename's consent path in
  * proto-p10.c after the channel has been split.
  *
- * chanserv_relocate_bots() re-asserts ChanServ's (and SpamServ's) ops on the
- * new node, once the bots have followed the registration there.  No-op for an
+ * chanserv_relocate_bots() works out again which of the registration's users
+ * are present, now that only some of the members are in the new channel, and
+ * re-asserts ChanServ's (and SpamServ's) ops on the new node, once the bots
+ * have followed the registration there.  The second part is a no-op for an
  * off-channel or suspended registration.
  *
  * chanserv_relocate_tombstone() starts tracking the old node as a tombstone

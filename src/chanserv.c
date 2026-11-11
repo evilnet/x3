@@ -3328,11 +3328,26 @@ chanserv_relocate_bots(struct chanNode *new_chan)
     extern struct userNode *spamserv;
     struct chanData *cData = new_chan->channel_info;
     struct modeNode *mn_cs, *mn_ss;
+    struct userData *uData;
 
-    /* Nothing to do when there is no registration to serve, when the channel
-     * is suspended (the bots stay out of it by design), or when the bot nick
-     * is disabled via the "." convention. */
-    if(!cData || IsSuspended(cData) || !chanserv)
+    if(!cData)
+        return;
+
+    /* The registration's user list came over whole, with each entry's
+     * "present" flag as it stood in the old channel -- but of those users
+     * only the issuer is in the new one.  Left set, the flag of a user who
+     * stayed behind and never follows shows them as here for good, and one
+     * such user with enough access keeps the registration from ever
+     * expiring.  Nothing clears it later: when they leave the tombstone, or
+     * are swept out of it, that channel has no registration for the part
+     * handler to look at. */
+    for(uData = cData->users; uData; uData = uData->next)
+        scan_user_presence(uData, NULL);
+
+    /* Nothing more to do when the channel is suspended (the bots stay out
+     * of it by design), or when the bot nick is disabled via the "."
+     * convention. */
+    if(IsSuspended(cData) || !chanserv)
         return;
     /* cmd_rename's consent path has already walked our local users over to
      * the new node with real JOINs, so ChanServ's presence here is the test
