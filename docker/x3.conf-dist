@@ -418,9 +418,11 @@
         // to pass cmdchar through to chanserv anyway.
         "modes" "+iok";
 
+        // ChanServ marks every registered channel +R, whatever off_channel is.
         // The off_channel setting takes one of three numerical values:
         //   0 = off
-        //   1 = use a registered channel mode, have services op themselves
+        //   1 = also set +z, so the ircd keeps a registered channel while it
+        //       is empty, and have services op themselves
         //   2 = all of the above, and a channel setting to have ChanServ not
         //       idle in the channel
         // NOTE: +z mode, needed for this to work. X3 contains modifications to
