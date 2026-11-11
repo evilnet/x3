@@ -580,7 +580,7 @@ irc_p10_ntop(char *output, const irc_in_addr_t *ip)
         strcpy(output, "AAAAAA");
     } else if (irc_in_addr_is_ipv4(*ip)) {
         unsigned int in4;
-        in4 = (ntohs(ip->in6[6]) << 16) | ntohs(ip->in6[7]);
+        in4 = ((uint32_t)ntohs(ip->in6[6]) << 16) | ntohs(ip->in6[7]);
         inttobase64(output, in4, 6);
         output[6] = '\0';
     } else if (irc_in_addr_is_ipv6(*ip)) {

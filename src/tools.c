@@ -100,7 +100,7 @@ irc_ntop(char *output, unsigned int out_size, const irc_in_addr_t *addr)
     if (irc_in_addr_is_ipv4(*addr)) {
         unsigned int ip4;
 
-        ip4 = (ntohs(addr->in6[6]) << 16) | ntohs(addr->in6[7]);
+        ip4 = ((uint32_t)ntohs(addr->in6[6]) << 16) | ntohs(addr->in6[7]);
         pos = snprintf(output, out_size, "%u.%u.%u.%u", (ip4 >> 24), (ip4 >> 16) & 255, (ip4 >> 8) & 255, ip4 & 255);
    } else {
         unsigned int part, max_start, max_zeros, curr_zeros, ii;
