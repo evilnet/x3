@@ -345,8 +345,6 @@
  */
 #define PREHISTORY 780000000
 
-#define MODELEN                 40 + KEYLEN
-
 static struct server *servers_num[64*64];
 static privmsg_func_t *privmsg_funcs;
 static unsigned int num_privmsg_funcs;
@@ -2221,7 +2219,7 @@ static CMD_FUNC(cmd_mode)
         const char *str;
         str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
         if (str) {
-            char modes[MODELEN];
+            char modes[MAXLEN];
             struct userNode *opserv = GetUserH(str);
  
             send_message_type(4, un, opserv, "Channel modes cannot be changed due to DefCon level %d in effect, please try again soon", DefConLevel);
