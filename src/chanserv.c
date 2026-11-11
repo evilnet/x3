@@ -8391,7 +8391,7 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
 {
     struct chanData *cData;
     struct userData *uData;
-    struct do_not_register *dnr;
+    struct chanNode *target;
 
     if(!user->handle_info)
     {
@@ -8406,11 +8406,31 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
     }
 
     if(!(cData = chan->channel_info))
-        return 1; /* Nothing registered here to protect. */
-
-    if(IsProtected(cData) || IsSuspended(cData))
     {
-        *reason = "Channel may not be renamed";
+        /* The ircd only sends this query for a channel it has marked as
+         * registered, so a channel with no registration here means the
+         * two sides disagree. There is no owner to authorize against,
+         * and answering "allow" would wave the rename through with none
+         * of the destination checks below having run (it could land on a
+         * registered, DNR'd or forbidden name). Refuse, and log it: the
+         * marker on the ircd needs clearing or the registration is
+         * missing here. */
+        log_module(CS_LOG, LOG_ERROR,
+                   "Rename query for %s -> %s from %s (account %s): the ircd has %s marked registered but it is not registered here; refused.",
+                   chan->name, new_name, user->nick, user->handle_info->handle, chan->name);
+        *reason = "Channel is not registered with services";
+        return 0;
+    }
+
+    if(IsSuspended(cData))
+    {
+        *reason = "Channel is suspended and may not be renamed";
+        return 0;
+    }
+
+    if(IsProtected(cData))
+    {
+        *reason = "Channel is protected and may not be renamed";
         return 0;
     }
 
@@ -8427,15 +8447,26 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
         return 0;
     }
 
-    if(GetChannel(new_name) && GetChannel(new_name)->channel_info)
+    /* Registered at all -- a suspended registration still owns its name. */
+    if((target = GetChannel(new_name)) && target->channel_info)
     {
         *reason = "New channel name is already registered";
         return 0;
     }
 
+    /* DNRs on the name itself (exact or mask), whoever owns the channel;
+     * the per-owner pass below would skip them if the user list held no
+     * UL_OWNER entry. */
+    if(chanserv_is_dnr(new_name, NULL))
+    {
+        *reason = "New channel name is blocked (do-not-register)";
+        return 0;
+    }
+
+    /* DNRs on the owning accounts, as cmd_move checks them. */
     for(uData = cData->users; uData; uData = uData->next)
     {
-        if((uData->access == UL_OWNER) && (dnr = chanserv_is_dnr(new_name, uData->handle)))
+        if((uData->access == UL_OWNER) && chanserv_is_dnr(new_name, uData->handle))
         {
             *reason = "New channel name is blocked (do-not-register)";
             return 0;
