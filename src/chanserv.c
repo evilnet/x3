@@ -8314,7 +8314,10 @@ handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
     if(!(cData = channel->channel_info))
         return;
 
-    if(cData->modes.modes_set || cData->modes.modes_clear)
+    /* A suspended channel's mode lock is kept but not enforced: ChanServ
+     * is out of the channel until it is unsuspended. */
+    if(!IsSuspended(cData)
+       && (cData->modes.modes_set || cData->modes.modes_clear))
         mod_chanmode_announce(chanserv, cData->channel, &cData->modes);
 
     if(self->uplink && !self->uplink->burst && channel->channel_info->topic)
