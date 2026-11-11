@@ -2043,6 +2043,10 @@ static CMD_FUNC(cmd_burst)
             irc_join(opserv, cNode);
             irc_mode(opserv, cNode, "-zR");
             irc_part(opserv, cNode, "");
+            /* irc_mode() only sends; take the bits off our copy too, or a
+             * later REGISTER finds the marker "already set" here and never
+             * sends the +R the ircd no longer has. */
+            cNode->modes &= ~(chan_mode_t)(MODE_REGISTERED | MODE_PERSIST);
         }
     }
 
