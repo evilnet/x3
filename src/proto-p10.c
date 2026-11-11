@@ -2873,9 +2873,10 @@ static CMD_FUNC(cmd_topic)
  * here, over whatever AddChannelUser's first-member rule put there.
  *
  * Transfer before delete, as in the BX P merge -- and here it matters
- * for a second reason: DelChannelUser() collects an unregistered channel
- * that just lost its last member, and the caller holds the old node
- * across the partition precisely so that cannot happen midway. */
+ * for a second reason: DelChannelUser() collects a channel that just lost
+ * its last member unless +z keeps it, and the caller holds the node the
+ * member leaves across the partition, so that cannot happen midway
+ * whatever that node's modes are. */
 static void
 relocate_move_member(struct modeNode *mn, struct chanNode *newchan)
 {
@@ -2990,7 +2991,7 @@ relocate_follow_bots(struct chanNode *from, struct chanNode *to)
          * arrive powerless.  The overwrite is separately load-bearing
          * when the bot is the first member we hold: AddChannelUser()
          * hands MODE_CHANOP to the first member of a channel that is
-         * neither +R nor +A, which the ircd did not do -- writing the
+         * neither +z nor +A, which the ircd did not do -- writing the
          * snapshot back (rather than OR-ing) is what keeps that
          * phantom op out of X3's view.  Same discipline as
          * relocate_move_member(). */
@@ -3389,11 +3390,13 @@ static CMD_FUNC(cmd_rename)
             return 1;
         }
 
-        /* Hold the husk across the partition.  RelocateChannel() moved every
-         * lock to the new node, so without this the first DelChannelUser()
-         * that empties the (now unregistered) old node would free it under
-         * the loop.  The matching UnlockChannel() at the tail is what lets an
-         * emptied husk be collected -- normally, and by the normal path. */
+        /* Hold the husk to the end of this.  RelocateChannel() moved every
+         * lock to the new node.  The +z it put on the old one keeps
+         * DelChannelUser() from freeing it as the members leave, but a
+         * deadline that has already passed sweeps it below, +z and all, and
+         * the node is still used after that.  The matching UnlockChannel()
+         * at the tail is what drops a husk that is empty by then: one
+         * nobody stayed in, or one already swept. */
         LockChannel(chan);
 
         /* The issuer first, and before any bot.  On the network the issuer
@@ -3472,10 +3475,10 @@ static CMD_FUNC(cmd_rename)
 }
 
 /* DE <channel> <timestamp>: a server has destroyed a channel that stayed
- * empty.  X3 drops an unregistered channel with its last member and keeps
- * no state for an empty one, with one exception: the tombstone of a
- * relocated channel, whose members the ircd parts at the deadline
- * without telling services.  A DESTRUCT for it is the ircd saying
+ * empty.  X3 acts on it for one kind of channel only: the tombstone of a
+ * relocated channel, whose members the ircd parts at the deadline without
+ * telling services, and whose +z keeps it in X3's table, as on the ircd,
+ * after its last member leaves.  A DESTRUCT for it is the ircd saying
  * outright that the channel is gone (a server that still has members in
  * the channel does not pass the DESTRUCT on), so whoever we still show
  * there goes now instead of when our own timer fires.  Like the servers,

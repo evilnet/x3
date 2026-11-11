@@ -2465,8 +2465,17 @@ chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan)
  * A record that has a node lives exactly as long as that node (see
  * chanserv_relocate_husk_gone() and chanserv_channel_rename()), so the
  * pointer is the identity and no name or timestamp comparison is needed.
- * The cost: once X3's node has emptied and been collected, a member who
- * later joins the still-live tombstone on the network is not swept.
+ *
+ * The node outlives the tombstone's last member.  X3 keeps an empty channel
+ * that is +z (hash.c DelChannelUser()), as the ircd does, and a tombstone
+ * is +z until its deadline: when the last member who stayed behind leaves,
+ * the node and its record stay, and a member who joins the still-live
+ * tombstone after that is in it and is swept with it.  At the deadline the
+ * sweep or the cancellation takes the +z off, and the empty node goes.  The
+ * exception is a tombstone nobody stayed in at all: cmd_rename lets go of
+ * that node as it finishes the relocation (UnlockChannel() drops an empty
+ * node whatever its modes), and a member who joins the network's empty
+ * tombstone after that is not swept.
  *
  * One kind of record has no node: the loser of a crossing that X3 learned
  * of from burst announcements before the loser's own BURST arrived
@@ -2633,7 +2642,8 @@ relocate_husk_sweep(struct relocate_husk *husk, const char *why)
  * 1. The channel no longer carries a tombstone's marks (a chanop took +L
  *    off, a server took +z off): the record is cancelled and nobody is
  *    removed.  The ircd takes its +z back then, unless the channel is
- *    registered; so does our copy.
+ *    registered; so does our copy.  A channel that nobody is in any more
+ *    is kept only by that +z, on the ircd and here, and goes with it.
  * 2. The channel is the tombstone and is REGISTERED: the old name was
  *    registered inside the grace.  The tombstone is cancelled instead of
  *    swept -- nobody is parted, the redirect is withdrawn (every server
@@ -2669,6 +2679,12 @@ relocate_husk_deadline(struct relocate_husk *husk, const char *why)
         if(!chan->channel_info && !(chan->modes & MODE_REGISTERED))
             chan->modes &= ~(chan_mode_t)MODE_PERSIST;
         relocate_husk_forget(husk);
+        /* An empty tombstone was kept by its +z (DelChannelUser()), and
+         * nothing else will drop our node now that the +z is gone: it has
+         * no member left to leave.  The same rule DelChannelUser() applies;
+         * the ircd's channel goes at this moment too. */
+        if(!chan->members.used && !(chan->modes & (MODE_PERSIST | MODE_APASS)))
+            DelUnusedChannel(chan);
         return;
     }
     if(chan->channel_info || (chan->modes & MODE_REGISTERED))
