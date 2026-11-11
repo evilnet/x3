@@ -1777,6 +1777,14 @@ static CMD_FUNC(cmd_bouncer_transfer)
             return 1;
         }
 
+        /* One client named as both faces: a SQUIT-path promote sends its
+         * winner for both, and a server that already promoted it holds it
+         * under that numeric.  The servers treat this as nothing to do
+         * (bounce_alias_promote()'s old_client == new_client case); the
+         * merge below would delete the live user from X3's view. */
+        if (old_primary == new_node)
+            return 1;
+
         /* Two BX P shapes need handling:
          *
          * 1. **Numeric swap (new_node absent)** — classic promote-or-
