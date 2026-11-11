@@ -1876,6 +1876,12 @@ static CMD_FUNC(cmd_bouncer_transfer)
                     DelChannelUser(old_primary, chan, NULL, 0);
                 }
 
+                /* The survivor shows the old face's away, set or clear,
+                 * as the fork's servers do on this merge
+                 * (face_keeps_shown_away()).  X3 keeps only the flag. */
+                new_node->modes = (new_node->modes & ~FLAGS_AWAY)
+                                  | (old_primary->modes & FLAGS_AWAY);
+
                 /* DelUser with announce=0 suppresses both QUIT and KILL
                  * emission — this is internal cleanup, the network
                  * isn't supposed to see the alias's identity leave. */
