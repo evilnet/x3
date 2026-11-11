@@ -3106,6 +3106,13 @@ static CMD_FUNC(cmd_rename)
                    old_name, newchan->name, nmoved, nstayers,
                    was_registered ? " (registration followed)" : "");
 
+        /* Our MODE that marked the channel may have crossed this RN: the
+         * markers again for the new channel, and -R for the tombstone.
+         * Before the unlock, which may be the end of our node for the old
+         * name while the network still has the (empty) tombstone. */
+        if(was_registered)
+            chanserv_relocate_markers(chan, newchan);
+
         UnlockChannel(chan);    /* may collect an already-empty husk; chan is dead after this */
     }
 

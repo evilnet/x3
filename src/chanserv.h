@@ -240,8 +240,14 @@ void chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan);
  * channel's markers (+R, and +z with off_channel on) for its new name once
  * more, whatever X3's copy of the modes says. See the function for the
  * race this repairs. Sends nothing for a channel that is not registered
- * here or whose copy did not carry +R before the rename. */
+ * here or whose copy did not carry +R before the rename.
+ *
+ * chanserv_relocate_markers() is the same for a relocation of a channel
+ * that was registered: the markers for the new channel, and -R for the old
+ * name, which lives on as the tombstone (NULL when the network has already
+ * dissolved it). */
 void chanserv_rename_marker(struct chanNode *new_chan);
+void chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan);
 
 /* Called by cmd_rename after an RN moved a registration: tells opers and
  * helpers, as MOVE does.  source is the RN's origin (a nick or a server

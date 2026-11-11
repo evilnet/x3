@@ -2363,7 +2363,8 @@ chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan)
  *
  * Nothing is owed to the old name: the ircd renames the channel in place
  * (rename_channel() swaps the name on the one struct Channel), so there
- * is no channel left under it to carry a stray marker.
+ * is no channel left under it to carry a stray marker.  A relocation does
+ * leave one; see chanserv_relocate_markers().
  *
  * Sends nothing unless our copy carried the registered marker before the
  * rename -- new_chan->modes is that copy, RenameChannel() having just
@@ -2397,6 +2398,46 @@ chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, const 
         safestrncpy(who, source ? source : "an unknown source", sizeof(who));
     global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_CHANNEL_RENAMED",
                         old_name, new_chan->name, who);
+}
+
+/* The same repair for a relocation, where there are two channels to put
+ * right.  The ircd gives the new channel a copy of the old one's modes and
+ * takes +R off the old one, which stays behind as the tombstone
+ * (relocate_execute()).  A server our MODE +R reached before the RN did
+ * that to a marked channel.  A server it reaches after the RN puts +R on
+ * what is by then the tombstone, and its new channel has none.  So, once
+ * the relocation has been applied here:
+ *
+ *  - the new channel gets its markers, as after a rename;
+ *  - the old name gets -R.  This one matters at the tombstone's deadline:
+ *    the ircd cancels a tombstone that is +R at that moment instead of
+ *    sweeping it, each server by its own copy, so a stray +R would keep
+ *    the old channel, and everybody in it, on that one server.  Only -R:
+ *    the tombstone's +z is the ircd's own, and it clears it itself.
+ *
+ * Both are sent whatever X3's copy says now: the new channel's markers by
+ * chanserv_rename_marker()'s rule (when our copy carried +R before the
+ * relocation; RelocateChannel() copied it over), the -R in any case.
+ * `tombstone' is NULL when the network no longer has the old channel (a
+ * deadline already past: every server dissolved it as it executed the RN),
+ * and nothing is sent for it.
+ * The caller still holds the old node, although nobody may be left in it
+ * here: the network's tombstone exists, empty, until its deadline.
+ *
+ * X3 sends in the order it acts, on one link: this -R leaves before
+ * anything a later command does.  A REGISTER of the old name that X3
+ * accepts after the relocation sends its +R after this -R, and stands. */
+void
+chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan)
+{
+    struct mod_chanmode change;
+
+    chanserv_rename_marker(new_chan);
+    if(!chanserv || !tombstone || tombstone->channel_info)
+        return;
+    mod_chanmode_init(&change);
+    change.modes_clear = MODE_REGISTERED;
+    mod_chanmode_announce(chanserv, tombstone, &change);
 }
 
 /* A relocation tombstone ("husk") X3 is tracking: the old node of a
