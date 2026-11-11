@@ -3226,10 +3226,10 @@ relocate_again(struct userNode *issuer, const char *server, struct chanNode *old
     UnlockChannel(oldchan);
 }
 
-/* RN <old> <new> [C] :<reason> -- the ircd broadcasts this after an approved
- * rename has already executed. Authorization happened at AC R query time
- * (chanserv_rename_allowed, see cmd_account); this handler only migrates
- * state (design §3a: authorize-at-query, apply-at-RN).
+/* RN <old> <new> [C [<expires>]] :<reason> -- the ircd broadcasts this after
+ * an approved rename has already executed. Authorization happened at AC R
+ * query time (chanserv_rename_allowed, see cmd_account); this handler only
+ * migrates state (design §3a: authorize-at-query, apply-at-RN).
  *
  * Classic path: the channel is re-keyed in place, everyone comes along.
  *
@@ -3243,7 +3243,9 @@ relocate_again(struct userNode *issuer, const char *server, struct chanNode *old
  * service bots are a separate class:
  * they follow the REGISTRATION, wire-visibly, on their own JOIN/PART (see
  * below), which is the spec's ordinary consent primitive rather than a
- * silent move.
+ * silent move.  The tombstone is swept at <expires>, the deadline every
+ * server holds it to; a channel relocated a second time while it is a
+ * tombstone goes to relocate_again().
  *
  * The source prefix is a nick here (parse_line resolves the numeric before
  * dispatch) and may resolve to nothing at all -- a server-sourced RN has no
@@ -3297,15 +3299,15 @@ static CMD_FUNC(cmd_rename)
     }
     /* A relocation tombstone we still hold under the new name.  The ircd
      * executes a rename only onto a name that does not exist on the
-     * network, so its tombstone there is gone -- dissolved at the end of
-     * its grace period by PARTs that are never sent to us, with our own
-     * sweep still to come.  The members we show in it are the ones that
-     * sweep would remove; remove them now and let the rename through,
-     * instead of refusing it below
-     * for a destination "with members".  Only a husk that still looks like
-     * a tombstone qualifies: one that lost its +z or +L, or was registered,
-     * is an ordinary channel whose members are real, and is refused below
-     * like any other occupied destination. */
+     * network, so its tombstone there is gone -- dissolved at its deadline
+     * by PARTs that are never sent to us, with our own sweep, a few
+     * seconds behind, still to come.  The members we show in it are the
+     * ones that sweep would remove; remove them now and let the rename
+     * through, instead of refusing it below for a destination "with
+     * members".  Only a husk that still looks like a tombstone qualifies:
+     * one that lost its +z or +L, or was registered, is an ordinary
+     * channel whose members are real, and is refused below like any other
+     * occupied destination. */
     if((dest = GetChannel(argv[2])) && (dest != chan)
        && chanserv_relocate_husk_dissolve(dest, "another channel was renamed onto the name"))
         log_module(MAIN_LOG, LOG_INFO,

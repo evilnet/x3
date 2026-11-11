@@ -949,8 +949,8 @@ RelocateChannel(struct chanNode *channel, const char *new_name)
      * wire: every server ran that same code off the RN marker, so these bits
      * are already clear network-wide.  Registration, the oplevel credentials
      * and the +l limit belong to the community, which is now at the new name;
-     * the persist marker is what keeps the ircd's tombstone alive across the
-     * grace period. */
+     * the persist marker is what keeps the ircd's tombstone alive until its
+     * deadline. */
     RelocateTombstoneMarks(channel, 1);
 
     /* ---- Registration follows the community ---- */

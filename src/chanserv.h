@@ -340,10 +340,11 @@ int chanserv_relocate_husk_live(struct chanNode *channel);
  * timestamp, or another channel renamed onto the name.  If the channel is
  * a tracked tombstone that still looks like one, removes every member X3
  * shows in it -- a local service bot with a PART, the rest silently, as
- * the sweep at the deadline does -- stops tracking it and returns 1; the node
- * is freed unless something else holds it, so the caller must look the
- * name up again.  Otherwise does nothing and returns 0: a channel that
- * lost +z or +L is an ordinary channel again and its members are real. */
+ * the sweep at the deadline does -- stops tracking it and returns 1; the
+ * node is freed unless something else holds it, so the caller must look
+ * the name up again.  Otherwise does nothing and returns 0: a channel that
+ * lost +z or +L, or was registered, is an ordinary channel again and its
+ * members are real. */
 int chanserv_relocate_husk_dissolve(struct chanNode *channel, const char *why);
 
 /* Is this channel a tombstone whose deadline has passed and on which X3

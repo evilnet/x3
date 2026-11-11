@@ -2226,9 +2226,9 @@ chanserv_is_dnr(const char *chan_name, struct handle_info *handle)
  * Together with a registration's renamed_from notes it is what tells this
  * registration's own rename DNR from any other (chanserv_own_rename_dnr());
  * databases carry it, so it stays as it is.  It is also the fingerprint
- * chanserv_relocate_husk_fallback() reads back to identify a relocation
- * tombstone after an X3 restart: changing it breaks that re-arm for every
- * DNR already in the saxdb. */
+ * chanserv_relocate_husk_fallback() reads back to identify, after an X3
+ * restart, the relocation tombstone of an ircd that does not announce its
+ * tombstones: changing it breaks that for every DNR already in the saxdb. */
 #define RENAME_DNR_REASON "Channel was renamed"
 
 /* A name a registration was renamed away from, and the rename DNR placed
