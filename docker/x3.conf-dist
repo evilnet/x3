@@ -37,8 +37,8 @@
      * x3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
     "hidden_host_type" "%X3_HIDDEN_HOST_TYPE%"; // change this to 2 if you use Nefarious's style 2 host hiding.
-    // MUST match the ircd's HOST_HIDING_KEY* F:lines; change in production —
-    // stock keys make style-2 cloaks predictable.
+    // key1-key3 and prefix are not read by X3 (the ircd computes style-2
+    // cloaks and X3 uses the one it is sent); do not put the ircd's real keys here.
     "key1" "%X3_HIDDEN_HOST_KEY1%"; // Set these key values to the network KEY values you use
     "key2" "%X3_HIDDEN_HOST_KEY2%"; // for host hiding style 2.
     "key3" "%X3_HIDDEN_HOST_KEY3%"; // 
@@ -252,10 +252,9 @@
         // LDAP configuration
         // Uses inetOrgAnonAccount schema (x3/tools/ldap/inetorganon.schema)
         "ldap_enable" "%X3_LDAP_ENABLE%";
-        // ldap_writeback: write new account registrations (incl. credentials) to LDAP.
-        // Required for SASL when LDAP is authoritative — without it nickserv.c gates out
-        // ldap_do_add and accounts land in saxdb only (credential-less). Was missing from
-        // the LDAP-docker templatization.
+        // ldap_writeback: let X3 write to LDAP -- new registrations (incl. credentials)
+        // and later password, email and OpServ level changes. Required for SASL when
+        // LDAP is authoritative: without it accounts land in saxdb only (credential-less).
         "ldap_writeback" "%X3_LDAP_WRITEBACK%";
         "ldap_uri" "%X3_LDAP_URI%";
         "ldap_base" "%X3_LDAP_BASE%";

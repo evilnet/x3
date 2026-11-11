@@ -217,8 +217,8 @@ if [ "$generate" = yes ]; then
     # 8 = Nefarious 1.3.x; 9 = Nefarious 2.0.x (nefarious2) — must match your ircd.
     : "${X3_SERVER_TYPE=8}"
     : "${X3_HIDDEN_HOST_TYPE=1}"
-    # MUST match the ircd's HOST_HIDING_KEY* F:lines; change in production —
-    # stock keys make style-2 cloaks predictable.
+    # key1-3 and prefix: nothing in src/ reads them (the ircd computes style-2
+    # cloaks); they are templated only to keep the keys in x3.conf.
     : "${X3_HIDDEN_HOST_KEY1=45432}"
     : "${X3_HIDDEN_HOST_KEY2=76934}"
     : "${X3_HIDDEN_HOST_KEY3=98336}"
