@@ -2787,36 +2787,37 @@ static CMD_FUNC(cmd_topic)
  * is on. */
 #define RENAME_RELOCATE_MARKER  "C"
 
-/* Move one member's record from the old node to the new one, preserving
- * everything the ircd's add_user_to_channel() preserves for a mover.  No
- * wire traffic: the ircd already moved this user on every server off the
- * RN marker, so an emitted JOIN/PART here would be a second, contradictory
- * event.  Same transfer-before-delete discipline as the BX P merge above --
- * and here it is load-bearing for a second reason: DelChannelUser() collects
- * an unregistered channel that just lost its last member, and the caller
- * holds the old node across this loop precisely so that cannot happen
- * mid-partition. */
+/* Move the issuer's record from the old node to the new one.  No wire
+ * traffic: the ircd already moved this user on every server off the RN
+ * marker, so an emitted JOIN/PART here would be a second, contradictory
+ * event.
+ *
+ * No join hooks either (AddChannelUserNoHooks(), as in the BX P merge
+ * above).  The user did not join anything: the server moved a member who
+ * was already there.  Run as a join, ChanServ would greet them, send
+ * their info line, give them the op or voice their access level calls
+ * for, apply a stored ban, and count the join toward the flood policers
+ * -- all in a channel where the ircd has just carried their standing
+ * over unchanged.  What it carries is what relocate_execute() keeps for a
+ * mover: op, halfop and voice, and the oplevel (its fourth bit, the
+ * delayed-join flag, is not something X3 tracks).  The same is written
+ * here, over whatever AddChannelUser's first-member rule put there.
+ *
+ * Transfer before delete, as in the BX P merge -- and here it matters
+ * for a second reason: DelChannelUser() collects an unregistered channel
+ * that just lost its last member, and the caller holds the old node
+ * across the partition precisely so that cannot happen midway. */
 static void
 relocate_move_member(struct modeNode *mn, struct chanNode *newchan)
 {
     struct userNode *user = mn->user;
     struct chanNode *oldchan = mn->channel;
-    long modes = mn->modes;
-    short oplevel = mn->oplevel;
-    time_t idle_since = mn->idle_since;
     struct modeNode *newmn;
 
-    AddChannelUser(user, newchan);
-    /* Re-look-up rather than trusting AddChannelUser()'s return value: it
-     * ends in call_join_funcs(), which ignores handler return codes, and
-     * chanserv's join handler can KickChannelUser() a user who matches a
-     * stored ban -- freeing the very modeNode we were handed.  The member
-     * state was snapshotted above for the same reason. */
-    if((newmn = GetUserMode(newchan, user))) {
-        newmn->modes = modes;
-        newmn->oplevel = oplevel;
-        newmn->idle_since = idle_since;
-    }
+    newmn = AddChannelUserNoHooks(user, newchan);
+    newmn->modes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
+    newmn->oplevel = mn->oplevel;
+    newmn->idle_since = mn->idle_since;
     DelChannelUser(user, oldchan, NULL, 0);
 }
 
