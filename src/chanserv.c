@@ -1274,6 +1274,19 @@ chanserv_marker_modes(void)
     return MODE_REGISTERED | ((off_channel > 0) ? MODE_PERSIST : 0);
 }
 
+/* Send `markers' to a channel, whatever X3's copy of its modes says. */
+static void
+chanserv_set_markers(struct chanNode *channel, chan_mode_t markers)
+{
+    struct mod_chanmode change;
+
+    if(!markers)
+        return;
+    mod_chanmode_init(&change);
+    change.modes_set = markers;
+    mod_chanmode_announce(chanserv, channel, &change);
+}
+
 /* Set whichever of its markers a registered channel does not carry yet.
  * Does nothing when they are all there, so it can be called wherever a
  * registered channel may have (re)appeared without them.
@@ -1285,15 +1298,7 @@ chanserv_marker_modes(void)
 static void
 chanserv_assert_markers(struct chanNode *channel)
 {
-    struct mod_chanmode change;
-    chan_mode_t missing;
-
-    missing = chanserv_marker_modes() & ~channel->modes;
-    if(!missing)
-        return;
-    mod_chanmode_init(&change);
-    change.modes_set = missing;
-    mod_chanmode_announce(chanserv, channel, &change);
+    chanserv_set_markers(channel, chanserv_marker_modes() & ~channel->modes);
 }
 
 static char max_length_text[MAXLEN+1][16];
@@ -8522,8 +8527,21 @@ handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
      * set and no-ops here.
      * This is the one thing handle_join() does for a suspended channel
      * too: ChanServ has left it, so it empties and is created afresh more
-     * readily than any other registered channel. */
-    chanserv_assert_markers(channel);
+     * readily than any other registered channel.
+     *
+     * X3's copy of the modes cannot be trusted for a channel that had
+     * nobody in it until this join.  The ircd destroys a channel when its
+     * last member leaves (unless +z holds it) without telling us, and a
+     * channel created again starts with no modes, while our copy, kept
+     * because the channel is registered, still shows the markers.  Nor
+     * does X3 burst a channel it has no member of, so what database load
+     * set on our copy never reached the ircd.  The first member therefore
+     * gets the markers sent regardless; an ircd that already has them
+     * drops the change. */
+    if(channel->members.used == 1)
+        chanserv_set_markers(channel, chanserv_marker_modes());
+    else
+        chanserv_assert_markers(channel);
 
     if(IsSuspended(channel->channel_info))
         return 0;
