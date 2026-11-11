@@ -2213,8 +2213,25 @@ static CMD_FUNC(cmd_mode)
         if ((mn = GetUserMode(cn, un)))
             mn->idle_since = now;
     } else {
-        /* If it came from a server, reset timestamp to re-sync. */
-        cn->timestamp = atoi(argv[argc-1]);
+        /* If it came from a server, reset timestamp to re-sync -- when it
+         * sent one.  A server MODE need not end in a timestamp (an ircd
+         * applying its default channel modes after a CREATE sends
+         * "M #chan +nt"), and atoi() of a mode string or a mode argument
+         * is 0: the channel then had no timestamp here, and every JOIN and
+         * MODE this server sent for it afterwards carried 0, which an ircd
+         * takes as "no timestamp" and applies unchecked.  The last
+         * parameter is a timestamp only if it is all digits and a
+         * plausible time (this century): a limit or a numeric key is the
+         * last parameter of a MODE that has none. */
+        const char *last = argv[argc-1];
+        const char *p = last;
+        unsigned long ts;
+
+        while (*p >= '0' && *p <= '9')
+            p++;
+        if (argc > 3 && p != last && !*p
+            && (ts = strtoul(last, NULL, 10)) >= 946684800UL)
+            cn->timestamp = (time_t)ts;
     }
 
     if (checkDefCon(DEFCON_NO_MODE_CHANGE) && !IsOper(un)) {
