@@ -37,12 +37,8 @@
      * x3 does not set the host suffix for users, but must know it when making
      * things like bans, where it should not show the user's real hostname. */
     "hidden_host_type" "%X3_HIDDEN_HOST_TYPE%"; // change this to 2 if you use Nefarious's style 2 host hiding.
-    // key1-key3 and prefix are not read by X3 (the ircd computes style-2
-    // cloaks and X3 uses the one it is sent); do not put the ircd's real keys here.
-    "key1" "%X3_HIDDEN_HOST_KEY1%"; // Set these key values to the network KEY values you use
-    "key2" "%X3_HIDDEN_HOST_KEY2%"; // for host hiding style 2.
-    "key3" "%X3_HIDDEN_HOST_KEY3%"; // 
-    "prefix" "%X3_HIDDEN_HOST_PREFIX%"; // If you use style 2 then this is the name that is prefixed to hosts.
+    // X3 needs no style-2 keys or prefix: the ircd computes the cloak and X3
+    // uses the one it is sent.
     "numeric" "%X3_GENERAL_NUMERIC%"; // hint: If you get collisions on link, CHANGE THIS.
     /* Type handles some changes in Nefarious from version to version.
      * 4 - nefarious 0.4.x and other ircds

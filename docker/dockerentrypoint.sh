@@ -63,7 +63,6 @@ CONF_LIST_VARS=" X3_AUTOJOIN_CHANNELS X3_SUPPORT_CHANNEL "
 #   X3_GENERAL_BIND_ADDRESS the uplink socket is not bound to a local
 #                           address (main-common.c: getaddrinfo("") fails
 #                           and bind_addr stays NULL)
-#   X3_HIDDEN_HOST_PREFIX   no prefix (nothing in src/ reads this key today)
 #   X3_LDAP_ADMIN_DN        no admin bind, as if the key were left out:
 #   X3_LDAP_ADMIN_PASS      password checks (a bind as the user) still work,
 #                           searches and writes need the admin, so they
@@ -73,7 +72,7 @@ CONF_LIST_VARS=" X3_AUTOJOIN_CHANNELS X3_SUPPORT_CHANNEL "
 #   X3_LDAP_FILTER          accounts are searched by name alone, with no
 #                           extra filter (x3ldap.c builds "(&%s(attr=name))")
 #   X3_SUPPORT_CHANNEL      an empty list: no support channels
-EMPTY_OK=" X3_AUTOJOIN_CHANNELS X3_AUTO_OPER X3_AUTO_OPER_PRIVS X3_GENERAL_BIND_ADDRESS X3_HIDDEN_HOST_PREFIX X3_LDAP_ADMIN_DN X3_LDAP_ADMIN_PASS X3_LDAP_FIELD_OSLEVEL X3_LDAP_FILTER X3_SUPPORT_CHANNEL "
+EMPTY_OK=" X3_AUTOJOIN_CHANNELS X3_AUTO_OPER X3_AUTO_OPER_PRIVS X3_GENERAL_BIND_ADDRESS X3_LDAP_ADMIN_DN X3_LDAP_ADMIN_PASS X3_LDAP_FIELD_OSLEVEL X3_LDAP_FILTER X3_SUPPORT_CHANNEL "
 
 # conf_escape VALUE: set REPLY to VALUE escaped for use between the double
 # quotes of an x3.conf string.
@@ -217,12 +216,6 @@ if [ "$generate" = yes ]; then
     # 8 = Nefarious 1.3.x; 9 = Nefarious 2.0.x (nefarious2) — must match your ircd.
     : "${X3_SERVER_TYPE=8}"
     : "${X3_HIDDEN_HOST_TYPE=1}"
-    # key1-3 and prefix: nothing in src/ reads them (the ircd computes style-2
-    # cloaks); they are templated only to keep the keys in x3.conf.
-    : "${X3_HIDDEN_HOST_KEY1=45432}"
-    : "${X3_HIDDEN_HOST_KEY2=76934}"
-    : "${X3_HIDDEN_HOST_KEY3=98336}"
-    : "${X3_HIDDEN_HOST_PREFIX=NETWORK}"
 
     # OpServ clone-G-line threshold (untrusted_max).  Default 6 (stock).
     # 0 disables it — testbeds set X3_UNTRUSTED_MAX=0 in .env.local so harness
