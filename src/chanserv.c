@@ -2794,6 +2794,8 @@ ss_cs_join_channel(struct chanNode *channel, int spamserv_join)
 {
     extern struct userNode *spamserv;
     struct mod_chanmode *change;
+    /* Nobody here means ChanServ's join creates the channel on the ircd. */
+    int creates = !channel->members.used;
 
     if(spamserv && spamserv_join && get_chanInfo(channel->name))
     {
@@ -2814,6 +2816,15 @@ ss_cs_join_channel(struct chanNode *channel, int spamserv_join)
 
     mod_chanmode_announce(chanserv, channel, change);
        mod_chanmode_free(change);
+
+    /* A channel created by ChanServ's join starts with no modes on the
+     * ircd, while our copy of a registered channel that emptied (and was
+     * destroyed there without our being told) still shows the markers.
+     * Send them regardless, as handle_join() does for a first member;
+     * ChanServ's own join never reaches handle_join().  This is what puts
+     * +R back on a channel unsuspended after it emptied. */
+    if(creates && channel->channel_info)
+        chanserv_set_markers(channel, chanserv_marker_modes());
 }
 
 static CHANSERV_FUNC(cmd_move)
@@ -6909,14 +6920,7 @@ static MODCMD_FUNC(chan_opt_offchannel)
         else if(disabled_string(argv[1]))
         {
                 if(IsOffChannel(cData))
-                {
-                    struct mod_chanmode change;
-                    mod_chanmode_init(&change);
-                    change.argc = 1;
-                    change.args[0].mode = MODE_CHANOP;
-                    change.args[0].u.member = AddChannelUser(chanserv, channel);
-                    mod_chanmode_announce(chanserv, channel, &change);
-                }
+                    ss_cs_join_channel(channel, 0);
             cData->flags &= ~CHANNEL_OFFCHANNEL;
             value = 0;
         }
