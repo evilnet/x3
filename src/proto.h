@@ -206,7 +206,7 @@ unsigned int irc_user_modes(const struct userNode *user, char modes[], size_t le
 
 /* Channel mode manipulation */
 #define KEYLEN          23
-typedef unsigned long chan_mode_t;
+typedef unsigned long long chan_mode_t; /* MODE_NOSTORAGE is bit 32 */
 /* Rules for struct mod_chanmode:
  * For a membership mode change, args[n].mode can contain more than
  * one mode bit (e.g. MODE_CHANOP|MODE_VOICE).  Hostmask strings are

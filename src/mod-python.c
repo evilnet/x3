@@ -580,7 +580,7 @@ pyobj_from_channode(struct chanNode* channel) {
         goto cleanup;
 
     retval = Py_BuildValue("{s:s,s:s,s:s,s:i"
-                         ",s:i,s:i,s:O,s:O,s:O}",
+                         ",s:i,s:K,s:O,s:O,s:O}",
 
                          "name", channel->name,
                          "topic", channel->topic,
@@ -588,7 +588,7 @@ pyobj_from_channode(struct chanNode* channel) {
                          "topic_time", channel->topic_time,
 
                          "timestamp", channel->timestamp,
-                         "modes", channel->modes,
+                         "modes", (unsigned long long)channel->modes,
                          "members", pChannelMembers,
                          "bans", pChannelBans,
                          "exempts", pChannelExempts
