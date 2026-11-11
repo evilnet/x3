@@ -313,7 +313,12 @@ if [ "$generate" = yes ]; then
     : "${X3_LDAP_FIELD_ACCOUNT=uid}"
     : "${X3_LDAP_FIELD_PASSWORD=userPassword}"
     : "${X3_LDAP_FIELD_EMAIL=mail}"
-    : "${X3_LDAP_FIELD_OSLEVEL=X3AccountLevel}"
+    # Empty = the OpServ level is not written to LDAP, as when the key was
+    # absent from the conf.  Name an attribute here only if the directory's
+    # schema defines it: the schema X3 ships (tools/ldap/inetorganon.schema)
+    # has no X3AccountLevel, and with ldap_writeback on a write of an
+    # undefined attribute fails and every OpServ ACCESS change is refused.
+    : "${X3_LDAP_FIELD_OSLEVEL=}"
     : "${X3_LDAP_FILTER=(objectClass=inetOrgPerson)}"
     : "${X3_LDAP_AUTOCREATE=1}"
     : "${X3_LDAP_TIMEOUT=10}"
