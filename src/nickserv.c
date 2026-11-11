@@ -261,7 +261,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_FLAGS", "Flags: %s" },
     { "NSMSG_HANDLEINFO_OPSERV_LEVEL", "Opserv level: %d " },
     { "NSMSG_HANDLEINFO_KC_ID", "Keycloak ID: %s" },
-    { "NSMSG_HANDLEINFO_KC_ID_PREV", "Previous Keycloak ID: %s (replaced by a reset)" },
+    { "NSMSG_HANDLEINFO_KC_ID_PREV", "Previous Keycloak ID: %s (replaced by a reset or by REBIND)" },
     { "NSMSG_HANDLEINFO_EPITHET", "Epithet: %s" },
     { "NSMSG_HANDLEINFO_NOTE", "Note (by %s on %s): %s " },
     { "NSMSG_HANDLEINFO_FAKEHOST", "Fake host: %s" },
@@ -2159,11 +2159,12 @@ handle_kcid_from_uuid(const char *uuid, char out[23])
 
 /* REBIND <*account> <keycloak-uuid|compact-id|*>: set or clear the Keycloak user id
  * an account is bound to, by hand.  A login that carries a different id
- * from the stored one resets the account (handle_account), so this is for
- * correcting a binding before that happens, or clearing one so the next
- * login adopts whatever it carries.  Not an OSET option on purpose: SEARCH
- * SET applies OSET options without the outranking check that
- * get_victim_oper enforces here. */
+ * from the stored one is refused and reported to opers (handle_account;
+ * with keycloak_id_reset on it resets the account instead), so this is
+ * for correcting a binding so that the user can log in again, or clearing
+ * one so the next login adopts whatever it carries.  Not an OSET option
+ * on purpose: SEARCH SET applies OSET options without the outranking
+ * check that get_victim_oper enforces here. */
 static NICKSERV_FUNC(cmd_rebind)
 {
     struct handle_info *hi;
