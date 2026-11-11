@@ -552,7 +552,7 @@ irc_p10_ntop(char *output, const irc_in_addr_t *ip)
     } else if (irc_in_addr_is_ipv6(*ip)) {
         unsigned int max_start, max_zeros, curr_zeros, zero, ii;
         /* Can start by printing out the leading non-zero parts. */
-        for (ii = 0; (ip->in6[ii]) && (ii < 8); ++ii) {
+        for (ii = 0; (ii < 8) && (ip->in6[ii]); ++ii) {
             inttobase64(output, ntohs(ip->in6[ii]), 3);
             output += 3;
         }
@@ -581,6 +581,7 @@ irc_p10_ntop(char *output, const irc_in_addr_t *ip)
             } else {
                 inttobase64(output, ntohs(ip->in6[ii]), 3);
                 output += 3;
+                ii++;
             }
         }
         *output = '\0';
