@@ -2860,10 +2860,11 @@ relocate_reassert_modes(struct userNode *user, struct chanNode *chan,
  * Consent path (the C marker): the channel SPLITS.  Registration, channel
  * state and the module holders move to the new name; the old node survives
  * as an unregistered tombstone husk holding the members who did not consent.
- * Movers are the ircd's mover set and nothing else -- the RN source user
- * (issuing the rename is consent) plus every user with umode +F -- because
- * X3's membership view has to match what relocate_execute() did on every
- * server, member for member.  X3's own service bots are a separate class:
+ * The one mover is the ircd's: the RN source user (issuing the rename is
+ * consent).  Everybody else stays in the old channel until they join the
+ * new one themselves, because X3's membership view has to match what
+ * relocate_execute() did on every server, member for member.  X3's own
+ * service bots are a separate class:
  * they follow the REGISTRATION, wire-visibly, on their own JOIN/PART (see
  * below), which is the spec's ordinary consent primitive rather than a
  * silent move.
@@ -3035,8 +3036,8 @@ static CMD_FUNC(cmd_rename)
              * movers they do it ON THE WIRE: AddChannelUser()/
              * DelChannelUser() emit a real JOIN and PART for a local
              * user, which is what keeps the ircd's view (where nothing
-             * moved a service bot, because a bot is neither the issuer
-             * nor +F) in agreement with ours.  The JOIN carries the new
+             * moved a service bot, because a bot is not the issuer) in
+             * agreement with ours.  The JOIN carries the new
              * node's timestamp, which RelocateChannel() took from the old
              * channel and therefore matches the creationtime the ircd
              * gave the new channel.
