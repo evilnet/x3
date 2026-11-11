@@ -304,7 +304,7 @@
         "staff_auth_channel_modes" "+tnOs"; // modes get set every time X3 starts up
 
          // which channels should all services autojoin?
-         "autojoin_channels" ("#TheOps", "#OperServ");
+         "autojoin_channels" (%X3_AUTOJOIN_CHANNELS%);
 
         // how many clones to allow from an untrusted host?
         // Use this carefully, users with half the # of clones will trigger this
@@ -672,7 +672,7 @@
         "channel" "%X3_TRACK_CHANNEL%";
         "channel_modes" "+sntOm";
         // Which bot?
-        "bot" "O3";
+        "bot" "%X3_OPSERV_NICK%";
         // Show new users and joins from net joins?  (off by default)
         "show_bursts" "0";
     };
