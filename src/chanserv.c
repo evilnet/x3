@@ -2118,6 +2118,15 @@ chanserv_rename_dnr(const char *old_name)
         return;
     if(chanserv_is_dnr(old_name, NULL))
         return; /* already covered by a DNR (plain or mask); don't stack */
+    /* chanserv_add_dnr() files any name containing '*' or '?' as a mask,
+     * and a mask blocks every name it matches: a DNR for a renamed "#*"
+     * would refuse every registration on the network.  A DNR cannot hold
+     * such a name literally, so the old name goes without one. */
+    if(strpbrk(old_name, "*?"))
+    {
+        log_module(CS_LOG, LOG_WARNING, "Not placing a do-not-register on renamed channel %s: its name contains a wildcard character.", old_name);
+        return;
+    }
     /* chanserv is NULL when the bot's nick is disabled via the "."
      * convention (init_chanserv only AddLocalUser()s it when nick !=
      * NULL) -- but a channel can still be registered (saxdb load doesn't
