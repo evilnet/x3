@@ -354,7 +354,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_REBIND_CLEARED", "Keycloak id binding cleared for account %s; the next login will adopt one." },
     { "NSMSG_REBIND_SET", "Keycloak id set for account %s." },
     { "NSMSG_REBIND_DETACHED", "%d session(s) logged in under the previous id were detached." },
-    { "NSMSG_REBIND_BADID", "Give the account's Keycloak ID -- the UUID from the admin console (e.g. 6ba7b810-9dad-11d1-80b4-00c04fd430c8), or * to clear." },
+    { "NSMSG_REBIND_BADID", "Give the account's Keycloak ID -- the UUID from the admin console (e.g. 6ba7b810-9dad-11d1-80b4-00c04fd430c8) or the 22-character form $N shows (e.g. a6e4EJ2tEdGAtADAT9QwyA) -- or * to clear." },
     { "NSMSG_IDENTITY_RESET", "Account $b%s$b was recreated in Keycloak (id %s, was %s): its data has been reset." },
     { "NSMSG_IDENTITY_STALE", "Account $b%s$b was announced with the Keycloak id it had before (%s, now %s): login refused." },
     { "NSMSG_IDENTITY_MISMATCH", "Account $b%s$b was announced with a different Keycloak id (%s, stored %s): login refused. REBIND the account if the user was recreated." },
@@ -2156,7 +2156,7 @@ handle_kcid_from_uuid(const char *uuid, char out[23])
     return o == 22;
 }
 
-/* REBIND <*account> <keycloak-uuid|*>: set or clear the Keycloak user id
+/* REBIND <*account> <keycloak-uuid|compact-id|*>: set or clear the Keycloak user id
  * an account is bound to, by hand.  A login that carries a different id
  * from the stored one resets the account (handle_account), so this is for
  * correcting a binding before that happens, or clearing one so the next
@@ -2178,7 +2178,13 @@ static NICKSERV_FUNC(cmd_rebind)
         reply("NSMSG_REBIND_CLEARED", hi->handle);
         return 1;
     }
-    if (!handle_kcid_from_uuid(argv[2], compact)) {
+    /* Either form: the UUID the Keycloak admin console shows, or the
+     * 22-character compact id X3 itself prints (ACCOUNTINFO, the mismatch
+     * notices that say to REBIND).  No string is both -- a UUID has 32 hex
+     * digits -- so the order does not matter. */
+    if (handle_kcid_valid(argv[2])) {
+        safestrncpy(compact, argv[2], sizeof(compact));
+    } else if (!handle_kcid_from_uuid(argv[2], compact)) {
         reply("NSMSG_REBIND_BADID");
         return 0;
     }

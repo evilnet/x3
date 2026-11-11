@@ -598,7 +598,7 @@
 );
 "REBIND" (
         "/msg $N REBIND <nick|*account> <keycloak-id|*>",
-        "Sets or clears the Keycloak user id an account is bound to. Use the UUID from the Keycloak admin console, or * to clear the binding so the next login adopts one. A login that carries a different id from the stored one is refused and reported to opers (or, when keycloak_id_reset is on, resets the account); use this to correct a binding so the user can log in. The id it replaces is remembered with the earlier replaced ids (the last four), as after a reset: sessions still announcing one of them are refused rather than reset. Sessions logged in at the time of the change are detached, since they authenticated as the previous id.",
+        "Sets or clears the Keycloak user id an account is bound to. Give the id either as the UUID from the Keycloak admin console or in the 22-character form $N itself shows (in ACCOUNTINFO and in the notices about a refused login), or * to clear the binding so the next login adopts one. A login that carries a different id from the stored one is refused and reported to opers (or, when keycloak_id_reset is on, resets the account); use this to correct a binding so the user can log in. The id it replaces is remembered with the earlier replaced ids (the last four), as after a reset: sessions still announcing one of them are refused rather than reset. Sessions logged in at the time of the change are detached, since they authenticated as the previous id.",
         "This command is only accessible to IRC operators with an $O access level of 800 or higher, and only on an account they outrank.",
         "$uSee Also:$u accountinfo"
 );
