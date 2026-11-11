@@ -1760,6 +1760,15 @@ static CMD_FUNC(cmd_bouncer_transfer)
         if (argc < 6)
             return 0;
 
+        /* Full YYXXX user numerics only, as the servers require
+         * (nefarious bx_find_user_strict(), bounce_bxp_forwardable()):
+         * GetUserN() reads a shorter one as a short-form server+client
+         * numeric and can land on an unrelated user, whom the swap would
+         * renumber or the merge would delete.  An older fork peer's RESUME
+         * sent three-character ones, and a stock server relays them. */
+        if (strlen(argv[2]) != 5 || strlen(argv[3]) != 5)
+            return 1;
+
         /* Both lookups can legitimately miss — old_primary may have
          * already been cleaned up by a prior event, new_node is
          * normally absent (the swap path is the common case) but
