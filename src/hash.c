@@ -876,7 +876,12 @@ RelocateChannel(struct chanNode *channel, const char *new_name)
      * the persist marker is what keeps the ircd's tombstone alive across the
      * grace period. */
     channel->modes &= ~(MODE_REGISTERED | MODE_APASS | MODE_UPASS | MODE_LIMIT);
-    channel->modes |= MODE_PERSIST;
+    /* MODE_HIDEMODE is what our mode table calls the letter L, which on this
+     * ircd is the redirect: the tombstone is +L <new name>, set by
+     * relocate_execute() without a MODE on the wire.  Our copy has to carry
+     * the letter for the husk sweep to notice a later -L (chanserv.c,
+     * relocate_husk_broken()). */
+    channel->modes |= MODE_PERSIST | MODE_HIDEMODE;
     channel->limit = 0;
     channel->apass[0] = '\0';
     channel->upass[0] = '\0';

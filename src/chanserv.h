@@ -255,23 +255,31 @@ void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, c
  * new node, once the bots have followed the registration there.  No-op for an
  * off-channel or suspended registration.
  *
- * chanserv_relocate_tombstone() arms the X3-side reap of the old node.  The
- * ircd dissolves its tombstone with local-only PARTs that never reach us, so
- * this is the only thing that stops the husk's member list going stale
- * forever.  old_name/timestamp identify the husk at fire time; a channel
- * re-created on that name in the meantime is left alone. */
+ * chanserv_relocate_tombstone() starts tracking the old node as a tombstone
+ * and arms the X3-side reap of it.  The ircd dissolves its tombstone with
+ * local-only PARTs that never reach us, so this is the only thing that
+ * stops the husk's member list going stale forever.  new_name is the
+ * redirect target, or NULL when it is not known. */
 void chanserv_relocate_bots(struct chanNode *new_chan);
-void chanserv_relocate_tombstone(const char *old_name, time_t timestamp);
+void chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name);
 
-/* Does this channel NAME currently carry the relocation fingerprint -- a
- * live do-not-register stamped with chanserv_rename_dnr()'s own reason?
- *
- * The DNR tables are file-static in chanserv.c and the reason string is a
- * private constant, so callers outside chanserv get this predicate rather
- * than the lookup.  Used by the burst re-arm hook and by cmd_burst's
- * unregistered-channel correction, which must not strip the persist exmode
- * off a live tombstone.  Returns 1 = looks like a relocation tombstone name. */
-int chanserv_is_relocation_dnr(const char *chan_name);
+/* Is this channel a tombstone X3 is tracking that still looks like one --
+ * unregistered, +z, +L?  That is the test the ircd applies before it
+ * sweeps one (m_rename.c relocate_tombstone_channel()), on the state X3
+ * can see.  Used by cmd_burst's unregistered-channel correction, which
+ * must not strip the persist exmode off a live tombstone. */
+int chanserv_relocate_husk_live(struct chanNode *channel);
+
+/* For an event that proves the network no longer has the tombstone: a
+ * DESTRUCT for it, the name created or joined afresh with a newer
+ * timestamp, or another channel renamed onto the name.  If the channel is
+ * a tracked tombstone that still looks like one, removes every member X3
+ * shows in it -- a local service bot with a PART, the rest silently, as
+ * the grace-expiry sweep does -- stops tracking it and returns 1; the node
+ * is freed unless something else holds it, so the caller must look the
+ * name up again.  Otherwise does nothing and returns 0: a channel that
+ * lost +z or +L is an ordinary channel again and its members are real. */
+int chanserv_relocate_husk_dissolve(struct chanNode *channel, const char *why);
 
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);

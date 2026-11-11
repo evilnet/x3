@@ -1612,12 +1612,47 @@ static CMD_FUNC(cmd_error_nick)
 struct create_desc {
     struct userNode *user;
     time_t when;
+    unsigned int wire_ts : 1;   /* `when' is a timestamp the ircd sent */
+    unsigned int create : 1;    /* CREATE rather than JOIN */
 };
 
 static void
 join_helper(struct chanNode *chan, void *data)
 {
     struct create_desc *cd = data;
+
+    /* A CREATE, or a JOIN, with a timestamp newer than the one we hold
+     * for the channel.  If that channel is a relocation tombstone the
+     * ircd has already dissolved it: a CREATE is only sent by a server
+     * the channel does not exist on, and a JOIN carries a newer timestamp
+     * only when it revives an empty channel that has lost its persist
+     * flag (m_join.c bumps the timestamp by one).  The members we still
+     * show in the tombstone were parted by every server's own sweep,
+     * which is never sent to us; they go now, before the newcomer is
+     * added, so that our own sweep cannot later take the newcomer out
+     * with them.  A JOIN with the tombstone's own timestamp is somebody
+     * entering the live tombstone and changes nothing. */
+    if (cd->wire_ts && cd->when > chan->timestamp) {
+        char name[CHANNELLEN+1];
+
+        safestrncpy(name, chan->name, sizeof(name));
+        if (chanserv_relocate_husk_dissolve(chan, cd->create ? "the name was created again" : "the name was joined afresh")) {
+            /* Normally the node went with its last member and the name is
+             * free.  If something else still holds the node, it now stands
+             * for the new channel: take its timestamp, and for a CREATE
+             * none of the old modes. */
+            if ((chan = GetChannel(name))) {
+                chan->timestamp = cd->when;
+                if (cd->create) {
+                    chan->modes = 0;
+                    chan->limit = 0;
+                    chan->key[0] = '\0';
+                }
+            } else {
+                chan = AddChannel(name, cd->when, NULL, NULL, NULL);
+            }
+        }
+    }
     AddChannelUser(cd->user, chan);
 }
 
@@ -1644,6 +1679,8 @@ static CMD_FUNC(cmd_create)
         return 0;
     cd.user = user;
     cd.when = atoi(argv[2]);
+    cd.wire_ts = 1;
+    cd.create = 1;
     parse_foreach(argv[1], join_helper, create_helper, NULL, NULL, &cd);
     return 1;
 }
@@ -1660,6 +1697,8 @@ static CMD_FUNC(cmd_join)
         cd.when = now;
     else
         cd.when = atoi(argv[2]);
+    cd.wire_ts = (argc >= 3);
+    cd.create = 0;
     parse_foreach(argv[1], join_helper, create_helper, NULL, NULL, &cd);
     return 1;
 }
@@ -1676,6 +1715,9 @@ static CMD_FUNC(cmd_svsjoin)
         cd.when = now;
     else
         cd.when = atoi(argv[3]);
+    /* A request, not the channel's timestamp. */
+    cd.wire_ts = 0;
+    cd.create = 0;
     parse_foreach(argv[2], join_helper, create_helper, NULL, NULL, &cd);
     return 1;
 }
@@ -2295,31 +2337,35 @@ static CMD_FUNC(cmd_burst)
          *      own husk has channel_info NULL by construction, so an R that
          *      arrives on a burst for either is drift to be corrected.
          *
-         *  -z  ONLY when the name does NOT carry the relocation fingerprint.
-         *      The old premise -- "only ChanServ sets +z, on registered
-         *      channels" -- stopped being true when relocate_execute() began
-         *      marking tombstones EXMODE_PERSIST: a live tombstone is +z AND
-         *      unregistered by construction, and that persist bit is the only
-         *      thing keeping the ircd from collecting the channel the moment
-         *      it empties.  Stripping it there would dissolve a tombstone
-         *      early and take the +L redirect and the member status snapshots
-         *      with it, mid-grace, network-wide.  Any OTHER unregistered +z
-         *      is still stale and still gets stripped.
+         *  -z  ONLY when the channel is not a relocation tombstone we are
+         *      tracking.  The old premise -- "only ChanServ sets +z, on
+         *      registered channels" -- stopped being true when
+         *      relocate_execute() began marking tombstones EXMODE_PERSIST: a
+         *      live tombstone is +z AND unregistered by construction.  The
+         *      ircd treats the channel as its tombstone only while that bit
+         *      is there; with it gone it cancels the grace-expiry sweep and
+         *      leaves the members in what is then an ordinary channel that
+         *      still redirects.  Any OTHER unregistered +z is still stale
+         *      and still gets stripped.
          *
-         * KNOWN BOUNDED HOLE: the fingerprint is a live DNR carrying
-         * chanserv_rename_dnr()'s reason, and DNRs live in saxdb, which is
-         * written on a save tick (db_backup_frequency) and at clean shutdown.
-         * A burst arriving after an X3 crash that lost the DNR sees no
-         * fingerprint and strips a legitimate tombstone's z.  Blast radius is
-         * one early tombstone dissolve -- the relocation itself already
-         * happened on every server -- which degrades exactly to pre-relocate
-         * behaviour, and it is the same window that already disarms the husk
-         * re-arm hook.  The clean fix is an explicit ircd-side dissolve /
-         * tombstone signal on the wire, recorded as deferred future work
-         * (new wire surface on a frozen RN shape). */
+         * "Tracking" is chanserv's own record of the husk: made when the RN
+         * arrived, or -- the AddChannel() above runs chanserv's new-channel
+         * hook -- on this very burst, for a tombstone that outlived an X3
+         * restart and is recognised by its +z, +L and the rename DNR on its
+         * name.  That last part has holes, listed at
+         * chanserv_relocate_husk_check(): a tombstone it does not recognise
+         * is stripped here, and since nothing tracks it X3 does not sweep it
+         * either, which is what the ircd then does too.
+         *
+         * KNOWN BOUNDED HOLE: DNRs live in saxdb, which is written on a save
+         * tick (db_backup_frequency) and at clean shutdown.  A burst arriving
+         * after an X3 crash that lost the DNR is the same case: the +z is
+         * stripped and nobody is swept.  The clean fix is an explicit
+         * ircd-side dissolve / tombstone signal on the wire, recorded as
+         * deferred future work (new wire surface on a frozen RN shape). */
         int strip_r = (cNode->modes & MODE_REGISTERED) ? 1 : 0;
         int strip_z = (cNode->modes & MODE_PERSIST)
-                      && !chanserv_is_relocation_dnr(cNode->name);
+                      && !chanserv_relocate_husk_live(cNode);
 
         if (strip_r || strip_z) {
             irc_join(opserv, cNode);
@@ -2822,7 +2868,6 @@ static CMD_FUNC(cmd_rename)
 {
     struct chanNode *chan, *dest, *renamed = NULL, *newchan = NULL;
     char old_name[CHANNELLEN+1];
-    time_t old_timestamp;
     int was_registered;
     int relocate;
 
@@ -2879,7 +2924,6 @@ static CMD_FUNC(cmd_rename)
     }
     was_registered = chan->channel_info != NULL;
     safestrncpy(old_name, argv[1], sizeof(old_name));
-    old_timestamp = chan->timestamp;
 
     if(!relocate) {
         if(!(renamed = RenameChannel(chan, argv[2]))) {
@@ -2998,13 +3042,13 @@ static CMD_FUNC(cmd_rename)
          * suspended -- i.e. when no bot followed. */
         chanserv_relocate_bots(newchan);
 
-        /* X3-side tombstone expiry.  The ircd dissolves its tombstone at
+        /* X3-side tombstone tracking.  The ircd dissolves its tombstone at
          * grace expiry with local-only PARTs (sendcmdto_channel_butserv_*),
-         * so NONE of them reach us: without this timer the husk would sit in
-         * X3's channel dict with a stale member list until every one of those
+         * so NONE of them reach us: without this the husk would sit in X3's
+         * channel dict with a stale member list until every one of those
          * users happened to quit, and a fresh channel created on the old name
          * after the grace period would collide with it. */
-        chanserv_relocate_tombstone(old_name, old_timestamp);
+        chanserv_relocate_tombstone(chan, newchan->name);
 
         /* The one line an operator reading logs after a relocation wants:
          * who moved, who did not, and whether the registration went with
@@ -3027,6 +3071,26 @@ static CMD_FUNC(cmd_rename)
             chanserv_rename_marker(renamed);
         chanserv_rename_announce(old_name, renamed ? renamed : newchan, origin);
     }
+    return 1;
+}
+
+/* DE <channel> <timestamp>: a server has destroyed a channel that stayed
+ * empty.  X3 drops an unregistered channel with its last member and keeps
+ * no state for an empty one, with one exception: the tombstone of a
+ * relocated channel, whose members the ircd parts at the end of the grace
+ * period without telling services.  A DESTRUCT for it is the ircd saying
+ * outright that the channel is gone (a server that still has members in
+ * the channel does not pass the DESTRUCT on), so whoever we still show
+ * there goes now instead of when our own timer fires.  Like the servers,
+ * ignore a DESTRUCT stamped newer than the channel we hold. */
+static CMD_FUNC(cmd_destruct)
+{
+    struct chanNode *chan;
+
+    if (argc < 3)
+        return 1;
+    if ((chan = GetChannel(argv[1])) && ((time_t)atoi(argv[2]) <= chan->timestamp))
+        chanserv_relocate_husk_dissolve(chan, "DESTRUCT received");
     return 1;
 }
 
@@ -3580,12 +3644,11 @@ init_parse(void)
     dict_insert(irc_func_dict, CMD_SASL, cmd_sasl);
     dict_insert(irc_func_dict, TOK_SASL, cmd_sasl);
 
-    /* In P10, DESTRUCT doesn't do anything except be broadcast to servers.
-     * Apparently to obliterate channels from any servers that think they
-     * exist?
+    /* DESTRUCT obliterates an empty channel from any server that still
+     * holds it; the one such channel X3 can hold is a relocation tombstone.
      */
-    dict_insert(irc_func_dict, CMD_DESTRUCT, cmd_dummy);
-    dict_insert(irc_func_dict, TOK_DESTRUCT, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_DESTRUCT, cmd_destruct);
+    dict_insert(irc_func_dict, TOK_DESTRUCT, cmd_destruct);
     /* Ignore invites */
     dict_insert(irc_func_dict, CMD_INVITE, cmd_dummy);
     dict_insert(irc_func_dict, TOK_INVITE, cmd_dummy);

@@ -2399,58 +2399,196 @@ chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, const 
                         old_name, new_chan->name, who);
 }
 
-/* A relocation tombstone we are waiting to reap out of X3's channel dict.
- * Keyed by NAME plus the creation timestamp captured at relocation time:
- * the pointer would dangle (the husk can be collected the moment its last
- * member leaves) and the name alone is not an identity -- a brand new
- * channel can be created on the old name once the ircd's grace period ends
- * and its redirect is gone.  Same re-authentication the ircd's own
- * relocate_tombstone_sweep() performs before it touches anything. */
+/* A relocation tombstone ("husk") X3 is tracking: the old node of a
+ * relocated channel, which the ircd keeps alive, redirecting, for its
+ * RELOCATE_GRACE and then dissolves with PARTs that reach its local clients
+ * only.  Nothing about that dissolve is sent to services, so X3 has to
+ * work out by itself when the members it still shows there are gone.
+ *
+ * The ircd treats a channel as its tombstone only while the channel still
+ * carries what relocate_execute() put on it (m_rename.c
+ * relocate_tombstone_channel()): the persist flag, and the redirect, still
+ * pointing at the new name.  When its grace timer fires and that is no
+ * longer so, it cancels the record and parts nobody; the members stay in
+ * what is by then an ordinary channel.  X3 has to make the same decision
+ * or it removes members who are really still there.
+ *
+ * What X3 can see of those marks: persist is 'z' (MODE_PERSIST).  The
+ * redirect is 'L', which X3's mode table knows only as the old Nefarious 1
+ * "hide modes" flag, MODE_HIDEMODE, with no parameter -- so X3 tracks
+ * whether the channel has +L but not where it points, and a redirect
+ * changed to another target looks unchanged from here.
+ *
+ * The record lives exactly as long as the node it points at (see
+ * chanserv_relocate_husk_gone() and chanserv_channel_rename()), so the
+ * pointer is the identity and no name or timestamp comparison is needed.
+ * The cost: once X3's node has emptied and been collected, a member who
+ * later joins the still-live tombstone on the network is not swept. */
 struct relocate_husk {
-    time_t timestamp;
-    char name[1];
+    struct chanNode *channel;
+    char new_name[CHANNELLEN+1];    /* empty when re-armed from a burst */
 };
+
+/* Keyed by the node's own name (an interior pointer; the record never
+ * outlives the node). */
+static dict_t relocate_husks;
+
+static void chanserv_relocate_husk_expire(void *data);
+
+static struct relocate_husk *
+relocate_husk_find(struct chanNode *channel)
+{
+    struct relocate_husk *husk;
+
+    if(!relocate_husks)
+        return NULL;
+    husk = dict_find(relocate_husks, channel->name, NULL);
+    return (husk && (husk->channel == channel)) ? husk : NULL;
+}
+
+/* Drop a record and its timer.  The members and the node are left alone. */
+static void
+relocate_husk_forget(struct relocate_husk *husk)
+{
+    timeq_del(0, chanserv_relocate_husk_expire, husk, TIMEQ_IGNORE_WHEN);
+    dict_remove(relocate_husks, husk->channel->name);   /* frees husk */
+}
+
+/* Why this channel is no longer the tombstone it was, or NULL if it still
+ * is one.  The ircd's test, on the state X3 has. */
+static const char *
+relocate_husk_broken(struct chanNode *channel)
+{
+    if(channel->channel_info)
+        return "the name was registered";
+    if(!(channel->modes & MODE_PERSIST))
+        return "+z was cleared";
+    if(!(channel->modes & MODE_HIDEMODE))
+        return "+L was cleared";
+    return NULL;
+}
+
+int
+chanserv_relocate_husk_live(struct chanNode *channel)
+{
+    return relocate_husk_find(channel) && !relocate_husk_broken(channel);
+}
+
+/* Remove everyone X3 still shows in a tombstone the ircd has dissolved.
+ * May free the node. */
+static void
+relocate_husk_sweep(struct relocate_husk *husk, const char *why)
+{
+    struct chanNode *chan = husk->channel;
+    char reason[MAXLEN];
+    unsigned int swept = 0;
+
+    if(husk->new_name[0])
+        snprintf(reason, sizeof(reason), "Channel relocated to %s.", husk->new_name);
+    else
+        safestrncpy(reason, "Channel relocated.", sizeof(reason));
+
+    /* Held across the walk so the last removal cannot free the node under
+     * it; the UnlockChannel() below is what collects it, by the ordinary
+     * empty-channel path.  The record goes first: nothing a part hook does
+     * may find this husk still tracked. */
+    LockChannel(chan);
+    relocate_husk_forget(husk);
+
+    while(chan->members.used)
+    {
+        struct userNode *user = chan->members.list[chan->members.used - 1]->user;
+
+        /* The ircd parted every remote member locally, on every server,
+         * and told nobody: for them this is X3 catching up, with nothing
+         * to send.  One of our own service bots is different -- the
+         * network learns where it is from X3 alone, so it leaves with a
+         * PART.  (The ircd's sweep took it out of the tombstone as well,
+         * without telling us; a PART for a channel the bot is no longer in
+         * there is ignored.) */
+        DelChannelUser(user, chan, IsLocal(user) ? reason : NULL, 0);
+        swept++;
+    }
+
+    /* relocate_tombstone_clear_marks(): the redirect always goes.  Persist
+     * goes too when the relocation was what set it, which X3 cannot tell;
+     * our copy keeps it, and only matters if something else still holds
+     * this node. */
+    chan->modes &= ~(chan_mode_t)MODE_HIDEMODE;
+
+    log_module(CS_LOG, LOG_INFO,
+               "Relocation husk %s swept (%s): %u member(s) removed.",
+               chan->name, why, swept);
+    UnlockChannel(chan);
+}
 
 static void
 chanserv_relocate_husk_expire(void *data)
 {
     struct relocate_husk *husk = data;
-    struct chanNode *chan = GetChannel(husk->name);
-    unsigned int n;
+    const char *broken = relocate_husk_broken(husk->channel);
 
-    if(chan && !chan->channel_info && chan->timestamp == husk->timestamp)
+    if(broken)
     {
-        /* Silent removal, no wire traffic, MCP_FROM_SERVER in spirit: the
-         * ircd already parted every one of these members locally on every
-         * server when its own grace timer fired, and told nobody -- this is
-         * X3 catching up with a decision that has already happened, not X3
-         * parting anyone.  Held across the walk so the last removal cannot
-         * free the node before we are done with it; the UnlockChannel() is
-         * then what collects it, through the ordinary empty-channel path. */
-        LockChannel(chan);
-        for(n = chan->members.used; n > 0; )
-            DelChannelUser(chan->members.list[--n]->user, chan, NULL, 0);
-        if(chan->members.used)
-            log_module(CS_LOG, LOG_WARNING,
-                       "Relocation husk %s still holds %u member(s) after its "
-                       "sweep; leaving the node in place.",
-                       husk->name, chan->members.used);
-        UnlockChannel(chan);
+        /* The ircd cancelled its own sweep for the same reason and left
+         * the members where they are; so do we. */
+        log_module(CS_LOG, LOG_INFO,
+                   "Relocation husk %s is no longer a tombstone (%s); "
+                   "sweep cancelled, %u member(s) left in place.",
+                   husk->channel->name, broken, husk->channel->members.used);
+        relocate_husk_forget(husk);
+        return;
     }
-    free(husk);
+    relocate_husk_sweep(husk, "grace period over");
+}
+
+int
+chanserv_relocate_husk_dissolve(struct chanNode *channel, const char *why)
+{
+    struct relocate_husk *husk = relocate_husk_find(channel);
+
+    if(!husk || relocate_husk_broken(channel))
+        return 0;
+    relocate_husk_sweep(husk, why);
+    return 1;
+}
+
+/* The node is being deleted (it emptied, or X3 is shutting down). */
+static void
+chanserv_relocate_husk_gone(struct chanNode *channel, UNUSED_ARG(void *extra))
+{
+    struct relocate_husk *husk = relocate_husk_find(channel);
+
+    if(husk)
+        relocate_husk_forget(husk);
 }
 
 void
-chanserv_relocate_tombstone(const char *old_name, time_t timestamp)
+chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name)
 {
     struct relocate_husk *husk;
 
+    if((husk = relocate_husk_find(channel)))
+    {
+        /* Already a tombstone, relocated again on a diverged link.  As the
+         * ircd's relocate_tombstone_add() does: one record, the original
+         * clock, the newest target. */
+        if(new_name)
+            safestrncpy(husk->new_name, new_name, sizeof(husk->new_name));
+        return;
+    }
+
+    husk = calloc(1, sizeof(*husk));
+    husk->channel = channel;
+    if(new_name)
+        safestrncpy(husk->new_name, new_name, sizeof(husk->new_name));
+    dict_insert(relocate_husks, channel->name, husk);
+
+    /* relocate_grace 0 arms no timer: X3 then never sweeps on a clock, and
+     * the record only serves the events that prove the tombstone gone (see
+     * chanserv_relocate_husk_dissolve() in chanserv.h). */
     if(!chanserv_conf.relocate_grace)
         return;
-
-    husk = malloc(sizeof(*husk) + strlen(old_name));
-    strcpy(husk->name, old_name);
-    husk->timestamp = timestamp;
 
     /* relocate_grace mirrors the ircd's FEAT_RELOCATE_GRACE (default 900);
      * the extra margin is deliberate slack in the safe direction.  Sweeping
@@ -2463,37 +2601,9 @@ chanserv_relocate_tombstone(const char *old_name, time_t timestamp)
               chanserv_relocate_husk_expire, husk);
 }
 
-/* Re-arm the husk sweep for a tombstone we are meeting for the first time --
- * which in practice means one that outlived an X3 restart, since the timer
- * armed by cmd_rename dies with the process and the ircd's own dissolve is
- * invisible to services (its grace-expiry PARTs are local-only on every
- * server, and nothing else is emitted).  Runs as a new-channel hook, so it
- * sees every channel learned from a BURST.
- *
- * There is no relocation flag on the wire to test, so this is a heuristic
- * over state X3 already tracks.  A channel that is
- *
- *   +z (persist)  AND  unregistered  AND  DNR'd with the rename reason
- *
- * is a relocation tombstone with very little room left for anything else: the
- * persist bit on a services network is set by ChanServ for its own registered
- * channels (off_channel) or by relocate_execute() on a tombstone, and the
- * first of those is registered by definition -- so persist WITHOUT a
- * registration already excludes the ordinary case.  The DNR with our own
- * rename reason is then the fingerprint proper: only chanserv_rename_dnr()
- * writes it, and only for a name a rename or relocation just vacated.
- *
- * The bounds, deliberately: a false positive costs a timer that silently
- * removes X3-side memberships from an unregistered channel roughly
- * relocate_grace after it is learned.  It emits nothing on the wire, so it
- * can only make X3's view catch up or briefly lag -- never the network's --
- * and the sweep re-authenticates the node by name AND creation timestamp
- * first, so it cannot follow a name onto a different channel.  Repeated
- * bursts of the same husk arm redundant timers; the identity re-check makes
- * the later ones no-ops.  A network that runs with rename_dnr_duration 0 (no
- * DNR) or relocate_grace 0 gets no re-arm at all, which is the same
- * pre-existing "husk lives until its last member quits" behaviour. */
-int
+/* Does this channel NAME carry a live do-not-register stamped with
+ * chanserv_rename_dnr()'s own reason? */
+static int
 chanserv_is_relocation_dnr(const char *chan_name)
 {
     struct do_not_register *dnr;
@@ -2503,19 +2613,57 @@ chanserv_is_relocation_dnr(const char *chan_name)
     return !strcmp(dnr->reason, RENAME_DNR_REASON);
 }
 
+/* Start tracking a tombstone we are meeting for the first time -- which in
+ * practice means one that outlived an X3 restart or a lost uplink, since
+ * the record made by cmd_rename dies with the process (or with the node,
+ * when every member X3 knew of went away with the link).  Runs as a
+ * new-channel hook, so it sees every channel learned from a BURST.
+ *
+ * There is no relocation flag on the wire to test, so this is a heuristic
+ * over state X3 already tracks.  A channel that is
+ *
+ *   +z (persist)  AND  +L (redirect)  AND  unregistered
+ *   AND  DNR'd with the rename reason
+ *
+ * is a relocation tombstone with very little room left for anything else.
+ * Persist and the redirect are what the ircd itself requires of a
+ * tombstone; a channel that arrives without either is not one any more,
+ * whatever it was.  The persist bit on a services network is otherwise set
+ * by ChanServ for its own registered channels (off_channel), and those are
+ * registered by definition.  The DNR with our own rename reason is then
+ * the fingerprint proper: only chanserv_rename_dnr() writes it, and only
+ * for a name a rename or relocation just vacated.
+ *
+ * What this does not recognise, because no DNR with that reason exists for
+ * the name: the tombstone of a channel that was not registered, one made
+ * with rename_dnr_duration 0, and one whose name another DNR already
+ * covered.  cmd_burst then strips the +z as stale, the ircd cancels its
+ * sweep because of that, and with no record here X3 does not sweep either:
+ * the members stay, in both views.
+ *
+ * A false positive costs X3's view of the members of an unregistered
+ * channel roughly relocate_grace after it is learned -- and only if the
+ * channel still has +z and +L then.  The clock starts again at the burst,
+ * so after a restart X3 sweeps late by up to the time the tombstone had
+ * already lived; a DESTRUCT, a re-creation of the name or a rename onto it
+ * ends that sooner (chanserv_relocate_husk_dissolve()). */
 static void
 chanserv_relocate_husk_check(struct chanNode *channel, UNUSED_ARG(void *extra))
 {
-    if(channel->channel_info || !(channel->modes & MODE_PERSIST))
+    if(channel->channel_info
+       || !(channel->modes & MODE_PERSIST)
+       || !(channel->modes & MODE_HIDEMODE))
+        return;
+    if(relocate_husk_find(channel))
         return;
     if(!chanserv_is_relocation_dnr(channel->name))
         return;
 
     log_module(CS_LOG, LOG_INFO,
                "Channel %s looks like a relocation tombstone (persist, "
-               "unregistered, rename DNR); re-arming its husk sweep.",
+               "redirect, unregistered, rename DNR); tracking it.",
                channel->name);
-    chanserv_relocate_tombstone(channel->name, channel->timestamp);
+    chanserv_relocate_tombstone(channel, NULL);
 }
 
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
@@ -8861,6 +9009,7 @@ static void
 chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
 {
     struct adduserPending *ap;
+    struct relocate_husk *husk;
     unsigned int ii;
     const char *key;
 
@@ -8871,6 +9020,20 @@ chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UN
     if((key = chanserv_config_channel(old_chan->name)))
         log_module(CS_LOG, LOG_WARNING, "Channel %s, named by the configuration key %s, was renamed to %s: services follow it until the next rehash or restart, which go back to %s.  Update %s.",
                    old_chan->name, key, new_chan->name, old_chan->name, key);
+
+    /* A tombstone that is itself renamed or relocated (the ircd refuses
+     * that where the command is issued, but applies one that reaches it
+     * from another server) stops being one the ircd can resolve: its
+     * record is by the old name.  Ours is by the old node, which a rename
+     * is about to free.  Nobody is swept; a relocation makes the caller
+     * track the node afresh. */
+    if((husk = relocate_husk_find(old_chan)))
+    {
+        log_module(CS_LOG, LOG_INFO,
+                   "Relocation husk %s is being renamed to %s; no longer tracked.",
+                   old_chan->name, new_chan->name);
+        relocate_husk_forget(husk);
+    }
 
     /* memcpy() moved channel_info onto new_chan, but the chanData's back
      * pointer still targets the old node. */
@@ -10802,6 +10965,8 @@ chanserv_db_cleanup(UNUSED_ARG(void *extra)) {
     for(ii = 0; ii < chanserv_conf.support_channels.used; ++ii)
         UnlockChannel(chanserv_conf.support_channels.list[ii]);
     free(chanserv_conf.support_channels.list);
+    dict_delete(relocate_husks);
+    relocate_husks = NULL;  /* channels are deleted after this; see relocate_husk_find() */
     dict_delete(handle_dnrs);
     dict_delete(plain_dnrs);
     dict_delete(mask_dnrs);
@@ -10861,6 +11026,9 @@ init_chanserv(const char *nick)
      * ChanServ bot nick exists -- the DNR table it is fingerprinted against
      * loads from the DB either way. */
     reg_new_channel_func(chanserv_relocate_husk_check, NULL);
+    reg_del_channel_func(chanserv_relocate_husk_gone, NULL);
+    relocate_husks = dict_new();
+    dict_set_free_data(relocate_husks, free);
     reg_handle_rename_func(handle_rename, NULL);
     reg_unreg_func(handle_unreg, NULL);
 
