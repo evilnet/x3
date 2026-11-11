@@ -340,6 +340,7 @@ struct server {
 #endif
     unsigned int hops, clients, max_clients;
     unsigned int burst : 1, self_burst : 1;
+    unsigned int service : 1; /* announced the services flag ('s') on its SERVER line */
     struct server *uplink;
 #ifdef WITH_PROTOCOL_P10
     struct userNode **users; /* flat indexed by numeric */
