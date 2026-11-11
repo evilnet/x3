@@ -2348,9 +2348,9 @@ chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan)
 }
 
 /* A channel that carries the registered marker has just been renamed: send
- * the marker again, for the new name.
+ * its markers again, for the new name.
  *
- * X3's own copy shows it set (RenameChannel() carries the modes over), and
+ * X3's own copy shows them set (RenameChannel() carries the modes over), and
  * that is exactly what cannot be trusted here.  A channel REGISTERed and
  * RENAMEd in the same instant from another server has our MODE for the old
  * name still in flight when the ircd executes the rename: a server the
@@ -2358,8 +2358,8 @@ chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan)
  * first gets a MODE for a name that no longer exists and drops it.  The
  * renamed channel is then marked on some servers only, and on the others
  * its chanops can rename it again without the ircd asking us.  Sent after
- * the RN was applied, the marker meets the channel under its new name on
- * every server; one that has it already ignores the change.
+ * the RN was applied, the markers meet the channel under its new name on
+ * every server; one that has them already ignores the change.
  *
  * Nothing is owed to the old name: the ircd renames the channel in place
  * (rename_channel() swaps the name on the one struct Channel), so there

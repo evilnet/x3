@@ -237,10 +237,10 @@ int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const 
 void chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan);
 
 /* Called by cmd_rename after it has applied an RN: sends the registered
- * marker for the channel's new name once more, whatever X3's copy of the
- * modes says. See the function for the race this repairs. Sends nothing
- * for a channel that is not registered here or whose copy did not carry
- * the marker before the rename. */
+ * channel's markers (+R, and +z with off_channel on) for its new name once
+ * more, whatever X3's copy of the modes says. See the function for the
+ * race this repairs. Sends nothing for a channel that is not registered
+ * here or whose copy did not carry +R before the rename. */
 void chanserv_rename_marker(struct chanNode *new_chan);
 
 /* Called by cmd_rename after an RN moved a registration: tells opers and
