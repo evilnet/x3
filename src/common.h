@@ -280,6 +280,38 @@ void
 irc_strtolower(char *str);
 
 int str_is_number(const char *str);
+
+/* evilnet/channel-relocate: the rules of a relocation that every server
+ * and X3 must compute alike.  Ported from the ircd's ircd/rename_proto.c
+ * (include/rename_proto.h has the full reasoning); keep them identical.
+ *
+ * The deadline of a relocation's tombstone travels in the RN,
+ *
+ *     <user> RN <old> <new> C <expires> :<reason>
+ *
+ * as network time in seconds: decimal digits, no sign, no leading zero. */
+
+/* Longest grace, and so the furthest a deadline may lie ahead: seven days.
+ * A constant of the protocol, so that everybody cuts an absurd deadline to
+ * the same length. */
+#define RELOCATE_GRACE_MAX 604800
+
+enum relocate_expiry_kind {
+    RELOCATE_EXPIRY_LIVE = 0,   /* ahead, within RELOCATE_GRACE_MAX: arm for it */
+    RELOCATE_EXPIRY_PAST,       /* now or earlier: dissolve at once */
+    RELOCATE_EXPIRY_CLAMPED     /* too far ahead: cut to when + RELOCATE_GRACE_MAX */
+};
+
+/* The deadline of a relocation executed at `when' with a grace of `grace'
+ * seconds; a grace above RELOCATE_GRACE_MAX counts as RELOCATE_GRACE_MAX. */
+time_t relocate_expiry_from_grace(time_t when, unsigned long grace);
+/* Read a deadline off the wire.  Strict: digits only, no leading zero,
+ * nothing that does not fit a time_t.  Returns 1 and sets *expires, or
+ * returns 0 and leaves it alone. */
+int relocate_expiry_parse(const char *text, time_t *expires);
+/* Judge a deadline against the clock; cuts *expires when the answer is
+ * RELOCATE_EXPIRY_CLAMPED and leaves it alone otherwise. */
+enum relocate_expiry_kind relocate_expiry_check(time_t *expires, time_t when);
 #define enabled_string(string)  (!irccasecmp((string), "on") || !strcmp((string), "1") || !irccasecmp((string), "enabled"))
 #define disabled_string(string) (!irccasecmp((string), "off") || !strcmp((string), "0") || !irccasecmp((string), "disabled"))
 #define true_string(string)     (!irccasecmp((string), "true") || !strcmp((string), "1") || !irccasecmp((string), "yes"))

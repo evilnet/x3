@@ -65,10 +65,12 @@
 #define KEY_RELOCATE_GRACE          "relocate_grace"
 #define KEY_VALID_CHANNEL_REGEX     "valid_channel_regex"
 
-/* Slack added to relocate_grace before X3 reaps a relocation husk, so a
- * config that is a little out of step with the ircd's FEAT_RELOCATE_GRACE
- * errs on the late side. See chanserv_relocate_tombstone(). */
-#define RELOCATE_SWEEP_MARGIN       60
+/* Seconds X3 waits past a relocation tombstone's deadline before it does
+ * the deadline's work on its own copy.  See relocate_husk_settle(). */
+#define RELOCATE_SWEEP_MARGIN       5
+/* "No deadline": what relocate_grace 0 makes of a relocation that came
+ * without one.  Not a value the wire can carry. */
+#define RELOCATE_NO_DEADLINE        ((time_t)-1)
 
 /* ChanServ database */
 #define KEY_VERSION_CONTROL         "version_control"
@@ -2441,15 +2443,17 @@ chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan)
 }
 
 /* A relocation tombstone ("husk") X3 is tracking: the old node of a
- * relocated channel, which the ircd keeps alive, redirecting, for its
- * RELOCATE_GRACE and then dissolves with PARTs that reach its local clients
- * only.  Nothing about that dissolve is sent to services, so X3 has to
- * work out by itself when the members it still shows there are gone.
+ * relocated channel, which the ircd keeps alive, redirecting, until the
+ * relocation's deadline and then dissolves with PARTs that reach its local
+ * clients only.  Nothing about that dissolve is sent to services.  What X3
+ * is sent is the deadline itself, in the RN: every server arms for that one
+ * instant, and X3 removes the members it still shows there when it has
+ * passed.
  *
  * The ircd treats a channel as its tombstone only while the channel still
  * carries what relocate_execute() put on it (m_rename.c
  * relocate_tombstone_channel()): the persist flag, and the redirect, still
- * pointing at the new name.  When its grace timer fires and that is no
+ * pointing at the new name.  When the deadline comes and that is no
  * longer so, it cancels the record and parts nobody; the members stay in
  * what is by then an ordinary channel.  X3 has to make the same decision
  * or it removes members who are really still there.
@@ -2468,6 +2472,9 @@ chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan)
 struct relocate_husk {
     struct chanNode *channel;
     char new_name[CHANNELLEN+1];    /* empty when re-armed from a burst */
+    time_t expires;                 /* the deadline, network time, as the
+                                     * RN carried it; RELOCATE_NO_DEADLINE:
+                                     * never swept on a clock */
 };
 
 /* Keyed by the node's own name (an interior pointer; the record never
@@ -2563,10 +2570,12 @@ relocate_husk_sweep(struct relocate_husk *husk, const char *why)
     UnlockChannel(chan);
 }
 
+/* The deadline's work: what the ircd does to its tombstone at that moment
+ * (m_rename.c relocate_tombstone_sweep()), on X3's copy.  Ends the record;
+ * may free the node. */
 static void
-chanserv_relocate_husk_expire(void *data)
+relocate_husk_deadline(struct relocate_husk *husk, const char *why)
 {
-    struct relocate_husk *husk = data;
     const char *broken = relocate_husk_broken(husk->channel);
 
     if(broken)
@@ -2580,7 +2589,58 @@ chanserv_relocate_husk_expire(void *data)
         relocate_husk_forget(husk);
         return;
     }
-    relocate_husk_sweep(husk, "grace period over");
+    relocate_husk_sweep(husk, why);
+}
+
+static void
+chanserv_relocate_husk_expire(void *data)
+{
+    relocate_husk_deadline(data, "deadline reached");
+}
+
+/* Arm a record for its deadline -- or, when the deadline is already here,
+ * do its work on the spot (the ircd's relocate_tombstone_settle()).
+ *
+ * Past or now: the ircd dissolved its tombstone before it passed the RN on
+ * to us, so there is nothing to wait for.
+ *
+ * Ahead: the ircd sweeps its members at the deadline and sends nothing, and
+ * X3 must not be the one that acts first.  If it were, somebody entering
+ * the still-live tombstone in between would be added to a node X3 has just
+ * emptied, and then be swept by the ircd without X3 ever hearing of it.
+ * Being late has no such cost: every way the old name can come back to
+ * life after the ircd's sweep (a CREATE, a JOIN with a newer timestamp, a
+ * rename onto it, a DESTRUCT) dissolves the record first, see
+ * chanserv_relocate_husk_dissolve().  The deadline is the same number
+ * everywhere, so what is left to allow for is not a difference of settings
+ * any more -- that was what the old 60 seconds were for -- but X3's clock
+ * against the network's (X3 takes `now' for network time) and the second
+ * the ircd's own timer may run late.  RELOCATE_SWEEP_MARGIN covers that.
+ *
+ * Returns 1 when the record lives on, 0 when it was ended: the record is
+ * then gone, and so is the node unless something else holds it. */
+static int
+relocate_husk_settle(struct relocate_husk *husk)
+{
+    timeq_del(0, chanserv_relocate_husk_expire, husk, TIMEQ_IGNORE_WHEN);
+    if(husk->expires == RELOCATE_NO_DEADLINE)
+        return 1;
+    if(husk->expires <= now)
+    {
+        relocate_husk_deadline(husk, "its deadline had already passed");
+        return 0;
+    }
+    timeq_add(husk->expires + RELOCATE_SWEEP_MARGIN, chanserv_relocate_husk_expire, husk);
+    return 1;
+}
+
+time_t
+chanserv_relocate_own_deadline(void)
+{
+    /* relocate_grace 0: no deadline, and no sweep on a clock. */
+    if(!chanserv_conf.relocate_grace)
+        return RELOCATE_NO_DEADLINE;
+    return relocate_expiry_from_grace(now, chanserv_conf.relocate_grace);
 }
 
 int
@@ -2604,42 +2664,28 @@ chanserv_relocate_husk_gone(struct chanNode *channel, UNUSED_ARG(void *extra))
         relocate_husk_forget(husk);
 }
 
-void
-chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name)
+int
+chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t expires)
 {
     struct relocate_husk *husk;
 
     if((husk = relocate_husk_find(channel)))
     {
-        /* Already a tombstone, relocated again on a diverged link.  As the
-         * ircd's relocate_tombstone_add() does: one record, the original
-         * clock, the newest target. */
+        /* Already a tombstone, relocated again on a diverged link: one
+         * record, the original deadline, the newest target. */
         if(new_name)
             safestrncpy(husk->new_name, new_name, sizeof(husk->new_name));
-        return;
+        return 1;
     }
 
     husk = calloc(1, sizeof(*husk));
     husk->channel = channel;
     if(new_name)
         safestrncpy(husk->new_name, new_name, sizeof(husk->new_name));
+    husk->expires = expires;
     dict_insert(relocate_husks, channel->name, husk);
 
-    /* relocate_grace 0 arms no timer: X3 then never sweeps on a clock, and
-     * the record only serves the events that prove the tombstone gone (see
-     * chanserv_relocate_husk_dissolve() in chanserv.h). */
-    if(!chanserv_conf.relocate_grace)
-        return;
-
-    /* relocate_grace mirrors the ircd's FEAT_RELOCATE_GRACE (default 900);
-     * the extra margin is deliberate slack in the safe direction.  Sweeping
-     * LATE only means X3 carries a stale husk a little longer -- it is
-     * unregistered, has no bots in it and nothing consults it.  Sweeping
-     * EARLY would blank X3's view of members who are still legitimately
-     * sitting in the ircd's live tombstone, talking, for the remainder of
-     * the grace period. */
-    timeq_add(now + chanserv_conf.relocate_grace + RELOCATE_SWEEP_MARGIN,
-              chanserv_relocate_husk_expire, husk);
+    return relocate_husk_settle(husk);
 }
 
 /* Does this channel NAME carry a live do-not-register stamped with
@@ -2684,10 +2730,11 @@ chanserv_is_relocation_dnr(const char *chan_name)
  *
  * A false positive costs X3's view of the members of an unregistered
  * channel roughly relocate_grace after it is learned -- and only if the
- * channel still has +z and +L then.  The clock starts again at the burst,
- * so after a restart X3 sweeps late by up to the time the tombstone had
- * already lived; a DESTRUCT, a re-creation of the name or a rename onto it
- * ends that sooner (chanserv_relocate_husk_dissolve()). */
+ * channel still has +z and +L then.  A burst does not say when the
+ * tombstone's deadline is, so X3 counts its own relocate_grace from the
+ * burst and after a restart sweeps late by up to the time the tombstone
+ * had already lived; a DESTRUCT, a re-creation of the name or a rename onto
+ * it ends that sooner (chanserv_relocate_husk_dissolve()). */
 static void
 chanserv_relocate_husk_check(struct chanNode *channel, UNUSED_ARG(void *extra))
 {
@@ -2704,7 +2751,7 @@ chanserv_relocate_husk_check(struct chanNode *channel, UNUSED_ARG(void *extra))
                "Channel %s looks like a relocation tombstone (persist, "
                "redirect, unregistered, rename DNR); tracking it.",
                channel->name);
-    chanserv_relocate_tombstone(channel, NULL);
+    chanserv_relocate_tombstone(channel, NULL, chanserv_relocate_own_deadline());
 }
 
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
@@ -10100,10 +10147,12 @@ chanserv_conf_read(void)
     chanserv_conf.giveownership_period = str ? ParseInterval(str) : 0;
     str = database_get_data(conf_node, KEY_RENAME_DNR_DURATION, RECDB_QSTRING);
     chanserv_conf.rename_dnr_duration = str ? ParseInterval(str) : 86400;
-    /* Must track the ircd's FEAT_RELOCATE_GRACE (same 900s default): it is
-     * how long the ircd keeps a relocation tombstone alive, and therefore
-     * how long X3's matching husk is still a truthful view of who is in it.
-     * Set to 0 to disable the husk sweep entirely (the node then survives
+    /* Only a fallback now: a relocation's deadline travels in the RN and
+     * X3 times its husk by that.  This is the grace X3 counts by itself
+     * when it is given no deadline -- the five-parameter RN of an ircd from
+     * before the deadline travelled, a tombstone met in a burst -- and for
+     * those it should match that ircd's RELOCATE_GRACE (same 900s default).
+     * 0 disables the husk sweep for those cases (the node then survives
      * until its last member quits). */
     str = database_get_data(conf_node, KEY_RELOCATE_GRACE, RECDB_QSTRING);
     chanserv_conf.relocate_grace = str ? ParseInterval(str) : 900;

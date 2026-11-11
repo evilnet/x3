@@ -264,12 +264,21 @@ void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, c
  * off-channel or suspended registration.
  *
  * chanserv_relocate_tombstone() starts tracking the old node as a tombstone
- * and arms the X3-side reap of it.  The ircd dissolves its tombstone with
- * local-only PARTs that never reach us, so this is the only thing that
- * stops the husk's member list going stale forever.  new_name is the
- * redirect target, or NULL when it is not known. */
+ * and arms the X3-side reap of it for `expires', the relocation's deadline
+ * in network time.  The ircd dissolves its tombstone with local-only PARTs
+ * that never reach us, so this is the only thing that stops the husk's
+ * member list going stale forever.  new_name is the redirect target, or
+ * NULL when it is not known.  A deadline that is now or past is acted on
+ * before this returns: 0 then, and the members X3 showed in the node are
+ * gone (the caller must hold the node if it still needs it); 1 when the
+ * tombstone lives on.
+ *
+ * chanserv_relocate_own_deadline() is the deadline X3 makes up when it is
+ * given none: its own relocate_grace from now (with relocate_grace 0, a
+ * value that tells chanserv_relocate_tombstone() there is none). */
 void chanserv_relocate_bots(struct chanNode *new_chan);
-void chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name);
+int chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t expires);
+time_t chanserv_relocate_own_deadline(void);
 
 /* Is this channel a tombstone X3 is tracking that still looks like one --
  * unregistered, +z, +L?  That is the test the ircd applies before it
@@ -283,7 +292,7 @@ int chanserv_relocate_husk_live(struct chanNode *channel);
  * timestamp, or another channel renamed onto the name.  If the channel is
  * a tracked tombstone that still looks like one, removes every member X3
  * shows in it -- a local service bot with a PART, the rest silently, as
- * the grace-expiry sweep does -- stops tracking it and returns 1; the node
+ * the sweep at the deadline does -- stops tracking it and returns 1; the node
  * is freed unless something else holds it, so the caller must look the
  * name up again.  Otherwise does nothing and returns 0: a channel that
  * lost +z or +L is an ordinary channel again and its members are real. */

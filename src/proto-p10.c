@@ -2775,13 +2775,14 @@ static CMD_FUNC(cmd_topic)
     return 1;
 }
 
-/** Relocation marker, as the parameter immediately before the trailing
- * reason (evilnet/channel-relocate):
+/** Relocation marker (evilnet/channel-relocate):
  *
  *     classic:     RN <old> <new> :<reason>
- *     relocation:  RN <old> <new> C :<reason>
+ *     relocation:  RN <old> <new> C <expires> :<reason>
+ *     from an ircd from before the deadline travelled:
+ *                  RN <old> <new> C :<reason>
  *
- * Honoured ONLY in the five-parameter shape (argv[0] is the command token,
+ * Honoured ONLY when a parameter follows it (argv[0] is the command token,
  * so that is argc > 4), exactly as the ircd's ms_rename() honours it only
  * for parc > 4.  A four-parameter "RN #a #b :C" is a CLASSIC rename whose
  * reason happens to be the letter C: reading a marker there would make X3
@@ -2790,7 +2791,13 @@ static CMD_FUNC(cmd_topic)
  * emitted (possibly empty; split_line() keeps an empty trailing parameter),
  * so the shorter shape never carries a marker.  Same letter as the ircd's
  * RELOCATE_MARKER (ircd/m_rename.c), sent when its RENAME_CONSENT feature
- * is on. */
+ * is on.
+ *
+ * <expires> is the moment every server dissolves the tombstone, in network
+ * time; relocate_expiry_parse() and relocate_expiry_check() (tools.c) are
+ * the ircd's own rules for the field.  With five parameters there is no
+ * deadline and X3 counts its own relocate_grace, as it did for every
+ * relocation before. */
 #define RENAME_RELOCATE_MARKER  "C"
 
 /* Move the issuer's record from the old node to the new one.  No wire
@@ -2878,17 +2885,37 @@ static CMD_FUNC(cmd_rename)
     char old_name[CHANNELLEN+1];
     int was_registered;
     int relocate;
+    time_t expires = 0;
 
     if(argc < 3) return 0;
     /* The marker test is the ircd receiver's own (ms_rename); see
-     * RENAME_RELOCATE_MARKER for why only the five-parameter shape counts. */
+     * RENAME_RELOCATE_MARKER for why a parameter has to follow it. */
     relocate = (argc > 4) && !strcmp(argv[3], RENAME_RELOCATE_MARKER);
+    if(relocate) {
+        /* The deadline, as ms_rename() reads it.  Six parameters: the
+         * fifth is the deadline.  Five: none was sent.  A fifth of six
+         * that is not a deadline gets the same fallback, because the
+         * relocation itself has to be applied either way or our
+         * membership differs from the network's. */
+        if(argc == 5) {
+            expires = chanserv_relocate_own_deadline();
+        } else if(!relocate_expiry_parse(argv[4], &expires)) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: \"%s\" is not a relocation deadline; using relocate_grace",
+                       argv[1], argv[2], argv[4]);
+            expires = chanserv_relocate_own_deadline();
+        } else if(relocate_expiry_check(&expires, now) == RELOCATE_EXPIRY_CLAMPED) {
+            log_module(MAIN_LOG, LOG_WARNING,
+                       "RENAME %s -> %s: carries a deadline (%s) more than %d seconds ahead; cut to "FMT_TIME_T,
+                       argv[1], argv[2], argv[4], RELOCATE_GRACE_MAX, expires);
+        }
+    }
     if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
     /* A relocation tombstone we still hold under the new name.  The ircd
      * executes a rename only onto a name that does not exist on the
      * network, so its tombstone there is gone -- dissolved at the end of
      * its grace period by PARTs that are never sent to us, with our own
-     * sweep still to come (or never to come, with relocate_grace 0).  The
+     * sweep still to come (or never to come, without a deadline).  The
      * members we show in it are the ones that sweep would remove; remove
      * them now and let the rename through, instead of refusing it below
      * for a destination "with members".  Only a husk that still looks like
@@ -2964,6 +2991,7 @@ static CMD_FUNC(cmd_rename)
         struct userNode *issuer = origin ? GetUserH(origin) : NULL;
         struct userNode **movers;
         unsigned int nmovers = 0, nmoved = 0, nstayers, n;
+        int tombstone;
         char reason[MAXLEN];
 
         if(!(newchan = RelocateChannel(chan, argv[2]))) {
@@ -3091,27 +3119,32 @@ static CMD_FUNC(cmd_rename)
         chanserv_relocate_bots(newchan);
 
         /* X3-side tombstone tracking.  The ircd dissolves its tombstone at
-         * grace expiry with local-only PARTs (sendcmdto_channel_butserv_*),
+         * the deadline with local-only PARTs (sendcmdto_channel_butserv_*),
          * so NONE of them reach us: without this the husk would sit in X3's
          * channel dict with a stale member list until every one of those
          * users happened to quit, and a fresh channel created on the old name
-         * after the grace period would collide with it. */
-        chanserv_relocate_tombstone(chan, newchan->name);
+         * after the deadline would collide with it.  A deadline that is
+         * already here is acted on at once -- the ircd dissolved its
+         * tombstone as it executed this RN -- and the stayers are gone from
+         * the node when this returns. */
+        tombstone = chanserv_relocate_tombstone(chan, newchan->name, expires);
 
         /* The one line an operator reading logs after a relocation wants:
          * who moved, who did not, and whether the registration went with
          * them.  A partition is not an error, so it is not logged as one. */
         log_module(MAIN_LOG, LOG_INFO,
-                   "RELOCATE %s -> %s: %u moved, %u left in the tombstone%s",
+                   "RELOCATE %s -> %s: %u moved, %u left in the tombstone%s%s",
                    old_name, newchan->name, nmoved, nstayers,
+                   tombstone ? "" : ", which has been dissolved",
                    was_registered ? " (registration followed)" : "");
 
         /* Our MODE that marked the channel may have crossed this RN: the
-         * markers again for the new channel, and -R for the tombstone.
-         * Before the unlock, which may be the end of our node for the old
-         * name while the network still has the (empty) tombstone. */
+         * markers again for the new channel, and -R for the tombstone --
+         * if the network still has one.  Before the unlock, which may be
+         * the end of our node for the old name while the network still
+         * has the (empty) tombstone. */
         if(was_registered)
-            chanserv_relocate_markers(chan, newchan);
+            chanserv_relocate_markers(tombstone ? chan : NULL, newchan);
 
         UnlockChannel(chan);    /* may collect an already-empty husk; chan is dead after this */
     }
@@ -3132,8 +3165,8 @@ static CMD_FUNC(cmd_rename)
 /* DE <channel> <timestamp>: a server has destroyed a channel that stayed
  * empty.  X3 drops an unregistered channel with its last member and keeps
  * no state for an empty one, with one exception: the tombstone of a
- * relocated channel, whose members the ircd parts at the end of the grace
- * period without telling services.  A DESTRUCT for it is the ircd saying
+ * relocated channel, whose members the ircd parts at the deadline
+ * without telling services.  A DESTRUCT for it is the ircd saying
  * outright that the channel is gone (a server that still has members in
  * the channel does not pass the DESTRUCT on), so whoever we still show
  * there goes now instead of when our own timer fires.  Like the servers,
