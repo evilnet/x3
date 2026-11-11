@@ -268,7 +268,8 @@ void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, c
  * in network time.  The ircd dissolves its tombstone with local-only PARTs
  * that never reach us, so this is the only thing that stops the husk's
  * member list going stale forever.  new_name is the redirect target, or
- * NULL when it is not known.  A deadline that is now or past is acted on
+ * NULL when it is not known, and target_ts the creation timestamp of the
+ * channel under that name.  A deadline that is now or past is acted on
  * before this returns: 0 then, and the members X3 showed in the node are
  * gone (the caller must hold the node if it still needs it); 1 when the
  * tombstone lives on.
@@ -277,8 +278,42 @@ void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, c
  * given none: its own relocate_grace from now (with relocate_grace 0, now:
  * dissolved at once). */
 void chanserv_relocate_bots(struct chanNode *new_chan);
-int chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t expires);
+int chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t target_ts, time_t expires);
 time_t chanserv_relocate_own_deadline(void);
+
+/* The record keeping behind a channel that is relocated twice; proto-p10.c
+ * relocate_again() has the rule and moves the members, these keep the
+ * records the way the ircd's functions of (nearly) the same names do.
+ *
+ * chanserv_relocate_husk_get(): is this channel a tombstone X3 tracks that
+ * still carries a tombstone's marks (+z, +L)?  Registration is not asked
+ * about, as the ircd does not ask.  Returns 1 and the record's target, the
+ * target's creation timestamp and the deadline (each pointer may be NULL);
+ * the target string is the record's own and changes with it.
+ *
+ * chanserv_relocate_husk_leftover(): the channel is about to be relocated
+ * as an ordinary channel.  A record still kept for it is a tombstone that
+ * lost its marks and was waiting out its deadline; it is dropped, and the
+ * +z it would have handed back at the deadline is handed back now.
+ *
+ * chanserv_relocate_retarget(): every tombstone that redirects to
+ * old_target redirects to new_target from now on (chain flattening; also
+ * how the tombstones that pointed at the loser of a crossing come to
+ * point at the winner).
+ *
+ * chanserv_relocate_loser(): the channel becomes the tombstone of a
+ * relocation that lost a crossing -- marked on our copy, with a record
+ * redirecting to `winner' -- and belongs to the family of `family', the
+ * old channel both relocations were of.  Not settled yet.
+ *
+ * chanserv_relocate_family_settle(): the old channel's record and every
+ * loser's take one deadline and are armed for it; when it is already here
+ * they are all dissolved now, and their nodes may be gone on return. */
+int chanserv_relocate_husk_get(struct chanNode *channel, const char **target, time_t *target_ts, time_t *expires);
+void chanserv_relocate_husk_leftover(struct chanNode *channel);
+void chanserv_relocate_retarget(const char *old_target, const char *new_target, time_t target_ts);
+void chanserv_relocate_loser(struct chanNode *channel, const char *winner, time_t target_ts, const char *family, time_t expires, int registration_moved);
+void chanserv_relocate_family_settle(const char *old_name, time_t deadline);
 
 /* RT: a server announced a tombstone after the channel's BURST.  Builds the
  * record, merges its deadline into one X3 already has, or does nothing

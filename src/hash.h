@@ -474,6 +474,30 @@ int DelUnusedChannel(struct chanNode *channel);
  * (bad name / target exists); on NULL the old node is untouched. The caller
  * owns the membership partition afterwards (see cmd_rename in proto-p10.c). */
 struct chanNode *RelocateChannel(struct chanNode *channel, const char *new_name);
+/* The pieces of the ircd's relocation engine that a channel relocated
+ * TWICE needs one at a time (m_rename.c relocate_again()); nothing here
+ * goes on the wire.
+ *
+ * RelocateTombstoneMarks(): give our copy of a channel the marks of a
+ * tombstone -- +z and the redirect -- and take off the limit and the
+ * channel passwords; with registration_moved, the registered marker too
+ * (relocate_mark_tombstone()).
+ *
+ * RelocateChannelFromTombstone(): make the channel `new_name' with the
+ * state the tombstone has as an ordinary channel -- modes, key, timestamp,
+ * topic -- and nothing of +z or the redirect
+ * (relocate_channel_from_tombstone()).  NULL when the name is taken or is
+ * no channel name.
+ *
+ * RelocateHandover(): what a relocation moved from the old channel to
+ * `from' belongs to the community, and the community's channel is now
+ * `to': the registered marker, the limit, the channel passwords, a +z the
+ * old channel had -- and, X3's own, the registration, the locks and the
+ * ban lists.  Runs the rename hooks, so every module holder follows; the
+ * caller must hold no lock of its own on `from'. */
+void RelocateTombstoneMarks(struct chanNode *channel, int registration_moved);
+struct chanNode *RelocateChannelFromTombstone(struct chanNode *tombstone, const char *new_name);
+void RelocateHandover(struct chanNode *from, struct chanNode *to);
 
 struct chanNode* AddChannel(const char *name, time_t time_, const char *modes, char *banlist, char *exemptlist);
 void LockChannel(struct chanNode *channel);

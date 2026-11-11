@@ -2913,6 +2913,311 @@ relocate_reassert_modes(struct userNode *user, struct chanNode *chan,
     mod_chanmode_free(change);
 }
 
+/* Our own service bots follow a registration (and every module holder
+ * the rename hooks re-pointed) from one node to another, on the wire.
+ * Returns how many moved. */
+static unsigned int
+relocate_follow_bots(struct chanNode *from, struct chanNode *to)
+{
+    struct userNode **movers;
+    unsigned int nmovers = 0, nmoved = 0, n;
+    char reason[MAXLEN];
+
+    snprintf(reason, sizeof(reason), "Channel relocated to %s.", to->name);
+
+    /* Classify first, move second -- the
+     * same two-pass split the ircd's relocate_execute() makes, for the
+     * same reason: pass two runs AddChannelUser()/DelChannelUser(),
+     * which fire join and part hooks into every service, and a hook is
+     * free to mutate the very member list a single fused walk would
+     * still be indexing.  Pass one only reads it, so it sees a stable
+     * list; pass two re-resolves each candidate through GetUserMode()
+     * and skips anyone a hook has since taken out.
+     *
+     * The bots are not a mover class at all but a separate wire-visible
+     * follow (see pass two).  Every other member stays in the tombstone
+     * and follows by their own JOIN (design "D"). */
+    movers = malloc(sizeof(*movers) * (from->members.used + 1));
+    for(n = 0; n < from->members.used; n++) {
+        struct userNode *user = from->members.list[n]->user;
+
+        if(IsLocal(user))
+            movers[nmovers++] = user;
+    }
+
+    for(n = 0; n < nmovers; n++) {
+        struct userNode *user = movers[n];
+        struct modeNode *mn = GetUserMode(from, user);
+        struct modeNode *botmn;
+        long botmodes;
+        short botoplevel;
+
+        if(!mn)
+            continue;   /* a hook fired by an earlier iteration removed them */
+
+        /* Our own service bots.  The rename hooks just re-pointed
+         * every module holder (chanserv's channel_info and support
+         * channels, opserv's alert/debug channels, helpserv's
+         * helpchan, spamserv's chanInfo) at the new node, so a bot
+         * left sitting in the husk would be a bot whose own service
+         * believes it is somewhere else.  They follow, and unlike the
+         * movers they do it ON THE WIRE: AddChannelUser()/
+         * DelChannelUser() emit a real JOIN and PART for a local
+         * user, which is what keeps the ircd's view (where nothing
+         * moved a service bot, because a bot is not the issuer) in
+         * agreement with ours.  The JOIN carries the new
+         * node's timestamp, which RelocateChannel() took from the old
+         * channel and therefore matches the creationtime the ircd
+         * gave the new channel.
+         *
+         * It has to be a JOIN and never a CREATE (see cmd_rename), also
+         * when there was no issuer to record first -- an RN whose
+         * source we do not know, or one that was not in the channel
+         * here -- and the bot is the first member X3 holds for the
+         * new channel: hence join_existing_channel.  To a JOIN with
+         * the channel's own timestamp the ircd adds the bot without
+         * ops (m_join.c ms_join) and changes nothing else -- as long
+         * as the channel has a member or is +z there.  A relocation
+         * with no issuer at all (a server-sourced RN; nothing sends
+         * one today) leaves the new channel empty on the network, and
+         * ms_join clears the modes of an empty channel that is not
+         * persistent when somebody joins it.
+         *
+         * Status modes do NOT ride along with a JOIN, so they are
+         * snapshotted here and re-asserted below -- for EVERY bot,
+         * not just ChanServ and SpamServ: HelpServ, OpServ and module
+         * bots hold ops in their own channels too and would otherwise
+         * arrive powerless.  The overwrite is separately load-bearing
+         * when the bot is the first member we hold: AddChannelUser()
+         * hands MODE_CHANOP to the first member of a channel that is
+         * neither +R nor +A, which the ircd did not do -- writing the
+         * snapshot back (rather than OR-ing) is what keeps that
+         * phantom op out of X3's view.  Same discipline as
+         * relocate_move_member(). */
+        botmodes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
+        botoplevel = mn->oplevel;
+
+        join_existing_channel = 1;
+        AddChannelUser(user, to);
+        join_existing_channel = 0;
+        if((botmn = GetUserMode(to, user))) {
+            botmn->modes = botmodes;
+            botmn->oplevel = botoplevel;
+            if(botmodes)
+                relocate_reassert_modes(user, to, botmn, botmodes);
+        }
+        DelChannelUser(user, from, reason, 0);
+        nmoved++;
+    }
+    free(movers);
+    return nmoved;
+}
+
+/* An RN ... C whose OLD name is a tombstone X3 already tracks: the same
+ * channel was relocated twice, by two servers that had not heard of each
+ * other's relocation (within the delay of a link, or on the two sides of
+ * a netsplit).  Each executed its own; the ircd brings the two together
+ * in relocate_again() (m_rename.c), deciding everything from the two
+ * messages alone so that every server ends in the same state whichever
+ * of the two it heard first.  X3 has to end there too, so this is that
+ * function, on X3's view:
+ *
+ * - Same new name twice: one relocation with two issuers.  The second is
+ *   moved into the new channel beside the first.
+ * - Two new names: the one that sorts FIRST wins (relocate_name_cmp(),
+ *   the ircd's comparison).  The old channel redirects to the winner, and
+ *   so does every earlier tombstone that pointed at the loser.  The losing
+ *   new channel becomes a tombstone redirecting to the winner as well,
+ *   with its issuer in it.
+ *
+ *   Heard the WINNER first: the loser's channel is made from the tombstone,
+ *   the loser's issuer moved into it, and it is marked.  Heard the LOSER
+ *   first: the winner's channel is made from the tombstone and handed
+ *   what the first relocation had moved to the loser's channel, the
+ *   winner's issuer is moved into it, and the loser's channel is marked.
+ *   Both orders end with the same three channels and the same members.
+ * - One deadline for all of it, the later (relocate_deadline_merge()),
+ *   shared by the old channel's record and every loser's.
+ *
+ * A registration ends on the winner, as the ircd's +R does.  When X3
+ * heard the loser first the registration is in the loser's channel by
+ * now; it is handed on with the rest (RelocateHandover()), the bots
+ * follow it with JOIN and PART as after a first relocation, the markers
+ * are sent again (+R for the winner, -R for the loser) and the loser's
+ * name gets the rename do-not-register.  X3 arbitrates every rename of a
+ * registered channel, but it answers each query on its own and keeps no
+ * record of an approval, so two it approved back to back can still cross;
+ * that is logged as a warning.
+ *
+ * When the name a new channel would get is taken here by an unrelated
+ * channel, that step is not applied and the log says so, as for a first
+ * relocation.
+ *
+ * Nothing is sent for the members: every server moved them off the RN.
+ * `oldchan' and the losing channel may be gone on return (a deadline that
+ * is already here). */
+static void
+relocate_again(struct userNode *issuer, struct chanNode *oldchan, const char *incoming, time_t expires)
+{
+    struct chanNode *wchan = NULL, *lchan = NULL;
+    struct modeNode *mn;
+    char old_name[CHANNELLEN+1], current[CHANNELLEN+1];
+    const char *target;
+    time_t target_ts, held, deadline;
+    int made_winner = 0, made_loser = 0;
+
+    if(!chanserv_relocate_husk_get(oldchan, &target, &target_ts, &held))
+        return;
+    safestrncpy(old_name, oldchan->name, sizeof(old_name));
+    safestrncpy(current, target, sizeof(current));     /* the record's own copy changes */
+
+    /* The crossing's one deadline: the later of the incoming one and the
+     * old channel's, which is already the latest of every relocation of
+     * this channel heard so far. */
+    deadline = relocate_deadline_merge(held, expires);
+
+    /* Held while the issuer is moved out of it: that may empty the node. */
+    LockChannel(oldchan);
+    mn = (issuer && !IsLocal(issuer)) ? GetUserMode(oldchan, issuer) : NULL;
+
+    if(!irccasecmp(current, incoming)) {
+        /* ---- The same relocation, twice ---- */
+        if(!(wchan = GetChannel(current))) {
+            /* Emptied and collected here since; the second issuer is in
+             * it everywhere else. */
+            wchan = RelocateChannelFromTombstone(oldchan, current);
+            made_winner = 1;
+        } else if(wchan->timestamp != target_ts) {
+            /* A stranger's channel under the name: not the one to put the
+             * issuer in. */
+            wchan = NULL;
+        }
+        if(wchan && mn && !GetUserMode(wchan, issuer))
+            relocate_move_member(mn, wchan);
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RELOCATE %s -> %s: relocated there already; a second issuer",
+                   old_name, incoming);
+
+    } else if(relocate_name_cmp(incoming, current) < 0) {
+        /* ---- The incoming relocation wins ---- */
+        if(GetChannel(incoming)) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: not applied, %s exists here; %s was relocated to %s here and the network takes %s; state diverged",
+                       old_name, incoming, incoming, old_name, current, incoming);
+        } else if(!(wchan = RelocateChannelFromTombstone(oldchan, incoming))) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: rejected by RelocateChannelFromTombstone",
+                       old_name, incoming);
+        } else {
+            int transfer = 0, registered = 0;
+
+            made_winner = 1;
+            /* The channel our own (losing) relocation made -- by name and
+             * creation timestamp, not one a stranger has made under the
+             * name since.  When it has emptied and been collected here it
+             * is made again, empty: every server that heard the winner
+             * first makes the loser's channel in any case. */
+            if((lchan = GetChannel(current))) {
+                /* (Nor one that is a tombstone in its own right by now:
+                 * chain flattening keeps a tombstone from pointing at
+                 * another, so that is not a state the ircd reaches, and
+                 * whatever such a channel holds is not the community's.) */
+                if(lchan->timestamp != target_ts)
+                    lchan = NULL;
+                else if(!chanserv_relocate_husk_get(lchan, NULL, NULL, NULL))
+                    transfer = 1;
+            } else {
+                lchan = RelocateChannelFromTombstone(oldchan, current);
+                made_loser = 1;
+            }
+
+            if(transfer) {
+                /* What the first relocation moved from the old channel
+                 * belongs to the community, and the community's channel
+                 * is now the winner. */
+                registered = lchan->channel_info != NULL;
+                RelocateHandover(lchan, wchan);
+            }
+
+            /* The issuer before any bot, for the reason given in
+             * cmd_rename: a bot must not be the first member we hold. */
+            if(mn)
+                relocate_move_member(mn, wchan);
+            if(transfer) {
+                LockChannel(lchan);     /* the bots leaving may empty it */
+                relocate_follow_bots(lchan, wchan);
+                chanserv_relocate_bots(wchan);
+            }
+
+            /* The old channel, and every earlier tombstone that pointed
+             * at the loser, now point at the winner. */
+            chanserv_relocate_retarget(current, incoming, wchan->timestamp);
+
+            if(lchan && !chanserv_relocate_husk_get(lchan, NULL, NULL, NULL))
+                chanserv_relocate_loser(lchan, incoming, wchan->timestamp, old_name, deadline, 1);
+
+            if(registered) {
+                log_module(MAIN_LOG, LOG_WARNING,
+                           "RELOCATE %s -> %s: the registered channel had already been relocated to %s; %s wins the crossing and the registration follows it",
+                           old_name, incoming, current, incoming);
+                chanserv_relocate_markers(lchan, wchan);
+                chanserv_rename_dnr(current, wchan);
+            } else
+                log_module(MAIN_LOG, LOG_INFO,
+                           "RELOCATE %s -> %s: crossed the relocation to %s; %s wins, %s is a tombstone",
+                           old_name, incoming, current, incoming, current);
+            if(transfer) {
+                UnlockChannel(lchan);   /* collects it if the bots were all it had */
+                lchan = NULL;
+            }
+        }
+
+    } else {
+        /* ---- The incoming relocation loses ---- */
+        const char *ltarget;
+
+        wchan = GetChannel(current);
+        lchan = GetChannel(incoming);
+        if(lchan && chanserv_relocate_husk_get(lchan, &ltarget, NULL, NULL)
+           && !irccasecmp(ltarget, current)) {
+            /* Already the loser's tombstone (the losing relocation heard a
+             * second time): only its issuer may still have to go there. */
+            if(mn && !GetUserMode(lchan, issuer))
+                relocate_move_member(mn, lchan);
+        } else if(lchan) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: not applied, %s exists here; the network takes %s for %s and makes %s a tombstone; state diverged",
+                       old_name, incoming, incoming, current, old_name, incoming);
+        } else if(!(lchan = RelocateChannelFromTombstone(oldchan, incoming))) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: rejected by RelocateChannelFromTombstone",
+                       old_name, incoming);
+        } else {
+            made_loser = 1;
+            if(mn)
+                relocate_move_member(mn, lchan);
+            chanserv_relocate_loser(lchan, current, wchan ? wchan->timestamp : target_ts,
+                                    old_name, deadline, 1);
+            log_module(MAIN_LOG, (wchan && wchan->channel_info) ? LOG_WARNING : LOG_INFO,
+                       "RELOCATE %s -> %s: crossed the relocation to %s; %s wins, %s is a tombstone%s",
+                       old_name, incoming, current, current, incoming,
+                       (wchan && wchan->channel_info) ? " (the registration stays with the winner)" : "");
+        }
+    }
+
+    /* A channel made here that nobody was moved into and nothing holds
+     * would stay in our table for good: X3 drops a channel with its last
+     * member and has no other occasion to drop this one.  (For the loser
+     * that ends its record too, as for any tombstone nobody stayed in.) */
+    if(made_winner && wchan && !wchan->members.used)
+        DelUnusedChannel(wchan);
+    if(made_loser && lchan && !lchan->members.used)
+        DelUnusedChannel(lchan);
+
+    chanserv_relocate_family_settle(old_name, deadline);
+    UnlockChannel(oldchan);
+}
+
 /* RN <old> <new> [C] :<reason> -- the ircd broadcasts this after an approved
  * rename has already executed. Authorization happened at AC R query time
  * (chanserv_rename_allowed, see cmd_account); this handler only migrates
@@ -2967,6 +3272,14 @@ static CMD_FUNC(cmd_rename)
         }
     }
     if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
+    /* A relocation of a channel that is already a tombstone here is not
+     * executed on top of the first: two relocations of one channel have
+     * crossed.  Before anything is done about the destination, which in
+     * that case may rightly exist. */
+    if(relocate && chanserv_relocate_husk_get(chan, NULL, NULL, NULL)) {
+        relocate_again(origin ? GetUserH(origin) : NULL, chan, argv[2], expires);
+        return 1;
+    }
     /* A relocation tombstone we still hold under the new name.  The ircd
      * executes a rename only onto a name that does not exist on the
      * network, so its tombstone there is gone -- dissolved at the end of
@@ -3045,10 +3358,12 @@ static CMD_FUNC(cmd_rename)
         }
     } else {
         struct userNode *issuer = origin ? GetUserH(origin) : NULL;
-        struct userNode **movers;
-        unsigned int nmovers = 0, nmoved = 0, nstayers, n;
+        unsigned int nmoved = 0, nstayers;
         int tombstone;
-        char reason[MAXLEN];
+
+        /* A record still kept for this channel is a leftover: a tombstone
+         * that lost its marks (a live one went to relocate_again() above). */
+        chanserv_relocate_husk_leftover(chan);
 
         if(!(newchan = RelocateChannel(chan, argv[2]))) {
             log_module(MAIN_LOG, LOG_ERROR,
@@ -3063,8 +3378,6 @@ static CMD_FUNC(cmd_rename)
          * the loop.  The matching UnlockChannel() at the tail is what lets an
          * emptied husk be collected -- normally, and by the normal path. */
         LockChannel(chan);
-
-        snprintf(reason, sizeof(reason), "Channel relocated to %s.", newchan->name);
 
         /* The issuer first, and before any bot.  On the network the issuer
          * is already in the new channel: the ircd created it for them and
@@ -3081,91 +3394,8 @@ static CMD_FUNC(cmd_rename)
             nmoved++;
         }
 
-        /* Then our own service bots.  Classify first, move second -- the
-         * same two-pass split the ircd's relocate_execute() makes, for the
-         * same reason: pass two runs AddChannelUser()/DelChannelUser(),
-         * which fire join and part hooks into every service, and a hook is
-         * free to mutate the very member list a single fused walk would
-         * still be indexing.  Pass one only reads it, so it sees a stable
-         * list; pass two re-resolves each candidate through GetUserMode()
-         * and skips anyone a hook has since taken out.
-         *
-         * The bots are not a mover class at all but a separate wire-visible
-         * follow (see pass two).  Every other member stays in the tombstone
-         * and follows by their own JOIN (design "D"). */
-        movers = malloc(sizeof(*movers) * (chan->members.used + 1));
-        for(n = 0; n < chan->members.used; n++) {
-            struct userNode *user = chan->members.list[n]->user;
-
-            if(IsLocal(user))
-                movers[nmovers++] = user;
-        }
-
-        for(n = 0; n < nmovers; n++) {
-            struct userNode *user = movers[n];
-            struct modeNode *mn = GetUserMode(chan, user);
-            struct modeNode *botmn;
-            long botmodes;
-            short botoplevel;
-
-            if(!mn)
-                continue;   /* a hook fired by an earlier iteration removed them */
-
-            /* Our own service bots.  The rename hooks just re-pointed
-             * every module holder (chanserv's channel_info and support
-             * channels, opserv's alert/debug channels, helpserv's
-             * helpchan, spamserv's chanInfo) at the new node, so a bot
-             * left sitting in the husk would be a bot whose own service
-             * believes it is somewhere else.  They follow, and unlike the
-             * movers they do it ON THE WIRE: AddChannelUser()/
-             * DelChannelUser() emit a real JOIN and PART for a local
-             * user, which is what keeps the ircd's view (where nothing
-             * moved a service bot, because a bot is not the issuer) in
-             * agreement with ours.  The JOIN carries the new
-             * node's timestamp, which RelocateChannel() took from the old
-             * channel and therefore matches the creationtime the ircd
-             * gave the new channel.
-             *
-             * It has to be a JOIN and never a CREATE (see above), also
-             * when there was no issuer to record first -- an RN whose
-             * source we do not know, or one that was not in the channel
-             * here -- and the bot is the first member X3 holds for the
-             * new channel: hence join_existing_channel.  To a JOIN with
-             * the channel's own timestamp the ircd adds the bot without
-             * ops (m_join.c ms_join) and changes nothing else -- as long
-             * as the channel has a member or is +z there.  A relocation
-             * with no issuer at all (a server-sourced RN; nothing sends
-             * one today) leaves the new channel empty on the network, and
-             * ms_join clears the modes of an empty channel that is not
-             * persistent when somebody joins it.
-             *
-             * Status modes do NOT ride along with a JOIN, so they are
-             * snapshotted here and re-asserted below -- for EVERY bot,
-             * not just ChanServ and SpamServ: HelpServ, OpServ and module
-             * bots hold ops in their own channels too and would otherwise
-             * arrive powerless.  The overwrite is separately load-bearing
-             * when the bot is the first member we hold: AddChannelUser()
-             * hands MODE_CHANOP to the first member of a channel that is
-             * neither +R nor +A, which the ircd did not do -- writing the
-             * snapshot back (rather than OR-ing) is what keeps that
-             * phantom op out of X3's view.  Same discipline as
-             * relocate_move_member(). */
-            botmodes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
-            botoplevel = mn->oplevel;
-
-            join_existing_channel = 1;
-            AddChannelUser(user, newchan);
-            join_existing_channel = 0;
-            if((botmn = GetUserMode(newchan, user))) {
-                botmn->modes = botmodes;
-                botmn->oplevel = botoplevel;
-                if(botmodes)
-                    relocate_reassert_modes(user, newchan, botmn, botmodes);
-            }
-            DelChannelUser(user, chan, reason, 0);
-            nmoved++;
-        }
-        free(movers);
+        /* Then our own service bots, on the wire. */
+        nmoved += relocate_follow_bots(chan, newchan);
         nstayers = chan->members.used;
 
         /* Re-assert ChanServ's (and SpamServ's) ops on the new node: the bots
@@ -3183,7 +3413,13 @@ static CMD_FUNC(cmd_rename)
          * already here is acted on at once -- the ircd dissolved its
          * tombstone as it executed this RN -- and the stayers are gone from
          * the node when this returns. */
-        tombstone = chanserv_relocate_tombstone(chan, newchan->name, expires);
+        tombstone = chanserv_relocate_tombstone(chan, newchan->name, newchan->timestamp, expires);
+
+        /* Chain flattening: a tombstone that pointed at this channel's old
+         * name points at its new one from now on, as on the ircd.  X3 has
+         * no redirect string to rewrite, but the record's target is what
+         * tells a tombstone announced again from a crossing. */
+        chanserv_relocate_retarget(old_name, newchan->name, newchan->timestamp);
 
         /* The one line an operator reading logs after a relocation wants:
          * who moved, who did not, and whether the registration went with

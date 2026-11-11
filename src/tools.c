@@ -468,6 +468,30 @@ relocate_deadline_merge(time_t a, time_t b)
     return (a > b) ? a : b;
 }
 
+int
+relocate_name_cmp(const char *a, const char *b)
+{
+    /* irc_tolower[] is the ircd's ToLower() table (tools_init()).  The
+     * result is compared as a signed byte whatever plain char is, so that
+     * the winner cannot depend on the build host: a byte above 127 sorts
+     * before every ASCII byte, and before the end of a name. */
+    for (;; a++, b++) {
+        int ca = (signed char)tolower(*a);
+        int cb = (signed char)tolower(*b);
+
+        if (ca != cb)
+            return (ca < cb) ? -1 : 1;
+        if (!*a)
+            return 0;
+    }
+}
+
+const char *
+relocate_winner(const char *a, const char *b)
+{
+    return (relocate_name_cmp(a, b) <= 0) ? a : b;
+}
+
 enum relocate_announce_verdict
 relocate_announce_decide(const struct relocate_announce_facts *facts)
 {

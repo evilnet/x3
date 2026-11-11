@@ -807,6 +807,82 @@ RenameChannel(struct chanNode *channel, const char *new_name)
     return nNode;
 }
 
+void
+RelocateTombstoneMarks(struct chanNode *channel, int registration_moved)
+{
+    if (registration_moved)
+        channel->modes &= ~(chan_mode_t)MODE_REGISTERED;
+    channel->modes &= ~(chan_mode_t)(MODE_APASS | MODE_UPASS | MODE_LIMIT);
+    /* MODE_HIDEMODE is what our mode table calls the letter L, which on this
+     * ircd is the redirect: the tombstone is +L <new name>, set by
+     * relocate_execute() without a MODE on the wire.  Our copy has to carry
+     * the letter for the husk sweep to notice a later -L (chanserv.c,
+     * relocate_husk_broken()). */
+    channel->modes |= MODE_PERSIST | MODE_HIDEMODE;
+    channel->limit = 0;
+    channel->apass[0] = '\0';
+    channel->upass[0] = '\0';
+}
+
+struct chanNode *
+RelocateChannelFromTombstone(struct chanNode *tombstone, const char *new_name)
+{
+    struct chanNode *nNode;
+
+    /* Same guards RenameChannel() applies, and for the same reasons. */
+    if (!IsChannelName(new_name) || GetChannel(new_name) || strlen(new_name) > CHANNELLEN)
+        return NULL;
+    /* The tombstone's timestamp: every channel a relocation makes has the
+     * old channel's. */
+    nNode = AddChannel(new_name, tombstone->timestamp, NULL, NULL, NULL);
+    if (!nNode)
+        return NULL;
+
+    nNode->modes = tombstone->modes & ~(chan_mode_t)(MODE_PERSIST | MODE_HIDEMODE);
+    nNode->limit = tombstone->limit;
+    strcpy(nNode->key, tombstone->key);
+    strcpy(nNode->upass, tombstone->upass);
+    strcpy(nNode->apass, tombstone->apass);
+    strcpy(nNode->topic, tombstone->topic);
+    strcpy(nNode->topic_nick, tombstone->topic_nick);
+    nNode->topic_time = tombstone->topic_time;
+    /* No ban lists: RelocateChannel() moved ours to the first new channel
+     * instead of copying them, and RelocateHandover() moves them on. */
+    return nNode;
+}
+
+void
+RelocateHandover(struct chanNode *from, struct chanNode *to)
+{
+    unsigned int n;
+
+    /* What relocate_again() hands from the loser's channel to the winner's. */
+    to->modes |= from->modes & (MODE_REGISTERED | MODE_LIMIT | MODE_PERSIST | MODE_APASS | MODE_UPASS);
+    to->limit = from->limit;
+    strcpy(to->apass, from->apass);
+    strcpy(to->upass, from->upass);
+
+    /* What RelocateChannel() moved besides: see there for each. */
+    for (n = 0; n < from->banlist.used; n++)
+        banList_append(&to->banlist, from->banlist.list[n]);
+    from->banlist.used = 0;
+    for (n = 0; n < from->exemptlist.used; n++)
+        exemptList_append(&to->exemptlist, from->exemptlist.list[n]);
+    from->exemptlist.used = 0;
+
+    to->join_policer = from->join_policer;
+    to->join_flooded = from->join_flooded;
+    to->channel_help = from->channel_help;
+    to->locks += from->locks;
+    from->locks = 0;
+    if (from->channel_info) {
+        to->channel_info = from->channel_info;
+        from->channel_info = NULL;
+    }
+    for (n = 0; n < crf_used; n++)
+        crf_list[n](from, to, crf_list_extra[n]);
+}
+
 struct chanNode *
 RelocateChannel(struct chanNode *channel, const char *new_name)
 {
@@ -875,16 +951,7 @@ RelocateChannel(struct chanNode *channel, const char *new_name)
      * and the +l limit belong to the community, which is now at the new name;
      * the persist marker is what keeps the ircd's tombstone alive across the
      * grace period. */
-    channel->modes &= ~(MODE_REGISTERED | MODE_APASS | MODE_UPASS | MODE_LIMIT);
-    /* MODE_HIDEMODE is what our mode table calls the letter L, which on this
-     * ircd is the redirect: the tombstone is +L <new name>, set by
-     * relocate_execute() without a MODE on the wire.  Our copy has to carry
-     * the letter for the husk sweep to notice a later -L (chanserv.c,
-     * relocate_husk_broken()). */
-    channel->modes |= MODE_PERSIST | MODE_HIDEMODE;
-    channel->limit = 0;
-    channel->apass[0] = '\0';
-    channel->upass[0] = '\0';
+    RelocateTombstoneMarks(channel, 1);
 
     /* ---- Registration follows the community ---- */
     nNode->channel_info = channel->channel_info;

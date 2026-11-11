@@ -318,6 +318,17 @@ enum relocate_expiry_kind relocate_expiry_check(time_t *expires, time_t when);
  * ends with the same deadline in whatever order they hear the others. */
 time_t relocate_deadline_merge(time_t a, time_t b);
 
+/* Order two channel names under the server casemapping: the order that
+ * decides which of two crossing relocations of one channel wins -- the new
+ * name that sorts FIRST.  Byte by byte after folding (A-Z, the rfc1459
+ * pairs [ \ ] ^ -> { | } ~, the ISO 8859-1 capitals), the folded bytes
+ * compared as SIGNED bytes whatever plain char is here, the end of a name
+ * counting as a zero byte.  Below zero when `a' sorts first, above zero
+ * when `b' does, zero when they are the same channel name. */
+int relocate_name_cmp(const char *a, const char *b);
+/* The one of two new names that wins (`a' when they are the same name). */
+const char *relocate_winner(const char *a, const char *b);
+
 /* A tombstone announced after its channel's BURST,
  *
  *     <server> RT <old> <old-creation-ts> <new> <expires>

@@ -2461,25 +2461,46 @@ chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan)
  * whether the channel has +L but not where it points, and a redirect
  * changed to another target looks unchanged from here.
  *
- * The record lives exactly as long as the node it points at (see
+ * A record that has a node lives exactly as long as that node (see
  * chanserv_relocate_husk_gone() and chanserv_channel_rename()), so the
  * pointer is the identity and no name or timestamp comparison is needed.
  * The cost: once X3's node has emptied and been collected, a member who
- * later joins the still-live tombstone on the network is not swept. */
+ * later joins the still-live tombstone on the network is not swept.
+ *
+ * One kind of record has no node: the loser of a crossing that X3 learned
+ * of from burst announcements before the loser's own BURST arrived
+ * (relocate_announced_cross()).  It waits under the channel's name and
+ * becomes an ordinary record when that channel is burst. */
 struct relocate_husk {
-    struct chanNode *channel;
-    char new_name[CHANNELLEN+1];    /* empty when guessed from a burst; see
+    struct chanNode *channel;       /* NULL while waiting for the channel */
+    char name[CHANNELLEN+1];        /* the tombstone's name; the dict key */
+    char new_name[CHANNELLEN+1];    /* where it redirects, chain-flattened;
+                                     * empty when guessed from a burst, see
                                      * chanserv_relocate_husk_fallback() */
+    time_t target_ts;               /* creation timestamp of the channel the
+                                     * relocation made under new_name: with
+                                     * the name, that channel's identity */
     time_t expires;                 /* the deadline, network time, as the
                                      * RN carried it */
+    char family[CHANNELLEN+1];      /* for the tombstone of a relocation
+                                     * that lost a crossing: the old channel
+                                     * both relocations were of.  The
+                                     * records of one crossing share one
+                                     * deadline; this is how they are
+                                     * found.  Empty otherwise */
+    time_t want_ts;                 /* waiting: the creation timestamp the
+                                     * channel will have (the old channel's);
+                                     * another under the name is a stranger's */
+    unsigned int waiting : 1;
 };
 
-/* Keyed by the node's own name (an interior pointer; the record never
- * outlives the node). */
+/* Keyed by relocate_husk.name. */
 static dict_t relocate_husks;
 
 static void chanserv_relocate_husk_expire(void *data);
 
+/* The record of a channel X3 holds; never one that is still waiting for
+ * its channel. */
 static struct relocate_husk *
 relocate_husk_find(struct chanNode *channel)
 {
@@ -2496,7 +2517,41 @@ static void
 relocate_husk_forget(struct relocate_husk *husk)
 {
     timeq_del(0, chanserv_relocate_husk_expire, husk, TIMEQ_IGNORE_WHEN);
-    dict_remove(relocate_husks, husk->channel->name);   /* frees husk */
+    dict_remove(relocate_husks, husk->name);   /* frees husk */
+}
+
+/* Make the record of a tombstone; `channel' is NULL for one that waits.
+ * One record per name: whatever is still kept under it is a leftover (the
+ * record of a tombstone that lost its marks and is waiting out its
+ * deadline, or one that waited for a channel) and goes.  The caller sets
+ * what else it knows and settles the record. */
+static struct relocate_husk *
+relocate_husk_add(struct chanNode *channel, const char *name, const char *new_name,
+                  time_t target_ts, time_t expires)
+{
+    struct relocate_husk *husk;
+
+    if((husk = dict_find(relocate_husks, name, NULL)))
+        relocate_husk_forget(husk);
+
+    husk = calloc(1, sizeof(*husk));
+    husk->channel = channel;
+    safestrncpy(husk->name, name, sizeof(husk->name));
+    if(new_name)
+        safestrncpy(husk->new_name, new_name, sizeof(husk->new_name));
+    husk->target_ts = target_ts;
+    husk->expires = expires;
+    dict_insert(relocate_husks, husk->name, husk);
+    return husk;
+}
+
+/* Does our copy of the channel carry what the ircd looks for before it
+ * treats a channel as the tombstone on record (the persist flag and the
+ * redirect; where the redirect points X3 cannot see)? */
+static int
+relocate_husk_marked(struct chanNode *channel)
+{
+    return (channel->modes & MODE_PERSIST) && (channel->modes & MODE_HIDEMODE);
 }
 
 /* Why this channel is no longer the tombstone it was, or NULL if it still
@@ -2573,9 +2628,15 @@ relocate_husk_sweep(struct relocate_husk *husk, const char *why)
 static void
 relocate_husk_deadline(struct relocate_husk *husk, const char *why)
 {
-    const char *broken = relocate_husk_broken(husk->channel);
+    const char *broken;
 
-    if(broken)
+    if(husk->waiting)
+    {
+        /* It waited for its channel to the end and never had one. */
+        relocate_husk_forget(husk);
+        return;
+    }
+    if((broken = relocate_husk_broken(husk->channel)))
     {
         /* The ircd cancelled its own sweep for the same reason and left
          * the members where they are; so do we. */
@@ -2659,27 +2720,109 @@ chanserv_relocate_husk_gone(struct chanNode *channel, UNUSED_ARG(void *extra))
 }
 
 int
-chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t expires)
+chanserv_relocate_tombstone(struct chanNode *channel, const char *new_name, time_t target_ts, time_t expires)
+{
+    return relocate_husk_settle(relocate_husk_add(channel, channel->name, new_name, target_ts, expires));
+}
+
+int
+chanserv_relocate_husk_get(struct chanNode *channel, const char **target, time_t *target_ts, time_t *expires)
+{
+    struct relocate_husk *husk = relocate_husk_find(channel);
+
+    if(!husk || !relocate_husk_marked(channel))
+        return 0;
+    if(target)
+        *target = husk->new_name;
+    if(target_ts)
+        *target_ts = husk->target_ts;
+    if(expires)
+        *expires = husk->expires;
+    return 1;
+}
+
+void
+chanserv_relocate_husk_leftover(struct chanNode *channel)
+{
+    struct relocate_husk *husk = relocate_husk_find(channel);
+
+    if(!husk)
+        return;
+    /* relocate_execute(): the +z is handed back now, by the rule the
+     * record would have applied at its deadline (not from a registered
+     * channel), so that the new channel does not inherit a tombstone's
+     * persist flag as if it were the channel's own. */
+    if(!channel->channel_info)
+        channel->modes &= ~(chan_mode_t)MODE_PERSIST;
+    log_module(CS_LOG, LOG_INFO,
+               "Relocation husk %s had lost its marks and is being relocated again; old record dropped.",
+               channel->name);
+    relocate_husk_forget(husk);
+}
+
+void
+chanserv_relocate_retarget(const char *old_target, const char *new_target, time_t target_ts)
+{
+    dict_iterator_t it;
+
+    for(it = dict_first(relocate_husks); it; it = iter_next(it))
+    {
+        struct relocate_husk *husk = iter_data(it);
+
+        /* Only a record whose channel still is its tombstone: one that
+         * lost its marks is dead, and rewriting its target would make it
+         * claim a redirect nothing implements. */
+        if(husk->waiting || irccasecmp(husk->new_name, old_target)
+           || !relocate_husk_marked(husk->channel))
+            continue;
+        safestrncpy(husk->new_name, new_target, sizeof(husk->new_name));
+        husk->target_ts = target_ts;
+        log_module(CS_LOG, LOG_INFO, "Relocation husk %s now redirects to %s.",
+                   husk->name, husk->new_name);
+    }
+}
+
+void
+chanserv_relocate_loser(struct chanNode *channel, const char *winner, time_t target_ts,
+                        const char *family, time_t expires, int registration_moved)
 {
     struct relocate_husk *husk;
 
-    if((husk = relocate_husk_find(channel)))
+    RelocateTombstoneMarks(channel, registration_moved);
+    husk = relocate_husk_add(channel, channel->name, winner, target_ts, expires);
+    safestrncpy(husk->family, family, sizeof(husk->family));
+    log_module(CS_LOG, LOG_INFO,
+               "Channel %s lost a crossing of two relocations of %s; it is a tombstone redirecting to %s.",
+               channel->name, family, winner);
+}
+
+void
+chanserv_relocate_family_settle(const char *old_name, time_t deadline)
+{
+    struct relocate_husk **list;
+    dict_iterator_t it;
+    unsigned int used = 0, ii;
+
+    /* Settling a record can sweep it, and a sweep ends in hooks; so the
+     * records are picked first, and each is looked up again before it is
+     * touched. */
+    list = calloc(dict_size(relocate_husks) + 1, sizeof(*list));
+    for(it = dict_first(relocate_husks); it; it = iter_next(it))
     {
-        /* Already a tombstone, relocated again on a diverged link: one
-         * record, the original deadline, the newest target. */
-        if(new_name)
-            safestrncpy(husk->new_name, new_name, sizeof(husk->new_name));
-        return 1;
+        struct relocate_husk *husk = iter_data(it);
+
+        if(!irccasecmp(husk->name, old_name) || !irccasecmp(husk->family, old_name))
+            list[used++] = husk;
     }
-
-    husk = calloc(1, sizeof(*husk));
-    husk->channel = channel;
-    if(new_name)
-        safestrncpy(husk->new_name, new_name, sizeof(husk->new_name));
-    husk->expires = expires;
-    dict_insert(relocate_husks, channel->name, husk);
-
-    return relocate_husk_settle(husk);
+    for(ii = 0; ii < used; ii++)
+    {
+        for(it = dict_first(relocate_husks); it && (iter_data(it) != list[ii]); it = iter_next(it)) ;
+        if(!it)
+            continue;
+        list[ii]->expires = deadline;
+        relocate_husk_settle(list[ii]);
+    }
+    free(list);
 }
 
 /* Does this channel NAME carry a live do-not-register stamped with
@@ -2754,7 +2897,7 @@ chanserv_relocate_husk_fallback(struct chanNode *channel)
                "redirect, unregistered, rename DNR) and its burst came "
                "without an announcement; tracking it by relocate_grace.",
                channel->name);
-    chanserv_relocate_tombstone(channel, NULL, chanserv_relocate_own_deadline());
+    chanserv_relocate_tombstone(channel, NULL, channel->timestamp, chanserv_relocate_own_deadline());
     return 1;
 }
 
@@ -2768,6 +2911,83 @@ relocate_husk_normalise(struct chanNode *channel)
     channel->limit = 0;
     channel->apass[0] = '\0';
     channel->upass[0] = '\0';
+}
+
+/* An announcement names another target than the record X3 holds for the
+ * old channel: the two sides of a netjoin each relocated it.  The crossing
+ * rule (proto-p10.c relocate_again()) with what a burst can tell -- no
+ * issuer is known and nobody is moved, the memberships are what the BURSTs
+ * say -- so all there is to do is agree on the redirects, the marks and
+ * the deadline (the ircd's relocate_announced_cross()):
+ *
+ * - The old channel redirects to the winner, and so does every earlier
+ *   tombstone that pointed at the loser.
+ * - The loser's channel is a tombstone redirecting to the winner.  It is
+ *   one of the two new channels and reaches X3 by its own BURST, before
+ *   this announcement or after it.  When it is here -- the channel with the
+ *   old one's creation timestamp, which every channel a relocation makes
+ *   has -- it is marked now.  When it is not, a record WAITS for it under
+ *   its name and chanserv_relocate_new_channel() marks it when it is burst;
+ *   a channel with another timestamp under that name is a stranger's and
+ *   is never touched.  If no such channel ever comes the waiting record
+ *   just expires.
+ * - Its registration is NOT moved, unlike after a crossing of two RNs: the
+ *   ircd moves no +R here either.  A loser X3 has registered keeps its
+ *   markers and, like any tombstone that is registered at its deadline, is
+ *   kept then.
+ * - All the records take the later deadline. */
+static void
+relocate_announced_cross(struct relocate_husk *husk, struct chanNode *channel,
+                         const char *announced, time_t expires)
+{
+    struct relocate_husk *rec;
+    struct chanNode *lchan;
+    char old_name[CHANNELLEN+1], winner[CHANNELLEN+1], loser[CHANNELLEN+1];
+    time_t deadline = relocate_deadline_merge(husk->expires, expires);
+    time_t chan_ts = channel->timestamp, target_ts = husk->target_ts;
+
+    safestrncpy(old_name, husk->name, sizeof(old_name));
+    if(relocate_name_cmp(announced, husk->new_name) < 0)
+    {
+        safestrncpy(winner, announced, sizeof(winner));
+        safestrncpy(loser, husk->new_name, sizeof(loser));
+    }
+    else
+    {
+        safestrncpy(winner, husk->new_name, sizeof(winner));
+        safestrncpy(loser, announced, sizeof(loser));
+    }
+    log_module(CS_LOG, LOG_INFO,
+               "Announced tombstone %s -> %s crosses the relocation to %s X3 holds; %s wins.",
+               old_name, announced, husk->new_name, winner);
+
+    /* The old channel: its marks again (the BURST that came first may have
+     * left either target on it), pointing at the winner. */
+    RelocateTombstoneMarks(channel, 0);
+    safestrncpy(husk->new_name, winner, sizeof(husk->new_name));
+
+    /* Earlier tombstones that pointed at the loser. */
+    chanserv_relocate_retarget(loser, winner, target_ts);
+
+    /* The loser. */
+    rec = dict_find(relocate_husks, loser, NULL);
+    lchan = GetChannel(loser);
+    if(rec && !rec->waiting)
+    {
+        /* Already a tombstone here in its own right (it was announced, or
+         * relocated on): its own record stands, with its own deadline. */
+    }
+    else if(lchan && (lchan->timestamp == chan_ts))
+        chanserv_relocate_loser(lchan, winner, target_ts, old_name, deadline, 0);
+    else
+    {
+        rec = relocate_husk_add(NULL, loser, winner, target_ts, deadline);
+        rec->waiting = 1;
+        rec->want_ts = chan_ts;
+        safestrncpy(rec->family, old_name, sizeof(rec->family));
+    }
+
+    chanserv_relocate_family_settle(old_name, deadline);
 }
 
 /* RT <old> <old-creation-ts> <new> <expires>: a server announces a
@@ -2788,7 +3008,7 @@ relocate_husk_normalise(struct chanNode *channel)
  *   deadline.  A record X3 guessed from a burst (no target, its own grace)
  *   is not a second opinion: the announcement replaces target and deadline.
  * - The channel and a record with another target: two relocations of the
- *   channel crossed. */
+ *   channel crossed; relocate_announced_cross(). */
 void
 chanserv_relocate_announced(const char *old_name, time_t chan_ts, const char *target, time_t expires)
 {
@@ -2822,13 +3042,13 @@ chanserv_relocate_announced(const char *old_name, time_t chan_ts, const char *ta
         log_module(CS_LOG, LOG_INFO,
                    "Relocation tombstone %s -> %s announced, deadline "FMT_TIME_T"; tracking it.",
                    channel->name, target, expires);
-        if((channel->modes & MODE_PERSIST) && (channel->modes & MODE_HIDEMODE))
+        if(relocate_husk_marked(channel))
             relocate_husk_normalise(channel);
-        chanserv_relocate_tombstone(channel, target, expires);
+        chanserv_relocate_tombstone(channel, target, channel->timestamp, expires);
         return;
 
     case RELOCATE_ANNOUNCE_MERGE:
-        if((channel->modes & MODE_PERSIST) && (channel->modes & MODE_HIDEMODE))
+        if(relocate_husk_marked(channel))
             relocate_husk_normalise(channel);
         if(guessed)
         {
@@ -2841,26 +3061,45 @@ chanserv_relocate_announced(const char *old_name, time_t chan_ts, const char *ta
         return;
 
     case RELOCATE_ANNOUNCE_CROSS:
-        log_module(CS_LOG, LOG_WARNING,
-                   "Announced tombstone %s -> %s: X3 holds it as relocated to %s; left as it is.",
-                   channel->name, target, husk->new_name);
+        relocate_announced_cross(husk, channel, target, expires);
         return;
     }
 }
 
 /* New-channel hook; it also runs when a BURST with an older timestamp
  * replaces a channel X3 already holds (AddChannel() wipes the node and
- * calls the hooks again).  A record for the node at that point is the
- * second case: the channel of that name is another server's from here on,
- * and the tombstone X3 held for the losing channel is over
- * (relocate_tombstone_burst_lost()).  If the winning channel is itself a
- * tombstone, its announcement follows and builds a new record. */
+ * calls the hooks again).
+ *
+ * A record for the node at that point is the second case: the channel of
+ * that name is another server's from here on, and the tombstone X3 held
+ * for the losing channel is over (relocate_tombstone_burst_lost()).  If
+ * the winning channel is itself a tombstone, its announcement follows and
+ * builds a new record.
+ *
+ * A record WAITING under the name (relocate_announced_cross()) gets its
+ * channel, if this is the one it waited for -- the creation timestamp
+ * says so -- and the channel becomes the tombstone the record describes
+ * (relocate_tombstone_burst_done()). */
 static void
 chanserv_relocate_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
 {
-    struct relocate_husk *husk = relocate_husk_find(channel);
+    struct relocate_husk *husk = dict_find(relocate_husks, channel->name, NULL);
 
     if(!husk)
+        return;
+    if(husk->waiting)
+    {
+        if(channel->timestamp != husk->want_ts)
+            return;                 /* a stranger's channel under the name */
+        husk->waiting = 0;
+        husk->channel = channel;
+        RelocateTombstoneMarks(channel, 0);
+        log_module(CS_LOG, LOG_INFO,
+                   "Channel %s lost a crossing of two relocations of %s; it is a tombstone redirecting to %s.",
+                   channel->name, husk->family, husk->new_name);
+        return;
+    }
+    if(husk->channel != channel)
         return;
     log_module(CS_LOG, LOG_INFO,
                "Relocation husk %s lost a BURST on timestamp; no longer tracked.",
