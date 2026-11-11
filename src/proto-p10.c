@@ -2359,7 +2359,7 @@ static CMD_FUNC(cmd_topic)
  * not used here. */
 static CMD_FUNC(cmd_rename)
 {
-    struct chanNode *chan, *dest;
+    struct chanNode *chan, *dest, *renamed;
     char old_name[CHANNELLEN+1];
     int was_registered;
 
@@ -2434,7 +2434,7 @@ static CMD_FUNC(cmd_rename)
     }
     was_registered = chan->channel_info != NULL;
     safestrncpy(old_name, argv[1], sizeof(old_name));
-    if(!RenameChannel(chan, argv[2])) {
+    if(!(renamed = RenameChannel(chan, argv[2]))) {
         /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
          * left the old node untouched/unfreed -- nothing was actually
          * renamed, so don't mark the (still current) old name do-not-
@@ -2444,8 +2444,11 @@ static CMD_FUNC(cmd_rename)
                    argv[1], argv[2]);
         return 1;
     }
-    if(was_registered)
+    if(was_registered) {
         chanserv_rename_dnr(old_name);
+        /* Our MODE that marked the channel may have crossed this rename. */
+        chanserv_rename_marker(renamed);
+    }
     return 1;
 }
 

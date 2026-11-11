@@ -229,6 +229,13 @@ int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const 
  * file-static) — this wrapper is the exported escape hatch. */
 void chanserv_rename_dnr(const char *old_name);
 
+/* Called by cmd_rename after it has applied an RN: sends the registered
+ * marker for the channel's new name once more, whatever X3's copy of the
+ * modes says. See the function for the race this repairs. Sends nothing
+ * for a channel that is not registered here or whose copy did not carry
+ * the marker before the rename. */
+void chanserv_rename_marker(struct chanNode *new_chan);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);

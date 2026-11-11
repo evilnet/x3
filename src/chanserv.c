@@ -2130,6 +2130,43 @@ chanserv_rename_dnr(const char *old_name)
                       "Channel was renamed");
 }
 
+/* A channel that carries the registered marker has just been renamed: send
+ * the marker again, for the new name.
+ *
+ * X3's own copy shows it set (RenameChannel() carries the modes over), and
+ * that is exactly what cannot be trusted here.  A channel REGISTERed and
+ * RENAMEd in the same instant from another server has our MODE for the old
+ * name still in flight when the ircd executes the rename: a server the
+ * MODE reaches first renames a marked channel, a server the rename reaches
+ * first gets a MODE for a name that no longer exists and drops it.  The
+ * renamed channel is then marked on some servers only, and on the others
+ * its chanops can rename it again without the ircd asking us.  Sent after
+ * the RN was applied, the marker meets the channel under its new name on
+ * every server; one that has it already ignores the change.
+ *
+ * Nothing is owed to the old name: the ircd renames the channel in place
+ * (rename_channel() swaps the name on the one struct Channel), so there
+ * is no channel left under it to carry a stray marker.
+ *
+ * Sends nothing unless our copy carried the marker before the rename --
+ * new_chan->modes is that copy, RenameChannel() having just memcpy()d it.
+ * ChanServ sets MODE_REGISTERED only with off_channel on, so with
+ * off_channel off this is silent.  Nor without a ChanServ bot (see
+ * chanserv_rename_dnr()): the marker is that bot's to send. */
+void
+chanserv_rename_marker(struct chanNode *new_chan)
+{
+    struct mod_chanmode change;
+
+    if(!chanserv)
+        return;
+    if(!new_chan->channel_info || !(new_chan->modes & MODE_REGISTERED))
+        return;
+    mod_chanmode_init(&change);
+    change.modes_set = MODE_REGISTERED;
+    mod_chanmode_announce(chanserv, new_chan, &change);
+}
+
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
 {
     struct do_not_register *dnr;
