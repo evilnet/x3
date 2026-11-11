@@ -812,7 +812,7 @@
     // OR Afternet uses a custom script to keep the services IP hidden: 
     //    "mailer" "/home/x3user/x3/sendmail.sh";
     "from_address" "supportrobot@%X3_GENERAL_DOMAIN%";
-    "extra_headers" ("X-Mailer: X3-Services");
+    "extra_headers" ("Network-Services: x3");
     "body_prefix_first" ("Welcome to the network, looks like this is your first email from us.");
     "body_prefix" ("%X3_GENERAL_DOMAIN% Support - User and Channel registration system");
     "body_suffix_first" ("", "%X3_GENERAL_DOMAIN% IRC Network", "http://%X3_GENERAL_DOMAIN%");

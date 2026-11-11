@@ -237,8 +237,7 @@ else
     : "${X3_EMAIL_REQUIRED=0}"
     : "${X3_COOKIE_TIMEOUT=2d}"
     : "${X3_ACCOUNTS_PER_EMAIL=1}"
-    # Derived from X3_GENERAL_DOMAIN (set above) unless overridden.
-    : "${X3_TITLEHOST_SUFFIX=${X3_GENERAL_DOMAIN}}"
+    : "${X3_TITLEHOST_SUFFIX=AfterNET.Org}"
 
     # LDAP defaults (disabled unless overridden)
     : "${X3_LDAP_ENABLE=0}"
