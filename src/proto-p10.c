@@ -2034,8 +2034,12 @@ static CMD_FUNC(cmd_burst)
     if (!cData) {
         if (cNode->modes & (MODE_REGISTERED | MODE_PERSIST)) {
             /* Channel is not registered with us but carries server-managed
-             * markers: strip the registration marker AND any stale persist
-             * exmode (only ChanServ sets +z, on registered channels). */
+             * markers: strip the registration marker AND the persist
+             * exmode, as this code always has ("-z").  ChanServ is not
+             * the only source of +z, though: an ircd with channel
+             * relocation puts it on the tombstone of a relocated channel
+             * by itself (never as a MODE, but it is in the BURST), so a
+             * +z seen here is not necessarily one of ours gone stale. */
             irc_join(opserv, cNode);
             irc_mode(opserv, cNode, "-zR");
             irc_part(opserv, cNode, "");
