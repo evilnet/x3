@@ -6496,7 +6496,7 @@ init_nickserv(const char *nick)
     nickserv_define_func("ACCOUNTINFO", cmd_handleinfo, -1, 0, 0);
     nickserv_define_func("USERINFO", cmd_userinfo, -1, 1, 0);
     nickserv_define_func("RENAME", cmd_rename_handle, -1, 1, 0);
-    nickserv_define_func("REBIND", cmd_rebind, 0, 1, 0);
+    nickserv_define_func("REBIND", cmd_rebind, 800, 1, 0);
     nickserv_define_func("VACATION", cmd_vacation, -1, 1, 0);
     nickserv_define_func("MERGE", cmd_merge, 750, 1, 0);
     if (!nickserv_conf.disable_nicks) {
