@@ -161,6 +161,7 @@ static const struct message_entry msgtab[] = {
     { "CSMSG_OWN_TOO_MANY", "%s already owns more than the limit of %d channels. Use FORCE to override." },
     { "CSMSG_YOU_OWN_TOO_MANY", "You already own more than the limit of %d channels. Ask a staff member for help." },
     { "CSMSG_ANOTHER_SERVICE", "Another service bot is in that channel already. Ask a staff member for help." },
+    { "CSMSG_RELOCATE_CLOSING", "$b%s$b has moved and is being closed; try again in a moment." },
 
 /* Do-not-register channels */
     { "CSMSG_NOT_DNR", "$b%s$b is not a valid channel name or *account." },
@@ -2610,11 +2611,12 @@ relocate_husk_sweep(struct relocate_husk *husk, const char *why)
         swept++;
     }
 
-    /* relocate_tombstone_clear_marks(): the redirect always goes.  Persist
-     * goes too when the relocation was what set it, which X3 cannot tell;
-     * our copy keeps it, and only matters if something else still holds
-     * this node. */
-    chan->modes &= ~(chan_mode_t)MODE_HIDEMODE;
+    /* relocate_tombstone_clear_marks(): the redirect goes, and +z ALWAYS
+     * goes with it -- a +z from before the relocation was the
+     * registration's, and that moved to the new name.  Every server clears
+     * the bit by itself, so X3 sends no -z; our copy follows, and only
+     * matters if something else still holds this node. */
+    chan->modes &= ~(chan_mode_t)(MODE_HIDEMODE | MODE_PERSIST);
 
     log_module(CS_LOG, LOG_INFO,
                "Relocation husk %s swept (%s): %u member(s) removed.",
@@ -2624,11 +2626,32 @@ relocate_husk_sweep(struct relocate_husk *husk, const char *why)
 
 /* The deadline's work: what the ircd does to its tombstone at that moment
  * (m_rename.c relocate_tombstone_sweep()), on X3's copy.  Ends the record;
- * may free the node. */
+ * may free the node.  The ircd sends nothing about any of it -- every
+ * server acts on its own copy at the same deadline -- and neither does
+ * X3, except for the PART of a bot of its own that is swept.
+ *
+ * 1. The channel no longer carries a tombstone's marks (a chanop took +L
+ *    off, a server took +z off): the record is cancelled and nobody is
+ *    removed.  The ircd takes its +z back then, unless the channel is
+ *    registered; so does our copy.
+ * 2. The channel is the tombstone and is REGISTERED: the old name was
+ *    registered inside the grace.  The tombstone is cancelled instead of
+ *    swept -- nobody is parted, the redirect is withdrawn (every server
+ *    clears +L and tells its own members), and the channel is an ordinary
+ *    registered channel again; +z is left to services.
+ * 3. Otherwise everybody is swept and the marks go.
+ *
+ * "Registered" is read here, at the deadline, as the ircd reads its +R
+ * then and never when it arrives.  For X3 that is a registration it holds
+ * (its markers are on the wire from the moment of the REGISTER, see
+ * chanserv_relocate_markers() on why nothing X3 sent earlier can undo
+ * them) -- or, without one, a +R on our copy: X3 did not put it there,
+ * but the ircd keeps a channel that has it, and X3 must not empty its view
+ * of a channel the network keeps. */
 static void
 relocate_husk_deadline(struct relocate_husk *husk, const char *why)
 {
-    const char *broken;
+    struct chanNode *chan = husk->channel;
 
     if(husk->waiting)
     {
@@ -2636,14 +2659,27 @@ relocate_husk_deadline(struct relocate_husk *husk, const char *why)
         relocate_husk_forget(husk);
         return;
     }
-    if((broken = relocate_husk_broken(husk->channel)))
+    if(!relocate_husk_marked(chan))
     {
-        /* The ircd cancelled its own sweep for the same reason and left
-         * the members where they are; so do we. */
         log_module(CS_LOG, LOG_INFO,
                    "Relocation husk %s is no longer a tombstone (%s); "
                    "sweep cancelled, %u member(s) left in place.",
-                   husk->channel->name, broken, husk->channel->members.used);
+                   chan->name, (chan->modes & MODE_PERSIST) ? "+L was cleared" : "+z was cleared",
+                   chan->members.used);
+        if(!chan->channel_info && !(chan->modes & MODE_REGISTERED))
+            chan->modes &= ~(chan_mode_t)MODE_PERSIST;
+        relocate_husk_forget(husk);
+        return;
+    }
+    if(chan->channel_info || (chan->modes & MODE_REGISTERED))
+    {
+        log_module(CS_LOG, chan->channel_info ? LOG_INFO : LOG_WARNING,
+                   "Relocation husk %s is %s at its deadline; kept as an "
+                   "ordinary channel, %u member(s) left in place.",
+                   chan->name,
+                   chan->channel_info ? "registered" : "+R (though not registered here)",
+                   chan->members.used);
+        chan->modes &= ~(chan_mode_t)MODE_HIDEMODE;
         relocate_husk_forget(husk);
         return;
     }
@@ -2688,6 +2724,14 @@ relocate_husk_settle(struct relocate_husk *husk)
     }
     timeq_add(husk->expires + RELOCATE_SWEEP_MARGIN, chanserv_relocate_husk_expire, husk);
     return 1;
+}
+
+int
+chanserv_relocate_husk_overdue(struct chanNode *channel)
+{
+    struct relocate_husk *husk = relocate_husk_find(channel);
+
+    return husk && relocate_husk_marked(channel) && (husk->expires <= now);
 }
 
 time_t
@@ -3506,6 +3550,17 @@ static CHANSERV_FUNC(cmd_register)
             return 0;
         }
 
+        /* A tombstone may be registered -- until its deadline.  The ircd
+         * decides at that instant, by the +R it has then, whether the
+         * channel is kept; X3 does the deadline's work a few seconds
+         * later (RELOCATE_SWEEP_MARGIN).  A registration accepted in
+         * between would keep, here, members the network has just parted. */
+        if(chanserv_relocate_husk_overdue(channel))
+        {
+            reply("CSMSG_RELOCATE_CLOSING", channel->name);
+            return 0;
+        }
+
         if(!IsHelping(user) && (!(mn = GetUserMode(channel, user)) || !(mn->modes & MODE_CHANOP)))
         {
             reply("CSMSG_MUST_BE_OPPED", channel->name);
@@ -3867,6 +3922,13 @@ static CHANSERV_FUNC(cmd_move)
     {
     reply("CSMSG_ALREADY_REGGED", target->name);
     return 0;
+    }
+    else if(chanserv_relocate_husk_overdue(target))
+    {
+        /* As in cmd_register: a tombstone past its deadline is not there
+         * to be registered any more. */
+        reply("CSMSG_RELOCATE_CLOSING", target->name);
+        return 0;
     }
     else if((!(mn = GetUserMode(target, user)) || !(mn->modes && MODE_CHANOP))
             && !IsHelping(user))
@@ -9477,18 +9539,31 @@ chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UN
         log_module(CS_LOG, LOG_WARNING, "Channel %s, named by the configuration key %s, was renamed to %s: services follow it until the next rehash or restart, which go back to %s.  Update %s.",
                    old_chan->name, key, new_chan->name, old_chan->name, key);
 
-    /* A tombstone that is itself renamed or relocated (the ircd refuses
-     * that where the command is issued, but applies one that reaches it
-     * from another server) stops being one the ircd can resolve: its
-     * record is by the old name.  Ours is by the old node, which a rename
-     * is about to free.  Nobody is swept; a relocation makes the caller
-     * track the node afresh. */
+    /* A tombstone renamed by a classic RN.  No server lets its own users
+     * do that, but one that arrives from the network is applied, and the
+     * ircd's record follows the channel to its new name
+     * (relocate_tombstone_renamed()): still redirecting, dissolved at the
+     * same deadline.  So does ours -- under the new name, on the new node,
+     * with its timer untouched.  A record left under the new name describes
+     * a channel that is not there any more and is dropped first.
+     *
+     * This hook also runs when a channel is relocated or handed over,
+     * where the old node lives on; those callers drop a record of the old
+     * node beforehand (chanserv_relocate_husk_leftover()), so one found
+     * here is always a rename's. */
     if((husk = relocate_husk_find(old_chan)))
     {
+        struct relocate_husk *stale = dict_find(relocate_husks, new_chan->name, NULL);
+
+        if(stale && (stale != husk))
+            relocate_husk_forget(stale);
         log_module(CS_LOG, LOG_INFO,
-                   "Relocation husk %s is being renamed to %s; no longer tracked.",
-                   old_chan->name, new_chan->name);
-        relocate_husk_forget(husk);
+                   "Relocation husk %s (-> %s) was renamed to %s; its record follows it.",
+                   husk->name, husk->new_name, new_chan->name);
+        dict_remove2(relocate_husks, husk->name, 1);    /* keeps the record */
+        safestrncpy(husk->name, new_chan->name, sizeof(husk->name));
+        husk->channel = new_chan;
+        dict_insert(relocate_husks, husk->name, husk);
     }
 
     /* memcpy() moved channel_info onto new_chan, but the chanData's back

@@ -346,6 +346,12 @@ int chanserv_relocate_husk_live(struct chanNode *channel);
  * lost +z or +L is an ordinary channel again and its members are real. */
 int chanserv_relocate_husk_dissolve(struct chanNode *channel, const char *why);
 
+/* Is this channel a tombstone whose deadline has passed and on which X3
+ * has not done the deadline's work yet (it waits a few seconds, to be
+ * sure not to act before the ircd)?  The network no longer has it as a
+ * tombstone; nothing may be built on X3's stale view of it. */
+int chanserv_relocate_husk_overdue(struct chanNode *channel);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);

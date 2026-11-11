@@ -3139,7 +3139,9 @@ relocate_again(struct userNode *issuer, const char *server, struct chanNode *old
             if(transfer) {
                 /* What the first relocation moved from the old channel
                  * belongs to the community, and the community's channel
-                 * is now the winner. */
+                 * is now the winner.  (A record without marks on the
+                 * loser goes first, as before any relocation.) */
+                chanserv_relocate_husk_leftover(lchan);
                 registered = lchan->channel_info != NULL;
                 RelocateHandover(lchan, wchan);
             }
