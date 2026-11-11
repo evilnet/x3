@@ -8399,7 +8399,10 @@ chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UN
     /* memcpy() moved channel_info onto new_chan, but the chanData's back
      * pointer still targets the old node. */
     if (new_chan->channel_info)
+    {
         new_chan->channel_info->channel = new_chan;
+        log_module(CS_LOG, LOG_INFO, "Registered channel %s renamed to %s.", old_chan->name, new_chan->name);
+    }
 
     for (ap = adduser_pendings; ap; ap = ap->next)
         if (ap->channel == old_chan)
@@ -8528,6 +8531,8 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
         }
     }
 
+    log_module(CS_LOG, LOG_INFO, "Rename of %s to %s approved for %s (account %s).",
+               chan->name, new_name, user->nick, user->handle_info->handle);
     return 1;
 }
 
