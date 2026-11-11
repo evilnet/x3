@@ -407,6 +407,12 @@ spamserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UN
 	struct spamNode *sNode;
 	struct floodNode *fNode;
 
+	/* The debug channel is held by pointer in the config struct and used
+	 * by every spamserv_debug(); SpamServ sits in it, so it is a live
+	 * channel that any of its ops can rename. */
+	if(spamserv_conf.debug_channel == old_chan)
+		spamserv_conf.debug_channel = new_chan;
+
 	if(cInfo)
 	{
 		cInfo->channel = new_chan;

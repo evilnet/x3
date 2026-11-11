@@ -2780,6 +2780,21 @@ remove_unbursted_channel(struct chanNode *cNode, UNUSED_ARG(void *extra)) {
         dict_remove(unbursted_channels, cNode->name);
 }
 
+/* unbursted_channels (built in irc_introduce, torn down at the uplink's
+ * EB) holds chanNode pointers under keys that are interior pointers into
+ * each node's name[], so a rename of a listed channel would leave both
+ * the key and the data dangling for cmd_eob's irc_burst() walk.  An ircd
+ * queues its whole burst and EB ahead of any RN, and a channel it did
+ * burst has already left this dict, so this is not expected to fire; it
+ * is here so the dict never depends on that ordering. */
+static void
+rename_unbursted_channel(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra)) {
+    if (unbursted_channels && dict_find(unbursted_channels, old_chan->name, NULL)) {
+        dict_remove(unbursted_channels, old_chan->name);
+        dict_insert(unbursted_channels, new_chan->name, new_chan);
+    }
+}
+
 void
 init_parse(void)
 {
@@ -3002,6 +3017,7 @@ init_parse(void)
 
     userList_init(&dead_users);
     reg_del_channel_func(remove_unbursted_channel, NULL);
+    reg_channel_rename_func(rename_unbursted_channel, NULL);
     reg_exit_func(parse_cleanup, NULL);
     // reg_notice_func(opserv, check_ctcp);
 }
