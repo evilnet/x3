@@ -2881,16 +2881,15 @@ static CHANSERV_FUNC(cmd_move)
     else if(!IsSuspended(channel->channel_info))
         chanserv_join = 1;
 
-    /* Clear the server-managed markers from the old channel, add them to
-     * the new. Always, not just under off_channel -- the ircd's +R must
-     * follow registration regardless of whether ChanServ itself occupies
-     * the channel. The persist exmode (+z) moves too, but is only SET
-     * when off_channel>0 (bot presence otherwise holds the channel).
+    /* Clear the server-managed markers from the old channel; the new one
+     * gets them below. Always, not just under off_channel -- the ircd's +R
+     * must follow registration regardless of whether ChanServ itself
+     * occupies the channel. The persist exmode (+z) moves too, but is only
+     * SET when off_channel>0 (bot presence otherwise holds the channel).
      * A suspended registration takes its markers along like any other. */
     change.argc = 0;
     change.modes_clear = CHANSERV_MARKER_MODES;
     mod_chanmode_announce(chanserv, channel, &change);
-    chanserv_assert_markers(target);
 
     /* Move the channel_info to the target channel; it
        shouldn't be necessary to clear timeq callbacks
@@ -2903,6 +2902,11 @@ static CHANSERV_FUNC(cmd_move)
 
     if (chanserv_join)
         ss_cs_join_channel(target, spamserv_join);
+
+    /* Mark the target only now: a target nobody was in does not exist on
+     * the ircd until ChanServ's join creates it, and a MODE sent before
+     * that goes nowhere while X3's copy records the markers as set. */
+    chanserv_assert_markers(target);
 
     if(!IsSuspended(target->channel_info))
     {
