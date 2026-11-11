@@ -391,8 +391,7 @@ GetServerN(const char *numeric)
 /* Shared internal numeric-to-userNode lookup.  Wraps both the noisy
  * GetUserN (callers expect success — a miss is bug-worthy) and the
  * quiet GetUserN_silent (callers know the target can legitimately be
- * absent — e.g., snoop/track on transient targets, BX P probing for
- * the alias/primary pair). */
+ * absent, e.g. BX P probing for the alias/primary pair). */
 static struct userNode *
 GetUserN_impl(const char *numeric, int quiet)
 {
@@ -434,8 +433,7 @@ GetUserN(const char *numeric) /* using numeric */
 
 /* Same as GetUserN but suppresses all warnings on lookup miss.  Use
  * for callers that legitimately probe numerics which may not exist
- * (snoop / track tracking transient PRIVMSG/NOTICE targets, BX P
- * lookup probes during alias reconciliation, etc.). */
+ * (today only the BX P handler's alias/primary probes). */
 struct userNode*
 GetUserN_silent(const char *numeric)
 {
