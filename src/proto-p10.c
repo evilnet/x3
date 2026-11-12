@@ -2396,13 +2396,17 @@ static CMD_FUNC(cmd_mode)
         cn->timestamp = atoi(argv[argc-1]);
     }
 
-    if (checkDefCon(DEFCON_NO_MODE_CHANGE) && !IsOper(un)) {
+    /* un is NULL for a server-sourced MODE (netjoin resync, TS bounce, a
+     * bouncer swap): servers are authoritative, so DefCon's user-facing
+     * lockout does not apply to them, and IsOper(un) must not run on a
+     * NULL un. */
+    if (un && checkDefCon(DEFCON_NO_MODE_CHANGE) && !IsOper(un)) {
         const char *str;
         str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
         if (str) {
             char modes[MAXLEN];
             struct userNode *opserv = GetUserH(str);
- 
+
             send_message_type(4, un, opserv, "Channel modes cannot be changed due to DefCon level %d in effect, please try again soon", DefConLevel);
             irc_make_chanmode(cn, modes);
             irc_mode(opserv, cn, modes);
