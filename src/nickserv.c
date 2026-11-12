@@ -5971,6 +5971,14 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
      * the account a login creates gets (handle_account's LDAP autocreate):
      * without one, LOC and SASL through X3 would refuse the new owner. */
     fresh = register_handle(name, "", 0);
+    /* The sync log gets the fresh record as a REGISTER after the old one's
+     * UNREGISTER above, so that a consumer replaying the log ends with the
+     * account, as X3 does.  It has no password hash (the password is the
+     * directory's) and no email address: * and @ stand in for them (@ as
+     * in the line OREGISTER writes with no address), and the claimant's
+     * info line comes last, as REGISTER writes the registering user's. */
+    if (nickserv_conf.sync_log)
+        SyncLog("REGISTER %s * @ %s", name, claimant->info);
     fresh->masks = alloc_string_list(1);
     nickserv_new_owner_masks(fresh, claimant);
     fresh->sslfps = alloc_string_list(1);
