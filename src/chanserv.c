@@ -2272,6 +2272,24 @@ chanserv_rename_marker(struct chanNode *new_chan)
     mod_chanmode_announce(chanserv, new_chan, &change);
 }
 
+/* A registration followed a rename: opers and helpers hear of it as they
+ * do of a MOVE (cmd_move, CSMSG_CHANNEL_MOVED), with whoever renamed it --
+ * the nick and account of the RN's source user when X3 knows them, else
+ * the source as given (a server name), else that it is unknown. */
+void
+chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, const char *source)
+{
+    struct userNode *user = source ? GetUserH(source) : NULL;
+    char who[MAXLEN];
+
+    if(user && user->handle_info)
+        snprintf(who, sizeof(who), "%s (%s)", user->nick, user->handle_info->handle);
+    else
+        safestrncpy(who, source ? source : "an unknown source", sizeof(who));
+    global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_CHANNEL_RENAMED",
+                        old_name, new_chan->name, who);
+}
+
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
 {
     struct do_not_register *dnr;

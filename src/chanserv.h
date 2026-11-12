@@ -242,6 +242,11 @@ void chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan);
  * the marker before the rename. */
 void chanserv_rename_marker(struct chanNode *new_chan);
 
+/* Called by cmd_rename after an RN moved a registration: tells opers and
+ * helpers, as MOVE does.  source is the RN's origin (a nick or a server
+ * name), or NULL. */
+void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, const char *source);
+
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);
 struct channelList *chanserv_support_channels(void);

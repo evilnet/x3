@@ -70,6 +70,7 @@ static const struct message_entry msgtab[] = {
     /* chanserv.c */
     { "CSMSG_REGISTERED_TO", "%s registered to %s by %s." },
     { "CSMSG_CHANNEL_MOVED", "%s moved to %s by %s." },
+    { "CSMSG_CHANNEL_RENAMED", "%s renamed to %s by %s." },
     { "CSMSG_SUSPENSION_MODIFIED", "%s suspension modified by %s." },
     { "CSMSG_SUSPENDED_BY", "%s suspended by %s." },
     { "CSMSG_UNSUSPENDED_BY", "%s unsuspended by %s." },

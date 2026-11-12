@@ -2448,6 +2448,7 @@ static CMD_FUNC(cmd_rename)
         chanserv_rename_dnr(old_name, renamed);
         /* Our MODE that marked the channel may have crossed this rename. */
         chanserv_rename_marker(renamed);
+        chanserv_rename_announce(old_name, renamed, origin);
     }
     return 1;
 }
