@@ -593,11 +593,15 @@ ioset_run(void) {
             timeout.tv_sec = wakey - now;
         timeout.tv_usec = 0;
 
-        if (engine->loop(&timeout))
-            continue;
-
         /* Call any timeq events we need to call. */
-        timeq_run();
+        if (!engine->loop(&timeout))
+            timeq_run();
+
+        /* Check these after every wait, including one that failed or was
+         * interrupted: the signal handlers only set the flags, and the
+         * signal that set one is what interrupted the wait (EINTR).  Going
+         * straight back to sleep left an idle X3 deaf to SIGTERM until the
+         * next timer or packet. */
         if (do_write_dbs) {
             saxdb_write_all(NULL);
             do_write_dbs = 0;
