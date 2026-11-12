@@ -386,8 +386,12 @@ GetServerN(const char *numeric)
     }
 }
 
-struct userNode*
-GetUserN(const char *numeric) /* using numeric */
+/* Shared internal numeric-to-userNode lookup.  Wraps both the noisy
+ * GetUserN (callers expect success — a miss is bug-worthy) and the
+ * quiet GetUserN_silent (callers know the target can legitimately be
+ * absent, e.g. BX P probing for the alias/primary pair). */
+static struct userNode *
+GetUserN_impl(const char *numeric, int quiet)
 {
     struct userNode *un;
     struct server *s;
@@ -395,24 +399,43 @@ GetUserN(const char *numeric) /* using numeric */
 
     switch (strlen(numeric)) {
     default:
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too long!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too long!", numeric);
         return NULL;
     case 5: slen = 2; ulen = 3; break;
     case 4: slen = 1; ulen = 3; break;
     case 3: slen = 1; ulen = 2; break;
     case 2: case 1: case 0:
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too short!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): numeric too short!", numeric);
         return NULL;
     }
     if (!(s = servers_num[base64toint(numeric, slen)])) {
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): couldn't find server (len=%d)!", numeric, slen);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s): couldn't find server (len=%d)!", numeric, slen);
         return NULL;
     }
     n = base64toint(numeric+slen, ulen) & s->num_mask;
     if (!(un = s->users[n])) {
-        log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s) couldn't find user!", numeric);
+        if (!quiet)
+            log_module(MAIN_LOG, LOG_WARNING, "GetUserN(%s) couldn't find user!", numeric);
     }
     return un;
+}
+
+struct userNode*
+GetUserN(const char *numeric) /* using numeric */
+{
+    return GetUserN_impl(numeric, 0);
+}
+
+/* Same as GetUserN but suppresses all warnings on lookup miss.  Use
+ * for callers that legitimately probe numerics which may not exist
+ * (today only the BX P handler's alias/primary probes). */
+struct userNode*
+GetUserN_silent(const char *numeric)
+{
+    return GetUserN_impl(numeric, 1);
 }
 
 extern struct userNode *opserv;
@@ -1733,24 +1756,136 @@ static CMD_FUNC(cmd_bouncer_transfer)
         if (argc < 6)
             return 0;
 
-        old_primary = GetUserN(argv[2]);
-        new_node = GetUserN(argv[3]);
-
-        if (!old_primary)
-            return 1; /* Already gone, nothing to do */
-
-        /* Numeric swap: move old_primary's numeric routing to the new
-         * server/slot.  The userNode keeps its nick, clients dict entry,
-         * handle_info, channels — only the P10 numeric changes.
-         *
-         * Nefarious never bursts aliases as N tokens (they're introduced
-         * via BX C only), so X3 won't have a node for the alias numeric.
-         * If new_node somehow exists (shouldn't happen), log and ignore. */
-        if (new_node) {
-            log_module(MAIN_LOG, LOG_WARNING,
-                "BX P: new_node %s already exists as %s — ignoring promote",
-                argv[3], new_node->nick);
+        /* Full YYXXX user numerics only, as the servers require
+         * (nefarious bx_find_user_strict(), bounce_bxp_forwardable()):
+         * GetUserN() reads a shorter one as a short-form server+client
+         * numeric and can land on an unrelated user, whom the swap would
+         * renumber or the merge would delete.  An older fork peer's RESUME
+         * sent three-character ones, and a stock server relays them. */
+        if (strlen(argv[2]) != 5 || strlen(argv[3]) != 5)
             return 1;
+
+        /* Both lookups can legitimately miss — old_primary may have
+         * already been cleaned up by a prior event, new_node is
+         * normally absent (the swap path is the common case) but
+         * may exist for the in-place-conversion / merge case below.
+         * Use the silent variant so neither probe spams the snoop
+         * channel. */
+        old_primary = GetUserN_silent(argv[2]);
+        new_node = GetUserN_silent(argv[3]);
+
+        if (!old_primary) {
+            /* Usually already gone by a prior event; but a miss can also
+             * mean X3 never saw this user (a desync), so leave a trace. */
+            log_module(MAIN_LOG, LOG_DEBUG,
+                "BX P: old primary %s not found — nothing to transfer", argv[2]);
+            return 1;
+        }
+
+        /* One client named as both faces: a SQUIT-path promote sends its
+         * winner for both, and a server that already promoted it holds it
+         * under that numeric.  The servers treat this as nothing to do
+         * (bounce_alias_promote()'s old_client == new_client case); the
+         * merge below would delete the live user from X3's view. */
+        if (old_primary == new_node)
+            return 1;
+
+        /* Two BX P shapes need handling:
+         *
+         * 1. **Numeric swap (new_node absent)** — classic promote-or-
+         *    transfer.  Move old_primary's numeric routing to the new
+         *    server/slot.  The userNode keeps its nick, clients dict
+         *    entry, handle_info, channels — only the P10 numeric changes.
+         *    This is the case the original handler was written for, and
+         *    is what fires when nefarious never bursts an alias to us.
+         *
+         * 2. **In-place conversion / merge (new_node exists)** — modern
+         *    fork peers emit BX P for the case where
+         *    an N-introduced client (old) is being absorbed into an
+         *    existing primary (new), e.g. burst-ordering caused us to
+         *    receive N for the would-be-alias before its BX C.  Both
+         *    nodes exist on X3.  We merge: delete old_primary's
+         *    userNode (channels and dict entry cleaned up via DelUser,
+         *    no QUIT broadcast), keep new_node intact as the surviving
+         *    identity.  Every server applies this merge unconditionally
+         *    (nefarious m_bouncer_transfer.c both-exist branch), so X3
+         *    applies it unconditionally too: ignoring it would leave a
+         *    userNode on a numeric the network has already freed.  An
+         *    account mismatch -- or a handle X3 has not learned yet under
+         *    burst-order skew -- is only logged. */
+        if (new_node) {
+            if (old_primary->handle_info != new_node->handle_info)
+                log_module(MAIN_LOG, LOG_WARNING,
+                    "BX P: merging %s (%s) into %s (%s) across different "
+                    "or unknown accounts, as the servers do",
+                    argv[2], old_primary->nick, argv[3], new_node->nick);
+            {
+                /* Merge: old absorbed into new.  Before deleting
+                 * old_primary, transfer its channel memberships onto
+                 * new_node.  This mirrors nefarious's own both-exist
+                 * swap semantics (upstream m_bouncer_transfer.c:88-113,
+                 * fork bouncer_session.c:7070-7078): the ghost's
+                 * channels must survive on the merged identity.
+                 *
+                 * Ordering is load-bearing: this MUST run before
+                 * DelUser().  DelUser's own cleanup loop
+                 * (DelChannelUser(..., NULL, 0)) lets an unregistered
+                 * channel self-destruct when its last member leaves
+                 * (see DelChannelUser's tail, hash.c). If old_primary
+                 * were deleted first while still holding memberships
+                 * new_node lacks, any unregistered channel where
+                 * old_primary was the only member in X3's view would
+                 * be destroyed here — even though the surviving
+                 * identity (and the rest of the network) is still in
+                 * it.  Transferring first means old_primary's channel
+                 * list is already empty by the time DelUser runs, so
+                 * that loop body never executes.
+                 *
+                 * Walk old_primary->channels the same way DelUser's
+                 * loop does: always pop the last element, since
+                 * AddChannelUser/DelChannelUser mutate both the
+                 * channel's member list and the user's channel list
+                 * out from under us.
+                 *
+                 * Mark old_primary dead first, as DelUser() does before
+                 * its loop: the part hooks then treat these removals as
+                 * a quit's, and mod-snoop and mod-track do not report a
+                 * PART the network never saw. */
+                old_primary->dead = 1;
+                while (old_primary->channels.used > 0) {
+                    struct modeNode *mn = old_primary->channels.list[old_primary->channels.used - 1];
+                    struct chanNode *chan = mn->channel;
+
+                    if (!GetUserMode(chan, new_node)) {
+                        /* The network did not see a JOIN: record the
+                         * membership without the join hooks, or ChanServ
+                         * would greet, auto-op or ban-check a user who is
+                         * already in the channel on every server.  Like
+                         * the servers, a membership new_node already has
+                         * keeps its own modes. */
+                        struct modeNode *new_mn = AddChannelUserNoHooks(new_node, chan);
+                        new_mn->modes = mn->modes;
+                        new_mn->oplevel = mn->oplevel;
+                    }
+
+                    /* No announce (reason NULL), same call shape
+                     * DelUser's own loop uses: this is internal
+                     * bookkeeping, not a real part. */
+                    DelChannelUser(old_primary, chan, NULL, 0);
+                }
+
+                /* The survivor shows the old face's away, set or clear,
+                 * as the fork's servers do on this merge
+                 * (face_keeps_shown_away()).  X3 keeps only the flag. */
+                new_node->modes = (new_node->modes & ~FLAGS_AWAY)
+                                  | (old_primary->modes & FLAGS_AWAY);
+
+                /* DelUser with announce=0 suppresses both QUIT and KILL
+                 * emission — this is internal cleanup, the network
+                 * isn't supposed to see the alias's identity leave. */
+                DelUser(old_primary, NULL, 0, "Bouncer transfer");
+                return 1;
+            }
         }
 
         /* Compute new server and slot */
