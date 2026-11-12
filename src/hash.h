@@ -82,7 +82,7 @@
 #define FLAGS_PERSISTENT	0x00000200 /* for reserved nicks, this isn't just one-shot */
 #define FLAGS_GAGGED		0x00000400 /* for gagged users */
 #define FLAGS_AWAY		0x00000800 /* for away users */
-#define FLAGS_STAMPED           0x00001000 /* for users who have been stamped */
+#define FLAGS_STAMPED           0x00001000 /* for users who have been stamped; the ircd's AC U clears it */
 #define FLAGS_HIDDEN_HOST       0x00002000 /* user's host is masked by their account +x */
 #define FLAGS_REGNICK           0x00004000 /* user owns their current nick */
 #define FLAGS_REGISTERING	0x00008000 /* user has issued account register command, is waiting for email cookie */

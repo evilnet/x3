@@ -1835,9 +1835,13 @@ static CMD_FUNC(cmd_account)
     }
     else if(!strcmp(argv[2],"U"))
     {
-        /* The ircd removed the account.  Unbind only: FLAGS_STAMPED stays
-         * set on purpose (one account per session), as after UNREGISTER. */
+        /* The ircd removed the account: unbind, and clear the stamp.  The
+         * ircd holds no account for the user any more, so the next login is
+         * a fresh one whichever way it comes -- the ircd's own AC R, or
+         * AuthServ, whose AC R (StampUser()) is valid again for a user
+         * without an account and stamps the user again. */
         nickserv_unbind_user(user);
+        user->modes &= ~FLAGS_STAMPED;
     }
     else if(!strcmp(argv[2],"A") || !strcmp(argv[2],"D"))
     {
