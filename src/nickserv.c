@@ -261,7 +261,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_FLAGS", "Flags: %s" },
     { "NSMSG_HANDLEINFO_OPSERV_LEVEL", "Opserv level: %d " },
     { "NSMSG_HANDLEINFO_KC_ID", "Keycloak ID: %s" },
-    { "NSMSG_HANDLEINFO_KC_ID_PREV", "Previous Keycloak ID: %s (replaced by a reset or by REBIND)" },
+    { "NSMSG_HANDLEINFO_KC_ID_PREV", "Previous Keycloak IDs (replaced by a reset or by REBIND, newest first): %s" },
     { "NSMSG_HANDLEINFO_EPITHET", "Epithet: %s" },
     { "NSMSG_HANDLEINFO_NOTE", "Note (by %s on %s): %s " },
     { "NSMSG_HANDLEINFO_FAKEHOST", "Fake host: %s" },
@@ -1905,8 +1905,18 @@ static NICKSERV_FUNC(cmd_handleinfo)
     if (IsOper(user)) {
         if (hi->kc_id)
             reply("NSMSG_HANDLEINFO_KC_ID", hi->kc_id);
-        for (i = 0; i < KC_ID_REPLACED_MAX && hi->kc_id_replaced[i]; i++)
-            reply("NSMSG_HANDLEINFO_KC_ID_PREV", hi->kc_id_replaced[i]);
+        /* The replaced ids, newest first, four to a line: up to
+         * KC_ID_REPLACED_MAX of them would be a screenful one per line. */
+        for (i = 0; i < KC_ID_REPLACED_MAX && hi->kc_id_replaced[i]; ) {
+            char ids[4 * 23];   /* four 22-character ids, spaces, NUL */
+            unsigned int n;
+
+            ids[0] = 0;
+            for (n = 0; n < 4 && i < KC_ID_REPLACED_MAX && hi->kc_id_replaced[i]; n++, i++)
+                snprintf(ids + strlen(ids), sizeof(ids) - strlen(ids), "%s%s",
+                         n ? " " : "", hi->kc_id_replaced[i]);
+            reply("NSMSG_HANDLEINFO_KC_ID_PREV", ids);
+        }
     }
 
     if (hi->opserv_level > 0) {
@@ -5192,7 +5202,9 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     slist = database_get_data(obj, KEY_KC_ID_PREV, RECDB_STRING_LIST);
     if (slist) {
         /* Oldest first, so the newest end up in front and survive a list
-         * longer than KC_ID_REPLACED_MAX. */
+         * longer than KC_ID_REPLACED_MAX (one a build with a longer list
+         * wrote: the oldest beyond this build's room are dropped, and are
+         * gone from the next write). */
         for (ii = slist->used; ii > 0; ii--)
             handle_kcid_remember(hi, strdup(slist->list[ii - 1]));
     } else if ((str = database_get_data(obj, KEY_KC_ID_PREV, RECDB_QSTRING)))
