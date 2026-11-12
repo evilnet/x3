@@ -6335,6 +6335,13 @@ chanserv_expire_suspension(void *data)
         ss_cs_join_channel(channel, 1);
     }
 
+    /* The mode lock was not enforced during the suspension: bring the
+     * channel back to it now, as the database load does, rather than at
+     * the next change that violates it.  After ChanServ's join and op;
+     * an off-channel registration gets it too. */
+    if(suspended->cData->modes.modes_set || suspended->cData->modes.modes_clear)
+        mod_chanmode_announce(chanserv, channel, &suspended->cData->modes);
+
     /* Mark everyone currently in the channel as present. */
     for(ii = 0; ii < channel->members.used; ++ii)
     {
@@ -8432,7 +8439,10 @@ handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
     if(!(cData = channel->channel_info))
         return;
 
-    if(cData->modes.modes_set || cData->modes.modes_clear)
+    /* A suspended channel's mode lock is kept but not enforced: ChanServ
+     * is out of the channel until it is unsuspended. */
+    if(!IsSuspended(cData)
+       && (cData->modes.modes_set || cData->modes.modes_clear))
         mod_chanmode_announce(chanserv, cData->channel, &cData->modes);
 
     /* The channel was just replaced by an older one of the same name,
@@ -9771,10 +9781,13 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     str = database_get_data(channel, KEY_MAXSETINFO, RECDB_QSTRING);
     cData->maxsetinfo = str ? strtoul(str, NULL, 0) : chanserv_conf.max_userinfo_length;
 
-    if(!IsSuspended(cData)
-       && (str = database_get_data(channel, KEY_MODES, RECDB_QSTRING))
+    /* The mode lock is loaded for a suspended channel too: it is part of
+     * the registration, and one that is not loaded is not written back,
+     * so the next database write would drop it for good.  Only the
+     * announce is skipped while ChanServ is out of the channel. */
+    if((str = database_get_data(channel, KEY_MODES, RECDB_QSTRING))
        && (argc = split_line(str, 0, ArrayLength(argv), argv))
-       && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE, 0))) 
+       && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE, 0)))
     {
         cData->modes = *modes;
         /* Older databases can have a marker letter in the stored lock;
@@ -9782,7 +9795,8 @@ chanserv_channel_read(const char *key, struct record_data *hir)
         chanserv_strip_markers(&cData->modes);
         if(cData->modes.argc > 1)
             cData->modes.argc = 1;
-        mod_chanmode_announce(chanserv, cNode, &cData->modes);
+        if(!IsSuspended(cData))
+            mod_chanmode_announce(chanserv, cNode, &cData->modes);
         mod_chanmode_free(modes);
     }
 
