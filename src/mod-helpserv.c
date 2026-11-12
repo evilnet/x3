@@ -4516,10 +4516,14 @@ static void handle_nickserv_rename(struct handle_info *handle, const char *old_h
  *      where some requests are carried over to the new handle, and some are
  *      left (because req->handle is the same for all of them, but only some
  *      have req->user set).
+ *    - The handle a request is moved from is the one it is filed under
+ *      (req->handle), not old_handle: after the ircd removes an account
+ *      (AC U) the user has no handle but keeps the requests opened under
+ *      the old one, and a later login comes from no handle.
  * - In either of the above cases, if a user is on a bot's userlist and has
  *   requests assigned to them, it will give them a list. */
-static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_handle, UNUSED_ARG(void* extra)) {
-    struct helpserv_reqlist *reqlist, *dellist=NULL, *hand_reqlist, *oldhand_reqlist;
+static void handle_nickserv_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void* extra)) {
+    struct helpserv_reqlist *reqlist, *dellist=NULL, *hand_reqlist;
     struct helpserv_userlist *userlist;
     unsigned int i, j;
     dict_iterator_t it;
@@ -4598,39 +4602,41 @@ static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_
         dict_insert(helpserv_reqs_byhand_dict, user->handle_info->handle, hand_reqlist);
     }
 
-    if (old_handle) {
-        dellist = helpserv_reqlist_alloc();
-        oldhand_reqlist = dict_find(helpserv_reqs_byhand_dict, old_handle->handle, NULL);
-    } else {
-        oldhand_reqlist = NULL;
-    }
+    dellist = helpserv_reqlist_alloc();
 
     for (i=0; i < reqlist->used; i++) {
         struct helpserv_request *req = reqlist->list[i];
         struct helpserv_bot *hs=req->hs;
+        /* The handle the request is filed under, which is not always
+         * old_handle: a user whose account the ircd removed (AC U) still
+         * has the requests opened under it, and logs in again from no
+         * handle at all -- to another account or to the same one. */
+        struct handle_info *req_handle = req->handle;
 
-        if (!old_handle || hs->persist_types[PERSIST_T_REQUEST] == PERSIST_PART || hs->persist_types[PERSIST_T_REQUEST] == PERSIST_QUIT) {
+        if (req_handle == user->handle_info)
+            continue; /* already filed under the new handle */
+
+        if (!req_handle || hs->persist_types[PERSIST_T_REQUEST] == PERSIST_PART || hs->persist_types[PERSIST_T_REQUEST] == PERSIST_QUIT) {
             /* The request needs to be assigned to the new handle; either it
              * only persists until part/quit (so it makes sense to keep it as
              * close to the user as possible, and if it's made persistent later
              * then it's attached to the new handle) or there is no old handle.
              */
 
+            /* Out of the old handle's list first, so it is never in two. */
+            if (req->parent_hand_list) {
+                if (req->parent_hand_list->used == 1)
+                    dict_remove(helpserv_reqs_byhand_dict, req_handle->handle);
+                else
+                    helpserv_reqlist_remove(req->parent_hand_list, req);
+            }
+
             req->handle = user->handle_info;
 
             req->parent_hand_list = hand_reqlist;
             helpserv_reqlist_append(hand_reqlist, req);
 
-            if (oldhand_reqlist) {
-                if (oldhand_reqlist->used == 1) {
-                    dict_remove(helpserv_reqs_byhand_dict, old_handle->handle);
-                    oldhand_reqlist = NULL;
-                } else {
-                    helpserv_reqlist_remove(oldhand_reqlist, req);
-                }
-            }
-
-            if (old_handle) {
+            if (req_handle) {
                 char buf[CHANNELLEN + 14];
 
                 if (hs->persist_types[PERSIST_T_REQUEST] == PERSIST_PART) {
@@ -4639,9 +4645,9 @@ static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_
                     strcpy(buf, "quit irc");
                 }
 
-                helpserv_msguser(user, "HSMSG_REQ_AUTH_MOVED", user->handle_info->handle, hs->helpchan->name, req->id, old_handle->handle, buf);
+                helpserv_msguser(user, "HSMSG_REQ_AUTH_MOVED", user->handle_info->handle, hs->helpchan->name, req->id, req_handle->handle, buf);
                 if (req->helper && (hs->notify >= NOTIFY_HANDLE))
-                    helpserv_notify(req->helper, "HSMSG_NOTIFY_HAND_MOVE", req->id, user->handle_info->handle, old_handle->handle);
+                    helpserv_notify(req->helper, "HSMSG_NOTIFY_HAND_MOVE", req->id, user->handle_info->handle, req_handle->handle);
             } else {
                 if (req->helper && (hs->notify >= NOTIFY_HANDLE))
                     helpserv_notify(req->helper, "HSMSG_NOTIFY_HAND_AUTH", req->id, user->nick, user->handle_info->handle);
@@ -4653,23 +4659,21 @@ static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_
              * it */
             helpserv_reqlist_append(dellist, req);
 
-            helpserv_msguser(user, "HSMSG_REQ_AUTH_STUCK", user->handle_info->handle, hs->helpchan->name, req->id, old_handle->handle);
+            helpserv_msguser(user, "HSMSG_REQ_AUTH_STUCK", user->handle_info->handle, hs->helpchan->name, req->id, req_handle->handle);
             if (req->helper && (hs->notify >= NOTIFY_HANDLE))
-                helpserv_notify(req->helper, "HSMSG_NOTIFY_HAND_STUCK", req->id, user->nick, user->handle_info->handle, old_handle->handle);
+                helpserv_notify(req->helper, "HSMSG_NOTIFY_HAND_STUCK", req->id, user->nick, user->handle_info->handle, req_handle->handle);
         }
     }
 
-    if (old_handle) {
-        if (dellist->used) {
-            if (dellist->used == reqlist->used) {
-                dict_remove(helpserv_reqs_bynick_dict, user->nick);
-            } else {
-                for (i=0; i < dellist->used; i++)
-                    helpserv_reqlist_remove(reqlist, dellist->list[i]);
-            }
+    if (dellist->used) {
+        if (dellist->used == reqlist->used) {
+            dict_remove(helpserv_reqs_bynick_dict, user->nick);
+        } else {
+            for (i=0; i < dellist->used; i++)
+                helpserv_reqlist_remove(reqlist, dellist->list[i]);
         }
-        helpserv_reqlist_free(dellist);
     }
+    helpserv_reqlist_free(dellist);
 
     for (i=0; i < user->channels.used; i++)
         associate_requests_bychan(user->channels.list[i]->channel, user, 0);
