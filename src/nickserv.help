@@ -147,6 +147,7 @@
         " $bOSET$b Modify account details including password.",
         " $bRENAME$b Rename an account.",
         " $bMERGE$b Merge one account into another.",
+        " $bREBIND$b Set or clear the Keycloak id an account is bound to.",
         " $bOREGISTER$b Create an account for someone else.",
         " $bOUNREGISTER$b Remove an account by name.",
         " $bODELCOOKIE$b Deletes a pending cookie.",
