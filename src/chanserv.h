@@ -84,6 +84,8 @@ enum charOption {
 #define IsSuspended(x)		((x)->flags & CHANNEL_SUSPENDED)
 #define IsOffChannel(x)         (((x)->flags & CHANNEL_OFFCHANNEL) && (off_channel > 1))
 
+struct renamed_from;
+
 struct chanData
 {
     struct chanNode	*channel;
@@ -118,6 +120,7 @@ struct chanData
     struct dict         *notes;
     struct suspended	*suspended;
     struct giveownership *giveownership;
+    struct renamed_from *renamed_from; /* names it was renamed away from, while their rename DNR stands */
     struct chanData	*prev;
     struct chanData	*next;
 };
@@ -216,6 +219,34 @@ struct do_not_register
 #define GetChannelUser(channel, handle) _GetChannelUser(channel, handle, 1, 0)
 struct userData *_GetChannelUser(struct chanData *channel, struct handle_info *handle, int override, int allow_suspended);
 struct banData *add_channel_ban(struct chanData *channel, const char *mask, char *owner, time_t set, time_t triggered, time_t expires, char *reason);
+
+/* Rename authorization check, used by the AC R RENAME query handler in
+ * proto-p10.c (cmd_account). Returns 1 = allow; 0 = deny with *reason
+ * set to a static user-visible string. */
+int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason);
+
+/* Called by the RN handler in proto-p10.c (cmd_rename) after a registered
+ * channel is renamed (new_chan is the renamed node), to place a timed
+ * do-not-register entry on the old name. No-op if
+ * chanserv_conf.rename_dnr_duration is 0, or if old_name is already
+ * covered by an existing (non-expired) DNR.  If the registration has come
+ * back to a name it was renamed away from, the rename DNR it left there is
+ * removed first. proto-p10.c must not reach into chanserv's DNR internals
+ * (plain_dnrs/mask_dnrs/etc are file-static) — this wrapper is the
+ * exported escape hatch. */
+void chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan);
+
+/* Called by cmd_rename after it has applied an RN: sends the registered
+ * marker for the channel's new name once more, whatever X3's copy of the
+ * modes says. See the function for the race this repairs. Sends nothing
+ * for a channel that is not registered here or whose copy did not carry
+ * the marker before the rename. */
+void chanserv_rename_marker(struct chanNode *new_chan);
+
+/* Called by cmd_rename after an RN moved a registration: tells opers and
+ * helpers, as MOVE does.  source is the RN's origin (a nick or a server
+ * name), or NULL. */
+void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, const char *source);
 
 void init_chanserv(const char *nick);
 void del_channel_user(struct userData *user, int do_gc);

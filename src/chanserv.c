@@ -61,6 +61,7 @@
 #define KEY_NODELETE_LEVEL          "nodelete_level"
 #define KEY_MAX_USERINFO_LENGTH     "max_userinfo_length"
 #define KEY_GIVEOWNERSHIP_PERIOD    "giveownership_timeout"
+#define KEY_RENAME_DNR_DURATION     "rename_dnr_duration"
 #define KEY_VALID_CHANNEL_REGEX     "valid_channel_regex"
 
 /* ChanServ database */
@@ -117,6 +118,7 @@
 #define KEY_NOTES                   "notes"
 #define KEY_TOPIC_MASK              "topic_mask"
 #define KEY_OWNER_TRANSFER          "owner_transfer"
+#define KEY_RENAMED_FROM            "renamed_from"
 #define KEY_MAXSETINFO              "maxsetinfo"
 
 /* User data */
@@ -629,6 +631,7 @@ static struct
     unsigned int    greeting_length;
     unsigned int        refresh_period;
     unsigned int        giveownership_period;
+    unsigned long   rename_dnr_duration;
 
     unsigned int        max_owned;
     unsigned int    max_chan_users;
@@ -1813,6 +1816,7 @@ expire_ban(void *data) /* lamer.. */
 }
 
 static void chanserv_expire_suspension(void *data);
+static void renamed_from_drop(struct renamed_from **prf);
 
 static void
 unregister_channel(struct chanData *channel, const char *reason)
@@ -1887,6 +1891,8 @@ unregister_channel(struct chanData *channel, const char *reason)
     channel->channel->channel_info = NULL;
 
     dict_delete(channel->notes);
+    while(channel->renamed_from)
+        renamed_from_drop(&channel->renamed_from);
     sprintf(msgbuf, "%s %s", channel->channel->name, reason);
     if(!IsSuspended(channel))
         DelChannelUser(chanserv, channel->channel, msgbuf, 0);
@@ -2207,6 +2213,183 @@ chanserv_is_dnr(const char *chan_name, struct handle_info *handle)
     dnr = list.used ? list.list[0] : NULL;
     free(list.list);
     return dnr;
+}
+
+/* The reason on a rename do-not-register.  Together with a registration's
+ * renamed_from notes it is what tells this registration's own rename DNR
+ * from any other (chanserv_own_rename_dnr()); databases carry it, so it
+ * stays as it is. */
+#define RENAME_DNR_REASON "Channel was renamed"
+
+/* A name a registration was renamed away from, and the rename DNR placed
+ * on it then, known by its set time (a DNR has no other identity: the
+ * setter is the bot, the reason is the same for every rename).  Kept in
+ * the registration, and in its database record, until the DNR runs out. */
+struct renamed_from
+{
+    struct renamed_from *next;
+    time_t set, expires;
+    char name[1];
+};
+
+static void
+renamed_from_drop(struct renamed_from **prf)
+{
+    struct renamed_from *rf = *prf;
+
+    *prf = rf->next;
+    free(rf);
+}
+
+/* Forget the notes whose DNR has run out, and any for `name'. */
+static void
+renamed_from_prune(struct chanData *cData, const char *name)
+{
+    struct renamed_from **prf = &cData->renamed_from;
+
+    while(*prf)
+    {
+        if(((*prf)->expires && (*prf)->expires <= now)
+           || (name && !irccasecmp((*prf)->name, name)))
+            renamed_from_drop(prf);
+        else
+            prf = &(*prf)->next;
+    }
+}
+
+static void
+renamed_from_add(struct chanData *cData, const char *name, time_t set, time_t expires)
+{
+    struct renamed_from *rf;
+
+    renamed_from_prune(cData, name);
+    rf = calloc(1, sizeof(*rf) + strlen(name));
+    strcpy(rf->name, name);
+    rf->set = set;
+    rf->expires = expires;
+    rf->next = cData->renamed_from;
+    cData->renamed_from = rf;
+}
+
+/* Is `dnr' the rename DNR this registration left on a name it was renamed
+ * away from?  It must still be the plain DNR on that name (not a mask, not
+ * an account's), carry the rename reason, and have the set time noted when
+ * the registration left the name: an oper's DNR or another registration's
+ * rename DNR on the same name differs in reason or set time.  Returns the
+ * link to the note, or NULL. */
+static struct renamed_from **
+chanserv_own_rename_dnr(struct chanData *cData, struct do_not_register *dnr)
+{
+    struct renamed_from **prf;
+
+    if((dnr->expires && dnr->expires <= now)
+       || strcmp(dnr->reason, RENAME_DNR_REASON)
+       || dict_find(plain_dnrs, dnr->chan_name, NULL) != dnr)
+        return NULL;
+    for(prf = &cData->renamed_from; *prf; prf = &(*prf)->next)
+        if((*prf)->set == dnr->set && !irccasecmp((*prf)->name, dnr->chan_name))
+            return prf;
+    return NULL;
+}
+
+void
+chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan)
+{
+    struct chanData *cData = new_chan ? new_chan->channel_info : NULL;
+    struct do_not_register *dnr;
+    struct renamed_from **prf;
+    const char *setter;
+
+    /* Back on a name it was renamed away from: the channel lives there
+     * again, so its own rename DNR there goes. */
+    if(cData && (dnr = dict_find(plain_dnrs, new_chan->name, NULL))
+       && (prf = chanserv_own_rename_dnr(cData, dnr)))
+    {
+        log_module(CS_LOG, LOG_INFO, "Removed the do-not-register on %s: the registration it was renamed away from is back.", new_chan->name);
+        renamed_from_drop(prf);
+        dict_remove(plain_dnrs, new_chan->name);
+    }
+
+    if(!chanserv_conf.rename_dnr_duration)
+        return;
+    if(chanserv_is_dnr(old_name, NULL))
+        return; /* already covered by a DNR (plain or mask); don't stack */
+    /* chanserv_add_dnr() files any name containing '*' or '?' as a mask,
+     * and a mask blocks every name it matches: a DNR for a renamed "#*"
+     * would refuse every registration on the network.  A DNR cannot hold
+     * such a name literally, so the old name goes without one. */
+    if(strpbrk(old_name, "*?"))
+    {
+        log_module(CS_LOG, LOG_WARNING, "Not placing a do-not-register on renamed channel %s: its name contains a wildcard character.", old_name);
+        return;
+    }
+    /* chanserv is NULL when the bot's nick is disabled via the "."
+     * convention (init_chanserv only AddLocalUser()s it when nick !=
+     * NULL) -- but a channel can still be registered (saxdb load doesn't
+     * care whether the bot exists) and RN can still arrive over the
+     * wire. Fall back to a literal setter string rather than dereference
+     * a NULL chanserv; it's a plain string and serializes to saxdb the
+     * same as any other setter value. */
+    setter = chanserv ? chanserv->nick : "ChanServ";
+    dnr = chanserv_add_dnr(old_name, setter, now + chanserv_conf.rename_dnr_duration,
+                           RENAME_DNR_REASON);
+    if(cData && dnr)
+        renamed_from_add(cData, dnr->chan_name, dnr->set, dnr->expires);
+}
+
+/* A channel that carries the registered marker has just been renamed: send
+ * the marker again, for the new name.
+ *
+ * X3's own copy shows it set (RenameChannel() carries the modes over), and
+ * that is exactly what cannot be trusted here.  A channel REGISTERed and
+ * RENAMEd in the same instant from another server has our MODE for the old
+ * name still in flight when the ircd executes the rename: a server the
+ * MODE reaches first renames a marked channel, a server the rename reaches
+ * first gets a MODE for a name that no longer exists and drops it.  The
+ * renamed channel is then marked on some servers only, and on the others
+ * its chanops can rename it again without the ircd asking us.  Sent after
+ * the RN was applied, the marker meets the channel under its new name on
+ * every server; one that has it already ignores the change.
+ *
+ * Nothing is owed to the old name: the ircd renames the channel in place
+ * (rename_channel() swaps the name on the one struct Channel), so there
+ * is no channel left under it to carry a stray marker.
+ *
+ * Sends nothing unless our copy carried the marker before the rename --
+ * new_chan->modes is that copy, RenameChannel() having just memcpy()d it.
+ * ChanServ sets MODE_REGISTERED only with off_channel on, so with
+ * off_channel off this is silent.  Nor without a ChanServ bot (see
+ * chanserv_rename_dnr()): the marker is that bot's to send. */
+void
+chanserv_rename_marker(struct chanNode *new_chan)
+{
+    struct mod_chanmode change;
+
+    if(!chanserv)
+        return;
+    if(!new_chan->channel_info || !(new_chan->modes & MODE_REGISTERED))
+        return;
+    mod_chanmode_init(&change);
+    change.modes_set = MODE_REGISTERED;
+    mod_chanmode_announce(chanserv, new_chan, &change);
+}
+
+/* A registration followed a rename: opers and helpers hear of it as they
+ * do of a MOVE (cmd_move, CSMSG_CHANNEL_MOVED), with whoever renamed it --
+ * the nick and account of the RN's source user when X3 knows them, else
+ * the source as given (a server name), else that it is unknown. */
+void
+chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, const char *source)
+{
+    struct userNode *user = source ? GetUserH(source) : NULL;
+    char who[MAXLEN];
+
+    if(user && user->handle_info)
+        snprintf(who, sizeof(who), "%s (%s)", user->nick, user->handle_info->handle);
+    else
+        safestrncpy(who, source ? source : "an unknown source", sizeof(who));
+    global_message_args(MESSAGE_RECIPIENT_OPERS | MESSAGE_RECIPIENT_HELPERS, "CSMSG_CHANNEL_RENAMED",
+                        old_name, new_chan->name, who);
 }
 
 static unsigned int send_dnrs(struct userNode *user, dict_t dict)
@@ -8453,6 +8636,250 @@ handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
         SetChannelTopic(channel, chanserv, chanserv, channel->channel_info->topic, 1);
 }
 
+/* Configuration keys that name a channel some part of X3 uses: a bot sits
+ * in it, a module reports to it, or ChanServ checks it.  Such a channel
+ * follows a rename only in memory (the rename hooks re-point the node);
+ * a rehash or a restart takes the configured name again. */
+static const char *const chanserv_config_channel_keys[] = {
+    "services/opserv/debug_channel",
+    "services/opserv/alert_channel",
+    "services/opserv/staff_auth_channel",
+    "services/opserv/autojoin_channels",    /* every bot joins these */
+    "services/chanserv/support_channel",
+    "services/spamserv/debug_channel",
+    "modules/snoop/channel",
+    "modules/track/channel",
+    "modules/blacklist/debug_channel",
+};
+
+static int
+chanserv_config_names(struct record_data *rd, const char *prefix, const char *name)
+{
+    unsigned int ii;
+    size_t plen = strlen(prefix);
+
+    if(!rd)
+        return 0;
+    if(rd->type == RECDB_QSTRING)
+        return !strncasecmp(rd->d.qstring, prefix, plen)
+            && !irccasecmp(rd->d.qstring + plen, name);
+    if(rd->type == RECDB_STRING_LIST)
+        for(ii = 0; ii < rd->d.slist->used; ++ii)
+            if(!strncasecmp(rd->d.slist->list[ii], prefix, plen)
+               && !irccasecmp(rd->d.slist->list[ii] + plen, name))
+                return 1;
+    return 0;
+}
+
+/* Is `name' one of the channels X3's configuration names (the keys above,
+ * or an "irc:#channel" log target, which never follows a rename at all)?
+ * Returns the configuration key that names it, or NULL.  A module's key
+ * counts whether or not that module is loaded. */
+static const char *
+chanserv_config_channel(const char *name)
+{
+    static char log_key[MAXLEN];
+    struct record_data *rd;
+    dict_iterator_t it;
+    unsigned int ii;
+
+    for(ii = 0; ii < ArrayLength(chanserv_config_channel_keys); ++ii)
+        if(chanserv_config_names(conf_get_node(chanserv_config_channel_keys[ii]), "", name))
+            return chanserv_config_channel_keys[ii];
+    rd = conf_get_node("logs");
+    if(rd && rd->type == RECDB_OBJECT)
+        for(it = dict_first(rd->d.object); it; it = iter_next(it))
+            if(chanserv_config_names(iter_data(it), "irc:", name))
+            {
+                snprintf(log_key, sizeof(log_key), "logs/%s", iter_key(it));
+                return log_key;
+            }
+    return NULL;
+}
+
+static void
+chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
+{
+    struct adduserPending *ap;
+    unsigned int ii;
+    const char *key;
+
+    /* A configured channel the ircd renamed without asking (it asks only
+     * for one it shows as registered): it cannot be refused now, and the
+     * hooks re-point it in memory, but the configuration still names the
+     * old channel. */
+    if((key = chanserv_config_channel(old_chan->name)))
+        log_module(CS_LOG, LOG_WARNING, "Channel %s, named by the configuration key %s, was renamed to %s: services follow it until the next rehash or restart, which go back to %s.  Update %s.",
+                   old_chan->name, key, new_chan->name, old_chan->name, key);
+
+    /* memcpy() moved channel_info onto new_chan, but the chanData's back
+     * pointer still targets the old node. */
+    if (new_chan->channel_info)
+    {
+        new_chan->channel_info->channel = new_chan;
+        log_module(CS_LOG, LOG_INFO, "Registered channel %s renamed to %s.", old_chan->name, new_chan->name);
+    }
+
+    for (ap = adduser_pendings; ap; ap = ap->next)
+        if (ap->channel == old_chan)
+            ap->channel = new_chan;
+
+    for (ii = 0; ii < chanserv_conf.support_channels.used; ++ii)
+        if (chanserv_conf.support_channels.list[ii] == old_chan)
+            chanserv_conf.support_channels.list[ii] = new_chan;
+}
+
+/* Rename authorization check for the AC R RENAME query (proto-p10.c
+ * cmd_account). Owner-only, mirroring cmd_move's DNR gating against the
+ * NEW name, minus cmd_move's "force" argument (this path has none).
+ *
+ * Who passes the ownership test below. The access entry comes from
+ * _GetChannelUser(cData, handle, override=1, allow_suspended=0), the same
+ * call cmd_unregister makes:
+ *
+ *  - Requester without security override (the HELPING flag, "god" mode):
+ *    judged by their real, unsuspended entry on the channel's user list,
+ *    which must be UL_OWNER (500) or above.
+ *
+ *  - Requester WITH security override on: _GetChannelUser() does not
+ *    look at the channel's user list at all; it returns a synthetic entry
+ *    at UL_HELPER (600). That is above UL_OWNER, so the test passes
+ *    whether or not they are on the user list. This is a staff bypass of
+ *    the ownership requirement, and of nothing else: the protected,
+ *    suspended, forbidden-name, registered-destination and DNR checks
+ *    all still apply, and the ircd only sends the query for a requester
+ *    who is a chanop in the channel. A real owner with override on gets
+ *    the same synthetic entry and passes as well; the override never
+ *    lowers anyone's access. */
+int
+chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason)
+{
+    struct chanData *cData;
+    struct userData *uData;
+    struct chanNode *target;
+    struct dnrList dnrs;
+    unsigned int ii;
+    int blocked;
+    const char *key;
+
+    if(!user->handle_info)
+    {
+        *reason = "You must be authenticated";
+        return 0;
+    }
+
+    if(strlen(new_name) > CHANNELLEN)
+    {
+        *reason = "New channel name is too long";
+        return 0;
+    }
+
+    if(!(cData = chan->channel_info))
+    {
+        /* The ircd only sends this query for a channel it has marked as
+         * registered, so a channel with no registration here means the
+         * two sides disagree. There is no owner to authorize against,
+         * and answering "allow" would wave the rename through with none
+         * of the destination checks below having run (it could land on a
+         * registered, DNR'd or forbidden name). Refuse, and log it: the
+         * marker on the ircd needs clearing or the registration is
+         * missing here. */
+        log_module(CS_LOG, LOG_ERROR,
+                   "Rename query for %s -> %s from %s (account %s): the ircd has %s marked registered but it is not registered here; refused.",
+                   chan->name, new_name, user->nick, user->handle_info->handle, chan->name);
+        *reason = "Channel is not registered with services";
+        return 0;
+    }
+
+    /* Services would follow the rename only until the next rehash or
+     * restart, which put them back on the configured name. */
+    if((key = chanserv_config_channel(chan->name)))
+    {
+        static char config_reason[MAXLEN];
+        snprintf(config_reason, sizeof(config_reason), "Channel is a services channel named in the configuration (%s) and may not be renamed", key);
+        *reason = config_reason;
+        return 0;
+    }
+
+    if(IsSuspended(cData))
+    {
+        *reason = "Channel is suspended and may not be renamed";
+        return 0;
+    }
+
+    if(IsProtected(cData))
+    {
+        *reason = "Channel is protected and may not be renamed";
+        return 0;
+    }
+
+    uData = _GetChannelUser(cData, user->handle_info, 1, 0);
+    if(!uData || (uData->access < UL_OWNER))
+    {
+        *reason = "You must be the channel owner";
+        return 0;
+    }
+
+    if(opserv_bad_channel(new_name))
+    {
+        *reason = "New channel name is not allowed";
+        return 0;
+    }
+
+    /* The registration moves with the rename, so the new name has to be
+     * one REGISTER would accept (cmd_register refuses on REG_NOMATCH). */
+    if(chanserv_conf.valid_channel_regex_set
+       && regexec(&chanserv_conf.valid_channel_regex, new_name, 0, 0, 0) == REG_NOMATCH)
+    {
+        *reason = "New channel name is not allowed";
+        return 0;
+    }
+
+    /* Registered at all -- a suspended registration still owns its name. */
+    if((target = GetChannel(new_name)) && target->channel_info)
+    {
+        *reason = "New channel name is already registered";
+        return 0;
+    }
+
+    /* DNRs on the name itself (exact or mask), whoever owns the channel;
+     * the per-owner pass below would skip them if the user list held no
+     * UL_OWNER entry.  The one exception is this registration's own rename
+     * DNR: having passed the owner test above, the requester may rename
+     * the channel back to a name it was renamed away from. */
+    dnrs = chanserv_find_dnrs(new_name, NULL, UINT_MAX);
+    for(ii = 0; ii < dnrs.used; ++ii)
+        if(!chanserv_own_rename_dnr(cData, dnrs.list[ii]))
+            break;
+    blocked = ii < dnrs.used;
+    free(dnrs.list);
+    if(blocked)
+    {
+        *reason = "New channel name is blocked (do-not-register)";
+        return 0;
+    }
+
+    /* DNRs on the owning accounts, as cmd_move checks them (the name's
+     * own DNRs were checked above). */
+    for(uData = cData->users; uData; uData = uData->next)
+    {
+        if(uData->access != UL_OWNER)
+            continue;
+        dnrs = chanserv_find_dnrs(NULL, uData->handle->handle, 1);
+        blocked = dnrs.used > 0;
+        free(dnrs.list);
+        if(blocked)
+        {
+            *reason = "New channel name is blocked (do-not-register)";
+            return 0;
+        }
+    }
+
+    log_module(CS_LOG, LOG_INFO, "Rename of %s to %s approved for %s (account %s).",
+               chan->name, new_name, user->nick, user->handle_info->handle);
+    return 1;
+}
+
 int
 trace_check_bans(struct userNode *user, struct chanNode *chan)
 {
@@ -9292,6 +9719,8 @@ chanserv_conf_read(void)
     chanserv_conf.refresh_period = str ? ParseInterval(str) : 3*60*60;
     str = database_get_data(conf_node, KEY_GIVEOWNERSHIP_PERIOD, RECDB_QSTRING);
     chanserv_conf.giveownership_period = str ? ParseInterval(str) : 0;
+    str = database_get_data(conf_node, KEY_RENAME_DNR_DURATION, RECDB_QSTRING);
+    chanserv_conf.rename_dnr_duration = str ? ParseInterval(str) : 86400;
     str = database_get_data(conf_node, KEY_CTCP_SHORT_BAN_DURATION, RECDB_QSTRING);
     chanserv_conf.ctcp_short_ban_duration = str ? str : "3m";
     str = database_get_data(conf_node, KEY_CTCP_LONG_BAN_DURATION, RECDB_QSTRING);
@@ -9767,6 +10196,21 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     cData->visited = str ? (time_t)strtoul(str, NULL, 0) : now;
     str = database_get_data(channel, KEY_OWNER_TRANSFER, RECDB_QSTRING);
     cData->ownerTransfer = str ? (time_t)strtoul(str, NULL, 0) : 0;
+    if((obj = database_get_data(channel, KEY_RENAMED_FROM, RECDB_OBJECT)))
+        for(it = dict_first(obj); it; it = iter_next(it))
+        {
+            struct record_data *rd = iter_data(it);
+            time_t set, expires;
+
+            if(rd->type != RECDB_OBJECT)
+                continue;
+            str = database_get_data(rd->d.object, KEY_DNR_SET, RECDB_QSTRING);
+            set = str ? (time_t)strtoul(str, NULL, 0) : 0;
+            str = database_get_data(rd->d.object, KEY_EXPIRES, RECDB_QSTRING);
+            expires = str ? (time_t)strtoul(str, NULL, 0) : 0;
+            if(set && expires > now)
+                renamed_from_add(cData, iter_key(it), set, expires);
+        }
     str = database_get_data(channel, KEY_MAX, RECDB_QSTRING);
     cData->max = str ? atoi(str) : 0;
     str = database_get_data(channel, KEY_GREETING, RECDB_QSTRING);
@@ -10076,6 +10520,22 @@ chanserv_write_channel(struct saxdb_context *ctx, struct chanData *channel)
 
     if(channel->ownerTransfer)
         saxdb_write_int(ctx, KEY_OWNER_TRANSFER, channel->ownerTransfer);
+
+    renamed_from_prune(channel, NULL);
+    if(channel->renamed_from)
+    {
+        struct renamed_from *rf;
+
+        saxdb_start_record(ctx, KEY_RENAMED_FROM, 1);
+        for(rf = channel->renamed_from; rf; rf = rf->next)
+        {
+            saxdb_start_record(ctx, rf->name, 0);
+            saxdb_write_int(ctx, KEY_DNR_SET, rf->set);
+            saxdb_write_int(ctx, KEY_EXPIRES, rf->expires);
+            saxdb_end_record(ctx);
+        }
+        saxdb_end_record(ctx);
+    }
     saxdb_write_int(ctx, KEY_VISITED, high_present ? now : channel->visited);
     saxdb_end_record(ctx);
 }
@@ -10222,6 +10682,13 @@ init_chanserv(const char *nick)
         reg_auth_func(handle_auth, NULL);
     }
 
+    /* Registered channels load from the DB regardless of whether the
+     * ChanServ bot nick is enabled ("." convention); an RN arriving over
+     * the wire must still repoint channel_info->channel via RenameChannel,
+     * or the DB is left holding a stale pointer into a freed chanNode
+     * (use-after-free at the next saxdb write). Keep this outside if(nick).
+     */
+    reg_channel_rename_func(chanserv_channel_rename, NULL);
     reg_handle_rename_func(handle_rename, NULL);
     reg_unreg_func(handle_unreg, NULL);
 

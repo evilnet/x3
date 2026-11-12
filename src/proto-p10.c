@@ -81,6 +81,7 @@
 #define CMD_QUIT                "QUIT"
 #define CMD_REHASH              "REHASH"
 #define CMD_REMOVE		"REMOVE"
+#define CMD_RENAME              "RENAME"
 #define CMD_RESET		"RESET"
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
@@ -183,6 +184,7 @@
 #define TOK_QUIT                "Q"
 #define TOK_REHASH              "REHASH"
 #define TOK_REMOVE		"RM"
+#define TOK_RENAME              "RN"
 #define TOK_RESET		"RESET"
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
@@ -525,10 +527,12 @@ irc_server(struct server *srv)
 
     inttobase64(extranum, srv->num_mask, (srv->numeric[1] || (srv->num_mask >= 64*64)) ? 3 : 2);
     if (srv == self) {
-        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6o :%s",
+        /* r = rename-capable: ircd delivers RN only to r-advertising peers
+         * (upstream); harmless on the fork which routes via IsService */
+        putsock(P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " J10 %s%s +s6or :%s",
                 srv->name, srv->hops+1, srv->boot, srv->link_time, srv->numeric, extranum, srv->description);
     } else {
-        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6o :%s",
+        putsock("%s " P10_SERVER " %s %d " FMT_TIME_T " " FMT_TIME_T " %c10 %s%s +s6or :%s",
                 self->numeric, srv->name, srv->hops+1, srv->boot, srv->link_time, (srv->self_burst ? 'J' : 'P'), srv->numeric, extranum, srv->description);
     }
 }
@@ -1727,7 +1731,33 @@ static CMD_FUNC(cmd_account)
         return 1;
     }
     else if(!strcmp(argv[2],"R"))
-       call_account_func(user, argv[3]);
+    {
+        if(argc >= 7 && !strcmp(argv[5],"RENAME"))
+        {
+            /* Rename permission query: AC <unum> R <cookie> <#chan> RENAME <new>.
+             * Reply shape: cookie FIRST (ircd m_account.c keys pending renames on
+             * parv[1] not being a server numeric) — deliberately NOT the LOC reply
+             * shape (AC <servnum> A <cookie>) used above. Never GetUserN() the
+             * cookie; argv[3] is opaque to us. This disambiguates from the legit
+             * legacy account stamp "AC <target> R <account>" (argc==4), which
+             * keeps falling through to call_account_func() below unchanged.
+             *
+             * The reply itself carries an explicit RENAME discriminator token
+             * after the A/D type so ircd m_account.c can route it by cookie
+             * without a FindNServer() guess — a decimal cookie can otherwise
+             * alias a server numeric (F2). */
+            const char *reason = "Permission denied";
+            struct chanNode *chan = GetChannel(argv[4]);
+            /* user is GetUserN(argv[1]) from the prologue above, which already
+             * returns early when NULL — the check here is paranoia. */
+            if(user && chan && chanserv_rename_allowed(user, chan, argv[6], &reason))
+                putsock("%s " P10_ACCOUNT " %s A RENAME", self->numeric, argv[3]);
+            else
+                putsock("%s " P10_ACCOUNT " %s D RENAME :%s", self->numeric, argv[3], reason);
+            return 1;
+        }
+        call_account_func(user, argv[3]);   /* legacy account stamp — unchanged */
+    }
     else
         call_account_func(user, argv[2]); /* For backward compatability */
     return 1;
@@ -2473,6 +2503,113 @@ static CMD_FUNC(cmd_topic)
     return 1;
 }
 
+/* Marker the ircd puts before the trailing reason of a relocation-mode
+ * RN (ircd/m_rename.c RELOCATE_MARKER, sent when its RENAME_CONSENT
+ * feature is on). */
+#define RENAME_RELOCATE_MARKER  "C"
+
+/* RN <old> <new> :<reason> -- the ircd broadcasts this after an approved
+ * rename has already executed. Authorization happened at AC R query time
+ * (chanserv_rename_allowed, see cmd_account); this handler only migrates
+ * state (design §3a: authorize-at-query, apply-at-RN). The source prefix
+ * is the renaming user and may be unknown to us in edge cases, so it is
+ * not used here. */
+static CMD_FUNC(cmd_rename)
+{
+    struct chanNode *chan, *dest, *renamed;
+    char old_name[CHANNELLEN+1];
+    int was_registered;
+
+    if(argc < 3) return 0;
+    /* RN <old> <new> C :<reason> is a relocation, not a rename: only the
+     * issuer moved to <new>, and <old> lives on as a tombstone that still
+     * holds every other member. Applying it as a classic rename would move
+     * the whole membership and the registration to <new> and leave us with
+     * members the network does not have there. This build has no
+     * relocation support, so apply nothing.
+     *
+     * The test is the one the ircd's own receiver (ms_rename) uses: the
+     * marker counts only in the five-parameter shape, i.e. argv[3] is
+     * exactly "C" AND a separate trailing reason follows it. The ircd
+     * always sends that trailing parameter (":" alone when the reason is
+     * empty), and split_line() keeps an empty trailing parameter, so a
+     * relocation always arrives with argc == 5. "RN <old> <new> :C" has
+     * argc == 4: a classic rename whose reason happens to be the letter
+     * C, which must stay a classic rename. */
+    if(argc > 4 && !strcmp(argv[3], RENAME_RELOCATE_MARKER)) {
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: relocation-mode rename received, which this build does not support; not applied",
+                   argv[1], argv[2]);
+        return 1;
+    }
+    if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
+    if((dest = GetChannel(argv[2]))) {
+        /* The ircd executes a rename only when <new> does not exist on the
+         * network, so a node we still hold under that name is stale. If
+         * nothing here depends on it -- no members, no registration, no
+         * locks -- drop it and apply the rename. Anything else would mean
+         * discarding members or folding one registration into another,
+         * which is not this handler's call: refuse, and say what is in
+         * the way so the divergence can be repaired by hand. */
+        if(dest == chan) {
+            /* Names differing only in case are one channel to us and to
+             * the ircd, which refuses such a rename; never treat the
+             * channel being renamed as its own stale destination. */
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, old and new name are the same channel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+        if(dest->channel_info) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination is a registered channel here; state diverged",
+                       argv[1], argv[2]);
+            return 1;
+        }
+        if(dest->members.used) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination has %u member(s) here; state diverged",
+                       argv[1], argv[2], dest->members.used);
+            return 1;
+        }
+        if(dest->locks) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination is locked here (%u lock(s)); state diverged",
+                       argv[1], argv[2], dest->locks);
+            return 1;
+        }
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RENAME %s -> %s: removing stale empty channel %s to make way",
+                   argv[1], argv[2], dest->name);
+        if(!DelUnusedChannel(dest)) {
+            /* Unreachable while the tests above match DelUnusedChannel's. */
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: not applied, destination could not be removed; state diverged",
+                       argv[1], argv[2]);
+            return 1;
+        }
+    }
+    was_registered = chan->channel_info != NULL;
+    safestrncpy(old_name, argv[1], sizeof(old_name));
+    if(!(renamed = RenameChannel(chan, argv[2]))) {
+        /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
+         * left the old node untouched/unfreed -- nothing was actually
+         * renamed, so don't mark the (still current) old name do-not-
+         * register. */
+        log_module(MAIN_LOG, LOG_ERROR,
+                   "RENAME %s -> %s: rejected by RenameChannel",
+                   argv[1], argv[2]);
+        return 1;
+    }
+    if(was_registered) {
+        chanserv_rename_dnr(old_name, renamed);
+        /* Our MODE that marked the channel may have crossed this rename. */
+        chanserv_rename_marker(renamed);
+        chanserv_rename_announce(old_name, renamed, origin);
+    }
+    return 1;
+}
+
 static CMD_FUNC(cmd_num_topic)
 {
     struct chanNode *cn;
@@ -2870,6 +3007,21 @@ remove_unbursted_channel(struct chanNode *cNode, UNUSED_ARG(void *extra)) {
         dict_remove(unbursted_channels, cNode->name);
 }
 
+/* unbursted_channels (built in irc_introduce, torn down at the uplink's
+ * EB) holds chanNode pointers under keys that are interior pointers into
+ * each node's name[], so a rename of a listed channel would leave both
+ * the key and the data dangling for cmd_eob's irc_burst() walk.  An ircd
+ * queues its whole burst and EB ahead of any RN, and a channel it did
+ * burst has already left this dict, so this is not expected to fire; it
+ * is here so the dict never depends on that ordering. */
+static void
+rename_unbursted_channel(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra)) {
+    if (unbursted_channels && dict_find(unbursted_channels, old_chan->name, NULL)) {
+        dict_remove(unbursted_channels, old_chan->name);
+        dict_insert(unbursted_channels, new_chan->name, new_chan);
+    }
+}
+
 void
 init_parse(void)
 {
@@ -2951,6 +3103,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_ERROR, cmd_error);
     dict_insert(irc_func_dict, CMD_TOPIC, cmd_topic);
     dict_insert(irc_func_dict, TOK_TOPIC, cmd_topic);
+    dict_insert(irc_func_dict, CMD_RENAME, cmd_rename);
+    dict_insert(irc_func_dict, TOK_RENAME, cmd_rename);
     dict_insert(irc_func_dict, CMD_AWAY, cmd_away);
     dict_insert(irc_func_dict, TOK_AWAY, cmd_away);
     dict_insert(irc_func_dict, CMD_SILENCE, cmd_silence);
@@ -3090,6 +3244,7 @@ init_parse(void)
 
     userList_init(&dead_users);
     reg_del_channel_func(remove_unbursted_channel, NULL);
+    reg_channel_rename_func(rename_unbursted_channel, NULL);
     reg_exit_func(parse_cleanup, NULL);
     // reg_notice_func(opserv, check_ctcp);
 }

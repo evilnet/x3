@@ -311,6 +311,12 @@ snoop_cleanup(UNUSED_ARG(void *extra)) {
     unreg_del_user_func(snoop_del_user, NULL);
 }
 
+static void
+snoop_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra)) {
+    if (snoop_cfg.channel == old_chan)
+        snoop_cfg.channel = new_chan;
+}
+
 int
 snoop_init(void) {
     reg_exit_func(snoop_cleanup, NULL);
@@ -325,6 +331,7 @@ snoop_init(void) {
     reg_channel_mode_func(snoop_channel_mode, NULL);
     reg_user_mode_func(snoop_user_mode, NULL);
     reg_oper_func(snoop_oper, NULL);
+    reg_channel_rename_func(snoop_channel_rename, NULL);
 
     return 1;
 }

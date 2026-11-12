@@ -393,6 +393,13 @@ blacklist_cleanup(void)
     dict_delete(blacklist_reasons);
 }
 
+static void
+blacklist_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
+{
+    if (conf.debug_channel == old_chan)
+        conf.debug_channel = new_chan;
+}
+
 int
 blacklist_init(void)
 {
@@ -400,6 +407,7 @@ blacklist_init(void)
     conf_register_reload(blacklist_conf_read);
     reg_new_user_func(blacklist_check_user);
     reg_exit_func(blacklist_cleanup);
+    reg_channel_rename_func(blacklist_channel_rename, NULL);
     return 1;
 }
 

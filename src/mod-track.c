@@ -657,6 +657,12 @@ track_cleanup(UNUSED_ARG(void *extra)) {
     dict_delete(track_db);
 }
 
+static void
+track_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra)) {
+    if (track_cfg.channel == old_chan)
+        track_cfg.channel = new_chan;
+}
+
 int
 track_init(void) {
     track_db = dict_new();
@@ -674,6 +680,7 @@ track_init(void) {
     reg_channel_mode_func(track_channel_mode, NULL);
     reg_user_mode_func(track_user_mode, NULL);
     reg_oper_func(track_oper, NULL);
+    reg_channel_rename_func(track_channel_rename, NULL);
     opserv_define_func("TRACK", cmd_track, 800, 0, 0);
     opserv_define_func("DELTRACK", cmd_deltrack, 800, 0, 0);
     opserv_define_func("ADDTRACK", cmd_addtrack, 800, 0, 0);
