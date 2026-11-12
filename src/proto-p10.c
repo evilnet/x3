@@ -1441,6 +1441,15 @@ static CMD_FUNC(cmd_whois)
     return 1;
 }
 
+/* Does a SERVER line carry the given flag?  The flags field ("+s6o") is
+ * optional: when present it is the parameter before the description and
+ * starts with '+'. */
+static int
+server_flag_set(unsigned int argc, char **argv, char flag)
+{
+    return argc > 8 && argv[7][0] == '+' && strchr(argv[7] + 1, flag) != NULL;
+}
+
 static CMD_FUNC(cmd_server)
 {
     struct server *srv;
@@ -1455,6 +1464,7 @@ static CMD_FUNC(cmd_server)
             return 0;
         srv->self_burst = argv[5][0] == 'J';
         srv->burst = 1;
+        srv->service = server_flag_set(argc, argv, 's');
     } else {
         /* this must be our uplink */
         srv = self->uplink = AddServer(self, argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[6], argv[argc-1]);
@@ -1462,6 +1472,7 @@ static CMD_FUNC(cmd_server)
             return 0;
         srv->self_burst = argv[5][0] == 'J';
         srv->burst = 1;
+        srv->service = server_flag_set(argc, argv, 's');
         if ((argv[7][0] == '+') && !force_n2k) {
             log_module(MAIN_LOG, LOG_WARNING, "Got Undernet-style SERVER message but \"force_n2k\" not on.");
         }
@@ -2292,6 +2303,44 @@ static CMD_FUNC(cmd_burst)
     return res;
 }
 
+/* A MARK names its user by nick.  After a netjoin nick collision the nick
+ * names whoever survived, so a mark the loser's server sent about the loser
+ * arrives here for the survivor.  A mark about a connection (its client
+ * certificate fingerprint, its CTCP version) is known only to the server the
+ * user is on, which is the mark's source on every path: accept it only from
+ * there.  Applying it set the loser's fingerprint on the survivor, and the
+ * certificate auto-login then logged the survivor into the loser's account.
+ */
+static int
+mark_from_uplink(struct userNode *target, const char *origin, const char *type)
+{
+    if (origin && target->uplink == GetServerH(origin))
+        return 1;
+    log_module(MAIN_LOG, LOG_WARNING, "Ignoring %s mark for %s from %s: the user is on %s.",
+               type, target->nick, origin ? origin : "(unknown)", target->uplink->name);
+    return 0;
+}
+
+/* A tag (MARK MARK, DNSBL_DATA) is a label on a user, not a fact about its
+ * connection, so it has two legitimate sources: the server the user is on,
+ * which reports its own blocklist results, and a services server, which
+ * marks users anywhere.  Those are the sources the ircd accepts too.  From
+ * anywhere else it is, like the connection marks above, a mark about
+ * somebody else that reached this nick after a collision: the survivor
+ * would carry the loser's blocklist tag, and an alert or a ban that goes by
+ * the tag would act on the wrong user. */
+static int
+mark_tag_source(struct userNode *target, const char *origin, const char *type)
+{
+    struct server *source = origin ? GetServerH(origin) : NULL;
+
+    if (source && (source == target->uplink || source->service))
+        return 1;
+    log_module(MAIN_LOG, LOG_WARNING, "Ignoring %s mark for %s from %s: the user is on %s, and the source is not a services server.",
+               type, target->nick, origin ? origin : "(unknown)", target->uplink->name);
+    return 0;
+}
+
 /* TODO:
  * This is a stub that doesn't actually do anything. It should be completed
  * so that bans on *!*@markname.* match users as it does in nefarious
@@ -2326,6 +2375,8 @@ static CMD_FUNC(cmd_mark)
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose dnsbl mark is changing.", argv[1]);
             return 0;
         }
+        if (!mark_tag_source(target, origin, argv[2]))
+            return 1;
         if (type >= 9) {
             if (target->marks)
                 for (ii=0; ii<target->marks->used; ii++)
@@ -2349,6 +2400,8 @@ static CMD_FUNC(cmd_mark)
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose version mark is changing.", argv[1]);
             return 0;
         }
+        if (!mark_from_uplink(target, origin, "CVERSION"))
+            return 1;
 
         char *version = unsplit_string(argv + 3, argc - 3, NULL);
         if(!version)
@@ -2368,6 +2421,8 @@ static CMD_FUNC(cmd_mark)
             log_module(MAIN_LOG, LOG_ERROR, "Unable to find user %s whose SSL fingerprint mark is changing.", argv[1]);
             return 0;
         }
+        if (!mark_from_uplink(target, origin, "SSLCLIFP"))
+            return 1;
 
         char *sslfp = unsplit_string(argv + 3, argc - 3, NULL);
         if(!sslfp)
