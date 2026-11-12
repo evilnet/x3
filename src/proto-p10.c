@@ -2244,7 +2244,12 @@ static CMD_FUNC(cmd_mode)
     }
 
 
-    return mod_chanmode(un, cn, argv+2, argc-2, MCP_ALLOW_OVB|MCP_FROM_SERVER|(un ? MC_NOTIFY : 0));
+    if (!mod_chanmode(un, cn, argv+2, argc-2, MCP_ALLOW_OVB|MCP_FROM_SERVER|(un ? MC_NOTIFY : 0)))
+        return 0;
+    /* Whatever the source: the mode-change hooks run only for a user's
+     * MODE (MC_NOTIFY), and none of them puts a registration marker back. */
+    chanserv_markers_changed(cn, origin);
+    return 1;
 }
 
 static CMD_FUNC(cmd_opmode)
@@ -2268,7 +2273,11 @@ static CMD_FUNC(cmd_opmode)
         return 0;
     }
 
-    return mod_chanmode(un, cn, argv+2, argc-2, MCP_ALLOW_OVB|MCP_FROM_SERVER); /* do NOT announce opmode locally */
+    if (!mod_chanmode(un, cn, argv+2, argc-2, MCP_ALLOW_OVB|MCP_FROM_SERVER)) /* do NOT announce opmode locally */
+        return 0;
+    /* No mode-change hook runs for an OPMODE. */
+    chanserv_markers_changed(cn, origin);
+    return 1;
 }
 
 static int clear_chanmode(struct chanNode *channel, const char *modes);
@@ -2294,7 +2303,11 @@ static CMD_FUNC(cmd_clearmode)
         return 0;
     }
 
-    return clear_chanmode(cn, argv[2]);
+    if (!clear_chanmode(cn, argv[2]))
+        return 0;
+    /* Nor for a CLEARMODE. */
+    chanserv_markers_changed(cn, origin);
+    return 1;
 }
 
 static CMD_FUNC(cmd_topic)

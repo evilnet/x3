@@ -1301,6 +1301,46 @@ chanserv_assert_markers(struct chanNode *channel)
     chanserv_set_markers(channel, chanserv_marker_modes() & ~channel->modes);
 }
 
+/* A marker taken off again this soon after ChanServ put it back is taken
+ * for an answer to the put-back (an ircd bouncing it, another services
+ * server removing it each time), not a new change, and is left alone. */
+#define CHANSERV_MARKER_RESTORE_WINDOW 30
+
+/* A channel mode change from the network has been applied to our copy:
+ * a user's or a server's MODE, an oper's OPMODE or CLEARMODE (proto-p10.c
+ * calls this for each; the mode-change hook, handle_mode(), runs only for
+ * a user's MODE).  None of them is ChanServ's own: X3 does not receive
+ * its own changes back.  If the change left a registered channel without
+ * a marker it should carry, put it back now -- without +R the ircd lets
+ * any chanop RENAME the channel without asking X3 -- rather than at the
+ * next join (handle_join(), which stays).  A suspended channel gets its
+ * markers back like any other, as everywhere else.
+ *
+ * One put-back per channel per CHANSERV_MARKER_RESTORE_WINDOW: a peer
+ * that undoes every put-back would otherwise loop with us.  A removal
+ * inside the window is logged and left for the next join to heal. */
+void
+chanserv_markers_changed(struct chanNode *channel, const char *source)
+{
+    struct chanData *cData;
+
+    if(!chanserv || !channel || !(cData = channel->channel_info))
+        return;
+    if(!(chanserv_marker_modes() & ~channel->modes))
+        return;
+    if(cData->markersRestored
+       && now - cData->markersRestored < CHANSERV_MARKER_RESTORE_WINDOW)
+    {
+        log_module(CS_LOG, LOG_WARNING, "Registration marker of %s removed again (by %s) within %d seconds of ChanServ putting it back; leaving it until the next join.",
+                   channel->name, source ? source : "?", CHANSERV_MARKER_RESTORE_WINDOW);
+        return;
+    }
+    log_module(CS_LOG, LOG_INFO, "Registration marker of %s removed by %s; putting it back.",
+               channel->name, source ? source : "?");
+    cData->markersRestored = now;
+    chanserv_assert_markers(channel);
+}
+
 static char max_length_text[MAXLEN+1][16];
 
 static struct helpfile_expansion

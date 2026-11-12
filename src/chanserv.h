@@ -93,6 +93,7 @@ struct chanData
     time_t		visited;
     time_t 		limitAdjusted;
     time_t              ownerTransfer;
+    time_t              markersRestored; /* last chanserv_markers_changed() put-back; not saved */
 
     char		*topic;
     char		*greeting;
@@ -231,5 +232,7 @@ void wipe_adduser_pending(struct chanNode *channel, struct userNode *user);
 
 int check_bans(struct userNode *user, const char *channel);
 int trace_check_bans(struct userNode *user, struct chanNode *chan);
+
+void chanserv_markers_changed(struct chanNode *channel, const char *source);
 
 #endif
