@@ -3044,10 +3044,15 @@ relocate_follow_bots(struct chanNode *from, struct chanNode *to)
  * now; it is handed on with the rest (RelocateHandover()), the bots
  * follow it with JOIN and PART as after a first relocation, the markers
  * are sent again (+R for the winner, -R for the loser) and the loser's
- * name gets the rename do-not-register.  X3 arbitrates every rename of a
- * registered channel, but it answers each query on its own and keeps no
- * record of an approval, so two it approved back to back can still cross;
- * that is logged as a warning.
+ * name gets the rename do-not-register.  Opers and helpers are told, as of
+ * any rename that moves a registration (chanserv_rename_announce()), that
+ * it went on from the loser's name to the winner's, "by" `server' -- the
+ * server the deciding RN came from, since no user decided it: they were
+ * told of the move to the loser, and what they read has to end where the
+ * registration is.  X3 arbitrates every rename of a registered channel,
+ * but it answers each query on its own and keeps no record of an
+ * approval, so two it approved back to back can still cross; that is
+ * logged as a warning too.
  *
  * When the name a new channel would get is taken here by an unrelated
  * channel, that step is not applied and the log says so, as for a first
@@ -3057,7 +3062,7 @@ relocate_follow_bots(struct chanNode *from, struct chanNode *to)
  * `oldchan' and the losing channel may be gone on return (a deadline that
  * is already here). */
 static void
-relocate_again(struct userNode *issuer, struct chanNode *oldchan, const char *incoming, time_t expires)
+relocate_again(struct userNode *issuer, const char *server, struct chanNode *oldchan, const char *incoming, time_t expires)
 {
     struct chanNode *wchan = NULL, *lchan = NULL;
     struct modeNode *mn;
@@ -3162,6 +3167,7 @@ relocate_again(struct userNode *issuer, struct chanNode *oldchan, const char *in
                            old_name, incoming, current, incoming);
                 chanserv_relocate_markers(lchan, wchan);
                 chanserv_rename_dnr(current, wchan);
+                chanserv_rename_announce(current, wchan, server);
             } else
                 log_module(MAIN_LOG, LOG_INFO,
                            "RELOCATE %s -> %s: crossed the relocation to %s; %s wins, %s is a tombstone",
@@ -3277,7 +3283,14 @@ static CMD_FUNC(cmd_rename)
      * crossed.  Before anything is done about the destination, which in
      * that case may rightly exist. */
     if(relocate && chanserv_relocate_husk_get(chan, NULL, NULL, NULL)) {
-        relocate_again(origin ? GetUserH(origin) : NULL, chan, argv[2], expires);
+        struct userNode *issuer = origin ? GetUserH(origin) : NULL;
+
+        /* The server the RN came from: the issuer's, or the sender of a
+         * server-sourced RN. */
+        relocate_again(issuer,
+                       issuer ? issuer->uplink->name
+                              : ((origin && GetServerH(origin)) ? origin : NULL),
+                       chan, argv[2], expires);
         return 1;
     }
     /* A relocation tombstone we still hold under the new name.  The ircd

@@ -249,9 +249,9 @@ void chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan);
 void chanserv_rename_marker(struct chanNode *new_chan);
 void chanserv_relocate_markers(struct chanNode *tombstone, struct chanNode *new_chan);
 
-/* Called by cmd_rename after an RN moved a registration: tells opers and
- * helpers, as MOVE does.  source is the RN's origin (a nick or a server
- * name), or NULL. */
+/* Called by cmd_rename after an RN moved a registration, and by
+ * relocate_again() when a crossing hands one on: tells opers and helpers,
+ * as MOVE does.  source is the RN's origin or a server name, or NULL. */
 void chanserv_rename_announce(const char *old_name, struct chanNode *new_chan, const char *source);
 
 /* evilnet/channel-relocate, both called by cmd_rename's consent path in
