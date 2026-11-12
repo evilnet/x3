@@ -1778,36 +1778,78 @@ static CMD_FUNC(cmd_account)
         }
         return 1;
     }
-    else if(!strcmp(argv[2],"R"))
+    else if(!strcmp(argv[2],"R") && argc >= 7 && !strcmp(argv[5],"RENAME"))
     {
-        if(argc >= 7 && !strcmp(argv[5],"RENAME"))
-        {
-            /* Rename permission query: AC <unum> R <cookie> <#chan> RENAME <new>.
-             * Reply shape: cookie FIRST (ircd m_account.c keys pending renames on
-             * parv[1] not being a server numeric) — deliberately NOT the LOC reply
-             * shape (AC <servnum> A <cookie>) used above. Never GetUserN() the
-             * cookie; argv[3] is opaque to us. This disambiguates from the legit
-             * legacy account stamp "AC <target> R <account>" (argc==4), which
-             * keeps falling through to call_account_func() below unchanged.
-             *
-             * The reply itself carries an explicit RENAME discriminator token
-             * after the A/D type so ircd m_account.c can route it by cookie
-             * without a FindNServer() guess — a decimal cookie can otherwise
-             * alias a server numeric (F2). */
-            const char *reason = "Permission denied";
-            struct chanNode *chan = GetChannel(argv[4]);
-            /* user is GetUserN(argv[1]) from the prologue above, which already
-             * returns early when NULL — the check here is paranoia. */
-            if(user && chan && chanserv_rename_allowed(user, chan, argv[6], &reason))
-                putsock("%s " P10_ACCOUNT " %s A RENAME", self->numeric, argv[3]);
-            else
-                putsock("%s " P10_ACCOUNT " %s D RENAME :%s", self->numeric, argv[3], reason);
+        /* Rename permission query: AC <unum> R <cookie> <#chan> RENAME <new>.
+         * Reply shape: cookie FIRST (ircd m_account.c keys pending renames on
+         * parv[1] not being a server numeric) — deliberately NOT the LOC reply
+         * shape (AC <servnum> A <cookie>) used above. Never GetUserN() the
+         * cookie; argv[3] is opaque to us. This must be tested before the
+         * account stamp "AC <target> R|M <account> [<ts> [<id>]]" (argc 4 to
+         * 6) below, which would otherwise take the cookie for an account and
+         * "#chan:RENAME" for its timestamp and id.
+         *
+         * The reply itself carries an explicit RENAME discriminator token
+         * after the A/D type so ircd m_account.c can route it by cookie
+         * without a FindNServer() guess — a decimal cookie can otherwise
+         * alias a server numeric (F2). */
+        const char *reason = "Permission denied";
+        struct chanNode *chan = GetChannel(argv[4]);
+        /* user is GetUserN(argv[1]) from the prologue above, which already
+         * returns early when NULL — the check here is paranoia. */
+        if(user && chan && chanserv_rename_allowed(user, chan, argv[6], &reason))
+            putsock("%s " P10_ACCOUNT " %s A RENAME", self->numeric, argv[3]);
+        else
+            putsock("%s " P10_ACCOUNT " %s D RENAME :%s", self->numeric, argv[3], reason);
+        return 1;
+    }
+    else if(!strcmp(argv[2],"R") || !strcmp(argv[2],"M"))
+    {
+        /* R: the ircd set an account; M: it changed one.  Either way argv[3]
+         * is the account the user has now.  For M, drop the old binding
+         * first, so a name X3 does not know (or refuses) leaves the user
+         * unbound rather than on the previous handle. */
+        if (argc < 4)
             return 1;
+        if (!strcmp(argv[2],"M"))
+            nickserv_unbind_user(user);
+        /* Hand nickserv what the ircd sent, in the burst's form
+         * account[:timestamp[:id]], so the timestamp and anything after it
+         * (the Keycloak id) reach handle_account as they do from +r. */
+        {
+            char stamp[MAXLEN];
+            if (argc > 5)
+                snprintf(stamp, sizeof(stamp), "%s:%s:%s", argv[3], argv[4], argv[5]);
+            else if (argc > 4)
+                snprintf(stamp, sizeof(stamp), "%s:%s", argv[3], argv[4]);
+            else
+                safestrncpy(stamp, argv[3], sizeof(stamp));
+            call_account_func(user, stamp);
         }
-        call_account_func(user, argv[3]);   /* legacy account stamp — unchanged */
+    }
+    else if(!strcmp(argv[2],"U"))
+    {
+        /* The ircd removed the account.  Unbind only: FLAGS_STAMPED stays
+         * set on purpose (one account per session), as after UNREGISTER. */
+        nickserv_unbind_user(user);
+    }
+    else if(!strcmp(argv[2],"A") || !strcmp(argv[2],"D"))
+    {
+        /* Replies to an S/H request, never something to bind. */
+    }
+    else if(!argv[2][0] || !argv[2][1])
+    {
+        /* A single character is a subcommand, never an account: an
+         * extended-accounts ircd always sends one there (nefarious refuses
+         * anything longer as the old syntax).  One this X3 does not know is
+         * ignored, not bound as a handle named after the letter.  Only the
+         * old form, whose second parameter is the account itself, falls
+         * through to the bind below. */
+        log_module(MAIN_LOG, LOG_DEBUG, "Ignoring unknown ACCOUNT subcommand '%s' for %s",
+                   argv[2], user->nick);
     }
     else
-        call_account_func(user, argv[2]); /* For backward compatability */
+        call_account_func(user, argv[2]); /* legacy AC <user> <account> [ts] */
     return 1;
 }
 

@@ -5558,6 +5558,16 @@ new_user_event(struct userNode *user, void *extra) {
     return check_user_nick(user, extra);
 }
 
+/* Drop the user's handle binding because the ircd removed or changed the
+ * account (AC U / AC M).  FLAGS_STAMPED is left alone on purpose: one
+ * account per session, exactly as after UNREGISTER. */
+void
+nickserv_unbind_user(struct userNode *user)
+{
+    if (user->handle_info)
+        set_user_handle_info(user, NULL, 0);
+}
+
 void
 handle_account(struct userNode *user, const char *stamp)
 {
