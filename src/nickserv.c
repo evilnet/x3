@@ -354,6 +354,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_REBIND_CLEARED", "Keycloak id binding cleared for account %s; the next login will adopt one." },
     { "NSMSG_REBIND_SET", "Keycloak id set for account %s." },
     { "NSMSG_REBIND_DETACHED", "%d session(s) logged in under the previous id were detached." },
+    { "NSMSG_REBIND_CREDENTIALS", "Removed the account's client certificate fingerprints (%u) and hostmasks (%u), which came with the previous id; hostmasks now: %s." },
     { "NSMSG_REBIND_BADID", "Give the account's Keycloak ID -- the UUID from the admin console (e.g. 6ba7b810-9dad-11d1-80b4-00c04fd430c8) or the 22-character form $N shows (e.g. a6e4EJ2tEdGAtADAT9QwyA) -- or * to clear." },
     { "NSMSG_IDENTITY_RESET", "Account $b%s$b was recreated in Keycloak (id %s, was %s): its data has been reset." },
     { "NSMSG_IDENTITY_STALE", "Account $b%s$b was announced with the Keycloak id it had before (%s, now %s): login refused." },
@@ -2167,6 +2168,48 @@ handle_kcid_from_uuid(const char *uuid, char out[23])
     return o == 22;
 }
 
+/* The hostmasks an account starts with under a new owner, as a REGISTER,
+ * an OREGISTER or a login-created account gets them: *@* with
+ * default_hostmask, otherwise the owner's own host when a user of theirs
+ * is at hand.  With neither (default_hostmask off, no user), none: AUTH,
+ * which takes any host while an account has no hostmask, then adds the
+ * one it is used from, and LOC and SASL through X3 refuse until then. */
+static void
+nickserv_new_owner_masks(struct handle_info *hi, struct userNode *owner)
+{
+    char *mask = NULL;
+
+    if (nickserv_conf.default_hostmask)
+        mask = strdup("*@*");
+    else if (owner)
+        mask = generate_hostmask(owner, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+    if (mask)
+        string_list_append(hi->masks, canonicalize_hostmask(mask));
+}
+
+/* An account REBIND hands to another Keycloak id loses what was set under
+ * the previous one.  Its client certificate fingerprints are a way in that
+ * never asks Keycloak: a matching certificate logs a connection in on its
+ * own (auto-auth on connect, AUTH, LOC and SASL EXTERNAL through X3).  Its
+ * hostmasks are the previous owner's hosts, which AUTH and LOC would hold
+ * the new owner to; they start over as a new owner's.  No index is kept of
+ * the fingerprints (find_handleinfo_by_sslfp() walks the handles), so
+ * there is nothing else to update.  The password hash is left alone: with
+ * ldap_enable, AUTH, LOC and SASL PLAIN through X3 check the directory,
+ * which holds the new owner's, and never the local hash.  *sslfps and
+ * *masks get the numbers removed. */
+static void
+nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned int *masks)
+{
+    *sslfps = hi->sslfps->used;
+    *masks = hi->masks->used;
+    while (hi->sslfps->used)
+        string_list_delete(hi->sslfps, 0);
+    while (hi->masks->used)
+        string_list_delete(hi->masks, 0);
+    nickserv_new_owner_masks(hi, NULL);
+}
+
 /* REBIND <*account> <keycloak-uuid|compact-id|*>: set or clear the Keycloak user id
  * an account is bound to, by hand.  A login that carries a different id
  * from the stored one is refused and reported to opers (handle_account;
@@ -2192,6 +2235,15 @@ handle_kcid_from_uuid(const char *uuid, char out[23])
  * meant for would be refused.  To go back to a replaced id, set it with
  * REBIND <id>.
  *
+ * The same two cases remove the account's client certificate fingerprints
+ * and hostmasks (nickserv_drop_credentials), and the reply says so: the
+ * account is being handed to someone the previous id did not name.  For
+ * REBIND * that is the next login with an id the account has not had, and
+ * it binds with no oper step in between, so what the previous owner set
+ * has to go here or it would go with the account.  Binding an account with
+ * no id stored -- its first binding, or one after a REBIND * that removed
+ * them already -- removes nothing, and neither does the id it has.
+ *
  * Not an OSET option on purpose: SEARCH SET applies OSET options without
  * the outranking check that get_victim_oper enforces here. */
 static NICKSERV_FUNC(cmd_rebind)
@@ -2203,7 +2255,8 @@ static NICKSERV_FUNC(cmd_rebind)
     if (!(hi = get_victim_oper(user, argv[1])))
         return 0;
     if (!strcmp(argv[2], "*")) {
-        unsigned int detached = 0;
+        unsigned int detached = 0, sslfps = 0, masks = 0;
+        int dropped = 0;
 
         if (hi->kc_id) {
             struct userNode *u;
@@ -2216,10 +2269,15 @@ static NICKSERV_FUNC(cmd_rebind)
                 set_user_handle_info(u, NULL, 0);
                 detached++;
             }
+            nickserv_drop_credentials(hi, &sslfps, &masks);
+            dropped = 1;
         }
         reply("NSMSG_REBIND_CLEARED", hi->handle);
         if (detached)
             reply("NSMSG_REBIND_DETACHED", detached);
+        if (dropped)
+            reply("NSMSG_REBIND_CREDENTIALS", sslfps, masks, hi->masks->used
+                  ? hi->masks->list[0] : user_find_message(user, "MSG_NONE"));
         return 1;
     }
     /* Either form: the UUID the Keycloak admin console shows, or the
@@ -2234,16 +2292,21 @@ static NICKSERV_FUNC(cmd_rebind)
     }
     if (!hi->kc_id || strcmp(hi->kc_id, compact)) {
         struct userNode *u;
-        unsigned int detached = 0;
+        unsigned int detached = 0, sslfps = 0, masks = 0;
+        int dropped = 0;
 
         /* The id being replaced is remembered, as after a reset: the
          * sessions still carrying it are refused rather than taken for
          * another recreate.  The ones logged in now authenticated under
-         * the old identity, so they go.  The new id is no longer a
-         * replaced one, if it was. */
+         * the old identity, so they go, and so do the certificate
+         * fingerprints and hostmasks set under it.  The new id is no
+         * longer a replaced one, if it was. */
         handle_kcid_unremember(hi, compact);
-        if (hi->kc_id)
+        if (hi->kc_id) {
             handle_kcid_remember(hi, hi->kc_id);
+            nickserv_drop_credentials(hi, &sslfps, &masks);
+            dropped = 1;
+        }
         hi->kc_id = strdup(compact);
         while ((u = hi->users)) {
             set_user_handle_info(u, NULL, 0);
@@ -2251,6 +2314,9 @@ static NICKSERV_FUNC(cmd_rebind)
         }
         if (detached)
             reply("NSMSG_REBIND_DETACHED", detached);
+        if (dropped)
+            reply("NSMSG_REBIND_CREDENTIALS", sslfps, masks, hi->masks->used
+                  ? hi->masks->list[0] : user_find_message(user, "MSG_NONE"));
     }
     reply("NSMSG_REBIND_SET", hi->handle);
     return 1;
@@ -5898,12 +5964,15 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
     hi = NULL;
 
     /* The same name, from nothing: X3's own registration date, no password,
-     * no registered nick, and no directory step -- the entry there already
-     * belongs to the new user, and a failing writeback must not be able to
-     * lose the record after the old one is gone.  Mirrors what
-     * nickserv_register() initialises. */
+     * no registered nick, no certificate fingerprint, and no directory step
+     * -- the entry there already belongs to the new user, and a failing
+     * writeback must not be able to lose the record after the old one is
+     * gone.  Mirrors what nickserv_register() initialises, and the hostmask
+     * the account a login creates gets (handle_account's LDAP autocreate):
+     * without one, LOC and SASL through X3 would refuse the new owner. */
     fresh = register_handle(name, "", 0);
     fresh->masks = alloc_string_list(1);
+    nickserv_new_owner_masks(fresh, claimant);
     fresh->sslfps = alloc_string_list(1);
     fresh->ignores = alloc_string_list(1);
     fresh->users = NULL;
