@@ -53,6 +53,14 @@
 #define MODE_HALFOP             0x00800000 /* +h USER */
 #define MODE_EXEMPT             0x01000000 /* +e exempt */
 #define MODE_HIDEMODE		0x02000000 /* +L hide modes */
+/* Nefarious IRCv3 branch history modes.  Tracked and re-emitted so a
+ * mode change carrying them is not rejected wholesale (an unknown letter
+ * makes mod_chanmode_parse() drop the entire change); services do not
+ * act on them.  The 32 bits up to MODE_REMOVE are all taken, so the
+ * second one sits at bit 32; chan_mode_t is unsigned long long so that
+ * holds on 32-bit platforms too. */
+#define MODE_PUBLICHISTORY	0x40000000 /* +H public history */
+#define MODE_NOSTORAGE		0x100000000ULL /* +P no history storage */
 #define MODE_APASS		0x04000000 /* +A adminpass */
 #define MODE_UPASS		0x08000000 /* +U userpass */
 #define MODE_ADMINSONLY         0x10000000 /* +a Admins only */

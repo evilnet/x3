@@ -581,8 +581,6 @@ static const struct message_entry msgtab[] = {
 #define ACTION_UNBAN        0x0010
 #define ACTION_DEL_LAMER    0x0020
 
-/* The 40 allows for [+-ntlksimprD] and lots of fudge factor. */
-#define MODELEN         40 + KEYLEN
 #define PADLEN          21
 #define ACCESSLEN       10
 
@@ -5738,7 +5736,7 @@ static CHANSERV_FUNC(cmd_staff)
 static CHANSERV_FUNC(cmd_peek)
 {
     struct modeNode *mn;
-    char modes[MODELEN];
+    char modes[MAXLEN];
     unsigned int n;
     struct helpfile_table table;
 
@@ -6830,7 +6828,7 @@ static MODCMD_FUNC(chan_opt_maxsetinfo)
 static MODCMD_FUNC(chan_opt_modes)
 {
     struct mod_chanmode *new_modes;
-    char modes[MODELEN];
+    char modes[MAXLEN];
 
     if(argc > 1)
     {

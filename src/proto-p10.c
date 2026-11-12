@@ -345,8 +345,6 @@
  */
 #define PREHISTORY 780000000
 
-#define MODELEN                 40 + KEYLEN
-
 static struct server *servers_num[64*64];
 static privmsg_func_t *privmsg_funcs;
 static unsigned int num_privmsg_funcs;
@@ -2232,7 +2230,7 @@ static CMD_FUNC(cmd_mode)
         const char *str;
         str = conf_get_data("services/opserv/nick", RECDB_QSTRING);
         if (str) {
-            char modes[MODELEN];
+            char modes[MAXLEN];
             struct userNode *opserv = GetUserH(str);
  
             send_message_type(4, un, opserv, "Channel modes cannot be changed due to DefCon level %d in effect, please try again soon", DefConLevel);
@@ -3641,6 +3639,8 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
         case 'a': do_chan_mode(MODE_ADMINSONLY); break;
         case 'Z': do_chan_mode(MODE_SSLONLY); break;
 	case 'L': do_chan_mode(MODE_HIDEMODE); break;
+	case 'H': do_chan_mode(MODE_PUBLICHISTORY); break;
+	case 'P': do_chan_mode(MODE_NOSTORAGE); break;
 	case 'R':
 	  /* MODE_REGISTERED wire letter (nefarious channel.c MODE_REGISTERED,
 	   * server-origin-only). MCP_REGISTERED is passed by the ChanServ
@@ -3899,6 +3899,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
+	DO_MODE_CHAR(PUBLICHISTORY, 'H');
+	DO_MODE_CHAR(NOSTORAGE, 'P');
 #undef DO_MODE_CHAR
         if (change->modes_clear & channel->modes & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', channel->key);
@@ -3957,6 +3959,8 @@ mod_chanmode_announce(struct userNode *who, struct chanNode *channel, struct mod
         DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
+	DO_MODE_CHAR(PUBLICHISTORY, 'H');
+	DO_MODE_CHAR(NOSTORAGE, 'P');
 #undef DO_MODE_CHAR
         if(change->modes_set & MODE_KEY)
             mod_chanmode_append(&chbuf, 'k', change->new_key);
@@ -4034,6 +4038,8 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
+	DO_MODE_CHAR(PUBLICHISTORY, 'H');
+	DO_MODE_CHAR(NOSTORAGE, 'P');
 #undef DO_MODE_CHAR
     }
     if (change->modes_set) {
@@ -4060,6 +4066,8 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
         DO_MODE_CHAR(PERSIST, 'z');
         DO_MODE_CHAR(SSLONLY, 'Z');
 	DO_MODE_CHAR(HIDEMODE, 'L');
+	DO_MODE_CHAR(PUBLICHISTORY, 'H');
+	DO_MODE_CHAR(NOSTORAGE, 'P');
 
 	DO_MODE_CHAR(KEY, 'k');
 	DO_MODE_CHAR(LIMIT, 'l');
@@ -4081,7 +4089,7 @@ mod_chanmode_format(struct mod_chanmode *change, char *outbuff)
 static int
 clear_chanmode(struct chanNode *channel, const char *modes)
 {
-    unsigned int cleared;
+    chan_mode_t cleared;
 
     for (cleared = 0; *modes; modes++) {
         switch (*modes) {
@@ -4127,6 +4135,8 @@ clear_chanmode(struct chanNode *channel, const char *modes)
         case 'z': cleared |= MODE_PERSIST; break;
         case 'Z': cleared |= MODE_SSLONLY; break;
 	case 'L': cleared |= MODE_HIDEMODE; break;
+	case 'H': cleared |= MODE_PUBLICHISTORY; break;
+	case 'P': cleared |= MODE_NOSTORAGE; break;
         }
     }
 
