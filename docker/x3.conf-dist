@@ -254,6 +254,17 @@
         // refused connection keeps the account at the ircd and cannot log
         // in again).  A suspended account is never reset: that login is
         // refused and reported too.
+        //
+        // Deploy order: nefarious 8f420128 or later on every server that
+        // does local (Keycloak) SASL first, then this X3.  X3 refuses a
+        // login whose account timestamp is not the registration date it
+        // knows, unless the login carries the Keycloak id the account is
+        // already bound to (an account is bound by its first login that
+        // goes through).  Older nefarious stamped Keycloak's creation time
+        // there, so their local SASL logins are refused.  Bouncer sessions
+        // they persisted carry that time too, and a burst replays it: those
+        // that also carry the id the account is bound to pass, those
+        // without an id are refused until the user reconnects.
         "keycloak_id_reset" "%X3_KC_ID_RESET%";
 
         // LDAP configuration
