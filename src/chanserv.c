@@ -8390,11 +8390,81 @@ handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
         SetChannelTopic(channel, chanserv, chanserv, channel->channel_info->topic, 1);
 }
 
+/* Configuration keys that name a channel some part of X3 uses: a bot sits
+ * in it, a module reports to it, or ChanServ checks it.  Such a channel
+ * follows a rename only in memory (the rename hooks re-point the node);
+ * a rehash or a restart takes the configured name again. */
+static const char *const chanserv_config_channel_keys[] = {
+    "services/opserv/debug_channel",
+    "services/opserv/alert_channel",
+    "services/opserv/staff_auth_channel",
+    "services/opserv/autojoin_channels",    /* every bot joins these */
+    "services/chanserv/support_channel",
+    "services/spamserv/debug_channel",
+    "modules/snoop/channel",
+    "modules/track/channel",
+    "modules/blacklist/debug_channel",
+};
+
+static int
+chanserv_config_names(struct record_data *rd, const char *prefix, const char *name)
+{
+    unsigned int ii;
+    size_t plen = strlen(prefix);
+
+    if(!rd)
+        return 0;
+    if(rd->type == RECDB_QSTRING)
+        return !strncasecmp(rd->d.qstring, prefix, plen)
+            && !irccasecmp(rd->d.qstring + plen, name);
+    if(rd->type == RECDB_STRING_LIST)
+        for(ii = 0; ii < rd->d.slist->used; ++ii)
+            if(!strncasecmp(rd->d.slist->list[ii], prefix, plen)
+               && !irccasecmp(rd->d.slist->list[ii] + plen, name))
+                return 1;
+    return 0;
+}
+
+/* Is `name' one of the channels X3's configuration names (the keys above,
+ * or an "irc:#channel" log target, which never follows a rename at all)?
+ * Returns the configuration key that names it, or NULL.  A module's key
+ * counts whether or not that module is loaded. */
+static const char *
+chanserv_config_channel(const char *name)
+{
+    static char log_key[MAXLEN];
+    struct record_data *rd;
+    dict_iterator_t it;
+    unsigned int ii;
+
+    for(ii = 0; ii < ArrayLength(chanserv_config_channel_keys); ++ii)
+        if(chanserv_config_names(conf_get_node(chanserv_config_channel_keys[ii]), "", name))
+            return chanserv_config_channel_keys[ii];
+    rd = conf_get_node("logs");
+    if(rd && rd->type == RECDB_OBJECT)
+        for(it = dict_first(rd->d.object); it; it = iter_next(it))
+            if(chanserv_config_names(iter_data(it), "irc:", name))
+            {
+                snprintf(log_key, sizeof(log_key), "logs/%s", iter_key(it));
+                return log_key;
+            }
+    return NULL;
+}
+
 static void
 chanserv_channel_rename(struct chanNode *old_chan, struct chanNode *new_chan, UNUSED_ARG(void *extra))
 {
     struct adduserPending *ap;
     unsigned int ii;
+    const char *key;
+
+    /* A configured channel the ircd renamed without asking (it asks only
+     * for one it shows as registered): it cannot be refused now, and the
+     * hooks re-point it in memory, but the configuration still names the
+     * old channel. */
+    if((key = chanserv_config_channel(old_chan->name)))
+        log_module(CS_LOG, LOG_WARNING, "Channel %s, named by the configuration key %s, was renamed to %s: services follow it until the next rehash or restart, which go back to %s.  Update %s.",
+                   old_chan->name, key, new_chan->name, old_chan->name, key);
 
     /* memcpy() moved channel_info onto new_chan, but the chanData's back
      * pointer still targets the old node. */
@@ -8441,6 +8511,7 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
     struct chanData *cData;
     struct userData *uData;
     struct chanNode *target;
+    const char *key;
 
     if(!user->handle_info)
     {
@@ -8468,6 +8539,16 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
                    "Rename query for %s -> %s from %s (account %s): the ircd has %s marked registered but it is not registered here; refused.",
                    chan->name, new_name, user->nick, user->handle_info->handle, chan->name);
         *reason = "Channel is not registered with services";
+        return 0;
+    }
+
+    /* Services would follow the rename only until the next rehash or
+     * restart, which put them back on the configured name. */
+    if((key = chanserv_config_channel(chan->name)))
+    {
+        static char config_reason[MAXLEN];
+        snprintf(config_reason, sizeof(config_reason), "Channel is a services channel named in the configuration (%s) and may not be renamed", key);
+        *reason = config_reason;
         return 0;
     }
 
