@@ -2750,6 +2750,22 @@ chanserv_relocate_husk_overdue(struct chanNode *channel)
     return husk && relocate_husk_marked(channel) && (husk->expires <= now);
 }
 
+/* The record of a tombstone that still holds its name on the network: one
+ * X3 tracks that is still the tombstone by the ircd's test (marked and
+ * unregistered, relocate_husk_broken()) and whose deadline is still ahead.
+ * Past its deadline the ircd has let the name go, whatever X3's sweep has
+ * yet to do (chanserv_relocate_husk_overdue()), and an RN onto it is
+ * applied (cmd_rename).  NULL for any other channel. */
+static struct relocate_husk *
+relocate_husk_holding(struct chanNode *channel)
+{
+    struct relocate_husk *husk = relocate_husk_find(channel);
+
+    if(!husk || relocate_husk_broken(channel) || (husk->expires <= now))
+        return NULL;
+    return husk;
+}
+
 time_t
 chanserv_relocate_own_deadline(void)
 {
@@ -9628,6 +9644,7 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
     struct chanData *cData;
     struct userData *uData;
     struct chanNode *target;
+    struct relocate_husk *husk;
     struct dnrList dnrs;
     unsigned int ii;
     int blocked;
@@ -9710,6 +9727,32 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
     if((target = GetChannel(new_name)) && target->channel_info)
     {
         *reason = "New channel name is already registered";
+        return 0;
+    }
+
+    /* Still a relocation tombstone: the channel that was there has moved,
+     * and the tombstone holds the name, redirecting, until its deadline.
+     * The ircd refuses a RENAME onto any channel that exists, a tombstone
+     * included ("Channel name already in use"), whether it would rename or
+     * relocate; X3 gives the same answer, with the reason.  Before the DNR
+     * test: a registration's own rename DNR on the name, which it left
+     * there when it moved, does not let it back while the tombstone
+     * stands. */
+    if(target && (husk = relocate_husk_holding(target)))
+    {
+        static char tombstone_reason[MAXLEN];
+        char left[INTERVALLEN];
+
+        intervalString(left, husk->expires - now, user->handle_info);
+        if(husk->new_name[0])
+            snprintf(tombstone_reason, sizeof(tombstone_reason),
+                     "New channel name is already in use: a relocation tombstone (the channel moved to %s) holds it for another %s",
+                     husk->new_name, left);
+        else
+            snprintf(tombstone_reason, sizeof(tombstone_reason),
+                     "New channel name is already in use: a relocation tombstone holds it for another %s",
+                     left);
+        *reason = tombstone_reason;
         return 0;
     }
 
