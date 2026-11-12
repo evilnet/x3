@@ -1239,6 +1239,108 @@ mode_lock_violated(const struct mod_chanmode *orig, const struct mod_chanmode *c
     return 0;
 }
 
+/* Server-managed channel markers.
+ *
+ * ChanServ tells the ircd which channels are registered by setting +R
+ * (MODE_REGISTERED) on them, and with off_channel on it also sets +z
+ * (MODE_PERSIST) so that a registered channel survives while nobody is in
+ * it.  Both are facts about the registration that ChanServ maintains by
+ * itself; neither is a channel setting.  In particular they are never part
+ * of a channel's mode lock (chanData.modes).  The lock belongs to the
+ * channel's users: SET MODES and INFO show it, SET MODES replaces it
+ * wholesale, and it is written to the database -- where an 'R' makes an
+ * X3 that predates the letter reject the whole stored lock, and then drop
+ * it for good on its next database write.
+ */
+#define CHANSERV_MARKER_MODES   (MODE_REGISTERED | MODE_PERSIST)
+
+/* Take the markers out of a mode lock that came from the configuration or
+ * the database.  A database written with off_channel on by an X3 that kept
+ * its marker in the lock has a 'z' there; one written by an early revision
+ * of the +R change has an 'R', and a 'z' as well with off_channel on. */
+static void
+chanserv_strip_markers(struct mod_chanmode *lock)
+{
+    lock->modes_set &= ~(chan_mode_t)CHANSERV_MARKER_MODES;
+    lock->modes_clear &= ~(chan_mode_t)CHANSERV_MARKER_MODES;
+}
+
+/* The markers a registered channel carries. */
+static chan_mode_t
+chanserv_marker_modes(void)
+{
+    /* +z only with off_channel on; without it ChanServ's own presence is
+     * what holds the channel open. */
+    return MODE_REGISTERED | ((off_channel > 0) ? MODE_PERSIST : 0);
+}
+
+/* Send `markers' to a channel, whatever X3's copy of its modes says. */
+static void
+chanserv_set_markers(struct chanNode *channel, chan_mode_t markers)
+{
+    struct mod_chanmode change;
+
+    if(!markers)
+        return;
+    mod_chanmode_init(&change);
+    change.modes_set = markers;
+    mod_chanmode_announce(chanserv, channel, &change);
+}
+
+/* Set whichever of its markers a registered channel does not carry yet.
+ * Does nothing when they are all there, so it can be called wherever a
+ * registered channel may have (re)appeared without them.
+ *
+ * Suspension makes no difference here: a suspended channel is still a
+ * registered one, and the ircd has to know that.  It only hands a
+ * channel RENAME to X3 to arbitrate when the channel has +R, so a
+ * suspended channel without it could be renamed by any of its chanops. */
+static void
+chanserv_assert_markers(struct chanNode *channel)
+{
+    chanserv_set_markers(channel, chanserv_marker_modes() & ~channel->modes);
+}
+
+/* A marker taken off again this soon after ChanServ put it back is taken
+ * for an answer to the put-back (an ircd bouncing it, another services
+ * server removing it each time), not a new change, and is left alone. */
+#define CHANSERV_MARKER_RESTORE_WINDOW 30
+
+/* A channel mode change from the network has been applied to our copy:
+ * a user's or a server's MODE, an oper's OPMODE or CLEARMODE (proto-p10.c
+ * calls this for each; the mode-change hook, handle_mode(), runs only for
+ * a user's MODE).  None of them is ChanServ's own: X3 does not receive
+ * its own changes back.  If the change left a registered channel without
+ * a marker it should carry, put it back now -- without +R the ircd lets
+ * any chanop RENAME the channel without asking X3 -- rather than at the
+ * next join (handle_join(), which stays).  A suspended channel gets its
+ * markers back like any other, as everywhere else.
+ *
+ * One put-back per channel per CHANSERV_MARKER_RESTORE_WINDOW: a peer
+ * that undoes every put-back would otherwise loop with us.  A removal
+ * inside the window is logged and left for the next join to heal. */
+void
+chanserv_markers_changed(struct chanNode *channel, const char *source)
+{
+    struct chanData *cData;
+
+    if(!chanserv || !channel || !(cData = channel->channel_info))
+        return;
+    if(!(chanserv_marker_modes() & ~channel->modes))
+        return;
+    if(cData->markersRestored
+       && now - cData->markersRestored < CHANSERV_MARKER_RESTORE_WINDOW)
+    {
+        log_module(CS_LOG, LOG_WARNING, "Registration marker of %s removed again (by %s) within %d seconds of ChanServ putting it back; leaving it until the next join.",
+                   channel->name, source ? source : "?", CHANSERV_MARKER_RESTORE_WINDOW);
+        return;
+    }
+    log_module(CS_LOG, LOG_INFO, "Registration marker of %s removed by %s; putting it back.",
+               channel->name, source ? source : "?");
+    cData->markersRestored = now;
+    chanserv_assert_markers(channel);
+}
+
 static char max_length_text[MAXLEN+1][16];
 
 static struct helpfile_expansion
@@ -1735,12 +1837,14 @@ unregister_channel(struct chanData *channel, const char *reason)
 
     timeq_del(0, NULL, channel, TIMEQ_IGNORE_FUNC | TIMEQ_IGNORE_WHEN);
 
-    if(off_channel > 0)
-    {
-      mod_chanmode_init(&change);
-      change.modes_clear |= MODE_REGISTERED;
-      mod_chanmode_announce(chanserv, channel->channel, &change);
-    }
+    /* Always clear the ircd's registration marker (+R) on unregistration,
+     * independent of off_channel (which only governs whether ChanServ
+     * itself leaves the channel).  Clear the persist exmode (+z) too:
+     * an unregistered channel must be able to die when it empties (the
+     * ircd schedules the destruct when -z lands on an empty channel). */
+    mod_chanmode_init(&change);
+    change.modes_clear |= CHANSERV_MARKER_MODES;
+    mod_chanmode_announce(chanserv, channel->channel, &change);
 
     wipe_adduser_pending(channel->channel, NULL);
 
@@ -2618,8 +2722,6 @@ static CHANSERV_FUNC(cmd_register)
     cData = register_channel(channel, user->handle_info->handle);
     scan_user_presence(add_channel_user(cData, handle, UL_OWNER, 0, NULL, 0), NULL);
     cData->modes = chanserv_conf.default_modes;
-    if(off_channel > 0)
-      cData->modes.modes_set |= MODE_REGISTERED;
     if (IsOffChannel(cData))
     {
         mod_chanmode_announce(chanserv, channel, &cData->modes);
@@ -2633,6 +2735,16 @@ static CHANSERV_FUNC(cmd_register)
         mod_chanmode_announce(chanserv, channel, change);
         mod_chanmode_free(change);
     }
+    /* Always announce the ircd's registration marker (+R) on registration;
+     * off_channel only governs whether ChanServ itself joins/leaves the
+     * channel above, not whether the ircd learns it's registered.
+     * With off_channel>0 there is no bot presence to hold the channel
+     * open, so the persist exmode (+z) -- its original intended use --
+     * goes with it, to keep the registered channel alive while empty.
+     * The markers are announced by themselves, after the mode lock and
+     * ChanServ's own join (which is what creates a channel that did not
+     * exist yet), and stay out of the lock; see CHANSERV_MARKER_MODES. */
+    chanserv_assert_markers(channel);
 
     /* Initialize the channel's max user record. */
     cData->max = channel->members.used;
@@ -2722,6 +2834,8 @@ ss_cs_join_channel(struct chanNode *channel, int spamserv_join)
 {
     extern struct userNode *spamserv;
     struct mod_chanmode *change;
+    /* Nobody here means ChanServ's join creates the channel on the ircd. */
+    int creates = !channel->members.used;
 
     if(spamserv && spamserv_join && get_chanInfo(channel->name))
     {
@@ -2742,6 +2856,15 @@ ss_cs_join_channel(struct chanNode *channel, int spamserv_join)
 
     mod_chanmode_announce(chanserv, channel, change);
        mod_chanmode_free(change);
+
+    /* A channel created by ChanServ's join starts with no modes on the
+     * ircd, while our copy of a registered channel that emptied (and was
+     * destroyed there without our being told) still shows the markers.
+     * Send them regardless, as handle_join() does for a first member;
+     * ChanServ's own join never reaches handle_join().  This is what puts
+     * +R back on a channel unsuspended after it emptied. */
+    if(creates && channel->channel_info)
+        chanserv_set_markers(channel, chanserv_marker_modes());
 }
 
 static CHANSERV_FUNC(cmd_move)
@@ -2809,16 +2932,15 @@ static CHANSERV_FUNC(cmd_move)
     else if(!IsSuspended(channel->channel_info))
         chanserv_join = 1;
 
-    if(off_channel > 0)
-    {
-        /* Clear MODE_REGISTERED from old channel, add it to new. */
-        change.argc = 0;
-        change.modes_clear = MODE_REGISTERED;
-        mod_chanmode_announce(chanserv, channel, &change);
-        change.modes_clear = 0;
-        change.modes_set = MODE_REGISTERED;
-        mod_chanmode_announce(chanserv, target, &change);
-    }
+    /* Clear the server-managed markers from the old channel; the new one
+     * gets them below. Always, not just under off_channel -- the ircd's +R
+     * must follow registration regardless of whether ChanServ itself
+     * occupies the channel. The persist exmode (+z) moves too, but is only
+     * SET when off_channel>0 (bot presence otherwise holds the channel).
+     * A suspended registration takes its markers along like any other. */
+    change.argc = 0;
+    change.modes_clear = CHANSERV_MARKER_MODES;
+    mod_chanmode_announce(chanserv, channel, &change);
 
     /* Move the channel_info to the target channel; it
        shouldn't be necessary to clear timeq callbacks
@@ -2831,6 +2953,11 @@ static CHANSERV_FUNC(cmd_move)
 
     if (chanserv_join)
         ss_cs_join_channel(target, spamserv_join);
+
+    /* Mark the target only now: a target nobody was in does not exist on
+     * the ircd until ChanServ's join creates it, and a MODE sent before
+     * that goes nowhere while X3's copy records the markers as set. */
+    chanserv_assert_markers(target);
 
     if(!IsSuspended(target->channel_info))
     {
@@ -6833,14 +6960,7 @@ static MODCMD_FUNC(chan_opt_offchannel)
         else if(disabled_string(argv[1]))
         {
                 if(IsOffChannel(cData))
-                {
-                    struct mod_chanmode change;
-                    mod_chanmode_init(&change);
-                    change.argc = 1;
-                    change.args[0].mode = MODE_CHANOP;
-                    change.args[0].u.member = AddChannelUser(chanserv, channel);
-                    mod_chanmode_announce(chanserv, channel, &change);
-                }
+                    ss_cs_join_channel(channel, 0);
             cData->flags &= ~CHANNEL_OFFCHANNEL;
             value = 0;
         }
@@ -8317,6 +8437,10 @@ handle_new_channel(struct chanNode *channel, UNUSED_ARG(void *extra))
     if(cData->modes.modes_set || cData->modes.modes_clear)
         mod_chanmode_announce(chanserv, cData->channel, &cData->modes);
 
+    /* The channel was just replaced by an older one of the same name,
+     * which took our copy of its modes with it. */
+    chanserv_assert_markers(channel);
+
     if(self->uplink && !self->uplink->burst && channel->channel_info->topic)
         SetChannelTopic(channel, chanserv, chanserv, channel->channel_info->topic, 1);
 }
@@ -8431,7 +8555,43 @@ handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
     unsigned int modes = 0, info = 0;
     char *greeting;
 
-    if(IsLocal(user) || !channel || !channel->channel_info || IsSuspended(channel->channel_info))
+    if(IsLocal(user) || !channel || !channel->channel_info)
+        return 0;
+
+    /* Self-heal the ircd's server-managed markers (+R always; +z persist
+     * when off_channel>0, since no bot presence then) for a channel we
+     * know is registered (channel_info set, checked above) but which the
+     * ircd doesn't currently show as such.
+     * This covers ircd restarts (fresh channel, no memory of +R), X3
+     * restarts racing a channel's first post-restart JOIN before the
+     * BURST/DB-load path re-set it, and channel re-creation. Unlike the
+     * join-flood/burst guards below (dynamic-limit timer resets,
+     * automode, greetings) this isn't gated on user->uplink->burst: it
+     * sends no message to the user and touches no timer, it only
+     * corrects channel state, and mod_chanmode_announce() applies the
+     * change to channel->modes immediately, so only the first joiner
+     * (burst or not) actually triggers the wire MODE -- every later
+     * handle_join() call in the same burst sees the markers already
+     * set and no-ops here.
+     * This is the one thing handle_join() does for a suspended channel
+     * too: ChanServ has left it, so it empties and is created afresh more
+     * readily than any other registered channel.
+     *
+     * X3's copy of the modes cannot be trusted for a channel that had
+     * nobody in it until this join.  The ircd destroys a channel when its
+     * last member leaves (unless +z holds it) without telling us, and a
+     * channel created again starts with no modes, while our copy, kept
+     * because the channel is registered, still shows the markers.  Nor
+     * does X3 burst a channel it has no member of, so what database load
+     * set on our copy never reached the ircd.  The first member therefore
+     * gets the markers sent regardless; an ircd that already has them
+     * drops the change. */
+    if(channel->members.used == 1)
+        chanserv_set_markers(channel, chanserv_marker_modes());
+    else
+        chanserv_assert_markers(channel);
+
+    if(IsSuspended(channel->channel_info))
         return 0;
 
     cData = channel->channel_info;
@@ -9147,6 +9307,8 @@ chanserv_conf_read(void)
        && (change->argc < 2))
     {
         chanserv_conf.default_modes = *change;
+        /* The default lock is copied into each new channel's lock. */
+        chanserv_strip_markers(&chanserv_conf.default_modes);
         mod_chanmode_free(change);
     }
     str = database_get_data(conf_node, KEY_VALID_CHANNEL_REGEX, RECDB_QSTRING);
@@ -9617,13 +9779,20 @@ chanserv_channel_read(const char *key, struct record_data *hir)
        && (modes = mod_chanmode_parse(cNode, argv, argc, MCP_KEY_FREE, 0))) 
     {
         cData->modes = *modes;
-        if(off_channel > 0)
-          cData->modes.modes_set |= MODE_REGISTERED;
+        /* Older databases can have a marker letter in the stored lock;
+         * it is dropped here and the lock is written back without it. */
+        chanserv_strip_markers(&cData->modes);
         if(cData->modes.argc > 1)
             cData->modes.argc = 1;
         mod_chanmode_announce(chanserv, cNode, &cData->modes);
         mod_chanmode_free(modes);
     }
+
+    /* Re-assert +R (and +z when off_channel>0) on every channel read from
+     * the database, whether or not it has a stored mode lock, and whether
+     * or not it is suspended (the mode lock above is not announced for a
+     * suspended channel; the markers are). */
+    chanserv_assert_markers(cNode);
 
     obj = database_get_data(channel, KEY_USERS, RECDB_OBJECT);
     for(it = dict_first(obj); it; it = iter_next(it))

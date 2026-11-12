@@ -555,7 +555,9 @@ wipeout_channel(struct chanNode *cNode, time_t new_time, char **modes, unsigned 
     strcpy(orig_upass, cNode->upass);
     strcpy(orig_apass, cNode->apass);
     cNode->modes = 0;
-    mod_chanmode(NULL, cNode, modes, modec, 0);
+    /* burst data IS server-origin; without the flag one unknown letter
+     * aborts the whole parse and strands modes at zero */
+    mod_chanmode(NULL, cNode, modes, modec, MCP_FROM_SERVER);
     cNode->timestamp = new_time;
 
     /* remove our old ban list, replace it with the new one */
@@ -764,8 +766,10 @@ AddChannelUser(struct userNode *user, struct chanNode* channel)
 	modeList_append(&channel->members, mNode);
 	modeList_append(&user->channels, mNode);
 
+        /* The ircd ops whoever joins an empty channel, unless the channel
+         * has an Apass or is held open by +z (m_join.c); +R plays no part. */
         if (channel->members.used == 1
-            && !(channel->modes & MODE_REGISTERED)
+            && !(channel->modes & MODE_PERSIST)
             && !(channel->modes & MODE_APASS)) {
             mNode->modes |= MODE_CHANOP;
         }
@@ -857,9 +861,11 @@ DelChannelUser(struct userNode* user, struct chanNode* channel, const char *reas
     /* free memory */
     free(mNode);
 
-    /* A single check for APASS only should be enough here */
+    /* A single check for APASS only should be enough here.  +z is what
+     * keeps an empty channel alive on the ircd; +R does not, and a channel
+     * registered here is held by ChanServ's lock instead. */
     if (!deleting && !channel->members.used && !channel->locks
-        && !(channel->modes & MODE_REGISTERED) && !(channel->modes & MODE_APASS))
+        && !(channel->modes & MODE_PERSIST) && !(channel->modes & MODE_APASS))
         DelChannel(channel);
 }
 
