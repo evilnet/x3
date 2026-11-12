@@ -1848,14 +1848,14 @@ expire_dnrs(UNUSED_ARG(void *data))
         dnr = iter_data(it);
         next = iter_next(it);
         if(dnr->expires && dnr->expires <= now)
-            dict_remove(plain_dnrs, dnr->chan_name + 1);
+            dict_remove(plain_dnrs, iter_key(it));
     }
     for(it = dict_first(mask_dnrs); it; it = next)
     {
         dnr = iter_data(it);
         next = iter_next(it);
         if(dnr->expires && dnr->expires <= now)
-            dict_remove(mask_dnrs, dnr->chan_name + 1);
+            dict_remove(mask_dnrs, iter_key(it));
     }
 
     if(chanserv_conf.dnr_expire_frequency)
@@ -9945,10 +9945,7 @@ write_dnrs_helper(struct saxdb_context *ctx, struct dict *dnrs)
         if(dnr->set)
             saxdb_write_int(ctx, KEY_DNR_SET, dnr->set);
         if(dnr->expires)
-        {
-            dict_remove(dnrs, iter_key(it));
             saxdb_write_int(ctx, KEY_EXPIRES, dnr->expires);
-        }
         saxdb_write_string(ctx, KEY_DNR_SETTER, dnr->setter);
         saxdb_write_string(ctx, KEY_DNR_REASON, dnr->reason);
         saxdb_end_record(ctx);
