@@ -5941,9 +5941,10 @@ handle_account(struct userNode *user, const char *stamp)
      * opers and the bind refused.  A reset is final for this announcement:
      * nothing below may refuse the login that caused it, so the timestamp
      * check is skipped for it (the fresh record is not suspended, and the
-     * autocreate does not apply to a handle that exists).  No id on the
-     * wire, or none stored yet, checks nothing here (fail open; an id is
-     * adopted once the login goes through). */
+     * autocreate does not apply to a handle that exists).  An id equal to
+     * the stored one skips the timestamp check too (see there).  No id on
+     * the wire, or none stored yet, checks nothing here (fail open; an id
+     * is adopted once the login goes through). */
     if (hi && wire_id[0] && handle_kcid_was_replaced(hi, wire_id)) {
         /* A session from before the id was replaced (a burst replay, an
          * alias attach, the ircd's login cache): the previous owner's,
@@ -6016,8 +6017,17 @@ handle_account(struct userNode *user, const char *stamp)
      * registered again underneath a still-authenticated user -- and the bind
      * is refused.  X3's date is never rewritten here.  (a52968b turned this
      * into a reconciliation against the directory that overwrote the date and
-     * bound anyway; this is the check as it was before that.) */
-    if(hi && timestamp && hi->registered != timestamp)
+     * bound anyway; this is the check as it was before that.)
+     *
+     * An announced Keycloak id equal to the stored one is the stronger proof
+     * that the wire means this handle, so the timestamp is not checked then:
+     * a session that carries the account's own id with a stamp that is not
+     * X3's (one persisted by an ircd that stamped Keycloak's creation time)
+     * is the same account, not another incarnation.  Only equal ids pass: an
+     * id on the wire with none stored, or no id on the wire, is checked as
+     * before.  The registration date stays X3's either way. */
+    if(hi && timestamp && hi->registered != timestamp
+       && !(wire_id[0] && hi->kc_id && !strcmp(hi->kc_id, wire_id)))
     {
         log_module(MAIN_LOG, LOG_WARNING,
                    "%s using account %s but timestamp does not match: "
