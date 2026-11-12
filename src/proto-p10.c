@@ -537,31 +537,65 @@ irc_server(struct server *srv)
     }
 }
 
-void
+/* Is c a character of the P10 base64 alphabet? */
+static int
+irc_p10_b64char(char c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+        || (c >= '0' && c <= '9') || c == '[' || c == ']';
+}
+
+/* Decode a P10 IP field.  Returns 0, or -1 with an all-zero address
+ * when the field is not something irc_p10_ntop() could have written. */
+int
 irc_p10_pton(irc_in_addr_t *ip, const char *input)
 {
-    if (strlen(input) == 6) {
+    size_t len = strlen(input), ii;
+
+    memset(ip, 0, sizeof(*ip));
+    if (len == 6) {
         unsigned int value;
-        memset(ip, 0, 6 * sizeof(ip->in6[0]));
+        for (ii = 0; ii < len; ii++)
+            if (!irc_p10_b64char(input[ii]))
+                return -1;
         value = base64toint(input, 6);
         if (value)
             ip->in6[5] = htons(65535);
         ip->in6[6] = htons(value >> 16);
         ip->in6[7] = htons(value & 65535);
     } else {
-        unsigned int pos = 0;
-        do {
+        const char *gap = NULL;
+        unsigned int groups, pos = 0;
+
+        /* Check the whole field before writing: 3-character groups, and at
+         * most one '_' on a group boundary standing for one or more zero
+         * groups.  The decode below then stays inside the string and the
+         * address. */
+        for (ii = 0; ii < len; ii++) {
+            if (input[ii] == '_') {
+                if (gap || (ii % 3) != 0)
+                    return -1;
+                gap = input + ii;
+            } else if (!irc_p10_b64char(input[ii]))
+                return -1;
+        }
+        if ((len - (gap ? 1 : 0)) % 3 != 0)
+            return -1;
+        groups = (len - (gap ? 1 : 0)) / 3;
+        if (gap ? groups > 7 : groups != 8)
+            return -1;
+
+        while (*input) {
             if (*input == '_') {
-                unsigned int left;
-                for (left = (25 - strlen(input)) / 3 - pos; left; left--)
-                    ip->in6[pos++] = 0;
+                pos += 8 - groups; /* already zero from the memset() */
                 input++;
             } else {
-                ip->in6[pos++] = ntohs(base64toint(input, 3));
+                ip->in6[pos++] = htons(base64toint(input, 3));
                 input += 3;
             }
-        } while (pos < 8);
+        }
     }
+    return 0;
 }
 
 void
@@ -571,13 +605,13 @@ irc_p10_ntop(char *output, const irc_in_addr_t *ip)
         strcpy(output, "AAAAAA");
     } else if (irc_in_addr_is_ipv4(*ip)) {
         unsigned int in4;
-        in4 = (ntohs(ip->in6[6]) << 16) | ntohs(ip->in6[7]);
+        in4 = ((uint32_t)ntohs(ip->in6[6]) << 16) | ntohs(ip->in6[7]);
         inttobase64(output, in4, 6);
         output[6] = '\0';
     } else if (irc_in_addr_is_ipv6(*ip)) {
         unsigned int max_start, max_zeros, curr_zeros, zero, ii;
         /* Can start by printing out the leading non-zero parts. */
-        for (ii = 0; (ip->in6[ii]) && (ii < 8); ++ii) {
+        for (ii = 0; (ii < 8) && (ip->in6[ii]); ++ii) {
             inttobase64(output, ntohs(ip->in6[ii]), 3);
             output += 3;
         }
@@ -585,9 +619,11 @@ irc_p10_ntop(char *output, const irc_in_addr_t *ip)
         for (max_start = zero = ii, max_zeros = curr_zeros = 0; ii < 8; ++ii) {
             if (!ip->in6[ii])
                 curr_zeros++;
-            else if (curr_zeros > max_zeros) {
-                max_start = ii - curr_zeros;
-                max_zeros = curr_zeros;
+            else {
+                if (curr_zeros > max_zeros) {
+                    max_start = ii - curr_zeros;
+                    max_zeros = curr_zeros;
+                }
                 curr_zeros = 0;
             }
         }
@@ -604,6 +640,7 @@ irc_p10_ntop(char *output, const irc_in_addr_t *ip)
             } else {
                 inttobase64(output, ntohs(ip->in6[ii]), 3);
                 output += 3;
+                ii++;
             }
         }
         *output = '\0';
@@ -3593,7 +3630,8 @@ AddUser(struct server* uplink, const char *nick, const char *ident, const char *
     safestrncpy(uNode->info, userinfo, sizeof(uNode->info));
     safestrncpy(uNode->hostname, hostname, sizeof(uNode->hostname));
     safestrncpy(uNode->numeric, numeric, sizeof(uNode->numeric));
-    irc_p10_pton(&uNode->ip, realip);
+    if (irc_p10_pton(&uNode->ip, realip))
+        log_module(MAIN_LOG, LOG_WARNING, "AddUser(%s, %s): bad IP field %s, using 0", nick, numeric, realip);
 
     if (!uNode->crypthost && uNode->cryptip)
         snprintf(uNode->crypthost, sizeof(uNode->crypthost), "%s", strdup(uNode->cryptip));
