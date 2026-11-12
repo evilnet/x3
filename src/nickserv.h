@@ -241,6 +241,7 @@ void nickserv_show_oper_accounts(struct userNode *user, struct svccmd *cmd);
 
 void nickserv_do_autoauth(struct userNode *user);
 void nickserv_unbind_user(struct userNode *user);
+void nickserv_replace_pinned_fakehost(struct userNode *user, const char *account);
 
 struct handle_info *get_victim_oper(struct userNode *user, const char *target);
 struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *userhost);

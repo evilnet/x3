@@ -242,6 +242,7 @@ struct userNode {
     unsigned int loc;             /* Is user connecting via LOC? */
     unsigned int no_notice;       /* Does the users client not see notices? */
     unsigned int dead : 1;        /* Is user waiting to be recycled? */
+    unsigned int pinned_fakehost : 1; /* fakehost X3 set that the user's handle does not have as its own */
     irc_in_addr_t ip;             /* User's IP address */
     long modes;                   /* user flags +isw etc... */
 

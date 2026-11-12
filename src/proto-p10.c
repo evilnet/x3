@@ -1826,6 +1826,12 @@ static CMD_FUNC(cmd_account)
                 safestrncpy(stamp, argv[3], sizeof(stamp));
             call_account_func(user, stamp);
         }
+        /* A fakehost X3 pinned on the user -- the vhost of a handle the
+         * user left (this M's, an earlier U's), or a default form since --
+         * must not outlive the switch, and the ircd keeps a fakehost
+         * through it.  A bind replaced it already; this is for an account
+         * X3 does not know or refused to bind. */
+        nickserv_replace_pinned_fakehost(user, argv[3]);
     }
     else if(!strcmp(argv[2],"U"))
     {
