@@ -2161,15 +2161,21 @@ handle_kcid_from_uuid(const char *uuid, char out[23])
  * an account is bound to, by hand.  A login that carries a different id
  * from the stored one is refused and reported to opers (handle_account;
  * with keycloak_id_reset on it resets the account instead), so this is
- * for correcting a binding so that the user can log in again, or clearing
- * one so the next login adopts whatever it carries.
+ * for correcting a binding so that the user can log in on their next
+ * connection, or clearing one so the next login adopts whatever it
+ * carries.  The connection whose login was refused is not bound by this:
+ * the ircd holds the account on it, so it cannot log in again, and it is
+ * nobody to X3 until the user reconnects.
  *
  * Setting an id other than the stored one, or clearing a stored one (*),
  * detaches the sessions logged in at the time and remembers the id as a
  * replaced one.  Detaching is X3's own bookkeeping (set_user_handle_info
  * with no handle): the user is not disconnected, nothing is sent to the
  * ircd, and the ircd goes on showing the account; X3 just stops treating
- * the connection as logged in to it.  Without both steps a clear would
+ * the connection as logged in to it, until the user reconnects -- the
+ * connection cannot log in again while the ircd holds the account on it
+ * (AuthServ refuses a stamped user, the ircd a second SASL login).
+ * Without both steps a clear would
  * hand the binding back to the previous owner: a session of theirs that
  * is still connected announces the old id again at the next burst replay
  * or alias attach, the handle would adopt it, and the user the clear was
@@ -5867,8 +5873,9 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
      * id named, and the fresh record belongs to someone else -- carrying
      * them over would hand the old owner's sessions the new owner's
      * identity.  They stay logged in at the ircd and are nobody to X3
-     * until they authenticate again (which the recreated user's
-     * credentials decide).  Detaching sends nothing to the ircd. */
+     * until they reconnect -- the ircd holds the account on the
+     * connection, so it cannot log in again -- and then the recreated
+     * user's credentials decide.  Detaching sends nothing to the ircd. */
     while ((u = hi->users))
         set_user_handle_info(u, NULL, 0);
     for (n = 0; n < unreg_func_used; n++)
@@ -5997,7 +6004,9 @@ handle_account(struct userNode *user, const char *stamp)
             /* The default: the wire is not talking about this handle.  Log
              * it, tell opers, keep the stored id and the data, and refuse
              * the bind -- the user stays logged in at the ircd but is nobody
-             * to X3 until an oper REBINDs or the id is cleared.  The reset
+             * to X3 on this connection; once an oper REBINDs or the id is
+             * cleared, the user's login after reconnecting goes through
+             * (this connection cannot log in again).  The reset
              * above is the recreated-user rule, kept behind keycloak_id_reset
              * for a network that wants it. */
             log_module(MAIN_LOG, LOG_WARNING,
