@@ -41,6 +41,7 @@ extern void defcon_timeout(UNUSED_ARG(void *data));
 void init_opserv(const char *nick);
 unsigned int gag_create(const char *mask, const char *owner, const char *reason, time_t expires);
 int opserv_bad_channel(const char *name);
+int opserv_alert_check_sslfp(struct userNode *user);
 struct routingPlan* opserv_add_routing_plan(const char *name);
 unsigned int opserv_conf_admin_level();
 void routing_handle_connect_failure(struct server *source, char *server, char *message);

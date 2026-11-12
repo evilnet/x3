@@ -2336,7 +2336,12 @@ static CMD_FUNC(cmd_mark)
         if(!sslfp)
             sslfp = "";
 
+        free(target->sslfp);
         target->sslfp = strdup(sslfp);
+
+        /* Stop if an alert killed or otherwise removed the user. */
+        if (opserv_alert_check_sslfp(target))
+            return 1;
 
         nickserv_do_autoauth(target);
 

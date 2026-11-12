@@ -478,6 +478,7 @@ static dict_t opserv_hostinfo_dict; /* data is struct opserv_hostinfo* */
 static dict_t opserv_user_alerts; /* data is struct opserv_user_alert* */
 static dict_t opserv_nick_based_alerts; /* data is struct opserv_user_alert* */
 static dict_t opserv_account_based_alerts; /* data is struct opserv_user_alert* */
+static dict_t opserv_certfp_based_alerts; /* data is struct opserv_user_alert* */
 static dict_t opserv_channel_alerts; /* data is struct opserv_user_alert* */
 static struct module *opserv_module;
 static struct log_type *OS_LOG;
@@ -549,7 +550,7 @@ opserv_free_waiting_connection(void *data)
 typedef struct opservDiscrim {
     struct chanNode *channels[DISCRIM_MAX_CHANS];
     unsigned int channel_count;
-    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark, *mask_mark, *modes, *notice_target;
+    char *mask_nick, *mask_ident, *mask_host, *mask_info, *mask_version, *server, *reason, *accountmask, *chantarget, *mark, *mask_mark, *modes, *notice_target, *sslfp;
     irc_in_addr_t ip_mask;
     unsigned long limit;
     time_t min_ts, max_ts;
@@ -4900,6 +4901,8 @@ opserv_add_user_alert(struct userNode *req, const char *name, opserv_alert_react
         dict_insert(opserv_nick_based_alerts, name_dup, alert);
     if (alert->discrim->accountmask)
         dict_insert(opserv_account_based_alerts, name_dup, alert);
+    if (alert->discrim->sslfp)
+        dict_insert(opserv_certfp_based_alerts, name_dup, alert);
 
     if (alert->expire)
         timeq_add(alert->expire, alert_expire, (void*)name_dup);
@@ -5456,6 +5459,15 @@ opserv_discrim_create(struct userNode *user, struct userNode *bot, unsigned int 
         discrim->authed = 1;
     } else if (irccasecmp(argv[i], "marked") == 0) {
         discrim->mask_mark = argv[++i];
+    } else if (irccasecmp(argv[i], "certfp") == 0) {
+        char *src, *dst;
+
+        /* The ircd sends bare hex; accept the AB:CD:... form openssl prints. */
+        discrim->sslfp = argv[++i];
+        for (src = dst = discrim->sslfp; *src; src++)
+            if (*src != ':')
+                *dst++ = *src;
+        *dst = '\0';
     } else if (irccasecmp(argv[i], "chantarget") == 0) {
             if(!IsChannelName(argv[i+1])) {
                 send_message(user, bot, "MSG_NOT_CHANNEL_NAME");
@@ -5789,6 +5801,7 @@ discrim_match(discrim_t discrim, struct userNode *user)
         || (discrim->info_space == 1 && user->info[0] != ' ')
         || (discrim->server && !match_ircglob(user->uplink->name, discrim->server))
         || (discrim->mask_mark && !markmatched)
+        || (discrim->sslfp && (!user->sslfp || !match_ircglob(user->sslfp, discrim->sslfp)))
         || (discrim->accountmask && (!user->handle_info || !match_ircglob(user->handle_info->handle, discrim->accountmask)))
         || (discrim->ip_mask_bits && !irc_check_mask(&user->ip, &discrim->ip_mask, discrim->ip_mask_bits))
         )
@@ -6982,6 +6995,17 @@ opserv_alert_check_account(struct userNode *user, UNUSED_ARG(struct handle_info 
     dict_foreach(opserv_account_based_alerts, alert_check_user, user);
 }
 
+/* Called when a user's SSL client certificate fingerprint becomes known
+ * (it arrives in a MARK after the user is introduced). Returns non-zero
+ * if an alert halted matching, e.g. because the user was killed. */
+int
+opserv_alert_check_sslfp(struct userNode *user)
+{
+    if (IsLocal(user) || IsService(user))
+        return 0;
+    return dict_foreach(opserv_certfp_based_alerts, alert_check_user, user) != NULL;
+}
+
 static void
 opserv_alert_check_nick(struct userNode *user, UNUSED_ARG(const char *old_nick), UNUSED_ARG(void *extra))
 {
@@ -7185,6 +7209,7 @@ static int delete_alert(char const* name)
     dict_remove(opserv_nick_based_alerts, (char const*)name);
     dict_remove(opserv_channel_alerts, (char const*)name);
     dict_remove(opserv_account_based_alerts, (char const*)name);
+    dict_remove(opserv_certfp_based_alerts, (char const*)name);
     return dict_remove(opserv_user_alerts, (char const*)name);
 }
 
@@ -7395,6 +7420,8 @@ opserv_db_init(void) {
     opserv_nick_based_alerts = dict_new();
     dict_delete(opserv_account_based_alerts);
     opserv_account_based_alerts = dict_new();
+    dict_delete(opserv_certfp_based_alerts);
+    opserv_certfp_based_alerts = dict_new();
     dict_delete(opserv_user_alerts);
     opserv_user_alerts = dict_new();
     dict_set_free_keys(opserv_user_alerts, free);
@@ -7422,6 +7449,7 @@ opserv_db_cleanup(UNUSED_ARG(void* extra))
     dict_delete(opserv_hostinfo_dict);
     dict_delete(opserv_nick_based_alerts);
     dict_delete(opserv_account_based_alerts);
+    dict_delete(opserv_certfp_based_alerts);
     dict_delete(opserv_channel_alerts);
     dict_delete(opserv_user_alerts);
     for (nn=0; nn<ArrayLength(level_strings); ++nn)
