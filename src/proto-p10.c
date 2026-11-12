@@ -1826,12 +1826,22 @@ static CMD_FUNC(cmd_account)
                 safestrncpy(stamp, argv[3], sizeof(stamp));
             call_account_func(user, stamp);
         }
+        /* A fakehost X3 pinned on the user -- the vhost of a handle the
+         * user left (this M's, an earlier U's), or a default form since --
+         * must not outlive the switch, and the ircd keeps a fakehost
+         * through it.  A bind replaced it already; this is for an account
+         * X3 does not know or refused to bind. */
+        nickserv_replace_pinned_fakehost(user, argv[3]);
     }
     else if(!strcmp(argv[2],"U"))
     {
-        /* The ircd removed the account.  Unbind only: FLAGS_STAMPED stays
-         * set on purpose (one account per session), as after UNREGISTER. */
+        /* The ircd removed the account: unbind, and clear the stamp.  The
+         * ircd holds no account for the user any more, so the next login is
+         * a fresh one whichever way it comes -- the ircd's own AC R, or
+         * AuthServ, whose AC R (StampUser()) is valid again for a user
+         * without an account and stamps the user again. */
         nickserv_unbind_user(user);
+        user->modes &= ~FLAGS_STAMPED;
     }
     else if(!strcmp(argv[2],"A") || !strcmp(argv[2],"D"))
     {

@@ -1095,8 +1095,61 @@ apply_fakehost(struct handle_info *handle)
     if (!handle->users)
         return;
     fake = generate_fakehost(handle);
-    for (target = handle->users; target; target = target->next_authed)
+    for (target = handle->users; target; target = target->next_authed) {
         assign_fakehost(target, fake, 1);
+        /* No fakehost or title of the handle's own: the default form is
+         * now pinned on the user (see pinned_fakehost). */
+        if (!handle->fakehost)
+            target->pinned_fakehost = 1;
+    }
+}
+
+/* The host generate_fakehost() gives a user of the account <name> when the
+ * account has no fakehost or title of its own: <name>.<hidden_host> for
+ * hidden_host_type 1 and 3 (what the ircd shows a +x user logged in to
+ * <name>), the user's cloaked host for type 2.  NULL when there is nothing
+ * to give: no hidden_host configured, no cloaked host known, or another
+ * hiding style. */
+static const char *
+default_fakehost(const char *name, struct userNode *user)
+{
+    extern const char *hidden_host_suffix;
+    static char buffer[HOSTLEN+1];
+    char *data;
+    int style = 1;
+
+    data = conf_get_data("server/hidden_host_type", RECDB_QSTRING);
+    if (data)
+        style = atoi(data);
+    if (((style == 1) || (style == 3)) && hidden_host_suffix) {
+        snprintf(buffer, sizeof(buffer), "%s.%s", name, hidden_host_suffix);
+        return buffer;
+    }
+    if ((style == 2) && user->crypthost[0])
+        return user->crypthost;
+    return NULL;
+}
+
+/* Overwrite a fakehost X3 pinned on the user (user->pinned_fakehost) with
+ * the default form for the account <name> the user has now, which has no
+ * fakehost or title of its own: what a fresh login to it shows.  That
+ * form is pinned in turn -- the ircd keeps it, and it names this account
+ * -- so the next account replaces it again.  No FA when the host would
+ * not change (hidden_host_type 2: the cloaked host names no account). */
+static void
+replace_pinned_fakehost(struct userNode *user, const char *name)
+{
+    const char *fake = default_fakehost(name, user);
+
+    if (!fake) {
+        log_module(NS_LOG, LOG_WARNING, "%s is now on account %s and keeps the "
+                   "fakehost %s from before: no default host to replace it with",
+                   user->nick, name, user->fakehost);
+        return;
+    }
+    if (strcmp(user->fakehost, fake))
+        assign_fakehost(user, fake, 1);
+    user->pinned_fakehost = 1;
 }
 
 void send_func_list(struct userNode *user)
@@ -1150,6 +1203,14 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
             ni->lastseen = now;
         /* and record their hostmask */
         snprintf(user->handle_info->last_quit_host, sizeof(user->handle_info->last_quit_host), "%s@%s", user->ident, user->hostname);
+        /* A fakehost or title of the handle's own stays on the user: the
+         * ircd keeps a fakehost through an account change or removal, and
+         * P10 has no form that takes one away.  From now on it is one the
+         * user's handle does not have, so the next account the user gets
+         * replaces it (below, and nickserv_replace_pinned_fakehost() for
+         * one X3 does not bind), as it does a default form pinned before. */
+        if (user->handle_info->fakehost)
+            user->pinned_fakehost = 1;
     }
     old_info = user->handle_info;
     user->handle_info = hi;
@@ -1178,9 +1239,16 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
         if (IsHelper(user) && !userList_contains(&curr_helpers, user))
             userList_append(&curr_helpers, user);
 
-        /* Set the fakehost */
+        /* Set the fakehost.  A user still showing a fakehost X3 pinned on
+         * it -- the vhost of a handle it left (an AC U or AC M, or a
+         * session X3 detached, before this login), or the default form of
+         * an account it had since -- gets what this handle gives instead:
+         * its own fakehost or title above, else this handle's default
+         * form, sent to this user only. */
         if (hi->fakehost || old_info)
             apply_fakehost(hi);
+        else if (user->pinned_fakehost)
+            replace_pinned_fakehost(user, hi->handle);
 
         if (stamp) {
 #ifdef WITH_PROTOCOL_P10
@@ -5815,13 +5883,27 @@ new_user_event(struct userNode *user, void *extra) {
 }
 
 /* Drop the user's handle binding because the ircd removed or changed the
- * account (AC U / AC M).  FLAGS_STAMPED is left alone on purpose: one
- * account per session, exactly as after UNREGISTER. */
+ * account (AC U / AC M).  FLAGS_STAMPED is the caller's: AC U clears it,
+ * since the ircd no longer holds an account for the user; AC M keeps it,
+ * since the ircd holds the new one. */
 void
 nickserv_unbind_user(struct userNode *user)
 {
     if (user->handle_info)
         set_user_handle_info(user, NULL, 0);
+}
+
+/* AC R / AC M, once the account has been handed to handle_account(): a
+ * user still showing a fakehost X3 pinned on it (user->pinned_fakehost)
+ * and not bound now -- the account is one X3 does not know, or the bind
+ * was refused -- gets the default form for <account>, as a login to an
+ * account without a vhost of its own would show; the old one must go
+ * either way.  A user who was bound had it replaced by the bind. */
+void
+nickserv_replace_pinned_fakehost(struct userNode *user, const char *account)
+{
+    if (!user->dead && user->pinned_fakehost && !user->handle_info)
+        replace_pinned_fakehost(user, account);
 }
 
 #ifdef WITH_PROTOCOL_P10
