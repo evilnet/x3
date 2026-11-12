@@ -28,7 +28,12 @@ struct svccmd;
 
 #define NICKSERV_HANDLE_LEN ACCOUNTLEN
 #define COOKIELEN 10
-#define KC_ID_REPLACED_MAX 4  /* replaced Keycloak ids a handle remembers */
+/* Replaced Keycloak ids a handle remembers.  With keycloak_id_reset on, a
+ * session announcing an id that has dropped off the list resets the
+ * account, so the list is long enough for every recreate a name is
+ * likely to see.  A build with a shorter list keeps the newest it has
+ * room for when it reads a longer one, and writes back only those. */
+#define KC_ID_REPLACED_MAX 16
 
 /* HI_FLAG_* go into handle_info.flags */
 #define HI_FLAG_OPER_SUSPENDED 0x00000001

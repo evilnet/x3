@@ -261,7 +261,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_HANDLEINFO_FLAGS", "Flags: %s" },
     { "NSMSG_HANDLEINFO_OPSERV_LEVEL", "Opserv level: %d " },
     { "NSMSG_HANDLEINFO_KC_ID", "Keycloak ID: %s" },
-    { "NSMSG_HANDLEINFO_KC_ID_PREV", "Previous Keycloak ID: %s (replaced by a reset or by REBIND)" },
+    { "NSMSG_HANDLEINFO_KC_ID_PREV", "Previous Keycloak IDs (replaced by a reset or by REBIND, newest first): %s" },
     { "NSMSG_HANDLEINFO_EPITHET", "Epithet: %s" },
     { "NSMSG_HANDLEINFO_NOTE", "Note (by %s on %s): %s " },
     { "NSMSG_HANDLEINFO_FAKEHOST", "Fake host: %s" },
@@ -354,6 +354,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_REBIND_CLEARED", "Keycloak id binding cleared for account %s; the next login will adopt one." },
     { "NSMSG_REBIND_SET", "Keycloak id set for account %s." },
     { "NSMSG_REBIND_DETACHED", "%d session(s) logged in under the previous id were detached." },
+    { "NSMSG_REBIND_CREDENTIALS", "Removed the account's client certificate fingerprints (%u) and hostmasks (%u), which came with the previous id; hostmasks now: %s." },
     { "NSMSG_REBIND_BADID", "Give the account's Keycloak ID -- the UUID from the admin console (e.g. 6ba7b810-9dad-11d1-80b4-00c04fd430c8) or the 22-character form $N shows (e.g. a6e4EJ2tEdGAtADAT9QwyA) -- or * to clear." },
     { "NSMSG_IDENTITY_RESET", "Account $b%s$b was recreated in Keycloak (id %s, was %s): its data has been reset." },
     { "NSMSG_IDENTITY_STALE", "Account $b%s$b was announced with the Keycloak id it had before (%s, now %s): login refused." },
@@ -1905,8 +1906,18 @@ static NICKSERV_FUNC(cmd_handleinfo)
     if (IsOper(user)) {
         if (hi->kc_id)
             reply("NSMSG_HANDLEINFO_KC_ID", hi->kc_id);
-        for (i = 0; i < KC_ID_REPLACED_MAX && hi->kc_id_replaced[i]; i++)
-            reply("NSMSG_HANDLEINFO_KC_ID_PREV", hi->kc_id_replaced[i]);
+        /* The replaced ids, newest first, four to a line: up to
+         * KC_ID_REPLACED_MAX of them would be a screenful one per line. */
+        for (i = 0; i < KC_ID_REPLACED_MAX && hi->kc_id_replaced[i]; ) {
+            char ids[4 * 23];   /* four 22-character ids, spaces, NUL */
+            unsigned int n;
+
+            ids[0] = 0;
+            for (n = 0; n < 4 && i < KC_ID_REPLACED_MAX && hi->kc_id_replaced[i]; n++, i++)
+                snprintf(ids + strlen(ids), sizeof(ids) - strlen(ids), "%s%s",
+                         n ? " " : "", hi->kc_id_replaced[i]);
+            reply("NSMSG_HANDLEINFO_KC_ID_PREV", ids);
+        }
     }
 
     if (hi->opserv_level > 0) {
@@ -2157,24 +2168,81 @@ handle_kcid_from_uuid(const char *uuid, char out[23])
     return o == 22;
 }
 
+/* The hostmasks an account starts with under a new owner, as a REGISTER,
+ * an OREGISTER or a login-created account gets them: *@* with
+ * default_hostmask, otherwise the owner's own host when a user of theirs
+ * is at hand.  With neither (default_hostmask off, no user), none: AUTH,
+ * which takes any host while an account has no hostmask, then adds the
+ * one it is used from, and LOC and SASL through X3 refuse until then. */
+static void
+nickserv_new_owner_masks(struct handle_info *hi, struct userNode *owner)
+{
+    char *mask = NULL;
+
+    if (nickserv_conf.default_hostmask)
+        mask = strdup("*@*");
+    else if (owner)
+        mask = generate_hostmask(owner, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+    if (mask)
+        string_list_append(hi->masks, canonicalize_hostmask(mask));
+}
+
+/* An account REBIND hands to another Keycloak id loses what was set under
+ * the previous one.  Its client certificate fingerprints are a way in that
+ * never asks Keycloak: a matching certificate logs a connection in on its
+ * own (auto-auth on connect, AUTH, LOC and SASL EXTERNAL through X3).  Its
+ * hostmasks are the previous owner's hosts, which AUTH and LOC would hold
+ * the new owner to; they start over as a new owner's.  No index is kept of
+ * the fingerprints (find_handleinfo_by_sslfp() walks the handles), so
+ * there is nothing else to update.  The password hash is left alone: with
+ * ldap_enable, AUTH, LOC and SASL PLAIN through X3 check the directory,
+ * which holds the new owner's, and never the local hash.  *sslfps and
+ * *masks get the numbers removed. */
+static void
+nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned int *masks)
+{
+    *sslfps = hi->sslfps->used;
+    *masks = hi->masks->used;
+    while (hi->sslfps->used)
+        string_list_delete(hi->sslfps, 0);
+    while (hi->masks->used)
+        string_list_delete(hi->masks, 0);
+    nickserv_new_owner_masks(hi, NULL);
+}
+
 /* REBIND <*account> <keycloak-uuid|compact-id|*>: set or clear the Keycloak user id
  * an account is bound to, by hand.  A login that carries a different id
  * from the stored one is refused and reported to opers (handle_account;
  * with keycloak_id_reset on it resets the account instead), so this is
- * for correcting a binding so that the user can log in again, or clearing
- * one so the next login adopts whatever it carries.
+ * for correcting a binding so that the user can log in on their next
+ * connection, or clearing one so the next login adopts whatever it
+ * carries.  The connection whose login was refused is not bound by this:
+ * the ircd holds the account on it, so it cannot log in again, and it is
+ * nobody to X3 until the user reconnects.
  *
  * Setting an id other than the stored one, or clearing a stored one (*),
  * detaches the sessions logged in at the time and remembers the id as a
  * replaced one.  Detaching is X3's own bookkeeping (set_user_handle_info
  * with no handle): the user is not disconnected, nothing is sent to the
  * ircd, and the ircd goes on showing the account; X3 just stops treating
- * the connection as logged in to it.  Without both steps a clear would
+ * the connection as logged in to it, until the user reconnects -- the
+ * connection cannot log in again while the ircd holds the account on it
+ * (AuthServ refuses a stamped user, the ircd a second SASL login).
+ * Without both steps a clear would
  * hand the binding back to the previous owner: a session of theirs that
  * is still connected announces the old id again at the next burst replay
  * or alias attach, the handle would adopt it, and the user the clear was
  * meant for would be refused.  To go back to a replaced id, set it with
  * REBIND <id>.
+ *
+ * The same two cases remove the account's client certificate fingerprints
+ * and hostmasks (nickserv_drop_credentials), and the reply says so: the
+ * account is being handed to someone the previous id did not name.  For
+ * REBIND * that is the next login with an id the account has not had, and
+ * it binds with no oper step in between, so what the previous owner set
+ * has to go here or it would go with the account.  Binding an account with
+ * no id stored -- its first binding, or one after a REBIND * that removed
+ * them already -- removes nothing, and neither does the id it has.
  *
  * Not an OSET option on purpose: SEARCH SET applies OSET options without
  * the outranking check that get_victim_oper enforces here. */
@@ -2187,7 +2255,8 @@ static NICKSERV_FUNC(cmd_rebind)
     if (!(hi = get_victim_oper(user, argv[1])))
         return 0;
     if (!strcmp(argv[2], "*")) {
-        unsigned int detached = 0;
+        unsigned int detached = 0, sslfps = 0, masks = 0;
+        int dropped = 0;
 
         if (hi->kc_id) {
             struct userNode *u;
@@ -2200,10 +2269,15 @@ static NICKSERV_FUNC(cmd_rebind)
                 set_user_handle_info(u, NULL, 0);
                 detached++;
             }
+            nickserv_drop_credentials(hi, &sslfps, &masks);
+            dropped = 1;
         }
         reply("NSMSG_REBIND_CLEARED", hi->handle);
         if (detached)
             reply("NSMSG_REBIND_DETACHED", detached);
+        if (dropped)
+            reply("NSMSG_REBIND_CREDENTIALS", sslfps, masks, hi->masks->used
+                  ? hi->masks->list[0] : user_find_message(user, "MSG_NONE"));
         return 1;
     }
     /* Either form: the UUID the Keycloak admin console shows, or the
@@ -2218,16 +2292,21 @@ static NICKSERV_FUNC(cmd_rebind)
     }
     if (!hi->kc_id || strcmp(hi->kc_id, compact)) {
         struct userNode *u;
-        unsigned int detached = 0;
+        unsigned int detached = 0, sslfps = 0, masks = 0;
+        int dropped = 0;
 
         /* The id being replaced is remembered, as after a reset: the
          * sessions still carrying it are refused rather than taken for
          * another recreate.  The ones logged in now authenticated under
-         * the old identity, so they go.  The new id is no longer a
-         * replaced one, if it was. */
+         * the old identity, so they go, and so do the certificate
+         * fingerprints and hostmasks set under it.  The new id is no
+         * longer a replaced one, if it was. */
         handle_kcid_unremember(hi, compact);
-        if (hi->kc_id)
+        if (hi->kc_id) {
             handle_kcid_remember(hi, hi->kc_id);
+            nickserv_drop_credentials(hi, &sslfps, &masks);
+            dropped = 1;
+        }
         hi->kc_id = strdup(compact);
         while ((u = hi->users)) {
             set_user_handle_info(u, NULL, 0);
@@ -2235,6 +2314,9 @@ static NICKSERV_FUNC(cmd_rebind)
         }
         if (detached)
             reply("NSMSG_REBIND_DETACHED", detached);
+        if (dropped)
+            reply("NSMSG_REBIND_CREDENTIALS", sslfps, masks, hi->masks->used
+                  ? hi->masks->list[0] : user_find_message(user, "MSG_NONE"));
     }
     reply("NSMSG_REBIND_SET", hi->handle);
     return 1;
@@ -5186,7 +5268,9 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     slist = database_get_data(obj, KEY_KC_ID_PREV, RECDB_STRING_LIST);
     if (slist) {
         /* Oldest first, so the newest end up in front and survive a list
-         * longer than KC_ID_REPLACED_MAX. */
+         * longer than KC_ID_REPLACED_MAX (one a build with a longer list
+         * wrote: the oldest beyond this build's room are dropped, and are
+         * gone from the next write). */
         for (ii = slist->used; ii > 0; ii--)
             handle_kcid_remember(hi, strdup(slist->list[ii - 1]));
     } else if ((str = database_get_data(obj, KEY_KC_ID_PREV, RECDB_QSTRING)))
@@ -5867,8 +5951,9 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
      * id named, and the fresh record belongs to someone else -- carrying
      * them over would hand the old owner's sessions the new owner's
      * identity.  They stay logged in at the ircd and are nobody to X3
-     * until they authenticate again (which the recreated user's
-     * credentials decide).  Detaching sends nothing to the ircd. */
+     * until they reconnect -- the ircd holds the account on the
+     * connection, so it cannot log in again -- and then the recreated
+     * user's credentials decide.  Detaching sends nothing to the ircd. */
     while ((u = hi->users))
         set_user_handle_info(u, NULL, 0);
     for (n = 0; n < unreg_func_used; n++)
@@ -5879,12 +5964,23 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
     hi = NULL;
 
     /* The same name, from nothing: X3's own registration date, no password,
-     * no registered nick, and no directory step -- the entry there already
-     * belongs to the new user, and a failing writeback must not be able to
-     * lose the record after the old one is gone.  Mirrors what
-     * nickserv_register() initialises. */
+     * no registered nick, no certificate fingerprint, and no directory step
+     * -- the entry there already belongs to the new user, and a failing
+     * writeback must not be able to lose the record after the old one is
+     * gone.  Mirrors what nickserv_register() initialises, and the hostmask
+     * the account a login creates gets (handle_account's LDAP autocreate):
+     * without one, LOC and SASL through X3 would refuse the new owner. */
     fresh = register_handle(name, "", 0);
+    /* The sync log gets the fresh record as a REGISTER after the old one's
+     * UNREGISTER above, so that a consumer replaying the log ends with the
+     * account, as X3 does.  It has no password hash (the password is the
+     * directory's) and no email address: * and @ stand in for them (@ as
+     * in the line OREGISTER writes with no address), and the claimant's
+     * info line comes last, as REGISTER writes the registering user's. */
+    if (nickserv_conf.sync_log)
+        SyncLog("REGISTER %s * @ %s", name, claimant->info);
     fresh->masks = alloc_string_list(1);
+    nickserv_new_owner_masks(fresh, claimant);
     fresh->sslfps = alloc_string_list(1);
     fresh->ignores = alloc_string_list(1);
     fresh->users = NULL;
@@ -5941,9 +6037,10 @@ handle_account(struct userNode *user, const char *stamp)
      * opers and the bind refused.  A reset is final for this announcement:
      * nothing below may refuse the login that caused it, so the timestamp
      * check is skipped for it (the fresh record is not suspended, and the
-     * autocreate does not apply to a handle that exists).  No id on the
-     * wire, or none stored yet, checks nothing here (fail open; an id is
-     * adopted once the login goes through). */
+     * autocreate does not apply to a handle that exists).  An id equal to
+     * the stored one skips the timestamp check too (see there).  No id on
+     * the wire, or none stored yet, checks nothing here (fail open; an id
+     * is adopted once the login goes through). */
     if (hi && wire_id[0] && handle_kcid_was_replaced(hi, wire_id)) {
         /* A session from before the id was replaced (a burst replay, an
          * alias attach, the ircd's login cache): the previous owner's,
@@ -5996,7 +6093,9 @@ handle_account(struct userNode *user, const char *stamp)
             /* The default: the wire is not talking about this handle.  Log
              * it, tell opers, keep the stored id and the data, and refuse
              * the bind -- the user stays logged in at the ircd but is nobody
-             * to X3 until an oper REBINDs or the id is cleared.  The reset
+             * to X3 on this connection; once an oper REBINDs or the id is
+             * cleared, the user's login after reconnecting goes through
+             * (this connection cannot log in again).  The reset
              * above is the recreated-user rule, kept behind keycloak_id_reset
              * for a network that wants it. */
             log_module(MAIN_LOG, LOG_WARNING,
@@ -6016,8 +6115,17 @@ handle_account(struct userNode *user, const char *stamp)
      * registered again underneath a still-authenticated user -- and the bind
      * is refused.  X3's date is never rewritten here.  (a52968b turned this
      * into a reconciliation against the directory that overwrote the date and
-     * bound anyway; this is the check as it was before that.) */
-    if(hi && timestamp && hi->registered != timestamp)
+     * bound anyway; this is the check as it was before that.)
+     *
+     * An announced Keycloak id equal to the stored one is the stronger proof
+     * that the wire means this handle, so the timestamp is not checked then:
+     * a session that carries the account's own id with a stamp that is not
+     * X3's (one persisted by an ircd that stamped Keycloak's creation time)
+     * is the same account, not another incarnation.  Only equal ids pass: an
+     * id on the wire with none stored, or no id on the wire, is checked as
+     * before.  The registration date stays X3's either way. */
+    if(hi && timestamp && hi->registered != timestamp
+       && !(wire_id[0] && hi->kc_id && !strcmp(hi->kc_id, wire_id)))
     {
         log_module(MAIN_LOG, LOG_WARNING,
                    "%s using account %s but timestamp does not match: "
