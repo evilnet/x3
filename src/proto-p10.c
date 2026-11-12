@@ -2445,7 +2445,7 @@ static CMD_FUNC(cmd_rename)
         return 1;
     }
     if(was_registered) {
-        chanserv_rename_dnr(old_name);
+        chanserv_rename_dnr(old_name, renamed);
         /* Our MODE that marked the channel may have crossed this rename. */
         chanserv_rename_marker(renamed);
     }

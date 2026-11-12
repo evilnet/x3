@@ -118,6 +118,7 @@
 #define KEY_NOTES                   "notes"
 #define KEY_TOPIC_MASK              "topic_mask"
 #define KEY_OWNER_TRANSFER          "owner_transfer"
+#define KEY_RENAMED_FROM            "renamed_from"
 #define KEY_MAXSETINFO              "maxsetinfo"
 
 /* User data */
@@ -1715,6 +1716,7 @@ expire_ban(void *data) /* lamer.. */
 }
 
 static void chanserv_expire_suspension(void *data);
+static void renamed_from_drop(struct renamed_from **prf);
 
 static void
 unregister_channel(struct chanData *channel, const char *reason)
@@ -1787,6 +1789,8 @@ unregister_channel(struct chanData *channel, const char *reason)
     channel->channel->channel_info = NULL;
 
     dict_delete(channel->notes);
+    while(channel->renamed_from)
+        renamed_from_drop(&channel->renamed_from);
     sprintf(msgbuf, "%s %s", channel->channel->name, reason);
     if(!IsSuspended(channel))
         DelChannelUser(chanserv, channel->channel, msgbuf, 0);
@@ -2109,10 +2113,100 @@ chanserv_is_dnr(const char *chan_name, struct handle_info *handle)
     return dnr;
 }
 
-void
-chanserv_rename_dnr(const char *old_name)
+/* The reason on a rename do-not-register.  Together with a registration's
+ * renamed_from notes it is what tells this registration's own rename DNR
+ * from any other (chanserv_own_rename_dnr()); databases carry it, so it
+ * stays as it is. */
+#define RENAME_DNR_REASON "Channel was renamed"
+
+/* A name a registration was renamed away from, and the rename DNR placed
+ * on it then, known by its set time (a DNR has no other identity: the
+ * setter is the bot, the reason is the same for every rename).  Kept in
+ * the registration, and in its database record, until the DNR runs out. */
+struct renamed_from
 {
+    struct renamed_from *next;
+    time_t set, expires;
+    char name[1];
+};
+
+static void
+renamed_from_drop(struct renamed_from **prf)
+{
+    struct renamed_from *rf = *prf;
+
+    *prf = rf->next;
+    free(rf);
+}
+
+/* Forget the notes whose DNR has run out, and any for `name'. */
+static void
+renamed_from_prune(struct chanData *cData, const char *name)
+{
+    struct renamed_from **prf = &cData->renamed_from;
+
+    while(*prf)
+    {
+        if(((*prf)->expires && (*prf)->expires <= now)
+           || (name && !irccasecmp((*prf)->name, name)))
+            renamed_from_drop(prf);
+        else
+            prf = &(*prf)->next;
+    }
+}
+
+static void
+renamed_from_add(struct chanData *cData, const char *name, time_t set, time_t expires)
+{
+    struct renamed_from *rf;
+
+    renamed_from_prune(cData, name);
+    rf = calloc(1, sizeof(*rf) + strlen(name));
+    strcpy(rf->name, name);
+    rf->set = set;
+    rf->expires = expires;
+    rf->next = cData->renamed_from;
+    cData->renamed_from = rf;
+}
+
+/* Is `dnr' the rename DNR this registration left on a name it was renamed
+ * away from?  It must still be the plain DNR on that name (not a mask, not
+ * an account's), carry the rename reason, and have the set time noted when
+ * the registration left the name: an oper's DNR or another registration's
+ * rename DNR on the same name differs in reason or set time.  Returns the
+ * link to the note, or NULL. */
+static struct renamed_from **
+chanserv_own_rename_dnr(struct chanData *cData, struct do_not_register *dnr)
+{
+    struct renamed_from **prf;
+
+    if((dnr->expires && dnr->expires <= now)
+       || strcmp(dnr->reason, RENAME_DNR_REASON)
+       || dict_find(plain_dnrs, dnr->chan_name, NULL) != dnr)
+        return NULL;
+    for(prf = &cData->renamed_from; *prf; prf = &(*prf)->next)
+        if((*prf)->set == dnr->set && !irccasecmp((*prf)->name, dnr->chan_name))
+            return prf;
+    return NULL;
+}
+
+void
+chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan)
+{
+    struct chanData *cData = new_chan ? new_chan->channel_info : NULL;
+    struct do_not_register *dnr;
+    struct renamed_from **prf;
     const char *setter;
+
+    /* Back on a name it was renamed away from: the channel lives there
+     * again, so its own rename DNR there goes. */
+    if(cData && (dnr = dict_find(plain_dnrs, new_chan->name, NULL))
+       && (prf = chanserv_own_rename_dnr(cData, dnr)))
+    {
+        log_module(CS_LOG, LOG_INFO, "Removed the do-not-register on %s: the registration it was renamed away from is back.", new_chan->name);
+        renamed_from_drop(prf);
+        dict_remove(plain_dnrs, new_chan->name);
+    }
 
     if(!chanserv_conf.rename_dnr_duration)
         return;
@@ -2135,8 +2229,10 @@ chanserv_rename_dnr(const char *old_name)
      * a NULL chanserv; it's a plain string and serializes to saxdb the
      * same as any other setter value. */
     setter = chanserv ? chanserv->nick : "ChanServ";
-    chanserv_add_dnr(old_name, setter, now + chanserv_conf.rename_dnr_duration,
-                      "Channel was renamed");
+    dnr = chanserv_add_dnr(old_name, setter, now + chanserv_conf.rename_dnr_duration,
+                           RENAME_DNR_REASON);
+    if(cData && dnr)
+        renamed_from_add(cData, dnr->chan_name, dnr->set, dnr->expires);
 }
 
 /* A channel that carries the registered marker has just been renamed: send
@@ -8511,6 +8607,9 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
     struct chanData *cData;
     struct userData *uData;
     struct chanNode *target;
+    struct dnrList dnrs;
+    unsigned int ii;
+    int blocked;
     const char *key;
 
     if(!user->handle_info)
@@ -8595,17 +8694,31 @@ chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char
 
     /* DNRs on the name itself (exact or mask), whoever owns the channel;
      * the per-owner pass below would skip them if the user list held no
-     * UL_OWNER entry. */
-    if(chanserv_is_dnr(new_name, NULL))
+     * UL_OWNER entry.  The one exception is this registration's own rename
+     * DNR: having passed the owner test above, the requester may rename
+     * the channel back to a name it was renamed away from. */
+    dnrs = chanserv_find_dnrs(new_name, NULL, UINT_MAX);
+    for(ii = 0; ii < dnrs.used; ++ii)
+        if(!chanserv_own_rename_dnr(cData, dnrs.list[ii]))
+            break;
+    blocked = ii < dnrs.used;
+    free(dnrs.list);
+    if(blocked)
     {
         *reason = "New channel name is blocked (do-not-register)";
         return 0;
     }
 
-    /* DNRs on the owning accounts, as cmd_move checks them. */
+    /* DNRs on the owning accounts, as cmd_move checks them (the name's
+     * own DNRs were checked above). */
     for(uData = cData->users; uData; uData = uData->next)
     {
-        if((uData->access == UL_OWNER) && chanserv_is_dnr(new_name, uData->handle))
+        if(uData->access != UL_OWNER)
+            continue;
+        dnrs = chanserv_find_dnrs(NULL, uData->handle->handle, 1);
+        blocked = dnrs.used > 0;
+        free(dnrs.list);
+        if(blocked)
         {
             *reason = "New channel name is blocked (do-not-register)";
             return 0;
@@ -9895,6 +10008,21 @@ chanserv_channel_read(const char *key, struct record_data *hir)
     cData->visited = str ? (time_t)strtoul(str, NULL, 0) : now;
     str = database_get_data(channel, KEY_OWNER_TRANSFER, RECDB_QSTRING);
     cData->ownerTransfer = str ? (time_t)strtoul(str, NULL, 0) : 0;
+    if((obj = database_get_data(channel, KEY_RENAMED_FROM, RECDB_OBJECT)))
+        for(it = dict_first(obj); it; it = iter_next(it))
+        {
+            struct record_data *rd = iter_data(it);
+            time_t set, expires;
+
+            if(rd->type != RECDB_OBJECT)
+                continue;
+            str = database_get_data(rd->d.object, KEY_DNR_SET, RECDB_QSTRING);
+            set = str ? (time_t)strtoul(str, NULL, 0) : 0;
+            str = database_get_data(rd->d.object, KEY_EXPIRES, RECDB_QSTRING);
+            expires = str ? (time_t)strtoul(str, NULL, 0) : 0;
+            if(set && expires > now)
+                renamed_from_add(cData, iter_key(it), set, expires);
+        }
     str = database_get_data(channel, KEY_MAX, RECDB_QSTRING);
     cData->max = str ? atoi(str) : 0;
     str = database_get_data(channel, KEY_GREETING, RECDB_QSTRING);
@@ -10193,6 +10321,22 @@ chanserv_write_channel(struct saxdb_context *ctx, struct chanData *channel)
 
     if(channel->ownerTransfer)
         saxdb_write_int(ctx, KEY_OWNER_TRANSFER, channel->ownerTransfer);
+
+    renamed_from_prune(channel, NULL);
+    if(channel->renamed_from)
+    {
+        struct renamed_from *rf;
+
+        saxdb_start_record(ctx, KEY_RENAMED_FROM, 1);
+        for(rf = channel->renamed_from; rf; rf = rf->next)
+        {
+            saxdb_start_record(ctx, rf->name, 0);
+            saxdb_write_int(ctx, KEY_DNR_SET, rf->set);
+            saxdb_write_int(ctx, KEY_EXPIRES, rf->expires);
+            saxdb_end_record(ctx);
+        }
+        saxdb_end_record(ctx);
+    }
     saxdb_write_int(ctx, KEY_VISITED, high_present ? now : channel->visited);
     saxdb_end_record(ctx);
 }

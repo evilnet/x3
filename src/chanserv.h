@@ -84,6 +84,8 @@ enum charOption {
 #define IsSuspended(x)		((x)->flags & CHANNEL_SUSPENDED)
 #define IsOffChannel(x)         (((x)->flags & CHANNEL_OFFCHANNEL) && (off_channel > 1))
 
+struct renamed_from;
+
 struct chanData
 {
     struct chanNode	*channel;
@@ -117,6 +119,7 @@ struct chanData
     struct dict         *notes;
     struct suspended	*suspended;
     struct giveownership *giveownership;
+    struct renamed_from *renamed_from; /* names it was renamed away from, while their rename DNR stands */
     struct chanData	*prev;
     struct chanData	*next;
 };
@@ -222,12 +225,15 @@ struct banData *add_channel_ban(struct chanData *channel, const char *mask, char
 int chanserv_rename_allowed(struct userNode *user, struct chanNode *chan, const char *new_name, const char **reason);
 
 /* Called by the RN handler in proto-p10.c (cmd_rename) after a registered
- * channel is renamed, to place a timed do-not-register entry on the old
- * name. No-op if chanserv_conf.rename_dnr_duration is 0, or if old_name
- * is already covered by an existing (non-expired) DNR. proto-p10.c must
- * not reach into chanserv's DNR internals (plain_dnrs/mask_dnrs/etc are
- * file-static) — this wrapper is the exported escape hatch. */
-void chanserv_rename_dnr(const char *old_name);
+ * channel is renamed (new_chan is the renamed node), to place a timed
+ * do-not-register entry on the old name. No-op if
+ * chanserv_conf.rename_dnr_duration is 0, or if old_name is already
+ * covered by an existing (non-expired) DNR.  If the registration has come
+ * back to a name it was renamed away from, the rename DNR it left there is
+ * removed first. proto-p10.c must not reach into chanserv's DNR internals
+ * (plain_dnrs/mask_dnrs/etc are file-static) — this wrapper is the
+ * exported escape hatch. */
+void chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan);
 
 /* Called by cmd_rename after it has applied an RN: sends the registered
  * marker for the channel's new name once more, whatever X3's copy of the
