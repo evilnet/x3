@@ -295,6 +295,9 @@ if [ "$generate" = yes ]; then
     : "${X3_ACCOUNTS_PER_EMAIL=1}"
     : "${X3_TITLEHOST_SUFFIX=AfterNET.Org}"
 
+    # Keycloak identity: the reset on a different id is off unless overridden
+    : "${X3_KC_ID_RESET:=0}"
+
     # LDAP defaults (disabled unless overridden)
     : "${X3_LDAP_ENABLE=0}"
     : "${X3_LDAP_WRITEBACK=0}"

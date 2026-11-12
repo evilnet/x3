@@ -28,6 +28,7 @@ struct svccmd;
 
 #define NICKSERV_HANDLE_LEN ACCOUNTLEN
 #define COOKIELEN 10
+#define KC_ID_REPLACED_MAX 4  /* replaced Keycloak ids a handle remembers */
 
 /* HI_FLAG_* go into handle_info.flags */
 #define HI_FLAG_OPER_SUSPENDED 0x00000001
@@ -105,6 +106,12 @@ struct handle_info {
     char *infoline;
     char *handle;
     char *fakehost;
+    char *kc_id;    /* Keycloak user id (compact base64url); NULL = unknown */
+    /* The ids a reset or REBIND replaced, newest first, packed from [0]
+     * (the first NULL ends the list; the oldest drops off when it is full):
+     * announcements carrying one are this name's earlier sessions, not
+     * another recreate. */
+    char *kc_id_replaced[KC_ID_REPLACED_MAX];
     time_t registered;
     time_t lastseen;
     int karma;
@@ -150,6 +157,7 @@ struct nickserv_config {
     unsigned int autogag_enabled : 1;
     unsigned int email_enabled : 1;
     unsigned int email_required : 1;
+    unsigned int kc_id_reset : 1;
     unsigned int default_hostmask : 1;
     unsigned int warn_nick_owned : 1;
     unsigned int warn_clone_auth : 1;

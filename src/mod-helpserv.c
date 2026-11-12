@@ -4728,7 +4728,7 @@ static void handle_nickserv_unreg(struct userNode *user, struct handle_info *han
 
                 char buf[12];
                 if (req->helper && (hs->notify >= NOTIFY_DROP))
-                    helpserv_notify(req->helper, "HSMSG_NOTIFY_REQ_DROP_UNREGGED", req->id, req->handle->handle);
+                    helpserv_notify(req->helper, "HSMSG_NOTIFY_REQ_DROP_UNREGGED", req->id, handle->handle);
                 sprintf(buf, "%lu", req->id);
                 helpserv_log_request(req, "Account unregistered");
                 dict_remove(req->hs->requests, buf);
@@ -4760,7 +4760,7 @@ static void handle_nickserv_unreg(struct userNode *user, struct handle_info *han
 
                     helpserv_notice(user, "HSMSG_REQ_DROPPED_UNREG", handle->handle, hs->helpchan->name, req->id);
                     if (req->helper && (hs->notify >= NOTIFY_DROP))
-                        helpserv_notify(req->helper, "HSMSG_NOTIFY_REQ_DROP_UNREGGED", req->id, req->handle->handle);
+                        helpserv_notify(req->helper, "HSMSG_NOTIFY_REQ_DROP_UNREGGED", req->id, handle->handle);
                     sprintf(buf, "%lu", req->id);
                     helpserv_log_request(req, "Account unregistered");
                     dict_remove(req->hs->requests, buf);
