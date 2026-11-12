@@ -2355,23 +2355,20 @@ chanserv_rename_dnr(const char *old_name, struct chanNode *new_chan)
  * (rename_channel() swaps the name on the one struct Channel), so there
  * is no channel left under it to carry a stray marker.
  *
- * Sends nothing unless our copy carried the marker before the rename --
- * new_chan->modes is that copy, RenameChannel() having just memcpy()d it.
- * ChanServ sets MODE_REGISTERED only with off_channel on, so with
- * off_channel off this is silent.  Nor without a ChanServ bot (see
- * chanserv_rename_dnr()): the marker is that bot's to send. */
+ * Sends nothing unless our copy carried the registered marker before the
+ * rename -- new_chan->modes is that copy, RenameChannel() having just
+ * memcpy()d it -- nor without a ChanServ bot (see chanserv_rename_dnr()):
+ * the markers are that bot's to send.  It then sends every marker the
+ * channel carries (chanserv_marker_modes(): +R, and +z with off_channel
+ * on), since the race above drops them together. */
 void
 chanserv_rename_marker(struct chanNode *new_chan)
 {
-    struct mod_chanmode change;
-
     if(!chanserv)
         return;
     if(!new_chan->channel_info || !(new_chan->modes & MODE_REGISTERED))
         return;
-    mod_chanmode_init(&change);
-    change.modes_set = MODE_REGISTERED;
-    mod_chanmode_announce(chanserv, new_chan, &change);
+    chanserv_set_markers(new_chan, chanserv_marker_modes());
 }
 
 /* A registration followed a rename: opers and helpers hear of it as they
