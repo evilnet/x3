@@ -4150,10 +4150,20 @@ mod_chanmode_parse(struct chanNode *channel, char **modes, unsigned int argc, un
 #undef do_chan_mode
         case 'l':
             if (add) {
+                int limit;
+
                 if (in_arg >= argc)
                     goto error;
+                limit = atoi(modes[in_arg++]);
+                /* The ircd ignores a +l that is not a positive number
+                 * from anyone but a server wiping a channel out in a
+                 * burst.  So does this: a mode lock of +l 0 left X3
+                 * believing in a limit of 0 that the channel never had,
+                 * and DynLimit capping its limits there. */
+                if (limit <= 0 && !(flags & MCP_FROM_SERVER))
+                    break;
                 change->modes_set |= MODE_LIMIT;
-                change->new_limit = atoi(modes[in_arg++]);
+                change->new_limit = limit;
             } else {
                 change->modes_set &= ~MODE_LIMIT;
                 change->modes_clear |= MODE_LIMIT;

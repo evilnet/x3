@@ -8646,8 +8646,7 @@ chanserv_adjust_limit(void *data)
  * somebody parted.  A channel gets past its limit by a netjoin (burst
  * joins skip the DynLimit check), an invite or an override, or by a limit
  * lowered while part of the network was split away.  A channel with no +l
- * (an op removed it) counts as having no room, so DynLimit puts one back;
- * X3 keeps the old number in channel->limit after a -l. */
+ * (an op removed it) counts as having no room, so DynLimit puts one back. */
 static long
 dynlimit_headroom(struct chanNode *channel)
 {

@@ -555,6 +555,7 @@ wipeout_channel(struct chanNode *cNode, time_t new_time, char **modes, unsigned 
     strcpy(orig_upass, cNode->upass);
     strcpy(orig_apass, cNode->apass);
     cNode->modes = 0;
+    cNode->limit = 0; /* the winner's burst sets it again if it has a +l */
     /* burst data IS server-origin; without the flag one unknown letter
      * aborts the whole parse and strands modes at zero */
     mod_chanmode(NULL, cNode, modes, modec, MCP_FROM_SERVER);
