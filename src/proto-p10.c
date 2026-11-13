@@ -82,6 +82,7 @@
 #define CMD_REHASH              "REHASH"
 #define CMD_REMOVE		"REMOVE"
 #define CMD_RENAME              "RENAME"
+#define CMD_TOMBSTONE           "TOMBSTONE"
 #define CMD_RESET		"RESET"
 #define CMD_RESTART             "RESTART"
 #define CMD_RPING               "RPING"
@@ -185,6 +186,7 @@
 #define TOK_REHASH              "REHASH"
 #define TOK_REMOVE		"RM"
 #define TOK_RENAME              "RN"
+#define TOK_TOMBSTONE           "RT"
 #define TOK_RESET		"RESET"
 #define TOK_RESTART             "RESTART"
 #define TOK_RPING               "RI"
@@ -353,6 +355,10 @@ static unsigned int num_privmsg_funcs;
 static privmsg_func_t *notice_funcs;
 static unsigned int num_notice_funcs;
 static struct dict *unbursted_channels;
+/* Channels a server burst unregistered with +z and +L, by name, with the
+ * name of the server whose burst it was: the decision whether that +z is
+ * stale waits for the end of that server's burst.  See cmd_burst. */
+static struct dict *burst_persist_pending;
 static const char *his_servername;
 static const char *his_servercomment;
 static int extended_accounts;
@@ -1100,10 +1106,16 @@ irc_silence(struct userNode *who, const char *mask, int add)
     putsock("%s " P10_SILENCE " %s %s%s", self->numeric, who->numeric, add ? "+" : "-", mask);
 }
 
+/* Set around the join of one of our bots into a channel that exists on
+ * the network although the bot is the first member X3 holds for it, so
+ * that irc_join() does not announce the join as a CREATE.  The only such
+ * channel is the new name of a relocated channel; see cmd_rename. */
+static int join_existing_channel;
+
 void
 irc_join(struct userNode *who, struct chanNode *what)
 {
-    if (what->members.used == 1) {
+    if (what->members.used == 1 && !join_existing_channel) {
         putsock("%s " P10_CREATE " %s "FMT_TIME_T,
                 who->numeric, what->name, what->timestamp);
     } else {
@@ -1506,6 +1518,67 @@ static CMD_FUNC(cmd_server)
 }
 
 
+/* Take the server-managed markers a burst should not have carried off a
+ * channel: on the wire, and on our copy.  irc_mode() only sends; a bit
+ * left on our copy makes a later REGISTER find the marker "already set"
+ * and never send what the ircd no longer has. */
+static void
+burst_strip_markers(struct chanNode *cNode, int strip_r, int strip_z)
+{
+    if (!strip_r && !strip_z)
+        return;
+    irc_join(opserv, cNode);
+    irc_mode(opserv, cNode,
+             (strip_r && strip_z) ? "-zR" : (strip_z ? "-z" : "-R"));
+    irc_part(opserv, cNode, "");
+    if (strip_r)
+        cNode->modes &= ~(chan_mode_t)MODE_REGISTERED;
+    if (strip_z)
+        cNode->modes &= ~(chan_mode_t)MODE_PERSIST;
+}
+
+/* cmd_burst left the +z of an unregistered +z +L channel alone because a
+ * tombstone's announcement (RT) may follow its BURST.  Remember it until
+ * the bursting server is done. */
+static void
+burst_persist_defer(struct chanNode *cNode, const char *server_name)
+{
+    if (!burst_persist_pending) {
+        burst_persist_pending = dict_new();
+        dict_set_free_keys(burst_persist_pending, free);
+        dict_set_free_data(burst_persist_pending, free);
+    }
+    if (!dict_find(burst_persist_pending, cNode->name, NULL))
+        dict_insert(burst_persist_pending, strdup(cNode->name), strdup(server_name));
+}
+
+/* A server has finished its burst: every announcement that belongs to it
+ * has been read.  A channel of that burst that is still unregistered, +z
+ * and not a tombstone chanserv tracks got no announcement.  It is either
+ * the tombstone of an ircd that does not announce, which chanserv can
+ * recognise in some cases (chanserv_relocate_husk_fallback()), or it
+ * carries a stale +z, which is stripped now.  Entries of a server that is
+ * no longer linked are settled as well; its burst will never end. */
+static void
+burst_persist_settle(struct server *sender)
+{
+    dict_iterator_t it, next;
+    struct chanNode *cNode;
+
+    for (it = dict_first(burst_persist_pending); it; it = next) {
+        next = iter_next(it);
+        if (irccasecmp(iter_data(it), sender->name) && GetServerH(iter_data(it)))
+            continue;
+        if ((cNode = GetChannel(iter_key(it)))
+            && !cNode->channel_info
+            && (cNode->modes & MODE_PERSIST)
+            && !chanserv_relocate_husk_live(cNode)
+            && !chanserv_relocate_husk_fallback(cNode))
+            burst_strip_markers(cNode, 0, 1);
+        dict_remove(burst_persist_pending, iter_key(it));
+    }
+}
+
 static CMD_FUNC(cmd_eob)
 {
     struct server *sender;
@@ -1528,6 +1601,7 @@ static CMD_FUNC(cmd_eob)
         //activate_routing(NULL, NULL, NULL);
         routing_init();
     }
+    burst_persist_settle(sender);
     sender->self_burst = 0;
     recalc_bursts(sender);
     call_server_link_funcs(sender);
@@ -1612,12 +1686,47 @@ static CMD_FUNC(cmd_error_nick)
 struct create_desc {
     struct userNode *user;
     time_t when;
+    unsigned int wire_ts : 1;   /* `when' is a timestamp the ircd sent */
+    unsigned int create : 1;    /* CREATE rather than JOIN */
 };
 
 static void
 join_helper(struct chanNode *chan, void *data)
 {
     struct create_desc *cd = data;
+
+    /* A CREATE, or a JOIN, with a timestamp newer than the one we hold
+     * for the channel.  If that channel is a relocation tombstone the
+     * ircd has already dissolved it: a CREATE is only sent by a server
+     * the channel does not exist on, and a JOIN carries a newer timestamp
+     * only when it revives an empty channel that has lost its persist
+     * flag (m_join.c bumps the timestamp by one).  The members we still
+     * show in the tombstone were parted by every server's own sweep,
+     * which is never sent to us; they go now, before the newcomer is
+     * added, so that our own sweep cannot later take the newcomer out
+     * with them.  A JOIN with the tombstone's own timestamp is somebody
+     * entering the live tombstone and changes nothing. */
+    if (cd->wire_ts && cd->when > chan->timestamp) {
+        char name[CHANNELLEN+1];
+
+        safestrncpy(name, chan->name, sizeof(name));
+        if (chanserv_relocate_husk_dissolve(chan, cd->create ? "the name was created again" : "the name was joined afresh")) {
+            /* Normally the node went with its last member and the name is
+             * free.  If something else still holds the node, it now stands
+             * for the new channel: take its timestamp, and for a CREATE
+             * none of the old modes. */
+            if ((chan = GetChannel(name))) {
+                chan->timestamp = cd->when;
+                if (cd->create) {
+                    chan->modes = 0;
+                    chan->limit = 0;
+                    chan->key[0] = '\0';
+                }
+            } else {
+                chan = AddChannel(name, cd->when, NULL, NULL, NULL);
+            }
+        }
+    }
     AddChannelUser(cd->user, chan);
 }
 
@@ -1644,6 +1753,8 @@ static CMD_FUNC(cmd_create)
         return 0;
     cd.user = user;
     cd.when = atoi(argv[2]);
+    cd.wire_ts = 1;
+    cd.create = 1;
     parse_foreach(argv[1], join_helper, create_helper, NULL, NULL, &cd);
     return 1;
 }
@@ -1660,6 +1771,8 @@ static CMD_FUNC(cmd_join)
         cd.when = now;
     else
         cd.when = atoi(argv[2]);
+    cd.wire_ts = (argc >= 3);
+    cd.create = 0;
     parse_foreach(argv[1], join_helper, create_helper, NULL, NULL, &cd);
     return 1;
 }
@@ -1676,6 +1789,9 @@ static CMD_FUNC(cmd_svsjoin)
         cd.when = now;
     else
         cd.when = atoi(argv[3]);
+    /* A request, not the channel's timestamp. */
+    cd.wire_ts = 0;
+    cd.create = 0;
     parse_foreach(argv[2], join_helper, create_helper, NULL, NULL, &cd);
     return 1;
 }
@@ -2285,22 +2401,49 @@ static CMD_FUNC(cmd_burst)
     cData = cNode->channel_info;
 
     if (!cData) {
-        if (cNode->modes & (MODE_REGISTERED | MODE_PERSIST)) {
-            /* Channel is not registered with us but carries server-managed
-             * markers: strip the registration marker AND the persist
-             * exmode, as this code always has ("-z").  ChanServ is not
-             * the only source of +z, though: an ircd with channel
-             * relocation puts it on the tombstone of a relocated channel
-             * by itself (never as a MODE, but it is in the BURST), so a
-             * +z seen here is not necessarily one of ours gone stale. */
-            irc_join(opserv, cNode);
-            irc_mode(opserv, cNode, "-zR");
-            irc_part(opserv, cNode, "");
-            /* irc_mode() only sends; take the bits off our copy too, or a
-             * later REGISTER finds the marker "already set" here and never
-             * sends the +R the ircd no longer has. */
-            cNode->modes &= ~(chan_mode_t)(MODE_REGISTERED | MODE_PERSIST);
+        /* Channel is not registered with us but carries server-managed
+         * markers.  The two markers do not have the same truth value, so
+         * they are decided separately:
+         *
+         *  -R  ALWAYS, and now.  MODE_REGISTERED on a channel we hold no
+         *      channel_info for is stale in every scenario there is,
+         *      relocation included: relocate_execute() clears R on the
+         *      tombstone itself, and our own husk has channel_info NULL by
+         *      construction, so an R that arrives on a burst for either is
+         *      drift to be corrected -- and on a tombstone it has to be
+         *      gone before the deadline, where the ircd reads it.
+         *
+         *  -z  ONLY when the channel is not a relocation tombstone.  A live
+         *      tombstone is +z AND unregistered by construction, and the
+         *      ircd treats the channel as its tombstone only while that bit
+         *      is there; with it gone it cancels the sweep and leaves the
+         *      members in what is then an ordinary channel that still
+         *      redirects (and an EMPTY tombstone is destroyed by the -z).
+         *      Any other unregistered +z is stale and is stripped.
+         *
+         * Which it is, the BURST alone does not say.  A tombstone chanserv
+         * already tracks (the RN reached us; this is a netjoin) is known
+         * now and left alone.  For one that outlived an X3 restart the ircd
+         * sends the record itself right after the channel's BURST,
+         *
+         *     AB B #old 1731000000 +tnzL #new ABAAC
+         *     AB RT #old 1731000000 #new 1731340900
+         *
+         * so the strip must not run ahead of that line.  A tombstone is
+         * always +L as well: a +z channel without +L is none and is
+         * stripped now.  One with +L waits for the end of the bursting
+         * server's burst (burst_persist_defer(), burst_persist_settle()),
+         * by which time its announcement, if there is one, has built the
+         * record. */
+        int strip_z = 0;
+
+        if ((cNode->modes & MODE_PERSIST) && !chanserv_relocate_husk_live(cNode)) {
+            if (cNode->modes & MODE_HIDEMODE)
+                burst_persist_defer(cNode, origin);
+            else
+                strip_z = 1;
         }
+        burst_strip_markers(cNode, (cNode->modes & MODE_REGISTERED) ? 1 : 0, strip_z);
     }
 
     /* Burst channel members in now. */
@@ -2688,46 +2831,495 @@ static CMD_FUNC(cmd_topic)
     return 1;
 }
 
-/* Marker the ircd puts before the trailing reason of a relocation-mode
- * RN (ircd/m_rename.c RELOCATE_MARKER, sent when its RENAME_CONSENT
- * feature is on). */
+/** Relocation marker (evilnet/channel-relocate):
+ *
+ *     classic:     RN <old> <new> :<reason>
+ *     relocation:  RN <old> <new> C <expires> :<reason>
+ *     from an ircd from before the deadline travelled:
+ *                  RN <old> <new> C :<reason>
+ *
+ * Honoured ONLY when a parameter follows it (argv[0] is the command token,
+ * so that is argc > 4), exactly as the ircd's ms_rename() honours it only
+ * for parc > 4.  A four-parameter "RN #a #b :C" is a CLASSIC rename whose
+ * reason happens to be the letter C: reading a marker there would make X3
+ * partition a membership the ircd force-moved, which is permanent state
+ * divergence.  The ircd guarantees the trailing reason parameter is always
+ * emitted (possibly empty; split_line() keeps an empty trailing parameter),
+ * so the shorter shape never carries a marker.  Same letter as the ircd's
+ * RELOCATE_MARKER (ircd/m_rename.c), sent when its RENAME_CONSENT feature
+ * is on.
+ *
+ * <expires> is the moment every server dissolves the tombstone, in network
+ * time; relocate_expiry_parse() and relocate_expiry_check() (tools.c) are
+ * the ircd's own rules for the field.  With five parameters there is no
+ * deadline and X3 counts its own relocate_grace, as it did for every
+ * relocation before. */
 #define RENAME_RELOCATE_MARKER  "C"
 
-/* RN <old> <new> :<reason> -- the ircd broadcasts this after an approved
- * rename has already executed. Authorization happened at AC R query time
- * (chanserv_rename_allowed, see cmd_account); this handler only migrates
- * state (design §3a: authorize-at-query, apply-at-RN). The source prefix
- * is the renaming user and may be unknown to us in edge cases, so it is
- * not used here. */
+/* Move the issuer's record from the old node to the new one.  No wire
+ * traffic: the ircd already moved this user on every server off the RN
+ * marker, so an emitted JOIN/PART here would be a second, contradictory
+ * event.
+ *
+ * No join hooks either (AddChannelUserNoHooks(), as in the BX P merge
+ * above).  The user did not join anything: the server moved a member who
+ * was already there.  Run as a join, ChanServ would greet them, send
+ * their info line, give them the op or voice their access level calls
+ * for, apply a stored ban, and count the join toward the flood policers
+ * -- all in a channel where the ircd has just carried their standing
+ * over unchanged.  What it carries is what relocate_execute() keeps for a
+ * mover: op, halfop and voice, and the oplevel (its fourth bit, the
+ * delayed-join flag, is not something X3 tracks).  The same is written
+ * here, over whatever AddChannelUser's first-member rule put there.
+ *
+ * Transfer before delete, as in the BX P merge -- and here it matters
+ * for a second reason: DelChannelUser() collects a channel that just lost
+ * its last member unless +z keeps it, and the caller holds the node the
+ * member leaves across the partition, so that cannot happen midway
+ * whatever that node's modes are.
+ *
+ * Unlike the BX P merge, the user is not marked dead first.  There the
+ * old client is about to be deleted and the network saw no PART; here the
+ * user lives on, and the ircd parts them from the old channel in front of
+ * the members who stay (relocate_execute()), so the PART the part hooks
+ * report is one the network sent. */
+static void
+relocate_move_member(struct modeNode *mn, struct chanNode *newchan)
+{
+    struct userNode *user = mn->user;
+    struct chanNode *oldchan = mn->channel;
+    struct modeNode *newmn;
+
+    newmn = AddChannelUserNoHooks(user, newchan);
+    newmn->modes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
+    newmn->oplevel = mn->oplevel;
+    newmn->idle_since = mn->idle_since;
+    DelChannelUser(user, oldchan, NULL, 0);
+}
+
+/* Re-assert one member's status modes on the new node, for real.  Used for
+ * our own service bots: they follow a relocation with an ordinary JOIN, and
+ * the ircd does not carry a joining client's modes over -- so without this a
+ * bot that was opped in the old channel lands unopped in the new one.  The
+ * ircd force-accepts modes from a +k service (m_mode.c:305-306), which is why
+ * a plain announce is enough and no OPMODE is needed.
+ *
+ * Callers MUST have already written the snapshot into the new modeNode: this
+ * announce ends in mod_chanmode_apply(), which ORs the bits in, so it can
+ * only ever ADD to X3's view -- it cannot clear a spurious auto-op. */
+static void
+relocate_reassert_modes(struct userNode *user, struct chanNode *chan,
+                        struct modeNode *mn, long modes)
+{
+    struct mod_chanmode *change = mod_chanmode_alloc(1);
+
+    change->argc = 1;
+    change->args[0].mode = modes;
+    change->args[0].u.member = mn;
+    mod_chanmode_announce(user, chan, change);
+    mod_chanmode_free(change);
+}
+
+/* Our own service bots follow a registration (and every module holder
+ * the rename hooks re-pointed) from one node to another, on the wire.
+ * Returns how many moved. */
+static unsigned int
+relocate_follow_bots(struct chanNode *from, struct chanNode *to)
+{
+    struct userNode **movers;
+    unsigned int nmovers = 0, nmoved = 0, n;
+    char reason[MAXLEN];
+
+    snprintf(reason, sizeof(reason), "Channel relocated to %s.", to->name);
+
+    /* Classify first, move second -- the
+     * same two-pass split the ircd's relocate_execute() makes, for the
+     * same reason: pass two runs AddChannelUser()/DelChannelUser(),
+     * which fire join and part hooks into every service, and a hook is
+     * free to mutate the very member list a single fused walk would
+     * still be indexing.  Pass one only reads it, so it sees a stable
+     * list; pass two re-resolves each candidate through GetUserMode()
+     * and skips anyone a hook has since taken out.
+     *
+     * The bots are not a mover class at all but a separate wire-visible
+     * follow (see pass two).  Every other member stays in the tombstone
+     * and follows by their own JOIN (design "D"). */
+    movers = malloc(sizeof(*movers) * (from->members.used + 1));
+    for(n = 0; n < from->members.used; n++) {
+        struct userNode *user = from->members.list[n]->user;
+
+        if(IsLocal(user))
+            movers[nmovers++] = user;
+    }
+
+    for(n = 0; n < nmovers; n++) {
+        struct userNode *user = movers[n];
+        struct modeNode *mn = GetUserMode(from, user);
+        struct modeNode *botmn;
+        long botmodes;
+        short botoplevel;
+
+        if(!mn)
+            continue;   /* a hook fired by an earlier iteration removed them */
+
+        /* Our own service bots.  The rename hooks just re-pointed
+         * every module holder (chanserv's channel_info and support
+         * channels, opserv's alert/debug channels, helpserv's
+         * helpchan, spamserv's chanInfo) at the new node, so a bot
+         * left sitting in the husk would be a bot whose own service
+         * believes it is somewhere else.  They follow, and unlike the
+         * movers they do it ON THE WIRE: AddChannelUser()/
+         * DelChannelUser() emit a real JOIN and PART for a local
+         * user, which is what keeps the ircd's view (where nothing
+         * moved a service bot, because a bot is not the issuer) in
+         * agreement with ours.  The JOIN carries the new
+         * node's timestamp, which RelocateChannel() took from the old
+         * channel and therefore matches the creationtime the ircd
+         * gave the new channel.
+         *
+         * It has to be a JOIN and never a CREATE (see cmd_rename), also
+         * when there was no issuer to record first -- an RN whose
+         * source we do not know, or one that was not in the channel
+         * here -- and the bot is the first member X3 holds for the
+         * new channel: hence join_existing_channel.  To a JOIN with
+         * the channel's own timestamp the ircd adds the bot without
+         * ops (m_join.c ms_join) and changes nothing else -- as long
+         * as the channel has a member or is +z there.  A relocation
+         * with no issuer at all (a server-sourced RN; nothing sends
+         * one today) leaves the new channel empty on the network, and
+         * ms_join clears the modes of an empty channel that is not
+         * persistent when somebody joins it.
+         *
+         * Status modes do NOT ride along with a JOIN, so they are
+         * snapshotted here and re-asserted below -- for EVERY bot,
+         * not just ChanServ and SpamServ: HelpServ, OpServ and module
+         * bots hold ops in their own channels too and would otherwise
+         * arrive powerless.  The overwrite is separately load-bearing
+         * when the bot is the first member we hold: AddChannelUser()
+         * hands MODE_CHANOP to the first member of a channel that is
+         * neither +z nor +A, which the ircd did not do -- writing the
+         * snapshot back (rather than OR-ing) is what keeps that
+         * phantom op out of X3's view.  Same discipline as
+         * relocate_move_member(). */
+        botmodes = mn->modes & (MODE_CHANOP | MODE_HALFOP | MODE_VOICE);
+        botoplevel = mn->oplevel;
+
+        join_existing_channel = 1;
+        AddChannelUser(user, to);
+        join_existing_channel = 0;
+        if((botmn = GetUserMode(to, user))) {
+            botmn->modes = botmodes;
+            botmn->oplevel = botoplevel;
+            if(botmodes)
+                relocate_reassert_modes(user, to, botmn, botmodes);
+        }
+        DelChannelUser(user, from, reason, 0);
+        nmoved++;
+    }
+    free(movers);
+    return nmoved;
+}
+
+/* An RN ... C whose OLD name is a tombstone X3 already tracks: the same
+ * channel was relocated twice, by two servers that had not heard of each
+ * other's relocation (within the delay of a link, or on the two sides of
+ * a netsplit).  Each executed its own; the ircd brings the two together
+ * in relocate_again() (m_rename.c), deciding everything from the two
+ * messages alone so that every server ends in the same state whichever
+ * of the two it heard first.  X3 has to end there too, so this is that
+ * function, on X3's view:
+ *
+ * - Same new name twice: one relocation with two issuers.  The second is
+ *   moved into the new channel beside the first.
+ * - Two new names: the one that sorts FIRST wins (relocate_name_cmp(),
+ *   the ircd's comparison).  The old channel redirects to the winner, and
+ *   so does every earlier tombstone that pointed at the loser.  The losing
+ *   new channel becomes a tombstone redirecting to the winner as well,
+ *   with its issuer in it.
+ *
+ *   Heard the WINNER first: the loser's channel is made from the tombstone,
+ *   the loser's issuer moved into it, and it is marked.  Heard the LOSER
+ *   first: the winner's channel is made from the tombstone and handed
+ *   what the first relocation had moved to the loser's channel, the
+ *   winner's issuer is moved into it, and the loser's channel is marked.
+ *   Both orders end with the same three channels and the same members.
+ * - One deadline for all of it, the later (relocate_deadline_merge()),
+ *   shared by the old channel's record and every loser's.
+ *
+ * A registration ends on the winner, as the ircd's +R does.  When X3
+ * heard the loser first the registration is in the loser's channel by
+ * now; it is handed on with the rest (RelocateHandover()), the bots
+ * follow it with JOIN and PART as after a first relocation, the markers
+ * are sent again (+R for the winner, -R for the loser) and the loser's
+ * name gets the rename do-not-register.  Opers and helpers are told, as of
+ * any rename that moves a registration (chanserv_rename_announce()), that
+ * it went on from the loser's name to the winner's, "by" `server' -- the
+ * server the deciding RN came from, since no user decided it: they were
+ * told of the move to the loser, and what they read has to end where the
+ * registration is.  X3 arbitrates every rename of a registered channel,
+ * but it answers each query on its own and keeps no record of an
+ * approval, so two it approved back to back can still cross; that is
+ * logged as a warning too.
+ *
+ * When the name a new channel would get is taken here by an unrelated
+ * channel, that step is not applied and the log says so, as for a first
+ * relocation.
+ *
+ * Nothing is sent for the members: every server moved them off the RN.
+ * `oldchan' and the losing channel may be gone on return (a deadline that
+ * is already here). */
+static void
+relocate_again(struct userNode *issuer, const char *server, struct chanNode *oldchan, const char *incoming, time_t expires)
+{
+    struct chanNode *wchan = NULL, *lchan = NULL;
+    struct modeNode *mn;
+    char old_name[CHANNELLEN+1], current[CHANNELLEN+1];
+    const char *target;
+    time_t target_ts, held, deadline;
+    int made_winner = 0, made_loser = 0;
+
+    if(!chanserv_relocate_husk_get(oldchan, &target, &target_ts, &held))
+        return;
+    safestrncpy(old_name, oldchan->name, sizeof(old_name));
+    safestrncpy(current, target, sizeof(current));     /* the record's own copy changes */
+
+    /* The crossing's one deadline: the later of the incoming one and the
+     * old channel's, which is already the latest of every relocation of
+     * this channel heard so far. */
+    deadline = relocate_deadline_merge(held, expires);
+
+    /* Held while the issuer is moved out of it: that may empty the node. */
+    LockChannel(oldchan);
+    mn = (issuer && !IsLocal(issuer)) ? GetUserMode(oldchan, issuer) : NULL;
+
+    if(!irccasecmp(current, incoming)) {
+        /* ---- The same relocation, twice ---- */
+        if(!(wchan = GetChannel(current))) {
+            /* Emptied and collected here since; the second issuer is in
+             * it everywhere else. */
+            wchan = RelocateChannelFromTombstone(oldchan, current);
+            made_winner = 1;
+        } else if(wchan->timestamp != target_ts) {
+            /* A stranger's channel under the name: not the one to put the
+             * issuer in. */
+            wchan = NULL;
+        }
+        if(wchan && mn && !GetUserMode(wchan, issuer))
+            relocate_move_member(mn, wchan);
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RELOCATE %s -> %s: relocated there already; a second issuer",
+                   old_name, incoming);
+
+    } else if(relocate_name_cmp(incoming, current) < 0) {
+        /* ---- The incoming relocation wins ---- */
+        if(GetChannel(incoming)) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: not applied, %s exists here; %s was relocated to %s here and the network takes %s; state diverged",
+                       old_name, incoming, incoming, old_name, current, incoming);
+        } else if(!(wchan = RelocateChannelFromTombstone(oldchan, incoming))) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: rejected by RelocateChannelFromTombstone",
+                       old_name, incoming);
+        } else {
+            int transfer = 0, registered = 0;
+
+            made_winner = 1;
+            /* The channel our own (losing) relocation made -- by name and
+             * creation timestamp, not one a stranger has made under the
+             * name since.  When it has emptied and been collected here it
+             * is made again, empty: every server that heard the winner
+             * first makes the loser's channel in any case. */
+            if((lchan = GetChannel(current))) {
+                /* (Nor one that is a tombstone in its own right by now:
+                 * chain flattening keeps a tombstone from pointing at
+                 * another, so that is not a state the ircd reaches, and
+                 * whatever such a channel holds is not the community's.) */
+                if(lchan->timestamp != target_ts)
+                    lchan = NULL;
+                else if(!chanserv_relocate_husk_get(lchan, NULL, NULL, NULL))
+                    transfer = 1;
+            } else {
+                lchan = RelocateChannelFromTombstone(oldchan, current);
+                made_loser = 1;
+            }
+
+            if(transfer) {
+                /* What the first relocation moved from the old channel
+                 * belongs to the community, and the community's channel
+                 * is now the winner.  (A record without marks on the
+                 * loser goes first, as before any relocation.) */
+                chanserv_relocate_husk_leftover(lchan);
+                registered = lchan->channel_info != NULL;
+                RelocateHandover(lchan, wchan);
+            }
+
+            /* The issuer before any bot, for the reason given in
+             * cmd_rename: a bot must not be the first member we hold. */
+            if(mn)
+                relocate_move_member(mn, wchan);
+            if(transfer) {
+                LockChannel(lchan);     /* the bots leaving may empty it */
+                relocate_follow_bots(lchan, wchan);
+                chanserv_relocate_bots(wchan);
+            }
+
+            /* The old channel, and every earlier tombstone that pointed
+             * at the loser, now point at the winner. */
+            chanserv_relocate_retarget(current, incoming, wchan->timestamp);
+
+            if(lchan && !chanserv_relocate_husk_get(lchan, NULL, NULL, NULL))
+                chanserv_relocate_loser(lchan, incoming, wchan->timestamp, old_name, deadline, 1);
+
+            if(registered) {
+                log_module(MAIN_LOG, LOG_WARNING,
+                           "RELOCATE %s -> %s: the registered channel had already been relocated to %s; %s wins the crossing and the registration follows it",
+                           old_name, incoming, current, incoming);
+                chanserv_relocate_markers(lchan, wchan);
+                chanserv_rename_dnr(current, wchan);
+                chanserv_rename_announce(current, wchan, server);
+            } else
+                log_module(MAIN_LOG, LOG_INFO,
+                           "RELOCATE %s -> %s: crossed the relocation to %s; %s wins, %s is a tombstone",
+                           old_name, incoming, current, incoming, current);
+            if(transfer) {
+                UnlockChannel(lchan);   /* collects it if the bots were all it had */
+                lchan = NULL;
+            }
+        }
+
+    } else {
+        /* ---- The incoming relocation loses ---- */
+        const char *ltarget;
+
+        wchan = GetChannel(current);
+        lchan = GetChannel(incoming);
+        if(lchan && chanserv_relocate_husk_get(lchan, &ltarget, NULL, NULL)
+           && !irccasecmp(ltarget, current)) {
+            /* Already the loser's tombstone (the losing relocation heard a
+             * second time): only its issuer may still have to go there. */
+            if(mn && !GetUserMode(lchan, issuer))
+                relocate_move_member(mn, lchan);
+        } else if(lchan) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: not applied, %s exists here; the network takes %s for %s and makes %s a tombstone; state diverged",
+                       old_name, incoming, incoming, current, old_name, incoming);
+        } else if(!(lchan = RelocateChannelFromTombstone(oldchan, incoming))) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: rejected by RelocateChannelFromTombstone",
+                       old_name, incoming);
+        } else {
+            made_loser = 1;
+            if(mn)
+                relocate_move_member(mn, lchan);
+            chanserv_relocate_loser(lchan, current, wchan ? wchan->timestamp : target_ts,
+                                    old_name, deadline, 1);
+            log_module(MAIN_LOG, (wchan && wchan->channel_info) ? LOG_WARNING : LOG_INFO,
+                       "RELOCATE %s -> %s: crossed the relocation to %s; %s wins, %s is a tombstone%s",
+                       old_name, incoming, current, current, incoming,
+                       (wchan && wchan->channel_info) ? " (the registration stays with the winner)" : "");
+        }
+    }
+
+    /* A channel made here that nobody was moved into and nothing holds
+     * would stay in our table for good: X3 drops a channel with its last
+     * member and has no other occasion to drop this one.  (For the loser
+     * that ends its record too, as for any tombstone nobody stayed in.) */
+    if(made_winner && wchan && !wchan->members.used)
+        DelUnusedChannel(wchan);
+    if(made_loser && lchan && !lchan->members.used)
+        DelUnusedChannel(lchan);
+
+    chanserv_relocate_family_settle(old_name, deadline);
+    UnlockChannel(oldchan);
+}
+
+/* RN <old> <new> [C [<expires>]] :<reason> -- the ircd broadcasts this after
+ * an approved rename has already executed. Authorization happened at AC R
+ * query time (chanserv_rename_allowed, see cmd_account); this handler only
+ * migrates state (design §3a: authorize-at-query, apply-at-RN).
+ *
+ * Classic path: the channel is re-keyed in place, everyone comes along.
+ *
+ * Consent path (the C marker): the channel SPLITS.  Registration, channel
+ * state and the module holders move to the new name; the old node survives
+ * as an unregistered tombstone husk holding the members who did not consent.
+ * The one mover is the ircd's: the RN source user (issuing the rename is
+ * consent).  Everybody else stays in the old channel until they join the
+ * new one themselves, because X3's membership view has to match what
+ * relocate_execute() did on every server, member for member.  X3's own
+ * service bots are a separate class:
+ * they follow the REGISTRATION, wire-visibly, on their own JOIN/PART (see
+ * below), which is the spec's ordinary consent primitive rather than a
+ * silent move.  The tombstone is swept at <expires>, the deadline every
+ * server holds it to; a channel relocated a second time while it is a
+ * tombstone goes to relocate_again().
+ *
+ * The source prefix is a nick here (parse_line resolves the numeric before
+ * dispatch) and may resolve to nothing at all -- a server-sourced RN has no
+ * issuer, which is exactly how the ircd treats it too. */
 static CMD_FUNC(cmd_rename)
 {
-    struct chanNode *chan, *dest, *renamed;
+    struct chanNode *chan, *dest, *renamed = NULL, *newchan = NULL;
     char old_name[CHANNELLEN+1];
     int was_registered;
+    int relocate;
+    time_t expires = 0;
 
     if(argc < 3) return 0;
-    /* RN <old> <new> C :<reason> is a relocation, not a rename: only the
-     * issuer moved to <new>, and <old> lives on as a tombstone that still
-     * holds every other member. Applying it as a classic rename would move
-     * the whole membership and the registration to <new> and leave us with
-     * members the network does not have there. This build has no
-     * relocation support, so apply nothing.
-     *
-     * The test is the one the ircd's own receiver (ms_rename) uses: the
-     * marker counts only in the five-parameter shape, i.e. argv[3] is
-     * exactly "C" AND a separate trailing reason follows it. The ircd
-     * always sends that trailing parameter (":" alone when the reason is
-     * empty), and split_line() keeps an empty trailing parameter, so a
-     * relocation always arrives with argc == 5. "RN <old> <new> :C" has
-     * argc == 4: a classic rename whose reason happens to be the letter
-     * C, which must stay a classic rename. */
-    if(argc > 4 && !strcmp(argv[3], RENAME_RELOCATE_MARKER)) {
-        log_module(MAIN_LOG, LOG_ERROR,
-                   "RENAME %s -> %s: relocation-mode rename received, which this build does not support; not applied",
-                   argv[1], argv[2]);
-        return 1;
+    /* The marker test is the ircd receiver's own (ms_rename); see
+     * RENAME_RELOCATE_MARKER for why a parameter has to follow it. */
+    relocate = (argc > 4) && !strcmp(argv[3], RENAME_RELOCATE_MARKER);
+    if(relocate) {
+        /* The deadline, as ms_rename() reads it.  Six parameters: the
+         * fifth is the deadline.  Five: none was sent.  A fifth of six
+         * that is not a deadline gets the same fallback, because the
+         * relocation itself has to be applied either way or our
+         * membership differs from the network's. */
+        if(argc == 5) {
+            expires = chanserv_relocate_own_deadline();
+        } else if(!relocate_expiry_parse(argv[4], &expires)) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: \"%s\" is not a relocation deadline; using relocate_grace",
+                       argv[1], argv[2], argv[4]);
+            expires = chanserv_relocate_own_deadline();
+        } else if(relocate_expiry_check(&expires, now) == RELOCATE_EXPIRY_CLAMPED) {
+            log_module(MAIN_LOG, LOG_WARNING,
+                       "RENAME %s -> %s: carries a deadline (%s) more than %d seconds ahead; cut to "FMT_TIME_T,
+                       argv[1], argv[2], argv[4], RELOCATE_GRACE_MAX, expires);
+        }
     }
     if(!(chan = GetChannel(argv[1]))) return 1;   /* never knew it; nothing to move */
+    /* A relocation of a channel that is already a tombstone here is not
+     * executed on top of the first: two relocations of one channel have
+     * crossed.  Before anything is done about the destination, which in
+     * that case may rightly exist. */
+    if(relocate && chanserv_relocate_husk_get(chan, NULL, NULL, NULL)) {
+        struct userNode *issuer = origin ? GetUserH(origin) : NULL;
+
+        /* The server the RN came from: the issuer's, or the sender of a
+         * server-sourced RN. */
+        relocate_again(issuer,
+                       issuer ? issuer->uplink->name
+                              : ((origin && GetServerH(origin)) ? origin : NULL),
+                       chan, argv[2], expires);
+        return 1;
+    }
+    /* A relocation tombstone we still hold under the new name.  The ircd
+     * executes a rename only onto a name that does not exist on the
+     * network, so its tombstone there is gone -- dissolved at its deadline
+     * by PARTs that are never sent to us, with our own sweep, a few
+     * seconds behind, still to come.  The members we show in it are the
+     * ones that sweep would remove; remove them now and let the rename
+     * through, instead of refusing it below for a destination "with
+     * members".  Only a husk that still looks like a tombstone qualifies:
+     * one that lost its +z or +L, or was registered, is an ordinary
+     * channel whose members are real, and is refused below like any other
+     * occupied destination. */
+    if((dest = GetChannel(argv[2])) && (dest != chan)
+       && chanserv_relocate_husk_dissolve(dest, "another channel was renamed onto the name"))
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RENAME %s -> %s: the destination was a relocation tombstone the network no longer has; swept it to make way",
+                   argv[1], argv[2]);
     if((dest = GetChannel(argv[2]))) {
         /* The ircd executes a rename only when <new> does not exist on the
          * network, so a node we still hold under that name is stale. If
@@ -2776,22 +3368,169 @@ static CMD_FUNC(cmd_rename)
     }
     was_registered = chan->channel_info != NULL;
     safestrncpy(old_name, argv[1], sizeof(old_name));
-    if(!(renamed = RenameChannel(chan, argv[2]))) {
-        /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
-         * left the old node untouched/unfreed -- nothing was actually
-         * renamed, so don't mark the (still current) old name do-not-
-         * register. */
-        log_module(MAIN_LOG, LOG_ERROR,
-                   "RENAME %s -> %s: rejected by RenameChannel",
-                   argv[1], argv[2]);
-        return 1;
+
+    if(!relocate) {
+        if(!(renamed = RenameChannel(chan, argv[2]))) {
+            /* RenameChannel rejected it (e.g. !IsChannelName(new_name)) and
+             * left the old node untouched/unfreed -- nothing was actually
+             * renamed, so don't mark the (still current) old name do-not-
+             * register. */
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RENAME %s -> %s: rejected by RenameChannel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+    } else {
+        struct userNode *issuer = origin ? GetUserH(origin) : NULL;
+        unsigned int nmoved = 0, nstayers;
+        int tombstone;
+
+        /* A record still kept for this channel is a leftover: a tombstone
+         * that lost its marks (a live one went to relocate_again() above). */
+        chanserv_relocate_husk_leftover(chan);
+
+        if(!(newchan = RelocateChannel(chan, argv[2]))) {
+            log_module(MAIN_LOG, LOG_ERROR,
+                       "RELOCATE %s -> %s: rejected by RelocateChannel",
+                       argv[1], argv[2]);
+            return 1;
+        }
+
+        /* Hold the husk to the end of this.  RelocateChannel() moved every
+         * lock to the new node.  The +z it put on the old one keeps
+         * DelChannelUser() from freeing it as the members leave, but a
+         * deadline that has already passed sweeps it below, +z and all, and
+         * the node is still used after that.  The matching UnlockChannel()
+         * at the tail is what drops a husk that is empty by then: one
+         * nobody stayed in, or one already swept. */
+        LockChannel(chan);
+
+        /* The issuer first, and before any bot.  On the network the issuer
+         * is already in the new channel: the ircd created it for them and
+         * moved them in off this same RN, so the channel exists there, with
+         * the old channel's creation time.  Our record of the new channel
+         * has to have that member before a bot of ours joins it, because
+         * irc_join() announces the first member X3 holds for a channel with
+         * CREATE -- and a CREATE stamped with the old channel's (old)
+         * timestamp, for a channel that exists, is one the ircd bounces as
+         * a HACK: it takes the op back (m_create.c, TS_LAG_TIME) and X3
+         * would be left believing its bot was opped. */
+        if(issuer && !IsLocal(issuer) && GetUserMode(chan, issuer)) {
+            relocate_move_member(GetUserMode(chan, issuer), newchan);
+            nmoved++;
+        }
+
+        /* Then our own service bots, on the wire. */
+        nmoved += relocate_follow_bots(chan, newchan);
+        nstayers = chan->members.used;
+
+        /* Re-assert ChanServ's (and SpamServ's) ops on the new node: the bots
+         * followed with a plain JOIN above, and the ircd does not op a
+         * joining service.  No-op when the registration is off-channel or
+         * suspended -- i.e. when no bot followed. */
+        chanserv_relocate_bots(newchan);
+
+        /* X3-side tombstone tracking.  The ircd dissolves its tombstone at
+         * the deadline with local-only PARTs (sendcmdto_channel_butserv_*),
+         * so NONE of them reach us: without this the husk would sit in X3's
+         * channel dict with a stale member list until every one of those
+         * users happened to quit, and a fresh channel created on the old name
+         * after the deadline would collide with it.  A deadline that is
+         * already here is acted on at once -- the ircd dissolved its
+         * tombstone as it executed this RN -- and the stayers are gone from
+         * the node when this returns. */
+        tombstone = chanserv_relocate_tombstone(chan, newchan->name, newchan->timestamp, expires);
+
+        /* Chain flattening: a tombstone that pointed at this channel's old
+         * name points at its new one from now on, as on the ircd.  X3 has
+         * no redirect string to rewrite, but the record's target is what
+         * tells a tombstone announced again from a crossing. */
+        chanserv_relocate_retarget(old_name, newchan->name, newchan->timestamp);
+
+        /* The one line an operator reading logs after a relocation wants:
+         * who moved, who did not, and whether the registration went with
+         * them.  A partition is not an error, so it is not logged as one. */
+        log_module(MAIN_LOG, LOG_INFO,
+                   "RELOCATE %s -> %s: %u moved, %u left in the tombstone%s%s",
+                   old_name, newchan->name, nmoved, nstayers,
+                   tombstone ? "" : ", which has been dissolved",
+                   was_registered ? " (registration followed)" : "");
+
+        /* Our MODE that marked the channel may have crossed this RN: the
+         * markers again for the new channel, and -R for the tombstone --
+         * if the network still has one.  Before the unlock, which may be
+         * the end of our node for the old name while the network still
+         * has the (empty) tombstone. */
+        if(was_registered)
+            chanserv_relocate_markers(tombstone ? chan : NULL, newchan);
+
+        UnlockChannel(chan);    /* may collect an already-empty husk; chan is dead after this */
     }
+
     if(was_registered) {
-        chanserv_rename_dnr(old_name, renamed);
+        /* The registration is on the renamed node, or on the new channel
+         * of a relocation: the rename do-not-register on the old name and
+         * the announcement are the same for both. */
+        chanserv_rename_dnr(old_name, renamed ? renamed : newchan);
         /* Our MODE that marked the channel may have crossed this rename. */
-        chanserv_rename_marker(renamed);
-        chanserv_rename_announce(old_name, renamed, origin);
+        if(renamed)
+            chanserv_rename_marker(renamed);
+        chanserv_rename_announce(old_name, renamed ? renamed : newchan, origin);
     }
+    return 1;
+}
+
+/* DE <channel> <timestamp>: a server has destroyed a channel that stayed
+ * empty.  X3 acts on it for one kind of channel only: the tombstone of a
+ * relocated channel, whose members the ircd parts at the deadline without
+ * telling services, and whose +z keeps it in X3's table, as on the ircd,
+ * after its last member leaves.  A DESTRUCT for it is the ircd saying
+ * outright that the channel is gone (a server that still has members in
+ * the channel does not pass the DESTRUCT on), so whoever we still show
+ * there goes now instead of when our own timer fires.  Like the servers,
+ * ignore a DESTRUCT stamped newer than the channel we hold. */
+static CMD_FUNC(cmd_destruct)
+{
+    struct chanNode *chan;
+
+    if (argc < 3)
+        return 1;
+    if ((chan = GetChannel(argv[1])) && ((time_t)atoi(argv[2]) <= chan->timestamp))
+        chanserv_relocate_husk_dissolve(chan, "DESTRUCT received");
+    return 1;
+}
+
+/* <server> RT <old> <old-creation-ts> <new> <expires> (TOMBSTONE): a server
+ * announces a relocation tombstone it holds, right after the channel's
+ * BURST, and every server passes the line on as it came.
+ *
+ *     AB RT #old 1731000000 #new 1731340900
+ *
+ * <old-creation-ts> is the tombstone channel's creation timestamp at the
+ * sender -- with the name, the channel's identity, as in BURST; <new> is
+ * where it redirects; <expires> is the deadline, the RN's field.  This is
+ * how the husk of a tombstone that outlived an X3 restart, a lost uplink
+ * or a netsplit is armed again; see cmd_burst for the order of the two
+ * lines.
+ *
+ * Refused is what every server refuses from the line alone (ms_tombstone):
+ * a source that is not a server, fewer than four fields, a name that is
+ * no channel name, a channel redirecting to itself, a timestamp or
+ * deadline that is not a number. */
+static CMD_FUNC(cmd_tombstone)
+{
+    time_t chan_ts, expires;
+
+    if (argc < 5 || !origin || !GetServerH(origin))
+        return 0;
+    if (argv[1][0] != '#' || !IsChannelName(argv[3]) || strlen(argv[3]) > CHANNELLEN)
+        return 0;
+    if (!irccasecmp(argv[1], argv[3]))
+        return 0;
+    if (!relocate_expiry_parse(argv[2], &chan_ts) || !relocate_expiry_parse(argv[4], &expires))
+        return 0;
+
+    chanserv_relocate_announced(argv[1], chan_ts, argv[3], expires);
     return 1;
 }
 
@@ -3174,6 +3913,7 @@ parse_cleanup(UNUSED_ARG(void *extra))
     num_notice_funcs = 0;
     free(mcf_list);
     dict_delete(irc_func_dict);
+    dict_delete(burst_persist_pending);
     for (nn=0; nn<dead_users.used; nn++)
         free_user(dead_users.list[nn]);
     userList_clean(&dead_users);
@@ -3290,6 +4030,8 @@ init_parse(void)
     dict_insert(irc_func_dict, TOK_TOPIC, cmd_topic);
     dict_insert(irc_func_dict, CMD_RENAME, cmd_rename);
     dict_insert(irc_func_dict, TOK_RENAME, cmd_rename);
+    dict_insert(irc_func_dict, CMD_TOMBSTONE, cmd_tombstone);
+    dict_insert(irc_func_dict, TOK_TOMBSTONE, cmd_tombstone);
     dict_insert(irc_func_dict, CMD_AWAY, cmd_away);
     dict_insert(irc_func_dict, TOK_AWAY, cmd_away);
     dict_insert(irc_func_dict, CMD_SILENCE, cmd_silence);
@@ -3345,12 +4087,11 @@ init_parse(void)
     dict_insert(irc_func_dict, CMD_SASL, cmd_sasl);
     dict_insert(irc_func_dict, TOK_SASL, cmd_sasl);
 
-    /* In P10, DESTRUCT doesn't do anything except be broadcast to servers.
-     * Apparently to obliterate channels from any servers that think they
-     * exist?
+    /* DESTRUCT obliterates an empty channel from any server that still
+     * holds it; the one such channel X3 can hold is a relocation tombstone.
      */
-    dict_insert(irc_func_dict, CMD_DESTRUCT, cmd_dummy);
-    dict_insert(irc_func_dict, TOK_DESTRUCT, cmd_dummy);
+    dict_insert(irc_func_dict, CMD_DESTRUCT, cmd_destruct);
+    dict_insert(irc_func_dict, TOK_DESTRUCT, cmd_destruct);
     /* Ignore invites */
     dict_insert(irc_func_dict, CMD_INVITE, cmd_dummy);
     dict_insert(irc_func_dict, TOK_INVITE, cmd_dummy);

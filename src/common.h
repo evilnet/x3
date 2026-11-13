@@ -280,6 +280,80 @@ void
 irc_strtolower(char *str);
 
 int str_is_number(const char *str);
+
+/* evilnet/channel-relocate: the rules of a relocation that every server
+ * and X3 must compute alike.  Ported from the ircd's ircd/rename_proto.c
+ * (include/rename_proto.h has the full reasoning); keep them identical.
+ *
+ * The deadline of a relocation's tombstone travels in the RN,
+ *
+ *     <user> RN <old> <new> C <expires> :<reason>
+ *
+ * as network time in seconds: decimal digits, no sign, no leading zero. */
+
+/* Longest grace, and so the furthest a deadline may lie ahead: seven days.
+ * A constant of the protocol, so that everybody cuts an absurd deadline to
+ * the same length. */
+#define RELOCATE_GRACE_MAX 604800
+
+enum relocate_expiry_kind {
+    RELOCATE_EXPIRY_LIVE = 0,   /* ahead, within RELOCATE_GRACE_MAX: arm for it */
+    RELOCATE_EXPIRY_PAST,       /* now or earlier: dissolve at once */
+    RELOCATE_EXPIRY_CLAMPED     /* too far ahead: cut to when + RELOCATE_GRACE_MAX */
+};
+
+/* The deadline of a relocation executed at `when' with a grace of `grace'
+ * seconds; a grace above RELOCATE_GRACE_MAX counts as RELOCATE_GRACE_MAX. */
+time_t relocate_expiry_from_grace(time_t when, unsigned long grace);
+/* Read a deadline off the wire.  Strict: digits only, no leading zero,
+ * nothing that does not fit a time_t.  Returns 1 and sets *expires, or
+ * returns 0 and leaves it alone. */
+int relocate_expiry_parse(const char *text, time_t *expires);
+/* Judge a deadline against the clock; cuts *expires when the answer is
+ * RELOCATE_EXPIRY_CLAMPED and leaves it alone otherwise. */
+enum relocate_expiry_kind relocate_expiry_check(time_t *expires, time_t when);
+
+/* One deadline from two, for a tombstone two parties each hold a deadline
+ * for: the LATER.  Symmetric, idempotent and associative, so everybody
+ * ends with the same deadline in whatever order they hear the others. */
+time_t relocate_deadline_merge(time_t a, time_t b);
+
+/* Order two channel names under the server casemapping: the order that
+ * decides which of two crossing relocations of one channel wins -- the new
+ * name that sorts FIRST.  Byte by byte after folding (A-Z, the rfc1459
+ * pairs [ \ ] ^ -> { | } ~, the ISO 8859-1 capitals), the folded bytes
+ * compared as SIGNED bytes whatever plain char is here, the end of a name
+ * counting as a zero byte.  Below zero when `a' sorts first, above zero
+ * when `b' does, zero when they are the same channel name. */
+int relocate_name_cmp(const char *a, const char *b);
+/* The one of two new names that wins (`a' when they are the same name). */
+const char *relocate_winner(const char *a, const char *b);
+
+/* A tombstone announced after its channel's BURST,
+ *
+ *     <server> RT <old> <old-creation-ts> <new> <expires>
+ *
+ * and what it means to a receiver, by what the receiver holds. */
+struct relocate_announce_facts {
+    int channel_exists;     /* a channel of the old name exists here */
+    int ts_matches;         /* ... with the creation timestamp announced */
+    int have_record;        /* a tombstone record is kept for it */
+    int same_target;        /* ... and its target is the one announced */
+};
+
+enum relocate_announce_verdict {
+    RELOCATE_ANNOUNCE_NO_CHANNEL = 0,   /* nothing: no such channel here */
+    RELOCATE_ANNOUNCE_OTHER_CHANNEL,    /* nothing: the channel of that name
+                                         * here is another one (creation
+                                         * timestamps differ) */
+    RELOCATE_ANNOUNCE_BUILD,            /* make the record */
+    RELOCATE_ANNOUNCE_MERGE,            /* the same tombstone: keep one
+                                         * deadline (relocate_deadline_merge()) */
+    RELOCATE_ANNOUNCE_CROSS             /* the channel was relocated to two
+                                         * different names: the crossing rule */
+};
+
+enum relocate_announce_verdict relocate_announce_decide(const struct relocate_announce_facts *facts);
 #define enabled_string(string)  (!irccasecmp((string), "on") || !strcmp((string), "1") || !irccasecmp((string), "enabled"))
 #define disabled_string(string) (!irccasecmp((string), "off") || !strcmp((string), "0") || !irccasecmp((string), "disabled"))
 #define true_string(string)     (!irccasecmp((string), "true") || !strcmp((string), "1") || !irccasecmp((string), "yes"))

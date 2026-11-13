@@ -399,6 +399,113 @@ irccasestr(const char *haystack, const char *needle) {
     return NULL;
 }
 
+/* evilnet/channel-relocate: ports of the ircd's ircd/rename_proto.c.  X3 has
+ * to get the same answers as every server from the same input, so these
+ * follow that file line for line; change them only together with it. */
+
+time_t
+relocate_expiry_from_grace(time_t when, unsigned long grace)
+{
+    /* The ircd's takes an int and counts a negative grace as 0; an
+     * interval read by ParseInterval() cannot be negative. */
+    if (grace > RELOCATE_GRACE_MAX)
+        grace = RELOCATE_GRACE_MAX;
+
+    return when + (time_t)grace;
+}
+
+int
+relocate_expiry_parse(const char *text, time_t *expires)
+{
+    /* The largest value a time_t holds, whatever its width. */
+    const unsigned long long limit =
+        (((unsigned long long)1 << (sizeof(time_t) * CHAR_BIT - 2)) - 1) * 2 + 1;
+    unsigned long long value = 0;
+    const char *p;
+
+    if (!text || !*text)
+        return 0;
+    if (text[0] == '0' && text[1])
+        return 0;                   /* never written with a leading zero */
+
+    for (p = text; *p; p++) {
+        unsigned long long digit;
+
+        if (*p < '0' || *p > '9')
+            return 0;
+        digit = (unsigned long long)(*p - '0');
+        /* Refuse before the multiply can pass the limit: no length check
+         * is needed and a 600-digit number fails at its twentieth digit. */
+        if (value > (limit - digit) / 10)
+            return 0;
+        value = value * 10 + digit;
+    }
+
+    *expires = (time_t)value;
+    return 1;
+}
+
+enum relocate_expiry_kind
+relocate_expiry_check(time_t *expires, time_t when)
+{
+    if (*expires <= when)
+        return RELOCATE_EXPIRY_PAST;
+
+    /* Compared as a difference: when + RELOCATE_GRACE_MAX cannot overflow
+     * for any real clock, *expires - when cannot for an *expires above
+     * when. */
+    if (*expires - when > RELOCATE_GRACE_MAX) {
+        *expires = when + RELOCATE_GRACE_MAX;
+        return RELOCATE_EXPIRY_CLAMPED;
+    }
+
+    return RELOCATE_EXPIRY_LIVE;
+}
+
+time_t
+relocate_deadline_merge(time_t a, time_t b)
+{
+    return (a > b) ? a : b;
+}
+
+int
+relocate_name_cmp(const char *a, const char *b)
+{
+    /* irc_tolower[] is the ircd's ToLower() table (tools_init()).  The
+     * result is compared as a signed byte whatever plain char is, so that
+     * the winner cannot depend on the build host: a byte above 127 sorts
+     * before every ASCII byte, and before the end of a name. */
+    for (;; a++, b++) {
+        int ca = (signed char)tolower(*a);
+        int cb = (signed char)tolower(*b);
+
+        if (ca != cb)
+            return (ca < cb) ? -1 : 1;
+        if (!*a)
+            return 0;
+    }
+}
+
+const char *
+relocate_winner(const char *a, const char *b)
+{
+    return (relocate_name_cmp(a, b) <= 0) ? a : b;
+}
+
+enum relocate_announce_verdict
+relocate_announce_decide(const struct relocate_announce_facts *facts)
+{
+    if (!facts->channel_exists)
+        return RELOCATE_ANNOUNCE_NO_CHANNEL;
+    if (!facts->ts_matches)
+        return RELOCATE_ANNOUNCE_OTHER_CHANNEL;
+    if (!facts->have_record)
+        return RELOCATE_ANNOUNCE_BUILD;
+
+    return facts->same_target ? RELOCATE_ANNOUNCE_MERGE
+                              : RELOCATE_ANNOUNCE_CROSS;
+}
+
 char *
 ircstrlower(char *str) {
     size_t ii;
