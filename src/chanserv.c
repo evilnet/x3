@@ -8584,6 +8584,20 @@ static CHANSERV_FUNC(cmd_reply)
     return 1;
 }
 
+/* opserv flags a channel join-flooded on a join that overruns the
+ * channel's join policer, and clears the flag only on a later join that
+ * does not.  A flood that fills the channel to its +l leaves no later join
+ * to clear it, so ask the policer itself, without charging it, whether the
+ * flood has drained. */
+static int
+dynlimit_join_flooded(struct chanNode *channel)
+{
+    if(channel->join_flooded && channel->join_policer.params
+       && policer_conforms(&channel->join_policer, now, 0.0))
+        channel->join_flooded = 0;
+    return channel->join_flooded;
+}
+
 static void
 chanserv_adjust_limit(void *data)
 {
@@ -8592,8 +8606,22 @@ chanserv_adjust_limit(void *data)
     struct chanNode *channel = cData->channel;
     unsigned int limit;
 
-    if(IsSuspended(cData))
+    /* DynLimit may have been switched off since this was queued (that
+     * removes the +l, which this would put straight back).  Unlinked, or
+     * while the uplink is still bursting, the member count is not the
+     * network's (X3's own clients alone, or half a burst): the uplink's
+     * end of burst queues a fresh adjustment if the channel needs one. */
+    if(IsSuspended(cData) || !(cData->flags & CHANNEL_DYNAMIC_LIMIT)
+       || !self->uplink || self->uplink->burst)
         return;
+
+    /* Not while a join flood is on: a higher limit would only let more of
+     * it in.  Look again once it has had time to drain. */
+    if(dynlimit_join_flooded(channel))
+    {
+        timeq_add(now + chanserv_conf.adjust_delay, chanserv_adjust_limit, cData);
+        return;
+    }
 
     cData->limitAdjusted = now;
     limit = channel->members.used + chanserv_conf.adjust_threshold + 5;
@@ -8609,6 +8637,22 @@ chanserv_adjust_limit(void *data)
     change.modes_set = MODE_LIMIT;
     change.new_limit = limit;
     mod_chanmode_announce(chanserv, channel, &change);
+}
+
+/* How many more members the channel's +l lets in.  The limit and the
+ * member count are both unsigned, and their plain difference wraps to a
+ * huge number once the channel holds more members than its limit, which
+ * read as plenty of room: such a channel stayed shut to everyone until
+ * somebody parted.  A channel gets past its limit by a netjoin (burst
+ * joins skip the DynLimit check), an invite or an override, or by a limit
+ * lowered while part of the network was split away.  A channel with no +l
+ * (an op removed it) counts as having no room, so DynLimit puts one back. */
+static long
+dynlimit_headroom(struct chanNode *channel)
+{
+    if(!(channel->modes & MODE_LIMIT))
+        return 0;
+    return (long)channel->limit - (long)channel->members.used;
 }
 
 static void
@@ -9111,13 +9155,15 @@ handle_join(struct modeNode *mNode, UNUSED_ARG(void *extra))
         }
     }
 
-    /* ChanServ will not modify the limits in join-flooded channels.
-       It will also skip DynLimit processing when the user (or srvx)
-       is bursting in, because there are likely more incoming. */
+    /* ChanServ skips DynLimit processing when the user (or srvx) is
+       bursting in, because there are likely more incoming; the end of
+       the burst checks the channel.  A join in a join flood still queues
+       the timer, which holds off until the flood has drained: skipping
+       it here left a flood that filled the channel with no timer, and
+       nothing to clear the flood flag while nobody could join. */
     if((cData->flags & CHANNEL_DYNAMIC_LIMIT)
        && !user->uplink->burst
-       && !channel->join_flooded
-       && (channel->limit - channel->members.used) < chanserv_conf.adjust_threshold)
+       && dynlimit_headroom(channel) < (long)chanserv_conf.adjust_threshold)
     {
         /* The user count has begun "bumping" into the channel limit,
            so set a timer to raise the limit a bit. Any previous
@@ -9368,11 +9414,19 @@ handle_part(struct modeNode *mn, UNUSED_ARG(const char *reason), UNUSED_ARG(void
     if(!cData || IsSuspended(cData) || IsLocal(mn->user))
         return;
 
-    if((cData->flags & CHANNEL_DYNAMIC_LIMIT) && !mn->channel->join_flooded)
+    /* A user leaving because their server split away has not left the
+       network's channel, only X3's view of it: lowering the limit to the
+       members left on this side would shut the channel to them when the
+       split heals (the ircd keeps the lower +l of the two sides). */
+    if((cData->flags & CHANNEL_DYNAMIC_LIMIT)
+       && !mn->user->uplink->delinking)
     {
-        /* Allow for a bit of padding so that the limit doesn't
-           track the user count exactly, which could get annoying. */
-        if((mn->channel->limit - mn->channel->members.used) > chanserv_conf.adjust_threshold + 5)
+        long room = dynlimit_headroom(mn->channel);
+
+        /* Lower a limit well above the user count, with a bit of padding
+           so that the limit doesn't track the user count exactly, which
+           could get annoying; raise one the channel is still at or over. */
+        if(room <= 0 || room > (long)chanserv_conf.adjust_threshold + 5)
         {
             timeq_del(0, chanserv_adjust_limit, cData, TIMEQ_IGNORE_WHEN);
             timeq_add(now + chanserv_conf.adjust_delay, chanserv_adjust_limit, cData);
@@ -9631,9 +9685,8 @@ handle_server_link(UNUSED_ARG(struct server *server), UNUSED_ARG(void *extra))
         if(!IsSuspended(cData))
             cData->may_opchan = 1;
         if((cData->flags & CHANNEL_DYNAMIC_LIMIT)
-           && !cData->channel->join_flooded
-           && ((cData->channel->limit - cData->channel->members.used)
-               < chanserv_conf.adjust_threshold))
+           && dynlimit_headroom(cData->channel)
+              < (long)chanserv_conf.adjust_threshold)
         {
             timeq_del(0, chanserv_adjust_limit, cData, TIMEQ_IGNORE_WHEN);
             timeq_add(now + chanserv_conf.adjust_delay, chanserv_adjust_limit, cData);
