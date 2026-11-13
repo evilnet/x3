@@ -3631,6 +3631,7 @@ void DelServer(struct server* serv, int announce, const char *message)
             DelServer(serv->children.list[i], false, NULL);
 
     /* clean up server's user hash tables */
+    serv->delinking = 1;
     for (i=0;i<=serv->num_mask;i++)
         if (serv->users[i])
             DelUser(serv->users[i], NULL, false, "server delinked");
