@@ -213,5 +213,9 @@ heap_size(heap_t heap)
 int
 ulong_comparator(const void *a, const void *b)
 {
-    return (unsigned long)a-(unsigned long)b;
+    unsigned long la = (unsigned long)a, lb = (unsigned long)b;
+
+    /* Not la-lb: the difference does not fit an int, so keys more than
+     * 2^31 apart would compare the wrong way round. */
+    return (la > lb) - (la < lb);
 }

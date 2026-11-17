@@ -50,7 +50,8 @@ static int
 shun_comparator(const void *a, const void *b)
 {
     const struct shun *ga=a, *gb=b;
-    return ga->expires - gb->expires;
+    /* Not a subtraction: the difference of two times does not fit an int. */
+    return (ga->expires > gb->expires) - (ga->expires < gb->expires);
 }
 
 static void
