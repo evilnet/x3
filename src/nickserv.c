@@ -6487,8 +6487,12 @@ sasl_packet(struct SASLSession *session)
 
         base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
 
-        if (rawlen != 0)
+        if (rawlen != 0) {
+            /* base64_decode_alloc() does not terminate its output. */
+            raw = (char *)realloc(raw, rawlen+1);
+            raw[rawlen] = '\0';
             authzid = raw;
+        }
 
         log_module(NS_LOG, LOG_DEBUG, "SASL: Checking supplied credentials");
 
@@ -6642,6 +6646,10 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
 
     if (strcmp(subcmd, "S") && strcmp(subcmd, "C"))
         return;
+
+    /* The exchange is live: the stale sweep must not delete it between
+     * the chunks of a payload. */
+    sess->flags &= ~SDFLAG_STALE;
 
     /* After a 400-byte chunk, "+" is an empty chunk: it ends a payload
      * that is an exact multiple of 400 bytes. (On its own, "+" is an
