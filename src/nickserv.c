@@ -6455,7 +6455,8 @@ sasl_get_session(const char *uid)
     return sess;
 }
 
-void
+/* Returns 1 if it deleted the session, 0 if the session lives on. */
+static int
 sasl_packet(struct SASLSession *session)
 {
     log_module(NS_LOG, LOG_DEBUG, "SASL: Got packet containing: %s", session->buf);
@@ -6470,7 +6471,7 @@ sasl_packet(struct SASLSession *session)
                 irc_sasl(session->source, session->uid, "M", "PLAIN,EXTERNAL");
             irc_sasl(session->source, session->uid, "D", "F");
             sasl_delete_session(session);
-            return;
+            return 1;
         }
 
         strncpy(session->mech, session->buf, 10);
@@ -6512,7 +6513,7 @@ sasl_packet(struct SASLSession *session)
         sasl_delete_session(session);
 
         free(raw);
-        return;
+        return 1;
     }
     else
     {
@@ -6598,11 +6599,25 @@ sasl_packet(struct SASLSession *session)
         sasl_delete_session(session);
 
         free(raw);
-        return;
+        return 1;
     }
 
     /* clear stale state */
     session->flags &= ~SDFLAG_STALE;
+    return 0;
+}
+
+/* Hand a complete payload to sasl_packet(), then reset the buffer for the
+ * next one if the session is still alive. */
+static void
+sasl_end_packet(struct SASLSession *sess)
+{
+    if (sasl_packet(sess))
+        return; /* sess was freed */
+    sess->buflen = 0;
+    if (sess->buf != NULL)
+      free(sess->buf);
+    sess->buf = sess->p = NULL;
 }
 
 void
@@ -6628,6 +6643,14 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
     if (strcmp(subcmd, "S") && strcmp(subcmd, "C"))
         return;
 
+    /* After a 400-byte chunk, "+" is an empty chunk: it ends a payload
+     * that is an exact multiple of 400 bytes. (On its own, "+" is an
+     * empty response, which sasl_packet() decodes as such.) */
+    if (sess->p != NULL && !strcmp(data, "+")) {
+        sasl_end_packet(sess);
+        return;
+    }
+
     if (len == 0)
         return;
 
@@ -6652,20 +6675,14 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
     }
 
     memcpy(sess->p, data, len);
-    sess->buf[len] = '\0';
+    sess->buf[sess->buflen] = '\0';
 
     if (ext != NULL)
         sess->sslclifp = strdup(ext);
 
     /* Messages not exactly 400 bytes are the end of a packet. */
     if(len < 400)
-    {
-        sasl_packet(sess);
-        sess->buflen = 0;
-        if (sess->buf != NULL)
-          free(sess->buf);
-        sess->buf = sess->p = NULL;
-    }
+        sasl_end_packet(sess);
 }
 
 static void
