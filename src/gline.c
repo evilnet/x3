@@ -117,9 +117,11 @@ gline_remove(const char *target, int announce)
         void *argh;
         struct gline *new_first;
         heap_peek(gline_heap, 0, &argh);
+        /* The timer was for the entry just removed; with none left there
+         * is nothing to expire. */
+        timeq_del(0, gline_expire, 0, TIMEQ_IGNORE_WHEN|TIMEQ_IGNORE_DATA);
         if (argh) {
             new_first = argh;
-            timeq_del(0, gline_expire, 0, TIMEQ_IGNORE_WHEN|TIMEQ_IGNORE_DATA);
             timeq_add(new_first->expires, gline_expire, 0);
         }
     }
