@@ -355,6 +355,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_REBIND_SET", "Keycloak id set for account %s." },
     { "NSMSG_REBIND_DETACHED", "%d session(s) logged in under the previous id were detached." },
     { "NSMSG_REBIND_CREDENTIALS", "Removed the account's client certificate fingerprints (%u) and hostmasks (%u), which came with the previous id; hostmasks now: %s." },
+    { "NSMSG_REBIND_PASSWORD", "The account's password, email address and any pending cookie were cleared as well; the new owner logs in through Keycloak." },
     { "NSMSG_REBIND_BADID", "Give the account's Keycloak ID -- the UUID from the admin console (e.g. 6ba7b810-9dad-11d1-80b4-00c04fd430c8) or the 22-character form $N shows (e.g. a6e4EJ2tEdGAtADAT9QwyA) -- or * to clear." },
     { "NSMSG_IDENTITY_RESET", "Account $b%s$b was recreated in Keycloak (id %s, was %s): its data has been reset." },
     { "NSMSG_IDENTITY_STALE", "Account $b%s$b was announced with the Keycloak id it had before (%s, now %s): login refused." },
@@ -2194,10 +2195,17 @@ nickserv_new_owner_masks(struct handle_info *hi, struct userNode *owner)
  * hostmasks are the previous owner's hosts, which AUTH and LOC would hold
  * the new owner to; they start over as a new owner's.  No index is kept of
  * the fingerprints (find_handleinfo_by_sslfp() walks the handles), so
- * there is nothing else to update.  The password hash is left alone: with
- * ldap_enable, AUTH, LOC and SASL PLAIN through X3 check the directory,
- * which holds the new owner's, and never the local hash.  *sslfps and
- * *masks get the numbers removed. */
+ * there is nothing else to update.
+ *
+ * The password, the email address and a pending cookie go too.  Without
+ * ldap_enable the local password hash is the only password check, so the
+ * previous owner's password would still log in (AUTH, LOC, SASL PLAIN
+ * through X3); it is emptied, which no password matches, as on the record
+ * a reset makes.  (With ldap_enable the hash is never consulted, so
+ * nothing is lost.)  The email address is where RESETPASS sends a cookie
+ * that logs its redeemer in, and a cookie already pending was sent to it.
+ * The new owner logs in through Keycloak; an oper can set a password with
+ * OSET PASSWORD.  *sslfps and *masks get the numbers removed. */
 static void
 nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned int *masks)
 {
@@ -2208,6 +2216,22 @@ nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned
     while (hi->masks->used)
         string_list_delete(hi->masks, 0);
     nickserv_new_owner_masks(hi, NULL);
+
+    if (hi->cookie) {
+        timeq_del(hi->cookie->expires, nickserv_free_cookie, hi->cookie, 0);
+        nickserv_free_cookie(hi->cookie);
+    }
+    if (hi->email_addr) {
+        nickserv_set_email_addr(hi, NULL);
+        if (nickserv_conf.sync_log)
+            SyncLog("EMAILCHANGE %s @", hi->handle);
+    }
+    if (hi->passwd[0]) {
+        hi->passwd[0] = 0;
+        /* * stands in for the hash, as in the reset's REGISTER line. */
+        if (nickserv_conf.sync_log)
+            SyncLog("PASSCHANGE %s *", hi->handle);
+    }
 }
 
 /* REBIND <*account> <keycloak-uuid|compact-id|*>: set or clear the Keycloak user id
@@ -2275,9 +2299,11 @@ static NICKSERV_FUNC(cmd_rebind)
         reply("NSMSG_REBIND_CLEARED", hi->handle);
         if (detached)
             reply("NSMSG_REBIND_DETACHED", detached);
-        if (dropped)
+        if (dropped) {
             reply("NSMSG_REBIND_CREDENTIALS", sslfps, masks, hi->masks->used
                   ? hi->masks->list[0] : user_find_message(user, "MSG_NONE"));
+            reply("NSMSG_REBIND_PASSWORD");
+        }
         return 1;
     }
     /* Either form: the UUID the Keycloak admin console shows, or the
@@ -2314,9 +2340,11 @@ static NICKSERV_FUNC(cmd_rebind)
         }
         if (detached)
             reply("NSMSG_REBIND_DETACHED", detached);
-        if (dropped)
+        if (dropped) {
             reply("NSMSG_REBIND_CREDENTIALS", sslfps, masks, hi->masks->used
                   ? hi->masks->list[0] : user_find_message(user, "MSG_NONE"));
+            reply("NSMSG_REBIND_PASSWORD");
+        }
     }
     reply("NSMSG_REBIND_SET", hi->handle);
     return 1;
