@@ -620,8 +620,12 @@ mod_chanmode_apply(struct userNode *who, struct chanNode *channel, struct mod_ch
 
     assert(change->argc <= change->alloc_argc);
     channel->modes = (channel->modes & ~change->modes_clear) | change->modes_set;
+    /* Like the ircd, -l forgets the number too: X3 kept it, and DynLimit
+     * read it as the channel's limit after the limit was gone. */
     if (change->modes_set & MODE_LIMIT)
         channel->limit = change->new_limit;
+    else if (change->modes_clear & MODE_LIMIT)
+        channel->limit = 0;
     if (change->modes_set & MODE_KEY)
         strcpy(channel->key, change->new_key);
     if (change->modes_set & MODE_UPASS)
