@@ -4521,16 +4521,51 @@ static void handle_nickserv_rename(struct handle_info *handle, const char *old_h
  *      (AC U) the user has no handle but keeps the requests opened under
  *      the old one, and a later login comes from no handle.
  * - In either of the above cases, if a user is on a bot's userlist and has
- *   requests assigned to them, it will give them a list. */
-static void handle_nickserv_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void* extra)) {
+ *   requests assigned to them, it will give them a list.
+ * - Whenever the user leaves a handle (a quit, the ircd removing or changing
+ *   the account, X3 detaching the session), the time that handle's helpers
+ *   spend in their help channels stops counting if the user was the last
+ *   one logged in to it there (handle_left_handle()). */
+static void handle_left_handle(struct userNode *user, struct handle_info *old_handle) {
+    struct helpserv_userlist *userlist;
+    unsigned int i;
+
+    if (!(userlist = dict_find(helpserv_users_byhand_dict, old_handle->handle, NULL)))
+        return;
+
+    for (i=0; i < userlist->used; i++) {
+        struct helpserv_user *hs_user = userlist->list[i];
+        struct helpserv_bot *hs = hs_user->hs;
+
+        /* As handle_part() does when the last user on the handle leaves
+         * the help channel.  The user is already off old_handle, so it is
+         * not found among the handle's users there. */
+        if (!hs->helpserv || !hs->helpchan || !hs_user->join_time
+            || !GetUserMode(hs->helpchan, user)
+            || find_handle_in_channel(hs->helpchan, old_handle, NULL))
+            continue;
+        if (hs_user->join_time < now) {
+            hs_user->time_per_week[0] += (unsigned int)(now - hs_user->join_time);
+            hs_user->time_per_week[4] += (unsigned int)(now - hs_user->join_time);
+        }
+        hs_user->join_time = 0;
+    }
+}
+
+static void handle_nickserv_auth(struct userNode *user, struct handle_info *old_handle, UNUSED_ARG(void* extra)) {
     struct helpserv_reqlist *reqlist, *dellist=NULL, *hand_reqlist;
     struct helpserv_userlist *userlist;
     unsigned int i, j;
     dict_iterator_t it;
     const int from_opserv = 0; /* for helpserv_notice */
 
+    /* The handle the user was on before (none for a first login; the
+     * current one when NickServ only replays a login, send_func_list()). */
+    if (old_handle && old_handle != user->handle_info)
+        handle_left_handle(user, old_handle);
+
     if (!user->handle_info)
-        return; /* Authed user is quitting */
+        return; /* Authed user is quitting, or the account was removed */
 
     if ((userlist = dict_find(helpserv_users_byhand_dict, user->handle_info->handle, NULL))) {
         for (i=0; i < userlist->used; i++) {

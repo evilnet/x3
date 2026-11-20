@@ -9241,12 +9241,67 @@ chanserv_autojoin_channels(struct userNode *user)
     }
 }
 
+/* The user is no longer logged in to old_handle but is still in its
+ * channels: the ircd removed or changed the account (AC U / AC M), or X3
+ * detached the session.  As far as old_handle is concerned the user has
+ * left them, so do for its records what handle_part() does when a user
+ * parts: a record stays present only while another user logged in to the
+ * handle is in the channel, and is seen now; and a support helper stops
+ * helping once no user logged in to the handle is left in a support
+ * channel.  The user's channel modes are left as they are, as the ircd's
+ * own deauth leaves them.  (On a quit the user is in no channel by the
+ * time this runs, and handle_part() has done it all already.) */
 static void
-handle_auth(struct userNode *user, UNUSED_ARG(struct handle_info *old_handle), UNUSED_ARG(void *extra))
+handle_left_handle(struct userNode *user, struct handle_info *old_handle)
+{
+    unsigned int ii, jj;
+    int in_support = 0;
+
+    for(ii = 0; ii < user->channels.used; ++ii)
+    {
+        struct chanNode *chan = user->channels.list[ii]->channel;
+        struct chanData *cData = chan->channel_info;
+        struct userData *uData;
+
+        for(jj = 0; jj < chanserv_conf.support_channels.used; ++jj)
+            if(chan == chanserv_conf.support_channels.list[jj])
+                in_support = 1;
+
+        if(!cData || IsSuspended(cData))
+            continue;
+        if((uData = GetTrueChannelAccess(cData, old_handle)))
+        {
+            /* user is already off old_handle: nobody to skip */
+            scan_user_presence(uData, NULL);
+            uData->seen = now;
+            if(uData->access >= UL_PRESENT)
+                cData->visited = now;
+        }
+    }
+
+    if(in_support && HANDLE_FLAGGED(old_handle, HELPING)
+       && HANDLE_FLAGGED(old_handle, SUPPORT_HELPER))
+    {
+        for(ii = 0; ii < chanserv_conf.support_channels.used; ++ii)
+            if(find_handle_in_channel(chanserv_conf.support_channels.list[ii], old_handle, NULL))
+                break;
+        if(ii == chanserv_conf.support_channels.used)
+            HANDLE_CLEAR_FLAG(old_handle, HELPING);
+    }
+}
+
+static void
+handle_auth(struct userNode *user, struct handle_info *old_handle, UNUSED_ARG(void *extra))
 {
     struct mod_chanmode change;
     struct userData *channel;
     unsigned int ii, jj, i;
+
+    /* The handle the user was on before (none for a first login; the
+     * current one when NickServ only replays the login of a user it bound
+     * before the user was known, send_func_list()). */
+    if(old_handle && old_handle != user->handle_info)
+        handle_left_handle(user, old_handle);
 
     if(!user->handle_info)
     return;

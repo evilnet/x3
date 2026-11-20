@@ -408,6 +408,9 @@ void
 assign_fakehost(struct userNode *user, const char *host, int announce)
 {
     safestrncpy(user->fakehost, host, sizeof(user->fakehost));
+    /* A fakehost of its own (the handle's, or the uplink's): whatever X3
+     * had pinned on the user is gone.  A caller pinning one marks it. */
+    user->pinned_fakehost = 0;
     if (announce)
         irc_fakehost(user, host);
 }
