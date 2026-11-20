@@ -50,7 +50,8 @@ static int
 shun_comparator(const void *a, const void *b)
 {
     const struct shun *ga=a, *gb=b;
-    return ga->expires - gb->expires;
+    /* Not a subtraction: the difference of two times does not fit an int. */
+    return (ga->expires > gb->expires) - (ga->expires < gb->expires);
 }
 
 static void
@@ -116,9 +117,11 @@ shun_remove(const char *target, int announce)
         void *argh;
         struct shun *new_first;
         heap_peek(shun_heap, 0, &argh);
+        /* The timer was for the entry just removed; with none left there
+         * is nothing to expire. */
+        timeq_del(0, shun_expire, 0, TIMEQ_IGNORE_WHEN|TIMEQ_IGNORE_DATA);
         if (argh) {
             new_first = argh;
-            timeq_del(0, shun_expire, 0, TIMEQ_IGNORE_WHEN|TIMEQ_IGNORE_DATA);
             timeq_add(new_first->expires, shun_expire, 0);
         }
     }
