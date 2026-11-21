@@ -59,8 +59,11 @@ kcid_to_uuid(const char *compact, char out[37])
             return 0;
         vals[i] = (int)(at - kcid_b64);
     }
-    /* 22 chars carry 132 bits; the last char's low 4 bits are padding and
-     * are dropped, so the 22 characters are accepted as-is. */
+    /* 22 chars carry 132 bits; the last char's low 4 bits are padding.
+     * Only 0 is accepted there (the form the ircd and kcid_from_uuid()
+     * write), so one user has one compact id. */
+    if (vals[21] & 15)
+        return 0;
     for (i = 0; i < 22; i += 4) {
         unsigned int n = (vals[i] << 18) | (vals[i+1] << 12);
         if (i + 2 < 22) n |= vals[i+2] << 6;
@@ -79,13 +82,32 @@ kcid_to_uuid(const char *compact, char out[37])
     return 1;
 }
 
+int
+kcid_canonical(const char *compact, char out[23])
+{
+    const char *at;
+    int i;
+
+    if (!compact || strlen(compact) != 22)
+        return 0;
+    for (i = 0; i < 22; i++)
+        if (!compact[i] || !strchr(kcid_b64, compact[i]))
+            return 0;
+    memcpy(out, compact, 22);
+    at = strchr(kcid_b64, compact[21]);
+    out[21] = kcid_b64[(at - kcid_b64) & ~15];
+    out[22] = 0;
+    return 1;
+}
+
 enum kcid_verdict
-kcid_decide(const char *stored, int replaced, int reset_on, int suspended, const char *id)
+kcid_decide(const char *stored, int replaced, int reset_on, int suspended,
+            int keycloak_mode, const char *id)
 {
     if (replaced)
         return KCID_REFUSE_STALE;
     if (!stored)
-        return KCID_ADOPT;
+        return keycloak_mode ? KCID_REFUSE_UNBOUND : KCID_ADOPT;
     if (!strcmp(stored, id))
         return KCID_PASS;
     if (reset_on && suspended)
@@ -93,4 +115,45 @@ kcid_decide(const char *stored, int replaced, int reset_on, int suspended, const
     if (reset_on)
         return KCID_RESET;
     return KCID_REFUSE_MISMATCH;
+}
+
+enum kcid_verdict
+kcid_decide_no_id(const char *stored, int keycloak_mode, unsigned long stamp_ts,
+                  unsigned long registered)
+{
+    if (!keycloak_mode || stored)
+        return KCID_PASS;
+    if (stamp_ts && stamp_ts == registered)
+        return KCID_PASS;
+    return KCID_REFUSE_UNBOUND;
+}
+
+int
+kcid_notice_take(struct kcid_notice_limit *lim, long now)
+{
+    if (lim->window_start && now < lim->window_start + KCID_NOTICE_WINDOW) {
+        lim->held++;
+        return 0;
+    }
+    lim->window_start = now;
+    lim->held = 0;
+    return 1;
+}
+
+long
+kcid_notice_due(const struct kcid_notice_limit *lim)
+{
+    return lim->held ? lim->window_start + KCID_NOTICE_WINDOW : 0;
+}
+
+unsigned int
+kcid_notice_flush(struct kcid_notice_limit *lim, long now)
+{
+    unsigned int held = lim->held;
+
+    lim->held = 0;
+    /* A count going out opens the next minute; none lets the next notice
+     * out at once. */
+    lim->window_start = held ? now : 0;
+    return held;
 }

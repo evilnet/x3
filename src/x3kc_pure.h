@@ -101,4 +101,52 @@ int x3kc_safe_id(const char *id);
  * allocation failed. */
 int x3kc_repr_set_level(json_t *repr, const char *attr, unsigned int level);
 
+/* What the answer to the Keycloak look-up for an account stamp does
+ * (handle_account(), for a name X3 had no handle for, with
+ * keycloak_autocreate on). */
+enum x3kc_stamp_step {
+    X3KC_STAMP_DROP,            /* the user left, or is logged in to X3 by now: nothing */
+    X3KC_STAMP_UNKNOWN,         /* Keycloak has no user of that name (and X3 still has no
+                                 * handle): unknown stamp, as before */
+    X3KC_STAMP_RETRY_LATER,     /* no usable answer (outage, deadline, ...) and still no
+                                 * handle: the user stays unbound in X3; the next event for
+                                 * it tries again */
+    X3KC_STAMP_ID_MISMATCH,     /* the stamp announced another id than Keycloak's user of
+                                 * that name has: ignored (and logged) */
+    X3KC_STAMP_KNOWN,           /* a handle of that name appeared meanwhile, and the stamp
+                                 * announced an id or Keycloak gave none: the stamp as it came
+                                 * goes the way of one for a known handle (handle_account()) */
+    X3KC_STAMP_BIND_LOOKED_UP,  /* a handle of that name appeared meanwhile, the stamp
+                                 * announced no id, Keycloak gave one: the caller lets the
+                                 * stamp go on (handle_account()) only if that id is the
+                                 * handle's; a handle with no id is refused as unlinked, one
+                                 * with another id is left alone -- a looked-up id never binds
+                                 * or resets a handle */
+    X3KC_STAMP_OLD,             /* no id announced, a non-zero account timestamp, and still
+                                 * no handle: X3's own stamp for a handle it no longer has
+                                 * (deleted, perhaps registered again since); never created
+                                 * from: the user stays unbound */
+    X3KC_STAMP_CREATE           /* confirmed and still no handle: create it, bind the user */
+};
+
+/* Whether a stamp for a name X3 has no handle for may create one, by its
+ * form alone: it announced a Keycloak id, or it carries no account
+ * timestamp (0; the fork's own Keycloak logins stamp 0).  A non-zero
+ * timestamp without an id is X3's own stamp (name:registered): the handle
+ * it named is gone, and the account timestamp exists to refuse exactly
+ * that stamp -- a handle made now would be a different account. */
+int x3kc_stamp_may_create(const char *announced_id, unsigned long timestamp);
+
+/* The step for look-up answer res (found_id: the id it carries, if any),
+ * given whether the stamped user is still connected (user_present) and
+ * already logged in to X3 (user_authed), the id the stamp announced
+ * (announced_id; NULL or "" for none), the stamp's account timestamp (0
+ * for none) and whether X3 has a handle of the name now (handle_exists).
+ * A stamp x3kc_stamp_may_create() refuses is never CREATE.  Only X3KC_OK with a non-empty id confirms the
+ * account; an announced id that differs from a confirmed one is refused
+ * before anything else is done with the confirmation. */
+enum x3kc_stamp_step x3kc_stamp_step(enum x3kc_result res, int user_present, int user_authed,
+                                     const char *announced_id, unsigned long timestamp,
+                                     const char *found_id, int handle_exists);
+
 #endif /* X3KC_PURE_H */

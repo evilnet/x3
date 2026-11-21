@@ -325,38 +325,64 @@ rec_returned(struct x3kc_rec *r)
     return 0;
 }
 
-/* Calls answered at their deadline are logged quietly: the first of a
- * burst on its own line, then at most one line per DEADLINE_SUMMARY_SECS
- * with the count since the last line.  deadline_summary_timer is armed
- * while a burst is going on (it is the adapter's, so it exists only while
- * kc runs; x3kc_exit() cancels it). */
-#define DEADLINE_SUMMARY_SECS 10
-static void *deadline_summary_timer;
-static unsigned int deadline_quiet;
+/* Calls that got no answer from Keycloak are logged quietly: those
+ * answered UNREACHABLE at their deadline, and those that failed without an
+ * answer (Keycloak refusing connections, no service token, an error
+ * status).  A netjoin during an outage can bring hundreds of look-ups.  The
+ * first of a run gets its own line (the caller's, at WARNING), then at most
+ * one line per QUIET_SUMMARY_SECS with the counts since the last line.
+ * quiet_summary_timer is armed while a run is going on (it is the
+ * adapter's, so it exists only while kc runs; x3kc_exit() cancels it). */
+#define QUIET_SUMMARY_SECS 10
+enum quiet_cause { QUIET_DEADLINE, QUIET_FAILED };
+static void *quiet_summary_timer;
+static unsigned int quiet_count[2];
 
 static void
-deadline_summary(UNUSED_ARG(void *arg))
+quiet_summary(UNUSED_ARG(void *arg))
 {
-    deadline_summary_timer = NULL;      /* spent */
-    if (!deadline_quiet)
-        return;                         /* the burst is over */
-    log_module(KC_LOG, LOG_WARNING, "%u Keycloak call(s) answered UNREACHABLE at their deadline (%lu ms) in the last %us.",
-               deadline_quiet, deadline_ms(), DEADLINE_SUMMARY_SECS);
-    deadline_quiet = 0;
-    deadline_summary_timer = x3_kc_get_event_ops()->timer_add(DEADLINE_SUMMARY_SECS * 1000UL, deadline_summary, NULL);
+    quiet_summary_timer = NULL;         /* spent */
+    if (!quiet_count[QUIET_DEADLINE] && !quiet_count[QUIET_FAILED])
+        return;                         /* the run is over */
+    log_module(KC_LOG, LOG_WARNING, "In the last %us, %u Keycloak call(s) were answered UNREACHABLE at their deadline (%lu ms) and %u failed without an answer.",
+               QUIET_SUMMARY_SECS, quiet_count[QUIET_DEADLINE], deadline_ms(), quiet_count[QUIET_FAILED]);
+    quiet_count[QUIET_DEADLINE] = quiet_count[QUIET_FAILED] = 0;
+    quiet_summary_timer = x3_kc_get_event_ops()->timer_add(QUIET_SUMMARY_SECS * 1000UL, quiet_summary, NULL);
+}
+
+/* Notes a call that got no answer.  1: no run is going on, the caller
+ * writes its own line at WARNING (this starts a run); 0: counted for the
+ * next summary line. */
+static int
+quiet_note(enum quiet_cause cause)
+{
+    if (quiet_summary_timer) {
+        quiet_count[cause]++;
+        return 0;
+    }
+    quiet_summary_timer = x3_kc_get_event_ops()->timer_add(QUIET_SUMMARY_SECS * 1000UL, quiet_summary, NULL);
+    return 1;
 }
 
 static void
 deadline_note(struct x3kc_rec *r)
 {
-    if (deadline_summary_timer) {
-        deadline_quiet++;
-        return;
-    }
-    log_module(KC_LOG, LOG_WARNING, "Keycloak did not answer a %s within %lu ms%s; further calls answered at their deadline are counted, one line per %us.",
-               kind_name(r->kind), deadline_ms(), r->queued ? " (it was still waiting for a free slot)" : "",
-               DEADLINE_SUMMARY_SECS);
-    deadline_summary_timer = x3_kc_get_event_ops()->timer_add(DEADLINE_SUMMARY_SECS * 1000UL, deadline_summary, NULL);
+    if (quiet_note(QUIET_DEADLINE))
+        log_module(KC_LOG, LOG_WARNING, "Keycloak did not answer a %s within %lu ms%s; further calls without an answer are counted, one line per %us.",
+                   kind_name(r->kind), deadline_ms(), r->queued ? " (it was still waiting for a free slot)" : "",
+                   QUIET_SUMMARY_SECS);
+}
+
+/* A call kc answered with a failure that is not Keycloak's verdict on the
+ * user (an outage, no service token, an error status): logged at DEBUG
+ * every time, and quietly at WARNING as above. */
+static void
+failure_note(const char *what, int result)
+{
+    log_module(KC_LOG, LOG_DEBUG, "Keycloak %s failed (kc result %d).", what, result);
+    if (quiet_note(QUIET_FAILED))
+        log_module(KC_LOG, LOG_WARNING, "Keycloak %s failed (kc result %d); further calls without an answer are counted, one line per %us.",
+                   what, result, QUIET_SUMMARY_SECS);
 }
 
 /* The deadline: keycloak_timeout ms after the call. */
@@ -440,7 +466,7 @@ login_cb(int result, const struct kc_access_token *token, const char *reason, vo
         log_module(KC_LOG, LOG_ERROR, "Keycloak refused X3's own client %s (wrong keycloak_client_secret, or the client may not use the password grant); logins fail until that is fixed.",
                    nickserv_conf.keycloak_client_id);
     else if (res == X3KC_UNREACHABLE)
-        log_module(KC_LOG, LOG_WARNING, "Keycloak login check failed (kc result %d).", result);
+        failure_note("login check", result);
     if (res == X3KC_OK) {
         if (!token || !token->id_token
             || !kc_jwt_extract_sub(token->id_token, sub, sizeof(sub))
@@ -525,7 +551,7 @@ lookup_cb(int result, const struct kc_user *user, void *data)
     } else if (result == KC_NOT_FOUND) {
         res = X3KC_NOT_FOUND;
     } else {
-        log_module(KC_LOG, LOG_WARNING, "Keycloak user look-up failed (kc result %d).", result);
+        failure_note("user look-up", result);
         res = X3KC_UNREACHABLE;
     }
     rec_done(r, res, res == X3KC_OK ? kcid : NULL, email, NULL);
@@ -569,6 +595,7 @@ x3kc_lookup(const char *account, int queue, x3kc_user_cb cb, void *data)
             return;
         }
         queue_append(r);
+        log_module(KC_LOG, LOG_DEBUG, "Keycloak look-up of %s queued (%u in flight).", account, inflight);
         return;
     }
     lookup_start(r, account);
@@ -894,11 +921,11 @@ x3kc_exit(UNUSED_ARG(void *extra))
     }
     while (queue_head)
         queue_remove(queue_head);
-    if (deadline_summary_timer) {
-        x3_kc_get_event_ops()->timer_cancel(deadline_summary_timer);
-        deadline_summary_timer = NULL;
+    if (quiet_summary_timer) {
+        x3_kc_get_event_ops()->timer_cancel(quiet_summary_timer);
+        quiet_summary_timer = NULL;
     }
-    deadline_quiet = 0;
+    quiet_count[QUIET_DEADLINE] = quiet_count[QUIET_FAILED] = 0;
     if (was_configured)
         kc_keycloak_shutdown();
     if (kc_running) {

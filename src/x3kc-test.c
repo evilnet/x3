@@ -251,6 +251,92 @@ test_seam(void)
     assert(x3kc_failed_password(X3KC_NOT_FOUND) == 0);
     assert(x3kc_failed_password(X3KC_REJECTED) == 0);
 }
+
+/* What the answer to a stamp's look-up does (auto-create, Task 7). */
+static void
+test_stamp_step(void)
+{
+    const char *A = "a6e4EJ2tEdGAtADAT9QwyA", *B = "BBBBBBBBBBBBBBBBBBBBBB";
+    static const enum x3kc_result all[] = {
+        X3KC_OK, X3KC_BAD_PASSWORD, X3KC_DISABLED, X3KC_NOT_SET_UP,
+        X3KC_NOT_FOUND, X3KC_REJECTED, X3KC_BUSY, X3KC_UNREACHABLE
+    };
+    unsigned int i;
+
+    /* The user left, or is logged in to X3 by now: nothing, whatever the
+     * answer, whatever the handle. */
+    for (i = 0; i < sizeof(all) / sizeof(all[0]); i++) {
+        assert(x3kc_stamp_step(all[i], 0, 0, "", 0, A, 0) == X3KC_STAMP_DROP);
+        assert(x3kc_stamp_step(all[i], 0, 0, A, 0, A, 1) == X3KC_STAMP_DROP);
+        assert(x3kc_stamp_step(all[i], 1, 1, "", 0, A, 0) == X3KC_STAMP_DROP);
+        assert(x3kc_stamp_step(all[i], 1, 1, A, 0, B, 1) == X3KC_STAMP_DROP);
+    }
+    /* Keycloak has no such user, and still no handle: unknown. */
+    assert(x3kc_stamp_step(X3KC_NOT_FOUND, 1, 0, "", 0, NULL, 0) == X3KC_STAMP_UNKNOWN);
+    assert(x3kc_stamp_step(X3KC_NOT_FOUND, 1, 0, A, 0, NULL, 0) == X3KC_STAMP_UNKNOWN);
+    /* No answer (outage, deadline, busy) or one a look-up never gets, and
+     * still no handle: left for the next event. */
+    assert(x3kc_stamp_step(X3KC_UNREACHABLE, 1, 0, "", 0, NULL, 0) == X3KC_STAMP_RETRY_LATER);
+    assert(x3kc_stamp_step(X3KC_BUSY, 1, 0, A, 0, NULL, 0) == X3KC_STAMP_RETRY_LATER);
+    assert(x3kc_stamp_step(X3KC_REJECTED, 1, 0, "", 0, NULL, 0) == X3KC_STAMP_RETRY_LATER);
+    assert(x3kc_stamp_step(X3KC_BAD_PASSWORD, 1, 0, "", 0, NULL, 0) == X3KC_STAMP_RETRY_LATER);
+    /* X3KC_OK without an id never counts as a confirmation. */
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, "", 0, NULL, 0) == X3KC_STAMP_RETRY_LATER);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, "", 0, "", 0) == X3KC_STAMP_RETRY_LATER);
+    /* A handle that appeared meanwhile (another confirmed login made it):
+     * with no confirmation from this look-up -- none, not found, or OK
+     * without an id -- the stamp as it came goes the known-handle way. */
+    for (i = 0; i < sizeof(all) / sizeof(all[0]); i++) {
+        if (all[i] == X3KC_OK)
+            continue;
+        assert(x3kc_stamp_step(all[i], 1, 0, "", 0, NULL, 1) == X3KC_STAMP_KNOWN);
+        assert(x3kc_stamp_step(all[i], 1, 0, A, 0, NULL, 1) == X3KC_STAMP_KNOWN);
+    }
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, "", 0, NULL, 1) == X3KC_STAMP_KNOWN);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, A, 0, "", 1) == X3KC_STAMP_KNOWN);
+    /* An announced id must be the one Keycloak has under that name; a
+     * mismatch is ignored even when a handle exists by now (it must not
+     * reach the id decision, which could reset that handle). */
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, B, 0, A, 0) == X3KC_STAMP_ID_MISMATCH);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, B, 0, A, 1) == X3KC_STAMP_ID_MISMATCH);
+    /* Confirmed, a handle made meanwhile, an id announced (equal): the
+     * known-handle way, with the stamp's own id. */
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, A, 0, A, 1) == X3KC_STAMP_KNOWN);
+    /* Confirmed, a handle made meanwhile, no id announced: the looked-up
+     * id is compared with the handle's by the caller (never a reset). */
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, "", 0, A, 1) == X3KC_STAMP_BIND_LOOKED_UP);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, NULL, 0, A, 1) == X3KC_STAMP_BIND_LOOKED_UP);
+    /* Confirmed, still no handle: create it. */
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, A, 0, A, 0) == X3KC_STAMP_CREATE);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, "", 0, A, 0) == X3KC_STAMP_CREATE);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, NULL, 0, A, 0) == X3KC_STAMP_CREATE);
+
+    /* By its form alone: an announced id, or no timestamp, may create; no
+     * id with a timestamp (X3's own name:registered stamp) may not. */
+    assert(x3kc_stamp_may_create(A, 0) == 1);
+    assert(x3kc_stamp_may_create(A, 1700000000UL) == 1);
+    assert(x3kc_stamp_may_create("", 0) == 1);
+    assert(x3kc_stamp_may_create(NULL, 0) == 1);
+    assert(x3kc_stamp_may_create("", 1700000000UL) == 0);
+    assert(x3kc_stamp_may_create(NULL, 1) == 0);
+    /* No id, a non-zero timestamp, no handle: never CREATE, whatever
+     * Keycloak answered -- not even a confirmation of the name. */
+    for (i = 0; i < sizeof(all) / sizeof(all[0]); i++) {
+        assert(x3kc_stamp_step(all[i], 1, 0, "", 1700000000UL, all[i] == X3KC_OK ? A : NULL, 0) == X3KC_STAMP_OLD);
+        assert(x3kc_stamp_step(all[i], 1, 0, NULL, 1, all[i] == X3KC_OK ? A : NULL, 0) == X3KC_STAMP_OLD);
+    }
+    /* ... the same stamp with timestamp 0 still creates once confirmed. */
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, "", 0, A, 0) == X3KC_STAMP_CREATE);
+    /* ... with an announced id the timestamp does not matter here. */
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, A, 1700000000UL, A, 0) == X3KC_STAMP_CREATE);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, B, 1700000000UL, A, 0) == X3KC_STAMP_ID_MISMATCH);
+    /* A handle that exists by now: the known-handle way (handle_account()
+     * checks the timestamp), whatever the timestamp. */
+    assert(x3kc_stamp_step(X3KC_UNREACHABLE, 1, 0, "", 1700000000UL, NULL, 1) == X3KC_STAMP_KNOWN);
+    assert(x3kc_stamp_step(X3KC_OK, 1, 0, "", 1700000000UL, A, 1) == X3KC_STAMP_BIND_LOOKED_UP);
+    /* The user gone or logged in still comes first. */
+    assert(x3kc_stamp_step(X3KC_OK, 0, 0, "", 1700000000UL, A, 0) == X3KC_STAMP_DROP);
+}
 #endif /* WITH_KEYCLOAK */
 
 /* The Keycloak-id decision a login makes once the account name is known to
@@ -259,42 +345,161 @@ test_seam(void)
 static void
 test_kcid_decide(void)
 {
-    const char *A = "a6e4EJ2tEdGAtADAT9QwyA", *B = "BBBBBBBBBBBBBBBBBBBBBB";
+    const char *A = "a6e4EJ2tEdGAtADAT9QwyA", *B = "BBBBBBBBBBBBBBBBBBBBBA";
+    int kc;
 
-    /* equal: passes, whatever the other inputs */
-    assert(kcid_decide(A, 0, 0, 0, A) == KCID_PASS);
-    assert(kcid_decide(A, 0, 1, 1, A) == KCID_PASS);
-    /* none stored: adopted */
-    assert(kcid_decide(NULL, 0, 0, 0, A) == KCID_ADOPT);
-    assert(kcid_decide(NULL, 0, 1, 1, A) == KCID_ADOPT);
-    /* an id the handle's binding replaced: refused, stored or not (after
-     * REBIND * nothing is stored, and it must not be re-adopted) */
-    assert(kcid_decide(B, 1, 0, 0, A) == KCID_REFUSE_STALE);
-    assert(kcid_decide(B, 1, 1, 0, A) == KCID_REFUSE_STALE);
-    assert(kcid_decide(NULL, 1, 0, 0, A) == KCID_REFUSE_STALE);
-    assert(kcid_decide(NULL, 1, 1, 1, A) == KCID_REFUSE_STALE);
-    /* different: by default refused */
-    assert(kcid_decide(B, 0, 0, 0, A) == KCID_REFUSE_MISMATCH);
-    assert(kcid_decide(B, 0, 0, 1, A) == KCID_REFUSE_MISMATCH);
-    /* different with keycloak_id_reset: reset, unless suspended */
-    assert(kcid_decide(B, 0, 1, 0, A) == KCID_RESET);
-    assert(kcid_decide(B, 0, 1, 1, A) == KCID_REFUSE_SUSPENDED);
+    /* Both modes alike, except for a handle with no id stored. */
+    for (kc = 0; kc <= 1; kc++) {
+        /* equal: passes, whatever the other inputs */
+        assert(kcid_decide(A, 0, 0, 0, kc, A) == KCID_PASS);
+        assert(kcid_decide(A, 0, 1, 1, kc, A) == KCID_PASS);
+        /* an id the handle's binding replaced: refused, stored or not
+         * (after REBIND * nothing is stored, and it must not be bound
+         * again) */
+        assert(kcid_decide(B, 1, 0, 0, kc, A) == KCID_REFUSE_STALE);
+        assert(kcid_decide(B, 1, 1, 0, kc, A) == KCID_REFUSE_STALE);
+        assert(kcid_decide(NULL, 1, 0, 0, kc, A) == KCID_REFUSE_STALE);
+        assert(kcid_decide(NULL, 1, 1, 1, kc, A) == KCID_REFUSE_STALE);
+        /* different: by default refused */
+        assert(kcid_decide(B, 0, 0, 0, kc, A) == KCID_REFUSE_MISMATCH);
+        assert(kcid_decide(B, 0, 0, 1, kc, A) == KCID_REFUSE_MISMATCH);
+        /* different with keycloak_id_reset: reset, unless suspended */
+        assert(kcid_decide(B, 0, 1, 0, kc, A) == KCID_RESET);
+        assert(kcid_decide(B, 0, 1, 1, kc, A) == KCID_REFUSE_SUSPENDED);
+    }
+    /* none stored, LDAP or local mode (an announced id): adopted, as on
+     * master */
+    assert(kcid_decide(NULL, 0, 0, 0, 0, A) == KCID_ADOPT);
+    assert(kcid_decide(NULL, 0, 1, 1, 0, A) == KCID_ADOPT);
+    /* none stored, Keycloak mode: refused -- the binding script bound
+     * every handle it could at the switch, and an oper binds the rest
+     * with REBIND */
+    assert(kcid_decide(NULL, 0, 0, 0, 1, A) == KCID_REFUSE_UNBOUND);
+    assert(kcid_decide(NULL, 0, 1, 0, 1, A) == KCID_REFUSE_UNBOUND);
+    assert(kcid_decide(NULL, 0, 1, 1, 1, A) == KCID_REFUSE_UNBOUND);
 }
 
-int main(void)
+/* An account stamp with no Keycloak id on the wire, for a handle X3 has
+ * (handle_account(); user ruling 2026-11-21 23:14). */
+static void
+test_kcid_decide_no_id(void)
+{
+    const char *A = "a6e4EJ2tEdGAtADAT9QwyA";
+    const unsigned long REG = 1700000000UL;
+
+    /* Keycloak mode, none stored: refused (an ircd's own login with no
+     * id -- EXTENDED_ACCOUNTS off, no UUID sub, an impersonated login,
+     * AC R with no timestamp -- is not proof that the Keycloak user of
+     * that name owns this handle; an oper binds it with REBIND) ... */
+    assert(kcid_decide_no_id(NULL, 1, 0, REG) == KCID_REFUSE_UNBOUND);
+    assert(kcid_decide_no_id(NULL, 1, REG + 1, REG) == KCID_REFUSE_UNBOUND);
+    assert(kcid_decide_no_id(NULL, 1, REG - 1, REG) == KCID_REFUSE_UNBOUND);
+    /* ... unless it is X3's own stamp: its timestamp is the handle's
+     * registration date (a session X3 logged in, replayed in a burst) */
+    assert(kcid_decide_no_id(NULL, 1, REG, REG) == KCID_PASS);
+    /* a handle registered at 0 (never in practice): a timestamp of 0 is
+     * no timestamp, and is still refused */
+    assert(kcid_decide_no_id(NULL, 1, 0, 0) == KCID_REFUSE_UNBOUND);
+    /* Keycloak mode, an id stored: fail open, as before */
+    assert(kcid_decide_no_id(A, 1, 0, REG) == KCID_PASS);
+    assert(kcid_decide_no_id(A, 1, REG, REG) == KCID_PASS);
+    assert(kcid_decide_no_id(A, 1, REG + 1, REG) == KCID_PASS);
+    /* LDAP or local mode: nothing changes, stored or not */
+    assert(kcid_decide_no_id(NULL, 0, 0, REG) == KCID_PASS);
+    assert(kcid_decide_no_id(NULL, 0, REG, REG) == KCID_PASS);
+    assert(kcid_decide_no_id(NULL, 0, REG + 1, REG) == KCID_PASS);
+    assert(kcid_decide_no_id(A, 0, 0, REG) == KCID_PASS);
+    assert(kcid_decide_no_id(A, 0, REG, REG) == KCID_PASS);
+    assert(kcid_decide_no_id(A, 0, REG + 1, REG) == KCID_PASS);
+}
+
+/* The compact form: 22 characters carry 132 bits, the UUID 128, so the
+ * last character's low 4 bits are always 0 in the form the ircd and
+ * kcid_from_uuid() write.  The decoder refuses any other last character;
+ * kcid_canonical() is the one place a non-zero tail is put right. */
+static void
+test_kcid_forms(void)
 {
     char c[23], u[37];
+
     assert(kcid_from_uuid("6ba7b810-9dad-11d1-80b4-00c04fd430c8", c) == 1);
     assert(strcmp(c, "a6e4EJ2tEdGAtADAT9QwyA") == 0);
     assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9QwyA", u) == 1);
     assert(strcmp(u, "6ba7b810-9dad-11d1-80b4-00c04fd430c8") == 0);
     assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9Qwy", u) == 0);     /* 21 chars */
+    assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9QwyAA", u) == 0);   /* 23 chars */
     assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9Qwy!", u) == 0);    /* bad char */
+    assert(kcid_to_uuid("", u) == 0);
     assert(kcid_to_uuid(NULL, u) == 0);
+    /* the spare bits: B (1), P (15) and _ (63) set some; Q (16), g (32)
+     * and w (48) do not */
+    assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9QwyB", u) == 0);
+    assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9QwyP", u) == 0);
+    assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9Qwy_", u) == 0);
+    assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9QwyQ", u) == 1);
+    assert(strcmp(u, "6ba7b810-9dad-11d1-80b4-00c04fd430c9") == 0);
+    assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9Qwyw", u) == 1);
+    assert(strcmp(u, "6ba7b810-9dad-11d1-80b4-00c04fd430cb") == 0);
+    /* the encoder: either case, dashes or none, one UUID, one form */
+    assert(kcid_from_uuid("6BA7B810-9DAD-11D1-80B4-00C04FD430C8", c) == 1);
+    assert(strcmp(c, "a6e4EJ2tEdGAtADAT9QwyA") == 0);
+    assert(kcid_from_uuid("6ba7b8109dad11d180b400c04fd430c8", c) == 1);
+    assert(strcmp(c, "a6e4EJ2tEdGAtADAT9QwyA") == 0);
+    assert(kcid_from_uuid("6ba7b810-9dad-11d1-80b4-00c04fd430c8a", c) == 0);
+    assert(kcid_from_uuid("6ba7b810-9dad-11d1-80b4-00c04fd430c", c) == 0);
+    assert(kcid_from_uuid("6ba7b810-9dad-11d1-80b4-00c04fd430cg", c) == 0);
+    assert(kcid_from_uuid(NULL, c) == 0);
+    /* a second vector, all bits set, round trip */
+    assert(kcid_from_uuid("ffffffff-ffff-ffff-ffff-ffffffffffff", c) == 1);
+    assert(strcmp(c, "_____________________w") == 0);
+    assert(kcid_to_uuid(c, u) == 1);
+    assert(strcmp(u, "ffffffff-ffff-ffff-ffff-ffffffffffff") == 0);
+    /* canonical: a non-zero tail is cleared, a canonical id is kept,
+     * anything that is no compact id is refused */
+    assert(kcid_canonical("a6e4EJ2tEdGAtADAT9QwyB", c) == 1);
+    assert(strcmp(c, "a6e4EJ2tEdGAtADAT9QwyA") == 0);
+    assert(kcid_canonical("a6e4EJ2tEdGAtADAT9Qwy_", c) == 1);
+    assert(strcmp(c, "a6e4EJ2tEdGAtADAT9Qwyw") == 0);
+    assert(kcid_canonical("a6e4EJ2tEdGAtADAT9QwyA", c) == 1);
+    assert(strcmp(c, "a6e4EJ2tEdGAtADAT9QwyA") == 0);
+    assert(kcid_canonical("a6e4EJ2tEdGAtADAT9Qwy", c) == 0);
+    assert(kcid_canonical("a6e4EJ2tEdGAtADAT9Qwy!", c) == 0);
+    assert(kcid_canonical("6ba7b810-9dad-11d1-80b4-00c04fd430c8", c) == 0);
+    assert(kcid_canonical(NULL, c) == 0);
+}
+
+/* The oper notices for refused ids: the first at once, then the ones that
+ * follow within the minute are held and counted, and the count goes out
+ * when the minute is over; a quiet minute starts afresh. */
+static void
+test_kcid_notice_limit(void)
+{
+    struct kcid_notice_limit lim = { 0, 0 };
+
+    assert(kcid_notice_take(&lim, 1000) == 1);          /* the first: sent */
+    assert(kcid_notice_take(&lim, 1001) == 0);          /* held */
+    assert(kcid_notice_take(&lim, 1059) == 0);          /* held */
+    assert(kcid_notice_due(&lim) == 1060);              /* when the count goes */
+    assert(kcid_notice_flush(&lim, 1060) == 2);         /* two held */
+    assert(kcid_notice_due(&lim) == 0);                 /* nothing left */
+    /* the flush opened a new minute: still held */
+    assert(kcid_notice_take(&lim, 1061) == 0);
+    assert(kcid_notice_flush(&lim, 1120) == 1);
+    /* a minute with nothing held: the next one goes out at once */
+    assert(kcid_notice_take(&lim, 1300) == 1);
+    assert(kcid_notice_due(&lim) == 0);                 /* nothing held: no flush due */
+}
+
+int main(void)
+{
+    test_kcid_forms();
     test_kcid_decide();
+    test_kcid_decide_no_id();
+    test_kcid_notice_limit();
 #ifdef WITH_KEYCLOAK
     test_seam();
-    puts("x3kc-test: ok (kcid, seam)");
+    test_stamp_step();
+    puts("x3kc-test: ok (kcid, seam, stamp)");
 #else
     puts("x3kc-test: ok (kcid; built without Keycloak)");
 #endif

@@ -296,6 +296,35 @@ x3kc_repr_set_level(json_t *repr, const char *attr, unsigned int level)
     return 0;
 }
 
+int
+x3kc_stamp_may_create(const char *announced_id, unsigned long timestamp)
+{
+    return (announced_id && *announced_id) || timestamp == 0;
+}
+
+enum x3kc_stamp_step
+x3kc_stamp_step(enum x3kc_result res, int user_present, int user_authed,
+                const char *announced_id, unsigned long timestamp,
+                const char *found_id, int handle_exists)
+{
+    int confirmed = res == X3KC_OK && found_id && *found_id;
+    int announced = announced_id && *announced_id;
+
+    if (!user_present || user_authed)
+        return X3KC_STAMP_DROP;
+    if (confirmed && announced && strcmp(announced_id, found_id))
+        return X3KC_STAMP_ID_MISMATCH;
+    if (handle_exists)
+        return (confirmed && !announced) ? X3KC_STAMP_BIND_LOOKED_UP : X3KC_STAMP_KNOWN;
+    if (!x3kc_stamp_may_create(announced_id, timestamp))
+        return X3KC_STAMP_OLD;
+    if (res == X3KC_NOT_FOUND)
+        return X3KC_STAMP_UNKNOWN;
+    if (!confirmed)
+        return X3KC_STAMP_RETRY_LATER;
+    return X3KC_STAMP_CREATE;
+}
+
 #else /* !WITH_KEYCLOAK */
 
 /* ISO C wants something in a translation unit. */
