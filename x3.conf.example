@@ -359,11 +359,15 @@
         //// declare this attribute in its user profile with edit permission
         //// for admins only, so that users cannot set their own level.
         //"keycloak_field_oslevel" "x3_opserv_level";
-        //// Per-request limit, in milliseconds.  Keep it below the ircd's
-        //// login timeout (3 seconds by default).  0 = the client's own
-        //// default of 10 seconds.
+        //// Every Keycloak call is answered within this many milliseconds
+        //// (as unreachable, if Keycloak has not answered by then; one
+        //// limit for a call that makes several requests).  Keep it below
+        //// the ircd's login timeout (3 seconds by default).  0 = 10 seconds.
         //"keycloak_timeout" "2500";
-        //// Requests in flight before new ones are refused as busy.
+        //// Requests in flight before new ones are refused as busy (a
+        //// look-up for a login a server announces waits its turn instead,
+        //// within keycloak_timeout, and such look-ups leave a quarter of
+        //// the slots free for logins).  At least 1.
         //"keycloak_max_pending" "64";
         //// Announce X3's SASL mechanism list to the network (the
         //// "SASL * * M" line), once linked and when servers link.

@@ -1,4 +1,4 @@
-AUTOMAKE_OPTIONS = subdir-objects
+AUTOMAKE_OPTIONS = subdir-objects serial-tests
 AM_CPPFLAGS = @RX_INCLUDES@ -I$(srcdir) -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\" -DLOCALSTATEDIR=\"@localstatedir@/x3\"
 LIBS = @LIBS@ @RX_LIBS@
 TRACK = @TRACK@
@@ -9,7 +9,11 @@ PY_LIBS = @PY_LIBS@
 
 bin_PROGRAMS = x3
 noinst_PROGRAMS = slab-read
-EXTRA_PROGRAMS = checkdb globtest x3kc-test
+EXTRA_PROGRAMS = checkdb globtest
+# The Keycloak backend's standalone asserts (built with or without
+# Keycloak; the Keycloak parts only with it): make check.
+check_PROGRAMS = x3kc-test
+TESTS = x3kc-test
 noinst_DATA = \
 	chanserv.help \
 	global.help \
@@ -52,6 +56,7 @@ EXTRA_x3_SOURCES = \
 	x3_kc_nosync.c \
 	x3_kc_adapter.c x3_kc_adapter.h \
 	x3kc.c x3kc.h \
+	x3kc_pure.c x3kc_pure.h \
 	kc/kc.c kc/kc.h \
 	kc/kc_base64.c kc/kc_base64.h \
 	kc/kc_error_classify.c kc/kc_error_classify.h \
@@ -103,7 +108,7 @@ x3_SOURCES = \
 	version.c version.h
 
 checkdb_SOURCES = checkdb.c common.h compat.c compat.h dict-splay.c dict.h recdb.c recdb.h saxdb.c saxdb.h tools.c conf.h log.h modcmd.h saxdb.h timeq.h
-x3kc_test_SOURCES = x3kc-test.c kcid.c kcid.h
+x3kc_test_SOURCES = x3kc-test.c kcid.c kcid.h x3kc_pure.c x3kc_pure.h x3kc.h
 globtest_SOURCES = common.h compat.c compat.h dict-splay.c dict.h globtest.c tools.c
 slab_read_SOURCES = slab-read.c
 

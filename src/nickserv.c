@@ -30,9 +30,7 @@
 #include "mail.h"
 #include "timeq.h"
 #include "x3ldap.h"
-#ifdef WITH_KEYCLOAK
 #include "x3kc.h"
-#endif
 
 #include <tre/regex.h>
 
@@ -5999,6 +5997,11 @@ nickserv_conf_read(void)
             log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but these keys are empty or missing: %s!", missing);
             refused = 1;
         }
+        /* 0 would answer every Keycloak call "busy". */
+        if (nickserv_conf.keycloak_max_pending == 0) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but keycloak_max_pending is 0; it must be at least 1!");
+            refused = 1;
+        }
         /* Below the minimum no login could be answered by Keycloak; above
          * the maximum (or a negative number, which strtoul() wraps) a
          * stalled request holds its slot, and its user, for minutes. */
@@ -7016,6 +7019,11 @@ init_nickserv(const char *nick)
     }
     saxdb_register("NickServ", nickserv_saxdb_read, nickserv_saxdb_write);
     reg_exit_func(nickserv_db_cleanup, NULL);
+#ifdef WITH_KEYCLOAK
+    /* After nickserv_db_cleanup, so it runs before it (exit functions run
+     * in reverse order): the seam lets go of its callers' data first. */
+    x3kc_init();
+#endif
     if(nickserv_conf.handle_expire_frequency)
         timeq_add(now + nickserv_conf.handle_expire_frequency, expire_handles, NULL);
     if(nickserv_conf.nick_expire_frequency && nickserv_conf.expire_nicks)

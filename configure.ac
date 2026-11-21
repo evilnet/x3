@@ -563,7 +563,7 @@ if test "x$with_keycloak" != "xno"; then
     for kc_obj in kc kc_base64 kc_error_classify kc_http kc_jwt kc_keycloak kc_url ; do
       MODULE_OBJS="$MODULE_OBJS kc/$kc_obj.\$(OBJEXT)"
     done
-    MODULE_OBJS="$MODULE_OBJS x3_kc_nosync.\$(OBJEXT) x3_kc_adapter.\$(OBJEXT) x3kc.\$(OBJEXT)"
+    MODULE_OBJS="$MODULE_OBJS x3_kc_nosync.\$(OBJEXT) x3_kc_adapter.\$(OBJEXT) x3kc.\$(OBJEXT) x3kc_pure.\$(OBJEXT)"
     keycloak_message="Keycloak client:    enabled"
   elif test "x$with_keycloak" = "xcheck"; then
     AC_MSG_NOTICE([Keycloak client not built; missing:$kc_missing])
