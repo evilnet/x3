@@ -122,6 +122,37 @@ x3kc_queue_must_wait(int is_delete, int lookups_waiting, int deletes_waiting, in
     return is_delete && deletes_waiting;
 }
 
+enum x3kc_oper_step
+x3kc_oper_next(int has_group, int group_known, int group_done,
+               int has_attr, int attr_done, int in_group)
+{
+    int group_left = has_group && !group_done;
+    int attr_left = has_attr && !attr_done;
+
+    if (group_left && !group_known)
+        return X3KC_OPER_GROUP_LOOKUP;
+    if (in_group) {
+        if (attr_left)
+            return X3KC_OPER_ATTRIBUTE;
+        if (group_left)
+            return X3KC_OPER_GROUP_CHANGE;
+    } else {
+        if (group_left)
+            return X3KC_OPER_GROUP_CHANGE;
+        if (attr_left)
+            return X3KC_OPER_ATTRIBUTE;
+    }
+    return X3KC_OPER_DONE;
+}
+
+enum x3kc_result
+x3kc_oper_failure(enum x3kc_result res, int wrote)
+{
+    if (wrote && (res == X3KC_REJECTED || res == X3KC_NOT_FOUND))
+        return X3KC_UNREACHABLE;
+    return res;
+}
+
 int
 x3kc_loc_mask(const char *userhost, char *out, size_t outlen)
 {

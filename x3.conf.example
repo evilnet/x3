@@ -351,7 +351,11 @@
         //"keycloak_register_url" "";
         //// The Keycloak group (a path, with the leading /) that holds
         //// accounts above keycloak_oper_group_level.  Empty = X3 writes
-        //// no group membership.  Needs keycloak_writeback.
+        //// no group membership.  Needs keycloak_writeback.  With this or
+        //// keycloak_field_oslevel set, an OpServ level change (ACCESS,
+        //// OSET LEVEL) of an account bound to a Keycloak user is made in
+        //// Keycloak first; the level in X3 changes only once Keycloak
+        //// confirmed (during an outage levels cannot be changed).
         //"keycloak_oper_group" "/opers";
         //"keycloak_oper_group_level" "99"; // must be above this level to be put in the group
         //// The user attribute that receives the account's OpServ level.

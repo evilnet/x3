@@ -100,6 +100,35 @@ test_seam(void)
     assert(x3kc_queue_must_wait(1, 1, 0, 0) == 1);
     assert(x3kc_queue_must_wait(1, 0, 0, 1) == 1);
 
+    /* Oper level change, step by step (has_group, group_known,
+     * group_done, has_attr, attr_done, in_group).  Group id first. */
+    assert(x3kc_oper_next(1, 0, 0, 1, 0, 1) == X3KC_OPER_GROUP_LOOKUP);
+    assert(x3kc_oper_next(1, 0, 0, 1, 0, 0) == X3KC_OPER_GROUP_LOOKUP);
+    assert(x3kc_oper_next(1, 0, 0, 0, 0, 1) == X3KC_OPER_GROUP_LOOKUP);
+    /* Promotion: attribute, then group, then done. */
+    assert(x3kc_oper_next(1, 1, 0, 1, 0, 1) == X3KC_OPER_ATTRIBUTE);
+    assert(x3kc_oper_next(1, 1, 0, 1, 1, 1) == X3KC_OPER_GROUP_CHANGE);
+    assert(x3kc_oper_next(1, 1, 1, 1, 1, 1) == X3KC_OPER_DONE);
+    /* Demotion: group, then attribute, then done. */
+    assert(x3kc_oper_next(1, 1, 0, 1, 0, 0) == X3KC_OPER_GROUP_CHANGE);
+    assert(x3kc_oper_next(1, 1, 1, 1, 0, 0) == X3KC_OPER_ATTRIBUTE);
+    assert(x3kc_oper_next(1, 1, 1, 1, 1, 0) == X3KC_OPER_DONE);
+    /* One part configured. */
+    assert(x3kc_oper_next(0, 0, 0, 1, 0, 1) == X3KC_OPER_ATTRIBUTE);
+    assert(x3kc_oper_next(0, 0, 0, 1, 1, 1) == X3KC_OPER_DONE);
+    assert(x3kc_oper_next(1, 1, 0, 0, 0, 1) == X3KC_OPER_GROUP_CHANGE);
+    assert(x3kc_oper_next(1, 1, 0, 0, 0, 0) == X3KC_OPER_GROUP_CHANGE);
+    assert(x3kc_oper_next(1, 1, 1, 0, 0, 0) == X3KC_OPER_DONE);
+    assert(x3kc_oper_next(0, 0, 0, 0, 0, 1) == X3KC_OPER_DONE);
+    /* A refusal after a write is "not confirmed"; before, it stays. */
+    assert(x3kc_oper_failure(X3KC_REJECTED, 0) == X3KC_REJECTED);
+    assert(x3kc_oper_failure(X3KC_NOT_FOUND, 0) == X3KC_NOT_FOUND);
+    assert(x3kc_oper_failure(X3KC_REJECTED, 1) == X3KC_UNREACHABLE);
+    assert(x3kc_oper_failure(X3KC_NOT_FOUND, 1) == X3KC_UNREACHABLE);
+    assert(x3kc_oper_failure(X3KC_UNREACHABLE, 0) == X3KC_UNREACHABLE);
+    assert(x3kc_oper_failure(X3KC_UNREACHABLE, 1) == X3KC_UNREACHABLE);
+    assert(x3kc_oper_failure(X3KC_BUSY, 0) == X3KC_BUSY);
+
     /* reason: control characters out, at most 200 bytes, never a cut
      * UTF-8 character; nothing left is NULL. */
     assert(x3kc_clean_reason(NULL, r) == NULL);

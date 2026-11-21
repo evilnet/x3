@@ -119,9 +119,26 @@ void x3kc_delete(const char *kcid, x3kc_done_cb cb, void *data);
 
 /* Puts the user in or out of keycloak_oper_group (when set) and writes
  * level to the attribute keycloak_field_oslevel (when set; level 0
- * removes it), in that order.  X3KC_OK only if every configured part
- * succeeded; both keys empty is X3KC_OK without a request. */
+ * removes it).  Order: the group's id is looked up first (a missing group
+ * refuses the change before anything is written); then a promotion
+ * (in_group) writes the attribute and adds the group LAST, a demotion
+ * removes the group FIRST and then writes the attribute -- so a change
+ * that stops half-way never leaves the group ahead of X3's level.
+ * X3KC_OK only if every configured part succeeded; both keys empty is
+ * X3KC_OK without a request.  X3KC_REJECTED / X3KC_NOT_FOUND only while
+ * nothing was written yet (a bad id, a missing group or user); a failure
+ * after a write succeeded is X3KC_UNREACHABLE (not confirmed, partly
+ * made), as is one without an answer.  X3KC_BUSY means nothing was sent:
+ * the cap, or an earlier call for the same user still has a request in
+ * flight (even one answered at its deadline) -- two calls' steps for one
+ * user are never interleaved. */
 void x3kc_set_oper(const char *kcid, int in_group, unsigned int level, x3kc_done_cb cb, void *data);
+
+/* 1 while an oper level change for this user is still in the seam (not
+ * answered, or answered at its deadline with a request kc still holds):
+ * x3kc_set_oper() would answer X3KC_BUSY now.  0 otherwise, and for an
+ * id that is no Keycloak id. */
+int x3kc_oper_in_flight(const char *kcid);
 
 /* The password grant's kc result as a seam result.  Pure; unit-tested. */
 enum x3kc_result x3kc_map_grant(int kc_result);

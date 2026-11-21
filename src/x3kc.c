@@ -104,6 +104,8 @@ struct x3kc_rec {
     unsigned int counted : 1;
     unsigned int queued : 1;
     unsigned int group_done : 1;
+    unsigned int attr_done : 1;         /* set_oper: the attribute is written */
+    unsigned int wrote : 1;             /* set_oper: some write succeeded */
     unsigned int arm_at_start : 1;      /* queued look-up: the deadline runs from its start */
     char *account;                      /* queued look-up, login: the name */
     /* set_oper */
@@ -770,46 +772,59 @@ static void oper_group_cb(int result, const struct kc_group *group, void *data);
 static void oper_write_cb(int result, void *data);
 static void oper_repr_cb(int result, json_t *repr, void *data);
 
-/* Starts the next part of an oper level change: the group (looked up
- * first if its id is not known), then the attribute.  r is counted; after
- * a request has been started r is kc's and is not touched here again. */
+/* An oper level change failed: answer it (a refusal after a write already
+ * succeeded is "not confirmed", x3kc_oper_failure()). */
+static void
+oper_fail(struct x3kc_rec *r, enum x3kc_result res)
+{
+    rec_done(r, x3kc_oper_failure(res, r->wrote), NULL, NULL, NULL);
+}
+
+/* Starts the next part of an oper level change, in x3kc_oper_next()'s
+ * order: the group's id if not known, then -- promotion -- the attribute
+ * and the group last, or -- demotion -- the group and then the attribute.
+ * r is counted; after a request has been started r is kc's and is not
+ * touched here again. */
 static void
 oper_step(struct x3kc_rec *r)
 {
-    int rc;
+    int rc = 0;
 
-    if (r->group_path && !r->group_done) {
-        if (!r->group_id) {
-            if (r->group_path[0] != '/') {
-                log_module(KC_LOG, LOG_ERROR, "keycloak_oper_group \"%s\" is not a group path (it must start with '/'); OpServ level changes are refused.",
-                           r->group_path);
-                rec_done(r, X3KC_REJECTED, NULL, NULL, NULL);
-                return;
-            }
-            if (group_cache_id && group_cache_path && !strcmp(group_cache_path, r->group_path)
-                && r->gen == kc_gen && !(r->group_id = strdup(group_cache_id))) {
-                rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
-                return;
-            }
+    if (r->group_path && !r->group_id) {
+        if (r->group_path[0] != '/') {
+            log_module(KC_LOG, LOG_ERROR, "keycloak_oper_group \"%s\" is not a group path (it must start with '/'); OpServ level changes are refused.",
+                       r->group_path);
+            oper_fail(r, X3KC_REJECTED);
+            return;
         }
-        if (!r->group_id) {
-            r->step = STEP_GROUP_LOOKUP;
-            rc = kc_group_get_by_path(r->group_path, oper_group_cb, r);
-        } else {
-            r->step = STEP_GROUP_CHANGE;
-            rc = r->in_group
-                ? kc_user_add_group(r->uuid, r->group_id, oper_write_cb, r)
-                : kc_user_remove_group(r->uuid, r->group_id, oper_write_cb, r);
+        if (group_cache_id && group_cache_path && !strcmp(group_cache_path, r->group_path)
+            && r->gen == kc_gen && !(r->group_id = strdup(group_cache_id))) {
+            oper_fail(r, X3KC_UNREACHABLE);
+            return;
         }
-    } else if (r->field) {
+    }
+    switch (x3kc_oper_next(r->group_path != NULL, r->group_id != NULL, r->group_done,
+                           r->field != NULL, r->attr_done, r->in_group)) {
+    case X3KC_OPER_GROUP_LOOKUP:
+        r->step = STEP_GROUP_LOOKUP;
+        rc = kc_group_get_by_path(r->group_path, oper_group_cb, r);
+        break;
+    case X3KC_OPER_GROUP_CHANGE:
+        r->step = STEP_GROUP_CHANGE;
+        rc = r->in_group
+            ? kc_user_add_group(r->uuid, r->group_id, oper_write_cb, r)
+            : kc_user_remove_group(r->uuid, r->group_id, oper_write_cb, r);
+        break;
+    case X3KC_OPER_ATTRIBUTE:
         r->step = STEP_REPR_GET;
         rc = kc_user_get_repr(r->uuid, oper_repr_cb, r);
-    } else {
+        break;
+    case X3KC_OPER_DONE:
         rec_done(r, X3KC_OK, NULL, NULL, NULL);
         return;
     }
     if (rc != 0)
-        rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+        oper_fail(r, X3KC_UNREACHABLE);
 }
 
 static void
@@ -830,17 +845,17 @@ oper_group_cb(int result, const struct kc_group *group, void *data)
                    result == KC_NOT_FOUND ? "no such group"
                    : result == KC_INVALID_RESPONSE ? "Keycloak's answer names no group id"
                    : "an id that is unusable in a URL");
-        rec_done(r, X3KC_REJECTED, NULL, NULL, NULL);
+        oper_fail(r, X3KC_REJECTED);
         return;
     }
     if (result != KC_SUCCESS) {
         log_module(KC_LOG, LOG_WARNING, "Keycloak look-up of group %s (keycloak_oper_group) failed (kc result %d).",
                    r->group_path, result);
-        rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+        oper_fail(r, X3KC_UNREACHABLE);
         return;
     }
     if (!(r->group_id = strdup(group->id))) {
-        rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+        oper_fail(r, X3KC_UNREACHABLE);
         return;
     }
     /* Keep it while kc runs on the same configuration and the setting is
@@ -871,15 +886,19 @@ oper_write_cb(int result, void *data)
         res = write_outcome(r->in_group ? "oper group add" : "oper group removal", r->uuid, result);
         if (res == X3KC_NOT_FOUND && group_cache_id && !strcmp(group_cache_id, r->group_id))
             group_cache_clear();        /* maybe the group went: look it up again next time */
-        if (res != X3KC_OK) {
-            rec_done(r, res, NULL, NULL, NULL);
-            return;
-        }
-        r->group_done = 1;
-        oper_step(r);
+    } else {
+        res = write_outcome("level attribute update", r->uuid, result);
+    }
+    if (res != X3KC_OK) {
+        oper_fail(r, res);
         return;
     }
-    rec_done(r, write_outcome("level attribute update", r->uuid, result), NULL, NULL, NULL);
+    r->wrote = 1;
+    if (r->step == STEP_GROUP_CHANGE)
+        r->group_done = 1;
+    else
+        r->attr_done = 1;
+    oper_step(r);
 }
 
 static void
@@ -892,7 +911,7 @@ oper_repr_cb(int result, json_t *repr, void *data)
         return;
     if (result != KC_SUCCESS || !repr) {
         res = write_outcome("read (for the level attribute)", r->uuid, result);
-        rec_done(r, res == X3KC_OK ? X3KC_UNREACHABLE : res, NULL, NULL, NULL);
+        oper_fail(r, res == X3KC_OK ? X3KC_UNREACHABLE : res);
         return;
     }
     /* repr is borrowed for this call and may be changed in place
@@ -900,12 +919,34 @@ oper_repr_cb(int result, json_t *repr, void *data)
     if (x3kc_repr_set_level(repr, r->field, r->level) != 0) {
         log_module(KC_LOG, LOG_ERROR, "Keycloak user %s: its representation has no usable \"attributes\" map; level attribute not written.",
                    r->uuid);
-        rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+        oper_fail(r, X3KC_UNREACHABLE);
         return;
     }
     r->step = STEP_UPDATE;
     if (kc_user_update(r->uuid, repr, oper_write_cb, r) != 0)
-        rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+        oper_fail(r, X3KC_UNREACHABLE);
+}
+
+/* The oper level change for this Keycloak user (a UUID) still in the
+ * seam -- not answered yet, or answered at its deadline with a request kc
+ * still holds -- or NULL. */
+static struct x3kc_rec *
+oper_rec_for(const char *uuid)
+{
+    struct x3kc_rec *r;
+
+    for (r = rec_head; r; r = r->next)
+        if (r->kind == KIND_SET_OPER && !r->dead && !strcmp(r->uuid, uuid))
+            return r;
+    return NULL;
+}
+
+int
+x3kc_oper_in_flight(const char *kcid)
+{
+    char uuid[37];
+
+    return kcid_to_uuid(kcid, uuid) && oper_rec_for(uuid) != NULL;
 }
 
 void
@@ -927,6 +968,17 @@ x3kc_set_oper(const char *kcid, int in_group, unsigned int level, x3kc_done_cb c
     if (!kcid_to_uuid(kcid, uuid)) {
         log_module(KC_LOG, LOG_WARNING, "Keycloak oper level change refused: %s is no Keycloak id.", kcid ? kcid : "(none)");
         cb(X3KC_REJECTED, data);
+        return;
+    }
+    /* One oper change per Keycloak user reaches kc at a time.  The steps
+     * of two would interleave (one's group change, the other's, then
+     * their attribute writes), and a call answered at its deadline may
+     * still have a request in flight: its record stays until kc's last
+     * callback, and so does this refusal.  (Callers ask
+     * x3kc_oper_in_flight() first, to tell the oper why.) */
+    if (oper_rec_for(uuid)) {
+        log_module(KC_LOG, LOG_INFO, "Keycloak oper level change of user %s refused: an earlier one for that user is still in flight.", uuid);
+        cb(X3KC_BUSY, data);
         return;
     }
     if (seam_full()) {

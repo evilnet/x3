@@ -264,7 +264,11 @@ struct nickserv_config {
 void init_nickserv(const char *nick);
 struct handle_info *get_handle_info(const char *handle);
 struct handle_info *smart_get_handle_info(struct userNode *service, struct userNode *user, const char *name);
-int oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level);
+/* Returns 1 when the level changed, or a Keycloak-mode change was
+ * started (applied when Keycloak confirms it); 0 for a refusal.  deferred
+ * (may be NULL): set to 1 when the oper was given the outcome here; the
+ * caller then shows no level. */
+int oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level, int *deferred);
 int oper_outranks(struct userNode *user, struct handle_info *hi);
 struct nick_info *get_nick_info(const char *nick);
 struct modeNode *find_handle_in_channel(struct chanNode *channel, struct handle_info *handle, struct userNode *except);

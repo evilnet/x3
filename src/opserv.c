@@ -856,6 +856,7 @@ static MODCMD_FUNC(cmd_access)
     struct handle_info *hi;
     const char *target;
     unsigned int res;
+    int deferred = 0;
 
     target = (argc > 1) ? (const char*)argv[1] : user->nick;
     if (!irccasecmp(target, "*")) {
@@ -864,8 +865,11 @@ static MODCMD_FUNC(cmd_access)
     }
     if (!(hi = modcmd_get_handle_info(user, target)))
         return 0;
-    res = (argc > 2) ? oper_try_set_access(user, opserv_service->bot, hi, strtoul(argv[2], NULL, 0)) : 0;
-    reply("OSMSG_USER_ACCESS_IS", target, hi->handle, hi->opserv_level);
+    res = (argc > 2) ? oper_try_set_access(user, opserv_service->bot, hi, strtoul(argv[2], NULL, 0), &deferred) : 0;
+    /* Deferred: the outcome comes when Keycloak answers; the level now
+     * is the old one. */
+    if (!deferred)
+        reply("OSMSG_USER_ACCESS_IS", target, hi->handle, hi->opserv_level);
     return res;
 }
 

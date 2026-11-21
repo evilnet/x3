@@ -404,6 +404,15 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_KC_DELETE_NOT_SENT", "Account %s was removed from X3, but its Keycloak user was not deleted (the account server was busy); delete it there." },
     { "NSMSG_KC_ID_SHARED", "Account $b%s$b shares its Keycloak user with $b%s$b; the Keycloak user was kept." },
     { "NSMSG_KC_CHECKPASS_OFF", "Passwords are checked by the account server; X3 keeps none to compare." },
+    { "NSMSG_KC_LEVEL_PENDING", "Updating the account server for $b%s$b..." },
+    { "NSMSG_KC_LEVEL_SET", "OpServ level of $b%s$b is now %u." },
+    { "NSMSG_KC_LEVEL_IN_PROGRESS", "A level change for $b%s$b is already in progress; try again once it has finished." },
+    { "NSMSG_KC_LEVEL_IN_PROGRESS_SHARED", "A level change for the Keycloak user of $b%s$b (via $b%s$b) is already in progress." },
+    { "NSMSG_KC_LEVEL_STILL_FINISHING", "An earlier level change for $b%s$b is still being finished by the account server; try again in a moment." },
+    { "NSMSG_KC_LEVEL_UNCONFIRMED", "The account server did not confirm the level change for $b%s$b; it may be partly made there. Repeat the command, or set the old level again." },
+    { "NSMSG_KC_LEVEL_REJECTED", "The account server refused the level change for $b%s$b; check the account and its Keycloak binding (REBIND)." },
+    { "NSMSG_KC_LEVEL_GONE", "Account $b%s$b was removed or rebound while the account server was being updated; no OpServ level was set in X3." },
+    { "NSMSG_KC_UNBOUND_SAME", "Account $b%s$b is not bound to a Keycloak user, and its level is already %u; nothing was changed." },
     { "NSMSG_REBIND_SHARED", "Keycloak id %s is also bound to account $b%s$b: unregistering either account keeps the Keycloak user while both hold it." },
     { "NSMSG_KC_RENAME_REFUSED", "Accounts cannot be renamed while X3 uses Keycloak." },
     { "NSMSG_KC_UNREGISTER_OFF", "Accounts are removed by network staff, not with this command." },
@@ -1113,6 +1122,202 @@ kc_delete_begin(const char *handle, const char *kcid, struct userNode *asker, st
     kc_delete_head = dp;
     /* The answer may come before this returns (Keycloak off, a bad id). */
     x3kc_delete(dp->kcid, kc_delete_done, dp);
+}
+
+/* An OpServ level change of a bound handle in Keycloak mode (keycloak_
+ * writeback on, keycloak_oper_group or keycloak_field_oslevel set):
+ * Keycloak first (the oper group, then the level attribute, by the stored
+ * id), and X3's level only once Keycloak confirmed.  The record holds the
+ * oper who asked (nickserv_remove_user() detaches them when they quit; the
+ * change is still applied, nobody is told) and the target's handle name,
+ * looked up again at the answer: the handle may be gone, or rebound to
+ * another Keycloak user, by then.  At most one change per handle, and per
+ * Keycloak user, is in flight (a second is refused at once): two handles
+ * bound to the same Keycloak user share its group and attribute, which
+ * show the last change Keycloak confirmed. */
+struct kc_level_pending {
+    struct kc_level_pending *prev, *next;
+    struct userNode *asker;     /* NULL: gone, nobody to tell */
+    struct userNode *bot;       /* the service asked; NULL: gone, answer as nickserv */
+    char *oper;                 /* the asker's account, for the log */
+    char *handle;               /* the target */
+    char kcid[23];              /* the id Keycloak was changed for */
+    char kckey[37];             /* kcid_index_key(kcid) */
+    unsigned int level;
+};
+
+static struct kc_level_pending *kc_level_head;
+
+static void
+kc_level_unlink(struct kc_level_pending *lp)
+{
+    if (lp->next)
+        lp->next->prev = lp->prev;
+    if (lp->prev)
+        lp->prev->next = lp->next;
+    else if (kc_level_head == lp)
+        kc_level_head = lp->next;
+    lp->prev = lp->next = NULL;
+}
+
+static void
+kc_level_free(struct kc_level_pending *lp)
+{
+    free(lp->oper);
+    free(lp->handle);
+    free(lp);
+}
+
+/* A user (or a service) is going away: no level change's answer may reach
+ * it. */
+static void
+kc_level_forget(struct userNode *user)
+{
+    struct kc_level_pending *lp;
+
+    for (lp = kc_level_head; lp; lp = lp->next) {
+        if (lp->asker == user)
+            lp->asker = NULL;
+        if (lp->bot == user)
+            lp->bot = NULL;
+    }
+}
+
+/* The change in flight for this handle or its Keycloak user, if any. */
+static struct kc_level_pending *
+kc_level_in_flight(const struct handle_info *hi, const char *kckey)
+{
+    struct kc_level_pending *lp;
+
+    for (lp = kc_level_head; lp; lp = lp->next)
+        if (!irccasecmp(lp->handle, hi->handle) || !strcmp(lp->kckey, kckey))
+            return lp;
+    return NULL;
+}
+
+/* The oper's reply for a level change Keycloak did not make. */
+static const char *
+kc_level_failure_reply(enum x3kc_result res)
+{
+    switch (res) {
+    case X3KC_BUSY:             /* nothing was sent */
+        return "NSMSG_KC_BUSY";
+    case X3KC_REJECTED:         /* nothing was written (x3kc_set_oper()) */
+    case X3KC_NOT_FOUND:
+        return "NSMSG_KC_LEVEL_REJECTED";
+    default:                    /* no answer, or a failure after a write */
+        return "NSMSG_KC_LEVEL_UNCONFIRMED";
+    }
+}
+
+static void
+kc_level_done(enum x3kc_result res, void *data)
+{
+    struct kc_level_pending *lp = data;
+    struct userNode *bot = lp->bot ? lp->bot : nickserv;
+    struct handle_info *hi;
+    char key[37];
+
+    kc_level_unlink(lp);
+    if (res == X3KC_OK) {
+        /* By name, then checked against the id Keycloak was changed for:
+         * a handle of that name bound to another Keycloak user (or to
+         * none) is not the account this change was made for. */
+        hi = get_handle_info(lp->handle);
+        if (hi && hi->kc_id)
+            kcid_index_key(hi->kc_id, key);
+        if (hi && hi->kc_id && !strcmp(key, lp->kckey)) {
+            if (hi->opserv_level != lp->level) {
+                log_module(NS_LOG, LOG_INFO, "Account %s setting oper level for account %s to %d (from %d).",
+                           lp->oper, hi->handle, lp->level, hi->opserv_level);
+                hi->opserv_level = lp->level;
+            } else {
+                log_module(NS_LOG, LOG_INFO, "Account %s re-synced oper level %u of account %s with Keycloak user %s (unchanged in X3).",
+                           lp->oper, lp->level, hi->handle, lp->kcid);
+            }
+            if (lp->asker)
+                send_message(lp->asker, bot, "NSMSG_KC_LEVEL_SET", hi->handle, lp->level);
+        } else {
+            log_module(NS_LOG, LOG_WARNING, "Account %s setting oper level for account %s to %u: Keycloak user %s was updated (oper group, level attribute), but the account is gone or no longer bound to that user, so no level was set in X3; check that Keycloak user.",
+                       lp->oper, lp->handle, lp->level, lp->kcid);
+            if (lp->asker)
+                send_message(lp->asker, bot, "NSMSG_KC_LEVEL_GONE", lp->handle);
+        }
+    } else {
+        if (res == X3KC_BUSY)
+            log_module(NS_LOG, LOG_INFO, "Account %s setting oper level for account %s to %u: the account server was busy; nothing was sent, nothing changed.",
+                       lp->oper, lp->handle, lp->level);
+        else if (res == X3KC_REJECTED || res == X3KC_NOT_FOUND)
+            log_module(NS_LOG, LOG_WARNING, "Account %s setting oper level for account %s to %u: Keycloak refused it (result %d; a missing group or user, or a bad id) before anything was written; nothing changed. Check Keycloak user %s and the account's binding.",
+                       lp->oper, lp->handle, lp->level, (int)res, lp->kcid);
+        else
+            /* With the seam's order a promotion adds the group last and a
+             * demotion removes it first, so a partial change never leaves
+             * the group ahead of X3; the attribute may be. */
+            log_module(NS_LOG, LOG_WARNING, "Account %s setting oper level for account %s to %u: Keycloak did not confirm it (result %d), so the level in X3 is unchanged; Keycloak user %s may be partly changed until the change is repeated or the old level set again.",
+                       lp->oper, lp->handle, lp->level, (int)res, lp->kcid);
+        if (lp->asker) {
+            const char *reply = kc_level_failure_reply(res);
+
+            if (res == X3KC_BUSY)
+                send_message(lp->asker, bot, reply);
+            else
+                send_message(lp->asker, bot, reply, lp->handle);
+        }
+    }
+    kc_level_free(lp);
+}
+
+/* Starts the Keycloak side of a level change of a bound handle and tells
+ * the oper; X3's level is set by kc_level_done() on Keycloak's OK.
+ * Returns 1 if the change was started (the seam may have answered it
+ * already, BUSY or a failure: the command was still given), 0 if it was
+ * refused here (one in flight for the handle or its Keycloak user, or out
+ * of memory).  Either way the oper has been told. */
+static int
+kc_level_begin(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level)
+{
+    struct kc_level_pending *lp;
+    char key[37];
+
+    kcid_index_key(target->kc_id, key);
+    if ((lp = kc_level_in_flight(target, key))) {
+        if (!irccasecmp(lp->handle, target->handle))
+            send_message(user, bot, "NSMSG_KC_LEVEL_IN_PROGRESS", lp->handle);
+        else
+            send_message(user, bot, "NSMSG_KC_LEVEL_IN_PROGRESS_SHARED", target->handle, lp->handle);
+        return 0;
+    }
+    /* The previous change for this Keycloak user was answered (at its
+     * deadline) but kc still holds its request: the seam would answer
+     * BUSY; say why. */
+    if (x3kc_oper_in_flight(target->kc_id)) {
+        send_message(user, bot, "NSMSG_KC_LEVEL_STILL_FINISHING", target->handle);
+        return 0;
+    }
+    if (!(lp = calloc(1, sizeof(*lp))) || !(lp->handle = strdup(target->handle))
+        || !(lp->oper = strdup(user->handle_info->handle))) {
+        if (lp)
+            kc_level_free(lp);
+        log_module(NS_LOG, LOG_ERROR, "Account %s setting oper level for account %s: out of memory; nothing changed.",
+                   user->handle_info->handle, target->handle);
+        send_message(user, bot, "NSMSG_KC_FAIL");
+        return 0;
+    }
+    lp->asker = user;
+    lp->bot = bot;
+    safestrncpy(lp->kcid, target->kc_id, sizeof(lp->kcid));
+    memcpy(lp->kckey, key, sizeof(lp->kckey));
+    lp->level = new_level;
+    lp->next = kc_level_head;
+    if (kc_level_head)
+        kc_level_head->prev = lp;
+    kc_level_head = lp;
+    send_message(user, bot, "NSMSG_KC_LEVEL_PENDING", target->handle);
+    /* The answer may come before this returns (busy, Keycloak off). */
+    x3kc_set_oper(lp->kcid, new_level > nickserv_conf.keycloak_oper_group_level, new_level,
+                  kc_level_done, lp);
+    return 1;
 }
 #endif /* WITH_KEYCLOAK */
 
@@ -5200,9 +5405,19 @@ static OPTION_FUNC(opt_karma)
     return 1;
 }
 
-/* Called from opserv from cmd_access */
+/* Called from opserv from cmd_access, and from opt_level (OSET, SEARCH
+ * SET).  Returns 1 if the level changed now, or -- Keycloak mode, a bound
+ * handle -- if the change was started in Keycloak (the level changes when
+ * Keycloak confirms it): either way the command was carried out and its
+ * caller's return makes modcmd audit it.  0 for a refusal.  *deferred
+ * (when deferred is not NULL) is set to 1 when this has given the oper the
+ * outcome itself -- a Keycloak change started here (reported when Keycloak
+ * answers), or refused because one is in flight -- so the caller adds no
+ * level line (it would show the old level). */
 int
-oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level) {
+oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level, int *deferred) {
+    if (deferred)
+        *deferred = 0;
     if (!oper_has_access(user, bot, nickserv_conf.modoper_level, 0))
         return 0;
     if ((user->handle_info->opserv_level < target->opserv_level)
@@ -5221,6 +5436,24 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
         send_message(user, bot, "MSG_STUPID_ACCESS_CHANGE");
         return 0;
     }
+#ifdef WITH_KEYCLOAK
+    /* Keycloak first, X3 once Keycloak confirmed (even for the level X3
+     * has already: that puts Keycloak back in step).  A handle with no
+     * Keycloak id changes in X3 only, as with no directory; a name is
+     * never looked up. */
+    if (nickserv_conf.keycloak_enable && nickserv_conf.keycloak_writeback
+        && (*nickserv_conf.keycloak_oper_group || *nickserv_conf.keycloak_field_oslevel)) {
+        if (target->kc_id) {
+            if (deferred)
+                *deferred = 1;
+            return kc_level_begin(user, bot, target, new_level);
+        }
+        if (target->opserv_level == new_level)
+            send_message(user, bot, "NSMSG_KC_UNBOUND_SAME", target->handle, new_level);
+        else
+            send_message(user, bot, "NSMSG_KC_UNBOUND", target->handle);
+    }
+#endif
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && *(nickserv_conf.ldap_oper_group_dn) && *(nickserv_conf.ldap_admin_dn)) {
         int rc;
@@ -5251,7 +5484,7 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
 
 static OPTION_FUNC(opt_level)
 {
-    int res;
+    int res, deferred = 0;
 
     if (!override) {
         if (!(noreply))
@@ -5259,8 +5492,8 @@ static OPTION_FUNC(opt_level)
 	return 0;
     }
 
-    res = (argc > 1) ? oper_try_set_access(user, nickserv, hi, strtoul(argv[1], NULL, 0)) : 0;
-    if (!(noreply))
+    res = (argc > 1) ? oper_try_set_access(user, nickserv, hi, strtoul(argv[1], NULL, 0), &deferred) : 0;
+    if (!(noreply) && !deferred)
         reply("NSMSG_SET_LEVEL", hi->opserv_level);
     return res;
 }
@@ -7868,6 +8101,7 @@ nickserv_remove_user(struct userNode *user, UNUSED_ARG(struct userNode *killer),
      * look-up, nor an unregister's Keycloak delete. */
     auth_pending_forget(user);
     kc_delete_forget(user);
+    kc_level_forget(user);
 #ifdef WITH_PROTOCOL_P10
     stamp_pending_forget(user);
 #endif
@@ -8421,6 +8655,11 @@ nickserv_db_cleanup(UNUSED_ARG(void* extra))
         struct kc_delete_pending *dp = kc_delete_head;
         kc_delete_unlink(dp);
         kc_delete_free(dp);
+    }
+    while (kc_level_head) {
+        struct kc_level_pending *lp = kc_level_head;
+        kc_level_unlink(lp);
+        kc_level_free(lp);
     }
     timeq_del(0, kc_delete_summary, NULL, TIMEQ_IGNORE_WHEN);
     kc_delete_summary_armed = 0;

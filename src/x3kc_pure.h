@@ -83,6 +83,29 @@ enum x3kc_queue_pick x3kc_queue_next(int lookups_waiting, int deletes_waiting, i
  * behind look-ups only, a delete behind look-ups and deletes. */
 int x3kc_queue_must_wait(int is_delete, int lookups_waiting, int deletes_waiting, int share_full);
 
+/* The next step of an oper level change (x3kc_set_oper()).  The group's id
+ * is looked up first (a read; a missing group refuses the change before
+ * anything is written).  Then the order is chosen so that a change that
+ * stops half-way never leaves the oper group ahead of X3: a promotion into
+ * the group (in_group) writes the level attribute first and adds the group
+ * last; a demotion removes the group first, then writes the attribute.
+ * has_group / has_attr: that part is configured; group_known: its id is
+ * known; group_done / attr_done: that write succeeded. */
+enum x3kc_oper_step {
+    X3KC_OPER_GROUP_LOOKUP,     /* look the group's id up */
+    X3KC_OPER_GROUP_CHANGE,     /* add to / remove from the group */
+    X3KC_OPER_ATTRIBUTE,        /* read the user, write the attribute */
+    X3KC_OPER_DONE              /* every configured part succeeded */
+};
+enum x3kc_oper_step x3kc_oper_next(int has_group, int group_known, int group_done,
+                                   int has_attr, int attr_done, int in_group);
+
+/* What an oper level change that failed answers: res, except that a
+ * refusal (X3KC_REJECTED, X3KC_NOT_FOUND) after a write already succeeded
+ * (wrote) is X3KC_UNREACHABLE -- the change is partly made, and "refused"
+ * would tell the oper nothing happened. */
+enum x3kc_result x3kc_oper_failure(enum x3kc_result res, int wrote);
+
 /* The hostmask a new owner gets from a login-on-connect or SASL request's
  * "ident@host:ip" ("ident@[host]:ip" when the host has a ':'): the mask
  * AUTH seeds for a connected user, generate_hostmask() with
