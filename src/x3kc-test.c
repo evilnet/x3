@@ -80,6 +80,26 @@ test_seam(void)
     assert(x3kc_queue_slots(64) == 48);
     assert(x3kc_queue_slots(65) == 49);
 
+    /* Queued look-ups start before queued deletes; nothing starts while
+     * the share is full. */
+    assert(x3kc_queue_next(0, 0, 0) == X3KC_QUEUE_NONE);
+    assert(x3kc_queue_next(1, 0, 0) == X3KC_QUEUE_LOOKUP);
+    assert(x3kc_queue_next(0, 1, 0) == X3KC_QUEUE_DELETE);
+    assert(x3kc_queue_next(1, 1, 0) == X3KC_QUEUE_LOOKUP);
+    assert(x3kc_queue_next(1, 1, 1) == X3KC_QUEUE_NONE);
+    assert(x3kc_queue_next(1, 0, 1) == X3KC_QUEUE_NONE);
+    assert(x3kc_queue_next(0, 1, 1) == X3KC_QUEUE_NONE);
+    /* A new look-up waits behind look-ups only (it overtakes deletes); a
+     * new delete waits behind either. */
+    assert(x3kc_queue_must_wait(0, 0, 0, 0) == 0);
+    assert(x3kc_queue_must_wait(0, 0, 1, 0) == 0);
+    assert(x3kc_queue_must_wait(0, 1, 0, 0) == 1);
+    assert(x3kc_queue_must_wait(0, 0, 0, 1) == 1);
+    assert(x3kc_queue_must_wait(1, 0, 0, 0) == 0);
+    assert(x3kc_queue_must_wait(1, 0, 1, 0) == 1);
+    assert(x3kc_queue_must_wait(1, 1, 0, 0) == 1);
+    assert(x3kc_queue_must_wait(1, 0, 0, 1) == 1);
+
     /* reason: control characters out, at most 200 bytes, never a cut
      * UTF-8 character; nothing left is NULL. */
     assert(x3kc_clean_reason(NULL, r) == NULL);

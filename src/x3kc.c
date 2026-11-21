@@ -75,7 +75,13 @@ static char *group_cache_id;
  *     the record is freed only then: kc still holds it until it calls back;
  *   - requests in flight are counted (`counted`, `inflight`) for
  *     keycloak_max_pending, until kc's last callback for the record.
- * A queued look-up is a record that has not reached kc yet (`queued`).
+ * A queued look-up or delete is a record that has not reached kc yet
+ * (`queued`): each waits in its own first-come, first-served queue, and
+ * both start within the same share of the slots, look-ups first
+ * (x3kc_queue_next()).  Neither has a deadline until it starts (from
+ * then on, keycloak_timeout): a netjoin's stamp look-ups each get their
+ * full time with Keycloak however long they waited, and an expiry run's
+ * deletes may wait as long as it takes, but never in front of a look-up.
  * At exit every record is `dead`: kc's callbacks for it free it and answer
  * no one. */
 enum x3kc_kind { KIND_LOGIN, KIND_LOOKUP, KIND_DELETE, KIND_SET_OPER };
@@ -84,7 +90,7 @@ enum x3kc_step { STEP_NONE, STEP_GROUP_LOOKUP, STEP_GROUP_CHANGE, STEP_REPR_GET,
 
 struct x3kc_rec {
     struct x3kc_rec *prev, *next;       /* every record */
-    struct x3kc_rec *qprev, *qnext;     /* queued look-ups */
+    struct x3kc_rec *qprev, *qnext;     /* its queue (queue_of()) */
     enum x3kc_kind kind;
     union {
         x3kc_login_cb login;
@@ -98,6 +104,7 @@ struct x3kc_rec {
     unsigned int counted : 1;
     unsigned int queued : 1;
     unsigned int group_done : 1;
+    unsigned int arm_at_start : 1;      /* queued look-up: the deadline runs from its start */
     char *account;                      /* queued look-up, login: the name */
     /* set_oper */
     enum x3kc_step step;
@@ -111,8 +118,14 @@ struct x3kc_rec {
 };
 
 static struct x3kc_rec *rec_head;
-static struct x3kc_rec *queue_head, *queue_tail;
 static unsigned int inflight;
+
+/* Calls waiting for a slot.  All queue handling is in this file's
+ * "queues" functions below (queue_of() to pump()). */
+struct rec_queue {
+    struct x3kc_rec *head, *tail;
+};
+static struct rec_queue lookup_queue, delete_queue;
 
 static const char *
 kind_name(enum x3kc_kind kind)
@@ -140,9 +153,9 @@ seam_full(void)
     return inflight >= nickserv_conf.keycloak_max_pending;
 }
 
-/* Queued look-ups start only while they leave a reserve of slots for the
- * calls that do not queue (x3kc_queue_slots()), so a burst of look-ups
- * never crowds logins out. */
+/* Queued look-ups and deletes start only while they leave a reserve of
+ * slots for the calls that do not queue (x3kc_queue_slots()), so a burst
+ * of look-ups or an expiry run's deletes never crowds logins out. */
 static int
 queue_share_full(void)
 {
@@ -211,34 +224,63 @@ rec_disarm(struct x3kc_rec *r)
     }
 }
 
+/* ---- queues ---- */
+
+static struct rec_queue *
+queue_of(const struct x3kc_rec *r)
+{
+    return r->kind == KIND_DELETE ? &delete_queue : &lookup_queue;
+}
+
 static void
 queue_append(struct x3kc_rec *r)
 {
+    struct rec_queue *q = queue_of(r);
+
     r->queued = 1;
     r->qnext = NULL;
-    r->qprev = queue_tail;
-    if (queue_tail)
-        queue_tail->qnext = r;
+    r->qprev = q->tail;
+    if (q->tail)
+        q->tail->qnext = r;
     else
-        queue_head = r;
-    queue_tail = r;
+        q->head = r;
+    q->tail = r;
 }
 
 static void
 queue_remove(struct x3kc_rec *r)
 {
+    struct rec_queue *q = queue_of(r);
+
     if (!r->queued)
         return;
     if (r->qprev)
         r->qprev->qnext = r->qnext;
     else
-        queue_head = r->qnext;
+        q->head = r->qnext;
     if (r->qnext)
         r->qnext->qprev = r->qprev;
     else
-        queue_tail = r->qprev;
+        q->tail = r->qprev;
     r->qprev = r->qnext = NULL;
     r->queued = 0;
+}
+
+/* Whether a new look-up (is_delete 0) or delete (1) that may queue must
+ * wait rather than start now. */
+static int
+queue_must_wait(int is_delete)
+{
+    return x3kc_queue_must_wait(is_delete, lookup_queue.head != NULL, delete_queue.head != NULL,
+                                queue_share_full());
+}
+
+/* The oldest waiting call of either queue (look-ups first), for draining
+ * at a restart or at exit; NULL when both are empty. */
+static struct x3kc_rec *
+queue_first(void)
+{
+    return lookup_queue.head ? lookup_queue.head : delete_queue.head;
 }
 
 /* Answers r's caller -- unless it was answered already or r is dead --
@@ -278,11 +320,12 @@ rec_answer(struct x3kc_rec *r, enum x3kc_result res, const char *kcid,
 }
 
 static void lookup_start(struct x3kc_rec *r, const char *account);
+static void delete_start(struct x3kc_rec *r);
 
-/* Starts queued look-ups while their share of the slots has room.  Not
- * re-entered: a
- * look-up answered while it is being started frees its slot and calls
- * this again, and the loop below picks that slot up. */
+/* Starts queued calls while their share of the slots has room: every
+ * queued look-up before any queued delete, each queue in order.  Not
+ * re-entered: a call answered while it is being started frees its slot
+ * and calls this again, and the loop below picks that slot up. */
 static void
 pump(void)
 {
@@ -292,13 +335,28 @@ pump(void)
     if (pumping)
         return;
     pumping = 1;
-    while (queue_head && kc_configured && !queue_share_full()) {
-        r = queue_head;
-        queue_remove(r);
-        lookup_start(r, r->account);
+    while (kc_configured) {
+        switch (x3kc_queue_next(lookup_queue.head != NULL, delete_queue.head != NULL,
+                                queue_share_full())) {
+        case X3KC_QUEUE_LOOKUP:
+            r = lookup_queue.head;
+            queue_remove(r);
+            lookup_start(r, r->account);
+            continue;
+        case X3KC_QUEUE_DELETE:
+            r = delete_queue.head;
+            queue_remove(r);
+            delete_start(r);
+            continue;
+        case X3KC_QUEUE_NONE:
+            break;
+        }
+        break;
     }
     pumping = 0;
 }
+
+/* ---- end of queues ---- */
 
 /* r's last request is over (kc called back, or refused to start it):
  * answer the caller and free the slot. */
@@ -344,7 +402,7 @@ quiet_summary(UNUSED_ARG(void *arg))
     quiet_summary_timer = NULL;         /* spent */
     if (!quiet_count[QUIET_DEADLINE] && !quiet_count[QUIET_FAILED])
         return;                         /* the run is over */
-    log_module(KC_LOG, LOG_WARNING, "In the last %us, %u Keycloak call(s) were answered UNREACHABLE at their deadline (%lu ms) and %u failed without an answer.",
+    log_module(KC_LOG, LOG_WARNING, "In the last %us, %u Keycloak call(s) were answered UNREACHABLE at their deadline (%lu ms) and %u failed without an answer or were refused.",
                QUIET_SUMMARY_SECS, quiet_count[QUIET_DEADLINE], deadline_ms(), quiet_count[QUIET_FAILED]);
     quiet_count[QUIET_DEADLINE] = quiet_count[QUIET_FAILED] = 0;
     quiet_summary_timer = x3_kc_get_event_ops()->timer_add(QUIET_SUMMARY_SECS * 1000UL, quiet_summary, NULL);
@@ -368,9 +426,8 @@ static void
 deadline_note(struct x3kc_rec *r)
 {
     if (quiet_note(QUIET_DEADLINE))
-        log_module(KC_LOG, LOG_WARNING, "Keycloak did not answer a %s within %lu ms%s; further calls without an answer are counted, one line per %us.",
-                   kind_name(r->kind), deadline_ms(), r->queued ? " (it was still waiting for a free slot)" : "",
-                   QUIET_SUMMARY_SECS);
+        log_module(KC_LOG, LOG_WARNING, "Keycloak did not answer a %s within %lu ms; further calls without an answer are counted, one line per %us.",
+                   kind_name(r->kind), deadline_ms(), QUIET_SUMMARY_SECS);
 }
 
 /* A call kc answered with a failure that is not Keycloak's verdict on the
@@ -385,7 +442,9 @@ failure_note(const char *what, int result)
                    what, result, QUIET_SUMMARY_SECS);
 }
 
-/* The deadline: keycloak_timeout ms after the call. */
+/* The deadline: keycloak_timeout ms after the call, or for a queued
+ * look-up or a delete after its request starts (a queued call has none
+ * while it waits). */
 static void
 rec_deadline(void *arg)
 {
@@ -419,9 +478,11 @@ seam_abort_all(void)
     struct x3kc_rec *r, *next;
     unsigned int n = 0;
 
-    while ((r = queue_head) != NULL) {
+    while ((r = queue_first()) != NULL) {
         queue_remove(r);
-        rec_answer(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+        /* A queued delete was never sent: "not sent" (BUSY), not
+         * "unconfirmed". */
+        rec_answer(r, r->kind == KIND_DELETE ? X3KC_BUSY : X3KC_UNREACHABLE, NULL, NULL, NULL);
         n++;
     }
     for (r = rec_head; r; r = next) {
@@ -560,6 +621,11 @@ lookup_cb(int result, const struct kc_user *user, void *data)
 static void
 lookup_start(struct x3kc_rec *r, const char *account)
 {
+    /* A look-up that may queue (a stamp's) has its deadline from here,
+     * as a delete does: one that waited behind a netjoin's look-ups still
+     * gets its full keycloak_timeout with Keycloak. */
+    if (r->arm_at_start && rec_arm(r) != 0)
+        return;
     rec_count(r);
     /* kc copies account before it can call back (and free r with it). */
     if (kc_user_get(account, lookup_cb, r) != 0)
@@ -584,12 +650,13 @@ x3kc_lookup(const char *account, int queue, x3kc_user_cb cb, void *data)
         return;
     }
     r->cb.user = cb;
-    if (rec_arm(r) != 0)
+    r->arm_at_start = queue ? 1 : 0;
+    if (!queue && rec_arm(r) != 0)
         return;
-    /* Behind any look-up already waiting, so the queue stays first come,
-     * first served; and only within the queued look-ups' share of the
-     * slots. */
-    if (queue && (queue_head || queue_share_full())) {
+    /* Behind any look-up already waiting, so its queue stays first come,
+     * first served (ahead of waiting deletes); and only within the queued
+     * calls' share of the slots. */
+    if (queue && queue_must_wait(0)) {
         if (!(r->account = strdup(account))) {
             rec_answer(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
             return;
@@ -616,15 +683,24 @@ write_outcome(const char *what, const char *uuid, int result)
 {
     enum x3kc_result res = x3kc_map_write(result);
 
-    if (res == X3KC_REJECTED)
-        log_module(KC_LOG, LOG_ERROR, "Keycloak refused X3's service account the %s of user %s: it needs the realm-management role manage-users.",
-                   what, uuid);
-    else if (res == X3KC_UNREACHABLE && result == KC_ERROR)
-        log_module(KC_LOG, LOG_ERROR, "Keycloak %s of user %s failed (no answer, or an error status; kc reports a refusal of X3's service account the same way: if Keycloak is up, check that client %s's service account has the realm-management role manage-users).",
-                   what, uuid, nickserv_conf.keycloak_client_id);
-    else if (res == X3KC_UNREACHABLE)
-        log_module(KC_LOG, LOG_WARNING, "Keycloak %s of user %s failed (kc result %d).", what, uuid, result);
-    else if (res == X3KC_NOT_FOUND)
+    if (res == X3KC_REJECTED) {
+        log_module(KC_LOG, LOG_DEBUG, "Keycloak refused the %s of user %s (kc result %d).", what, uuid, result);
+        if (quiet_note(QUIET_FAILED))
+            log_module(KC_LOG, LOG_ERROR, "Keycloak refused X3's service account the %s of user %s: it needs the realm-management role manage-users; further calls without an answer are counted, one line per %us.",
+                       what, uuid, QUIET_SUMMARY_SECS);
+    } else if (res == X3KC_UNREACHABLE) {
+        /* Quietly, as failure_note(): an expiry run during an outage
+         * sends up to keycloak_max_pending deletes at once. */
+        log_module(KC_LOG, LOG_DEBUG, "Keycloak %s of user %s failed (kc result %d).", what, uuid, result);
+        if (quiet_note(QUIET_FAILED)) {
+            if (result == KC_ERROR)
+                log_module(KC_LOG, LOG_ERROR, "Keycloak %s of user %s failed (no answer, or an error status; kc reports a refusal of X3's service account the same way: if Keycloak is up, check that client %s's service account has the realm-management role manage-users); further calls without an answer are counted, one line per %us.",
+                           what, uuid, nickserv_conf.keycloak_client_id, QUIET_SUMMARY_SECS);
+            else
+                log_module(KC_LOG, LOG_WARNING, "Keycloak %s of user %s failed (kc result %d); further calls without an answer are counted, one line per %us.",
+                           what, uuid, result, QUIET_SUMMARY_SECS);
+        }
+    } else if (res == X3KC_NOT_FOUND)
         log_module(KC_LOG, LOG_INFO, "Keycloak %s: user %s (or the group) does not exist.", what, uuid);
     return res;
 }
@@ -637,6 +713,17 @@ delete_cb(int result, void *data)
     if (!rec_returned(r))
         return;
     rec_done(r, write_outcome("delete", r->uuid, result), NULL, NULL, NULL);
+}
+
+/* A delete gets its slot: its deadline runs from here. */
+static void
+delete_start(struct x3kc_rec *r)
+{
+    if (rec_arm(r) != 0)
+        return;
+    rec_count(r);
+    if (kc_user_delete(r->uuid, delete_cb, r) != 0)
+        rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
 }
 
 void
@@ -654,21 +741,21 @@ x3kc_delete(const char *kcid, x3kc_done_cb cb, void *data)
         cb(X3KC_REJECTED, data);
         return;
     }
-    if (seam_full()) {
-        cb(X3KC_BUSY, data);
-        return;
-    }
     if (!(r = rec_new(KIND_DELETE, data))) {
         cb(X3KC_UNREACHABLE, data);
         return;
     }
     r->cb.done = cb;
     memcpy(r->uuid, uuid, sizeof(uuid));
-    if (rec_arm(r) != 0)
+    /* Never BUSY: past the share of the slots it waits its turn, behind
+     * every waiting look-up and delete (an expiry run can unregister
+     * thousands of handles at once). */
+    if (queue_must_wait(1)) {
+        queue_append(r);
+        log_module(KC_LOG, LOG_DEBUG, "Keycloak delete of user %s queued (%u in flight).", r->uuid, inflight);
         return;
-    rec_count(r);
-    if (kc_user_delete(r->uuid, delete_cb, r) != 0)
-        rec_done(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+    }
+    delete_start(r);
 }
 
 static void
@@ -919,8 +1006,20 @@ x3kc_exit(UNUSED_ARG(void *extra))
         r->answered = 1;
         rec_disarm(r);
     }
-    while (queue_head)
-        queue_remove(queue_head);
+    {
+        unsigned int deletes = 0;
+
+        for (r = delete_queue.head; r; r = r->qnext)
+            deletes++;
+        if (deletes) {
+            log_module(KC_LOG, LOG_WARNING, "Exiting with %u Keycloak user delete(s) still waiting their turn; they are not sent, and those users still exist in Keycloak (ids follow at INFO).",
+                       deletes);
+            for (r = delete_queue.head; r; r = r->qnext)
+                log_module(KC_LOG, LOG_INFO, "Keycloak delete not sent at exit: user %s.", r->uuid);
+        }
+    }
+    while ((r = queue_first()) != NULL)
+        queue_remove(r);
     if (quiet_summary_timer) {
         x3_kc_get_event_ops()->timer_cancel(quiet_summary_timer);
         quiet_summary_timer = NULL;

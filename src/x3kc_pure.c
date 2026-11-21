@@ -102,6 +102,26 @@ x3kc_queue_slots(unsigned int max_pending)
     return max_pending > reserve + 1 ? max_pending - reserve : 1;
 }
 
+enum x3kc_queue_pick
+x3kc_queue_next(int lookups_waiting, int deletes_waiting, int share_full)
+{
+    if (share_full)
+        return X3KC_QUEUE_NONE;
+    if (lookups_waiting)
+        return X3KC_QUEUE_LOOKUP;
+    if (deletes_waiting)
+        return X3KC_QUEUE_DELETE;
+    return X3KC_QUEUE_NONE;
+}
+
+int
+x3kc_queue_must_wait(int is_delete, int lookups_waiting, int deletes_waiting, int share_full)
+{
+    if (share_full || lookups_waiting)
+        return 1;
+    return is_delete && deletes_waiting;
+}
+
 int
 x3kc_loc_mask(const char *userhost, char *out, size_t outlen)
 {

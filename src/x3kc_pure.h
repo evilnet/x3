@@ -62,6 +62,27 @@ int x3kc_failed_password(enum x3kc_result res);
  * queued look-ups always make progress.  0 for a cap of 0. */
 unsigned int x3kc_queue_slots(unsigned int max_pending);
 
+/* The seam's two queues for calls past their share of the slots: queued
+ * look-ups (a stamped user waits on each) and queued deletes (nobody
+ * waits); either's deadline runs from its request's start.  Look-ups go
+ * ahead of deletes, so an expiry run's thousands of deletes never hold a
+ * stamp's look-up back; each queue is first come, first served. */
+enum x3kc_queue_pick {
+    X3KC_QUEUE_NONE,            /* nothing starts now */
+    X3KC_QUEUE_LOOKUP,          /* the oldest queued look-up starts */
+    X3KC_QUEUE_DELETE           /* the oldest queued delete starts */
+};
+
+/* Which queued call starts next, given whether look-ups and deletes are
+ * waiting and whether the queued calls' share of the slots is full. */
+enum x3kc_queue_pick x3kc_queue_next(int lookups_waiting, int deletes_waiting, int share_full);
+
+/* Whether a new call that may queue (a look-up with `queue` set: is_delete
+ * 0; a delete: 1) must wait in its queue rather than start now: its share
+ * is full, or a call it may not overtake is waiting -- a look-up waits
+ * behind look-ups only, a delete behind look-ups and deletes. */
+int x3kc_queue_must_wait(int is_delete, int lookups_waiting, int deletes_waiting, int share_full);
+
 /* The hostmask a new owner gets from a login-on-connect or SASL request's
  * "ident@host:ip" ("ident@[host]:ip" when the host has a ':'): the mask
  * AUTH seeds for a connected user, generate_hostmask() with

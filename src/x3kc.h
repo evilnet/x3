@@ -42,17 +42,21 @@ enum x3kc_result {
  *
  * More of the contract:
  *   - Each call is answered within keycloak_timeout ms of being made
+ *     (a delete, and a look-up with `queue` set: of its request starting;
+ *     while such a call waits for a slot it has no deadline)
  *     (X3KC_UNREACHABLE at that deadline if Keycloak has not answered; a
  *     later answer is dropped).  A call made of several requests (set_oper)
  *     has one deadline for the whole call.
  *   - Over keycloak_max_pending requests in flight a call is answered
  *     X3KC_BUSY at once, except x3kc_lookup() with `queue` set, which waits
- *     its turn (still within its deadline).  Queued look-ups fill at most
+ *     its turn (still within its deadline), and x3kc_delete(), which
+ *     always waits its turn (see there).  Queued calls fill at most
  *     x3kc_queue_slots() of the slots, so the calls that do not queue
- *     (logins above all) keep a reserve while look-ups wait.
+ *     (logins above all) keep a reserve while look-ups and deletes wait.
  *   - With Keycloak off, or kc not running, a call is answered
  *     X3KC_UNREACHABLE at once.  So is every call in flight when a rehash
- *     restarts kc or turns Keycloak off.
+ *     restarts kc or turns Keycloak off (a delete still queued: X3KC_BUSY,
+ *     it was never sent).
  *   - At process exit nothing is answered: the callbacks' data is being
  *     torn down.
  *   - A callback may call any x3kc_* function again.
@@ -96,10 +100,21 @@ void x3kc_init(void);
 void x3kc_login(const char *account, const char *password, x3kc_login_cb cb, void *data);
 
 /* Looks a Keycloak user up by name: X3KC_OK with its id and email, or
- * X3KC_NOT_FOUND. */
+ * X3KC_NOT_FOUND.  With `queue` set (a stamp's look-up) it waits behind the
+ * look-ups already waiting, never behind a queued delete, and its deadline
+ * runs from its request's start; without, it is answered X3KC_BUSY over
+ * the cap and its deadline runs from the call. */
 void x3kc_lookup(const char *account, int queue, x3kc_user_cb cb, void *data);
 
-/* Deletes the Keycloak user with this id. */
+/* Deletes the Keycloak user with this id.  Never answered X3KC_BUSY for
+ * want of a slot: past the share queued calls get it waits, behind any
+ * delete already waiting, and every queued look-up -- even one queued
+ * after it -- starts first; its deadline runs from when its request
+ * starts.  X3KC_BUSY means it was never sent (still queued when a
+ * rehash restarted kc); X3KC_UNREACHABLE that Keycloak did not confirm it
+ * (it may still have been carried out); X3KC_REJECTED a refusal, or an id
+ * that is no Keycloak id.  Deletes still queued at exit are logged, not
+ * sent. */
 void x3kc_delete(const char *kcid, x3kc_done_cb cb, void *data);
 
 /* Puts the user in or out of keycloak_oper_group (when set) and writes
