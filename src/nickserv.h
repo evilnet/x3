@@ -277,7 +277,13 @@ void nickserv_unbind_user(struct userNode *user);
 void nickserv_replace_pinned_fakehost(struct userNode *user, const char *account);
 
 struct handle_info *get_victim_oper(struct userNode *user, const char *target);
-struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *userhost);
+/* Login-on-connect and SASL through X3.  cb gets the handle, or NULL for a
+ * refusal, exactly once: before loc_auth_async() returns for every login
+ * that does not ask Keycloak (LDAP or local mode, a certificate login, no
+ * password), from the Keycloak answer otherwise.  Strings are copied. */
+typedef void (*loc_auth_cb)(struct handle_info *hi, void *data);
+void loc_auth_async(const char *sslfp, const char *handle, const char *password,
+                    const char *userhost, loc_auth_cb cb, void *data);
 
 typedef void (*user_mode_func_t)(struct userNode *user, const char *mode_change, void *extra);
 void reg_user_mode_func(user_mode_func_t func, void *extra);

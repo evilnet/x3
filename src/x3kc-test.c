@@ -46,7 +46,7 @@ edit_refused(const char *repr_text, const char *attr, unsigned int level)
 static void
 test_seam(void)
 {
-    char r[X3KC_REASON_MAX + 1], e[X3KC_EMAIL_MAX + 1], big[400];
+    char r[X3KC_REASON_MAX + 1], e[X3KC_EMAIL_MAX + 1], big[400], m[128];
 
     /* The password grant's outcomes (the brief's seven, then the default). */
     assert(x3kc_map_grant(KC_SUCCESS) == X3KC_OK);
@@ -109,6 +109,18 @@ test_seam(void)
     strcpy(big + 250, "after");                             /* controls don't count */
     assert(x3kc_clean_reason(big, r) == r);
     assert(strcmp(r, "after") == 0);
+    /* '$' is X3's message-code character: doubled, so a reply shows it
+     * as it is ("$b" would turn bold, "$N" into a nick) */
+    assert(x3kc_clean_reason("costs $5 $b$N$", r) == r);
+    assert(strcmp(r, "costs $$5 $$b$$N$$") == 0);
+    memset(big, 'x', 199);
+    strcpy(big + 199, "$tail");                             /* "$$" does not fit after 199 */
+    assert(x3kc_clean_reason(big, r) == r);
+    assert(strlen(r) == 199 && strspn(r, "x") == 199);
+    memset(big, 'x', 198);
+    strcpy(big + 198, "$tail");                             /* "$$" fits exactly */
+    assert(x3kc_clean_reason(big, r) == r);
+    assert(strlen(r) == 200 && strcmp(r + 198, "$$") == 0);
 
     /* email: copied as it is or refused (NULL) -- too long, a control
      * character, a space, no '@'. */
@@ -185,8 +197,89 @@ test_seam(void)
     assert(edit_refused("{" USER "}", "", 5));
     assert(x3kc_repr_set_level(NULL, "x3_opserv_level", 5) == -1);
 #undef USER
+
+    /* The hostmask a login-on-connect or SASL request gives a new owner
+     * (a Keycloak-id reset with no user yet): what AUTH's reset seeds for
+     * a connected user, generate_hostmask(OMITNICK|NO_HIDING|ANY_IDENT). */
+    assert(x3kc_loc_mask("bob@host.example.com:192.0.2.7", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@*.example.com") == 0);                 /* two dots: last two labels */
+    assert(x3kc_loc_mask("~bob@a.b.c.example.org:192.0.2.7", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@*.c.example.org") == 0);               /* more: last three */
+    assert(x3kc_loc_mask("bob@b.c.example.org:192.0.2.7", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@*.c.example.org") == 0);
+    assert(x3kc_loc_mask("bob@example.com:192.0.2.7", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@example.com") == 0);                   /* one dot: as it is */
+    assert(x3kc_loc_mask("bob@localhost:127.0.0.1", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@localhost") == 0);
+    assert(x3kc_loc_mask("bob@172.29.0.1:172.29.0.1", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@172.29.*") == 0);                      /* an address: its /16 */
+    assert(x3kc_loc_mask("bob@[2001:db8:1:2::1]:2001:db8:1:2::1", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@2001:db8:1:*") == 0);                  /* IPv6: its /48 */
+    assert(x3kc_loc_mask("bob@[::ffff:192.0.2.7]:::ffff:192.0.2.7", m, sizeof(m)) == 1);
+    assert(strcmp(m, "*@192.0.*") == 0);                       /* v4-mapped is IPv4 */
+    /* not a request's userhost: no mask */
+    assert(x3kc_loc_mask(NULL, m, sizeof(m)) == 0);
+    assert(x3kc_loc_mask("", m, sizeof(m)) == 0);
+    assert(x3kc_loc_mask("bob.example.com:192.0.2.7", m, sizeof(m)) == 0);   /* no '@' */
+    assert(x3kc_loc_mask("bob@host.example.com", m, sizeof(m)) == 0);        /* no ip */
+    assert(x3kc_loc_mask("bob@:192.0.2.7", m, sizeof(m)) == 0);              /* no host */
+    assert(x3kc_loc_mask("bob@[2001:db8::1:2001:db8::1", m, sizeof(m)) == 0); /* no ']' */
+    assert(x3kc_loc_mask("bob@host.example.com:192.0.2.7", m, 8) == 0);      /* does not fit */
+
+    /* A password login's answer, for the login paths (AUTH, login-on-connect,
+     * SASL PLAIN).  The answers that end an AUTH before X3 looks at the
+     * handle, and their replies; OK and a wrong password go on. */
+    assert(x3kc_login_reply(X3KC_OK) == NULL);
+    assert(x3kc_login_reply(X3KC_BAD_PASSWORD) == NULL);
+    assert(strcmp(x3kc_login_reply(X3KC_DISABLED), "NSMSG_KC_DISABLED") == 0);
+    assert(strcmp(x3kc_login_reply(X3KC_NOT_SET_UP), "NSMSG_KC_NOT_SET_UP") == 0);
+    assert(strcmp(x3kc_login_reply(X3KC_BUSY), "NSMSG_KC_BUSY") == 0);
+    assert(strcmp(x3kc_login_reply(X3KC_UNREACHABLE), "NSMSG_KC_FAIL") == 0);
+    /* not answers a login gets; still an outage, never a way in */
+    assert(strcmp(x3kc_login_reply(X3KC_NOT_FOUND), "NSMSG_KC_FAIL") == 0);
+    assert(strcmp(x3kc_login_reply(X3KC_REJECTED), "NSMSG_KC_FAIL") == 0);
+    assert(strcmp(x3kc_login_reply((enum x3kc_result)99), "NSMSG_KC_FAIL") == 0);
+    /* Only a wrong password counts as a failed password (reply, failpw
+     * hooks, auth policer): an outage, a busy seam, X3's own client being
+     * refused, a disabled or half-set-up account never do. */
+    assert(x3kc_failed_password(X3KC_BAD_PASSWORD) == 1);
+    assert(x3kc_failed_password(X3KC_OK) == 0);
+    assert(x3kc_failed_password(X3KC_DISABLED) == 0);
+    assert(x3kc_failed_password(X3KC_NOT_SET_UP) == 0);
+    assert(x3kc_failed_password(X3KC_BUSY) == 0);
+    assert(x3kc_failed_password(X3KC_UNREACHABLE) == 0);
+    assert(x3kc_failed_password(X3KC_NOT_FOUND) == 0);
+    assert(x3kc_failed_password(X3KC_REJECTED) == 0);
 }
 #endif /* WITH_KEYCLOAK */
+
+/* The Keycloak-id decision a login makes once the account name is known to
+ * be the Keycloak user's (handle_account for an announced id, AUTH / LOC /
+ * SASL PLAIN for the id of a password grant). */
+static void
+test_kcid_decide(void)
+{
+    const char *A = "a6e4EJ2tEdGAtADAT9QwyA", *B = "BBBBBBBBBBBBBBBBBBBBBB";
+
+    /* equal: passes, whatever the other inputs */
+    assert(kcid_decide(A, 0, 0, 0, A) == KCID_PASS);
+    assert(kcid_decide(A, 0, 1, 1, A) == KCID_PASS);
+    /* none stored: adopted */
+    assert(kcid_decide(NULL, 0, 0, 0, A) == KCID_ADOPT);
+    assert(kcid_decide(NULL, 0, 1, 1, A) == KCID_ADOPT);
+    /* an id the handle's binding replaced: refused, stored or not (after
+     * REBIND * nothing is stored, and it must not be re-adopted) */
+    assert(kcid_decide(B, 1, 0, 0, A) == KCID_REFUSE_STALE);
+    assert(kcid_decide(B, 1, 1, 0, A) == KCID_REFUSE_STALE);
+    assert(kcid_decide(NULL, 1, 0, 0, A) == KCID_REFUSE_STALE);
+    assert(kcid_decide(NULL, 1, 1, 1, A) == KCID_REFUSE_STALE);
+    /* different: by default refused */
+    assert(kcid_decide(B, 0, 0, 0, A) == KCID_REFUSE_MISMATCH);
+    assert(kcid_decide(B, 0, 0, 1, A) == KCID_REFUSE_MISMATCH);
+    /* different with keycloak_id_reset: reset, unless suspended */
+    assert(kcid_decide(B, 0, 1, 0, A) == KCID_RESET);
+    assert(kcid_decide(B, 0, 1, 1, A) == KCID_REFUSE_SUSPENDED);
+}
 
 int main(void)
 {
@@ -198,6 +291,7 @@ int main(void)
     assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9Qwy", u) == 0);     /* 21 chars */
     assert(kcid_to_uuid("a6e4EJ2tEdGAtADAT9Qwy!", u) == 0);    /* bad char */
     assert(kcid_to_uuid(NULL, u) == 0);
+    test_kcid_decide();
 #ifdef WITH_KEYCLOAK
     test_seam();
     puts("x3kc-test: ok (kcid, seam)");

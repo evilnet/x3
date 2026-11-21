@@ -78,3 +78,19 @@ kcid_to_uuid(const char *compact, char out[37])
     out[o] = 0;
     return 1;
 }
+
+enum kcid_verdict
+kcid_decide(const char *stored, int replaced, int reset_on, int suspended, const char *id)
+{
+    if (replaced)
+        return KCID_REFUSE_STALE;
+    if (!stored)
+        return KCID_ADOPT;
+    if (!strcmp(stored, id))
+        return KCID_PASS;
+    if (reset_on && suspended)
+        return KCID_REFUSE_SUSPENDED;
+    if (reset_on)
+        return KCID_RESET;
+    return KCID_REFUSE_MISMATCH;
+}

@@ -1572,8 +1572,12 @@ static CMD_FUNC(cmd_sasl)
         return 0;
 
     serv = GetServerH(origin);
-    if (!serv)
-      return 0;
+    if (!serv) {
+      /* Not a parse error: that would log the whole line, and a PLAIN
+       * payload is a password in base64. */
+      log_module(MAIN_LOG, LOG_WARNING, "SASL line from %s, which is not a server; ignored.", origin ? origin : "(nobody)");
+      return 1;
+    }
 
     call_sasl_input_func(serv, argv[2], argv[3], argv[4], (argc>5 ? argv[argc-1] : NULL));
 
@@ -1717,14 +1721,81 @@ static CMD_FUNC(cmd_nick)
     return 1;
 }
 
+/* Where a login-on-connect answer goes: the asking server, by numeric (it
+ * may split before a Keycloak answer comes), and the ircd's cookie for the
+ * connection. */
+struct loc_reply_to {
+    struct loc_reply_to *prev, *next;   /* listed until answered, for the exit */
+    char server[COMBO_NUMERIC_LEN + 1];
+    char *cookie;
+    char *nick;                 /* AC C only: for the debug line it always wrote */
+};
+
+static struct loc_reply_to *loc_replies;
+
+static struct loc_reply_to *
+loc_reply_new(struct server *server, const char *cookie, const char *nick)
+{
+    struct loc_reply_to *to = calloc(1, sizeof(*to));
+
+    safestrncpy(to->server, server->numeric, sizeof(to->server));
+    to->cookie = strdup(cookie);
+    to->nick = nick ? strdup(nick) : NULL;
+    to->next = loc_replies;
+    if (loc_replies)
+        loc_replies->prev = to;
+    loc_replies = to;
+    return to;
+}
+
+static void
+loc_reply_free(struct loc_reply_to *to)
+{
+    if (to->next)
+        to->next->prev = to->prev;
+    if (to->prev)
+        to->prev->next = to->next;
+    else if (loc_replies == to)
+        loc_replies = to->next;
+    free(to->cookie);
+    free(to->nick);
+    free(to);
+}
+
+/* loc_auth_async()'s answer: AC A or AC D, exactly once per AC C/H/S.  The
+ * legacy ircd waits LOC_TIMEOUT (3 s by default) for it. */
+static void
+loc_reply(struct handle_info *hi, void *data)
+{
+    struct loc_reply_to *to = data;
+
+    if (!GetServerN(to->server)) {
+        log_module(MAIN_LOG, LOG_DEBUG, "loc_auth: server %s left before the answer", to->server);
+    } else if (hi) {
+        /* Return a AC A */
+        putsock("%s " P10_ACCOUNT " %s A %s "FMT_TIME_T, self->numeric, to->server, to->cookie, hi->registered);
+        if (to->nick)
+            log_module(MAIN_LOG, LOG_DEBUG, "loc_auth: %s\n", to->nick);
+    } else {
+        /* Return a AC D */
+        putsock("%s " P10_ACCOUNT " %s D %s", self->numeric, to->server, to->cookie);
+    }
+    loc_reply_free(to);
+}
+
 static CMD_FUNC(cmd_account)
 {
     struct userNode *user;
     struct server *server;
-    struct handle_info *hi;
 
-    if ((argc < 3) || !origin || !(server = GetServerH(origin)))
-        return 0; /* Origin must be server. */
+    if (argc < 3)
+        return 0;
+    if (!origin || !(server = GetServerH(origin))) {
+        /* Origin must be server.  Not a parse error: that would log the
+         * whole line, and a login-on-connect line carries a password. */
+        log_module(MAIN_LOG, LOG_WARNING, "ACCOUNT line from %s, which is not a server; ignored.", origin ? origin : "(nobody)");
+        return 1;
+    }
     
     /* This next line appears to tremple origin.. why? */
     user = GetUserN(argv[1]);
@@ -1736,46 +1807,17 @@ static CMD_FUNC(cmd_account)
     
     if(!strcmp(argv[2],"C"))
     {
-        if((hi = loc_auth(NULL, argv[4], argv[5], NULL)))
-        {
-            /* Return a AC A */
-            putsock("%s " P10_ACCOUNT " %s A %s "FMT_TIME_T, self->numeric, server->numeric , argv[3], hi->registered);
-
-			log_module(MAIN_LOG, LOG_DEBUG, "loc_auth: %s\n", user->nick);
-         }
-        else
-        {
-            /* Return a AC D */
-            putsock("%s " P10_ACCOUNT " %s D %s", self->numeric, server->numeric , argv[3]);
-        }
+        loc_auth_async(NULL, argv[4], argv[5], NULL, loc_reply, loc_reply_new(server, argv[3], user->nick));
         return 1;
     }
     else if(!strcmp(argv[2],"H")) /* New enhanced (host) version of C */
     {
-        if((hi = loc_auth(NULL, argv[5], argv[6], argv[4] )))
-        {
-            /* Return a AC A */
-            putsock("%s " P10_ACCOUNT " %s A %s "FMT_TIME_T, self->numeric, server->numeric , argv[3], hi->registered);
-        }
-        else
-        {
-            /* Return a AC D */
-            putsock("%s " P10_ACCOUNT " %s D %s", self->numeric, server->numeric , argv[3]);
-        }
+        loc_auth_async(NULL, argv[5], argv[6], argv[4], loc_reply, loc_reply_new(server, argv[3], NULL));
         return 1;
     }
     else if(!strcmp(argv[2],"S"))
     {
-        if((hi = loc_auth(argv[5], argv[6], argv[7], argv[4])))
-        {
-            /* Return a AC A */
-            putsock("%s " P10_ACCOUNT " %s A %s "FMT_TIME_T, self->numeric, server->numeric , argv[3], hi->registered);
-        }
-        else
-        {
-            /* Return a AC D */
-            putsock("%s " P10_ACCOUNT " %s D %s", self->numeric, server->numeric , argv[3]);
-        }
+        loc_auth_async(argv[5], argv[6], argv[7], argv[4], loc_reply, loc_reply_new(server, argv[3], NULL));
         return 1;
     }
     else if(!strcmp(argv[2],"R") && argc >= 7 && !strcmp(argv[5],"RENAME"))
@@ -3187,6 +3229,10 @@ parse_cleanup(UNUSED_ARG(void *extra))
     for (nn=0; nn<dead_users.used; nn++)
         free_user(dead_users.list[nn]);
     userList_clean(&dead_users);
+    /* Login-on-connect answers still owed when the process exits: the
+     * Keycloak seam answers nothing then. */
+    while (loc_replies)
+        loc_reply_free(loc_replies);
 }
 
 static void

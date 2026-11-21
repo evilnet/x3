@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #include <kc/kc_keycloak.h>
 #include "x3kc_pure.h"
@@ -47,6 +48,31 @@ x3kc_map_grant(int kc_result)
     default:
         return X3KC_UNREACHABLE;
     }
+}
+
+const char *
+x3kc_login_reply(enum x3kc_result res)
+{
+    switch (res) {
+    case X3KC_OK:
+    case X3KC_BAD_PASSWORD:
+        return NULL;
+    case X3KC_DISABLED:
+        return "NSMSG_KC_DISABLED";
+    case X3KC_NOT_SET_UP:
+        return "NSMSG_KC_NOT_SET_UP";
+    case X3KC_BUSY:
+        return "NSMSG_KC_BUSY";
+    case X3KC_UNREACHABLE:
+    default:
+        return "NSMSG_KC_FAIL";
+    }
+}
+
+int
+x3kc_failed_password(enum x3kc_result res)
+{
+    return res == X3KC_BAD_PASSWORD;
 }
 
 enum x3kc_result
@@ -76,6 +102,69 @@ x3kc_queue_slots(unsigned int max_pending)
     return max_pending > reserve + 1 ? max_pending - reserve : 1;
 }
 
+int
+x3kc_loc_mask(const char *userhost, char *out, size_t outlen)
+{
+    const char *at, *host, *hend, *ip;
+    char hostbuf[256], ipbuf[64], gen[256 + 4];
+    unsigned char a[16];
+    size_t hlen;
+    int n, dots, i;
+
+    if (!userhost || !(at = strchr(userhost, '@')))
+        return 0;
+    host = at + 1;
+    if (*host == '[') {
+        host++;
+        if (!(hend = strchr(host, ']')) || hend[1] != ':')
+            return 0;
+        ip = hend + 2;
+    } else {
+        if (!(hend = strchr(host, ':')))
+            return 0;
+        ip = hend + 1;
+    }
+    hlen = hend - host;
+    if (!hlen || hlen >= sizeof(hostbuf) || !*ip || strlen(ip) >= sizeof(ipbuf))
+        return 0;
+    memcpy(hostbuf, host, hlen);
+    hostbuf[hlen] = '\0';
+    strcpy(ipbuf, ip);
+
+    if (inet_pton(AF_INET, hostbuf, a) == 1 || inet_pton(AF_INET6, hostbuf, a) == 1) {
+        /* The host is an address: the mask is the connection address's
+         * /16 (IPv4, also v4-mapped) or /48 (IPv6). */
+        static const unsigned char v4mapped[12] = { 0,0,0,0, 0,0,0,0, 0,0,0xff,0xff };
+
+        if (inet_pton(AF_INET, ipbuf, a) == 1)
+            snprintf(gen, sizeof(gen), "%d.%d.*", a[0], a[1]);
+        else if (inet_pton(AF_INET6, ipbuf, a) == 1 && !memcmp(a, v4mapped, 12))
+            snprintf(gen, sizeof(gen), "%d.%d.*", a[12], a[13]);
+        else if (inet_pton(AF_INET6, ipbuf, a) == 1)
+            snprintf(gen, sizeof(gen), "%x:%x:%x:*", (a[0] << 8) | a[1], (a[2] << 8) | a[3], (a[4] << 8) | a[5]);
+        else
+            snprintf(gen, sizeof(gen), "%s", ipbuf);
+    } else {
+        /* A name: one or two labels as it is; three, the last two; more,
+         * the last three. */
+        for (i = dots = 0; hostbuf[i]; i++)
+            if (hostbuf[i] == '.')
+                dots++;
+        if (dots < 2) {
+            snprintf(gen, sizeof(gen), "%s", hostbuf);
+        } else {
+            int keep = dots == 2 ? 2 : 3, seen = 0;
+
+            for (i = (int)hlen - 1; i >= 0; i--)
+                if (hostbuf[i] == '.' && ++seen == keep)
+                    break;
+            snprintf(gen, sizeof(gen), "*.%s", hostbuf + i + 1);
+        }
+    }
+    n = snprintf(out, outlen, "*@%s", gen);
+    return n > 0 && (size_t)n < outlen;
+}
+
 static int
 is_control(unsigned char c)
 {
@@ -94,10 +183,14 @@ x3kc_clean_reason(const char *in, char out[X3KC_REASON_MAX + 1])
     for (p = (const unsigned char *)in; *p; p++) {
         if (is_control(*p))
             continue;
-        if (n == X3KC_REASON_MAX) {
+        /* '$' starts an X3 message code when the reason goes into a
+         * reply: doubled, it shows as itself.  The pair is never cut. */
+        if (n + (*p == '$' ? 2 : 1) > X3KC_REASON_MAX) {
             truncated = 1;
             break;
         }
+        if (*p == '$')
+            out[n++] = '$';
         out[n++] = (char)*p;
     }
     if (truncated && n > 0) {

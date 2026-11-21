@@ -98,7 +98,7 @@ struct x3kc_rec {
     unsigned int counted : 1;
     unsigned int queued : 1;
     unsigned int group_done : 1;
-    char *account;                      /* queued look-up: the name */
+    char *account;                      /* queued look-up, login: the name */
     /* set_oper */
     enum x3kc_step step;
     unsigned long gen;
@@ -429,7 +429,7 @@ login_cb(int result, const struct kc_access_token *token, const char *reason, vo
 {
     struct x3kc_rec *r = data;
     char sub[64], kcid[23], raw_email[X3KC_EMAIL_MAX + 2], email_buf[X3KC_EMAIL_MAX + 1];
-    char reason_buf[X3KC_REASON_MAX + 1];
+    char reason_buf[X3KC_REASON_MAX + 1], username[256];
     const char *email = NULL;
     enum x3kc_result res;
 
@@ -448,6 +448,18 @@ login_cb(int result, const struct kc_access_token *token, const char *reason, vo
             log_module(KC_LOG, LOG_ERROR, "Keycloak accepted a login but its answer has no usable user id (an ID token with a UUID \"sub\"); is the openid scope allowed for client %s?",
                        nickserv_conf.keycloak_client_id);
             res = X3KC_UNREACHABLE;
+        } else if (!kc_jwt_extract_claim(token->id_token, "preferred_username", username, sizeof(username))) {
+            log_module(KC_LOG, LOG_ERROR, "Keycloak accepted a login for %s but its ID token has no \"preferred_username\"; is the profile scope allowed for client %s?  Refused.",
+                       r->account, nickserv_conf.keycloak_client_id);
+            res = X3KC_UNREACHABLE;
+        } else if (irccasecmp(username, r->account)) {
+            /* The password grant can log a user in by another name than
+             * its username (its email address, with "Login with email"
+             * on), and X3 folds names as IRC does, Keycloak as it does:
+             * two Keycloak users must never end up on one handle. */
+            log_module(KC_LOG, LOG_WARNING, "Keycloak accepted the password given for %s as its user \"%s\" (id %s), which is another name; refused.",
+                       r->account, username, kcid);
+            res = X3KC_REJECTED;
         } else if (kc_jwt_extract_claim(token->id_token, "email", raw_email, sizeof(raw_email))) {
             email = seam_email(raw_email, email_buf);
         }
@@ -474,6 +486,11 @@ x3kc_login(const char *account, const char *password, x3kc_login_cb cb, void *da
         return;
     }
     r->cb.login = cb;
+    /* For the username check when Keycloak accepts. */
+    if (!(r->account = strdup(account))) {
+        rec_answer(r, X3KC_UNREACHABLE, NULL, NULL, NULL);
+        return;
+    }
     if (rec_arm(r) != 0)
         return;
     rec_count(r);

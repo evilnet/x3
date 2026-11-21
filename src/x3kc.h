@@ -57,7 +57,8 @@ enum x3kc_result {
  *     torn down.
  *   - A callback may call any x3kc_* function again.
  *   - `reason` (Keycloak's error_description) has its control characters
- *     removed and is at most 200 bytes; `email` is passed only if it looks
+ *     removed and every '$' doubled (it is meant for a reply, where X3
+ *     expands "$x" codes), and is at most 200 bytes; `email` is passed only if it looks
  *     like an address (else NULL); `kcid` only if Keycloak's id converts. */
 typedef void (*x3kc_login_cb)(enum x3kc_result res, const char *kcid, const char *email,
                               const char *reason, void *data);
@@ -89,7 +90,9 @@ void x3kc_init(void);
 /* Checks account's password with a password grant.  On X3KC_OK, kcid is
  * the user's id (from the ID token's "sub") and email the token's "email"
  * claim (NULL when absent).  reason is Keycloak's own text for a refusal,
- * when it gave one.  The password is not kept. */
+ * when it gave one.  X3KC_REJECTED: Keycloak accepted the password, but
+ * for a user whose username ("preferred_username") is not account under
+ * IRC case folding (logged).  The password is not kept. */
 void x3kc_login(const char *account, const char *password, x3kc_login_cb cb, void *data);
 
 /* Looks a Keycloak user up by name: X3KC_OK with its id and email, or
