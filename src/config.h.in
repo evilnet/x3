@@ -334,6 +334,9 @@
 /* Define if using the select() I/O backend */
 #undef WITH_IOSET_SELECT
 
+/* Define if the Keycloak client (src/kc/) is built */
+#undef WITH_KEYCLOAK
+
 /* Define if LDAP libs are linked */
 #undef WITH_LDAP
 

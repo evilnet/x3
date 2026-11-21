@@ -538,6 +538,40 @@ fi
 ]
 )
 
+dnl keycloak checking: the vendored Keycloak client in src/kc/ (copied from
+dnl the ircd, see src/kc/SOURCE) needs libcurl, jansson and libcrypto.
+dnl Built automatically when all three are found; --with-keycloak makes a
+dnl missing one an error; --without-keycloak leaves the client out.
+AC_ARG_WITH([keycloak],
+[  --with-keycloak         Build the Keycloak client (src/kc/); needs libcurl,
+                          jansson and libcrypto.  Default: built when all
+                          three are found.  --without-keycloak leaves it out],
+[],
+[with_keycloak=check])
+keycloak_message="Keycloak client:    disabled"
+if test "x$with_keycloak" != "xno"; then
+  kc_missing=""
+  AC_CHECK_HEADER([curl/curl.h], [:], [kc_missing="$kc_missing curl/curl.h"])
+  AC_CHECK_LIB([curl], [curl_multi_socket_action], [:], [kc_missing="$kc_missing libcurl"])
+  AC_CHECK_HEADER([jansson.h], [:], [kc_missing="$kc_missing jansson.h"])
+  AC_CHECK_LIB([jansson], [json_loads], [:], [kc_missing="$kc_missing libjansson"])
+  AC_CHECK_HEADER([openssl/evp.h], [:], [kc_missing="$kc_missing openssl/evp.h"])
+  AC_CHECK_LIB([crypto], [EVP_DigestVerifyInit], [:], [kc_missing="$kc_missing libcrypto"])
+  if test "x$kc_missing" = "x"; then
+    AC_DEFINE(WITH_KEYCLOAK, 1, [Define if the Keycloak client (src/kc/) is built])
+    LIBS="-lcurl -ljansson -lcrypto $LIBS"
+    for kc_obj in kc kc_base64 kc_error_classify kc_http kc_jwt kc_keycloak kc_url ; do
+      MODULE_OBJS="$MODULE_OBJS kc/$kc_obj.\$(OBJEXT)"
+    done
+    MODULE_OBJS="$MODULE_OBJS x3_kc_nosync.\$(OBJEXT)"
+    keycloak_message="Keycloak client:    enabled"
+  elif test "x$with_keycloak" = "xcheck"; then
+    AC_MSG_NOTICE([Keycloak client not built; missing:$kc_missing])
+  else
+    AC_MSG_ERROR([--with-keycloak given, but missing:$kc_missing])
+  fi
+fi
+
 dnl *********************************************************************
 dnl ** PYTHON ***********************************************************
 dnl *********************************************************************
@@ -633,7 +667,8 @@ X3 is now configured as follows:
   Protocol:           $x3_ircd
   Regexp Library      TRE $tre_version
   Coredumper Library  Coredumper $core_version
-  $ldap_message 
+  $ldap_message
+  $keycloak_message
   python: $python
 
   Install to:         $prefix

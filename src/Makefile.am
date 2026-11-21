@@ -1,4 +1,5 @@
-AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\" -DLOCALSTATEDIR=\"@localstatedir@/x3\"
+AUTOMAKE_OPTIONS = subdir-objects
+AM_CPPFLAGS = @RX_INCLUDES@ -I$(srcdir) -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\" -DLOCALSTATEDIR=\"@localstatedir@/x3\"
 LIBS = @LIBS@ @RX_LIBS@
 TRACK = @TRACK@
 pythonpath = @pythonpath@
@@ -26,7 +27,7 @@ noinst_DATA = \
 	mod-webtv.help \
 	mod-python.help
 
-EXTRA_DIST = $(noinst_DATA)
+EXTRA_DIST = $(noinst_DATA) kc/SOURCE
 
 EXTRA_x3_SOURCES = \
 	alloc-slab.c \
@@ -47,7 +48,19 @@ EXTRA_x3_SOURCES = \
 	mod-sockcheck.c \
 	mod-webtv.c \
 	mod-python.c \
-	mod-qserver.c
+	mod-qserver.c \
+	x3_kc_nosync.c \
+	kc/kc.c kc/kc.h \
+	kc/kc_base64.c kc/kc_base64.h \
+	kc/kc_error_classify.c kc/kc_error_classify.h \
+	kc/kc_event.h \
+	kc/kc_http.c kc/kc_http.h \
+	kc/kc_http_sync.h \
+	kc/kc_jwt.c kc/kc_jwt.h \
+	kc/kc_keycloak.c kc/kc_keycloak.h \
+	kc/kc_log.h \
+	kc/kc_realm.h \
+	kc/kc_url.c kc/kc_url.h
 
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
@@ -92,7 +105,15 @@ x3kc_test_SOURCES = x3kc-test.c kcid.c kcid.h
 globtest_SOURCES = common.h compat.c compat.h dict-splay.c dict.h globtest.c tools.c
 slab_read_SOURCES = slab-read.c
 
+# src/kc/ is the ircd's Keycloak client, copied verbatim (kc/SOURCE).  It
+# may not include an X3 header; tools/check-kc.sh enforces that before
+# anything is compiled (BUILT_SOURCES is made first).  With an ircd checkout
+# as its argument the same script also checks the copy has not drifted.
+BUILT_SOURCES = check-kc
+check-kc:
+	@$(SHELL) $(top_srcdir)/tools/check-kc.sh
+
 version.c: version.c.SH
 	${SHELL} ${srcdir}/version.c.SH
 
-.PHONY: version.c
+.PHONY: version.c check-kc

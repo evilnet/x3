@@ -1,0 +1,45 @@
+src/kc/ is a byte-for-byte copy of the Keycloak client (kc) of the
+Nefarious IRCd fork.  Do not edit these files here: change the ircd, then
+copy again and update this file.  tools/check-kc.sh guards both rules
+(no X3 header inside kc/; with an ircd checkout as its argument, no drift).
+
+Source: Nefarious IRCd (evilnet/nefarious2, the ircv3.2-upgrade fork
+line), commit
+  a0e81fbdb0be00ff9c209c7e2c4495d0eaf4d599
+  ("kc: a timed-out request never waits for a stalled DNS lookup
+  (CURLOPT_QUICK_EXIT)")
+
+Copied files (ircd path -> src/kc/<basename>):
+  ircd/kc/kc.c
+  ircd/kc/kc_base64.c
+  ircd/kc/kc_error_classify.c
+  ircd/kc/kc_http.c
+  ircd/kc/kc_jwt.c
+  ircd/kc/kc_keycloak.c
+  ircd/kc/kc_url.c
+  include/kc/kc.h
+  include/kc/kc_base64.h
+  include/kc/kc_error_classify.h
+  include/kc/kc_event.h
+  include/kc/kc_http.h
+  include/kc/kc_http_sync.h
+  include/kc/kc_jwt.h
+  include/kc/kc_keycloak.h
+  include/kc/kc_log.h
+  include/kc/kc_realm.h
+  include/kc/kc_url.h
+
+Not copied, on purpose:
+  ircd/kc/kc_http_sync.c   the ircd's blocking HTTP client.  X3 must never
+                           block its main loop on Keycloak.  kc_jwt.c still
+                           names kc_http_sync_perform() (its JWKS fetch,
+                           reached only from kc_jwt_validate_local() and
+                           kc_jwt_prime_cache(), which X3 never calls), so
+                           X3 links its own stand-in, src/x3_kc_nosync.c,
+                           which logs an error, touches no network and
+                           answers "nothing received".  The header
+                           kc_http_sync.h IS copied: kc_jwt.c uses its types.
+  ircd/kc/kc_webhook.c, ircd/kc/kc_webhook_sig.c (+ headers)
+                           the ircd's inbound webhook listener; not X3's.
+  ircd/kc/kc_cache.c, ircd/kc/kc_cred_derive.c (+ headers)
+                           nothing copied here needs them to link.

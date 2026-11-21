@@ -128,6 +128,7 @@ am_x3_OBJECTS = base64.$(OBJEXT) chanserv.$(OBJEXT) compat.$(OBJEXT) \
 	sar.$(OBJEXT) saxdb.$(OBJEXT) spamserv.$(OBJEXT) \
 	shun.$(OBJEXT) timeq.$(OBJEXT) tools.$(OBJEXT) \
 	x3ldap.$(OBJEXT) version.$(OBJEXT)
+am__dirstamp = $(am__leading_dot)dirstamp
 x3_OBJECTS = $(am_x3_OBJECTS)
 am_x3kc_test_OBJECTS = x3kc-test.$(OBJEXT) kcid.$(OBJEXT)
 x3kc_test_OBJECTS = $(am_x3kc_test_OBJECTS)
@@ -174,7 +175,11 @@ am__depfiles_remade = ./$(DEPDIR)/alloc-slab.Po \
 	./$(DEPDIR)/shun.Po ./$(DEPDIR)/slab-read.Po \
 	./$(DEPDIR)/spamserv.Po ./$(DEPDIR)/timeq.Po \
 	./$(DEPDIR)/tools.Po ./$(DEPDIR)/version.Po \
-	./$(DEPDIR)/x3kc-test.Po ./$(DEPDIR)/x3ldap.Po
+	./$(DEPDIR)/x3_kc_nosync.Po ./$(DEPDIR)/x3kc-test.Po \
+	./$(DEPDIR)/x3ldap.Po kc/$(DEPDIR)/kc.Po \
+	kc/$(DEPDIR)/kc_base64.Po kc/$(DEPDIR)/kc_error_classify.Po \
+	kc/$(DEPDIR)/kc_http.Po kc/$(DEPDIR)/kc_jwt.Po \
+	kc/$(DEPDIR)/kc_keycloak.Po kc/$(DEPDIR)/kc_url.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -337,7 +342,8 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = @RX_INCLUDES@ -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\" -DLOCALSTATEDIR=\"@localstatedir@/x3\"
+AUTOMAKE_OPTIONS = subdir-objects
+AM_CPPFLAGS = @RX_INCLUDES@ -I$(srcdir) -DSYSCONFDIR=\"@sysconfdir@\" -DPKGDATADIR=\"@datadir@/x3\" -DLOCALSTATEDIR=\"@localstatedir@/x3\"
 noinst_DATA = \
 	chanserv.help \
 	global.help \
@@ -355,7 +361,7 @@ noinst_DATA = \
 	mod-webtv.help \
 	mod-python.help
 
-EXTRA_DIST = $(noinst_DATA)
+EXTRA_DIST = $(noinst_DATA) kc/SOURCE
 EXTRA_x3_SOURCES = \
 	alloc-slab.c \
 	alloc-x3.c \
@@ -375,7 +381,19 @@ EXTRA_x3_SOURCES = \
 	mod-sockcheck.c \
 	mod-webtv.c \
 	mod-python.c \
-	mod-qserver.c
+	mod-qserver.c \
+	x3_kc_nosync.c \
+	kc/kc.c kc/kc.h \
+	kc/kc_base64.c kc/kc_base64.h \
+	kc/kc_error_classify.c kc/kc_error_classify.h \
+	kc/kc_event.h \
+	kc/kc_http.c kc/kc_http.h \
+	kc/kc_http_sync.h \
+	kc/kc_jwt.c kc/kc_jwt.h \
+	kc/kc_keycloak.c kc/kc_keycloak.h \
+	kc/kc_log.h \
+	kc/kc_realm.h \
+	kc/kc_url.c kc/kc_url.h
 
 x3_LDADD = @MODULE_OBJS@
 x3_DEPENDENCIES = @MODULE_OBJS@
@@ -419,7 +437,13 @@ checkdb_SOURCES = checkdb.c common.h compat.c compat.h dict-splay.c dict.h recdb
 x3kc_test_SOURCES = x3kc-test.c kcid.c kcid.h
 globtest_SOURCES = common.h compat.c compat.h dict-splay.c dict.h globtest.c tools.c
 slab_read_SOURCES = slab-read.c
-all: config.h
+
+# src/kc/ is the ircd's Keycloak client, copied verbatim (kc/SOURCE).  It
+# may not include an X3 header; tools/check-kc.sh enforces that before
+# anything is compiled (BUILT_SOURCES is made first).  With an ircd checkout
+# as its argument the same script also checks the copy has not drifted.
+BUILT_SOURCES = check-kc
+all: $(BUILT_SOURCES) config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
@@ -525,6 +549,22 @@ globtest$(EXEEXT): $(globtest_OBJECTS) $(globtest_DEPENDENCIES) $(EXTRA_globtest
 slab-read$(EXEEXT): $(slab_read_OBJECTS) $(slab_read_DEPENDENCIES) $(EXTRA_slab_read_DEPENDENCIES) 
 	@rm -f slab-read$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(slab_read_OBJECTS) $(slab_read_LDADD) $(LIBS)
+kc/$(am__dirstamp):
+	@$(MKDIR_P) kc
+	@: > kc/$(am__dirstamp)
+kc/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) kc/$(DEPDIR)
+	@: > kc/$(DEPDIR)/$(am__dirstamp)
+kc/kc.$(OBJEXT): kc/$(am__dirstamp) kc/$(DEPDIR)/$(am__dirstamp)
+kc/kc_base64.$(OBJEXT): kc/$(am__dirstamp) \
+	kc/$(DEPDIR)/$(am__dirstamp)
+kc/kc_error_classify.$(OBJEXT): kc/$(am__dirstamp) \
+	kc/$(DEPDIR)/$(am__dirstamp)
+kc/kc_http.$(OBJEXT): kc/$(am__dirstamp) kc/$(DEPDIR)/$(am__dirstamp)
+kc/kc_jwt.$(OBJEXT): kc/$(am__dirstamp) kc/$(DEPDIR)/$(am__dirstamp)
+kc/kc_keycloak.$(OBJEXT): kc/$(am__dirstamp) \
+	kc/$(DEPDIR)/$(am__dirstamp)
+kc/kc_url.$(OBJEXT): kc/$(am__dirstamp) kc/$(DEPDIR)/$(am__dirstamp)
 
 x3$(EXEEXT): $(x3_OBJECTS) $(x3_DEPENDENCIES) $(EXTRA_x3_DEPENDENCIES) 
 	@rm -f x3$(EXEEXT)
@@ -536,6 +576,7 @@ x3kc-test$(EXEEXT): $(x3kc_test_OBJECTS) $(x3kc_test_DEPENDENCIES) $(EXTRA_x3kc_
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f kc/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -594,8 +635,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeq.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/version.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3_kc_nosync.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3kc-test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3ldap.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc_base64.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc_error_classify.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc_http.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc_jwt.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc_keycloak.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc_url.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -604,15 +653,17 @@ $(am__depfiles_remade):
 am--depfiles: $(am__depfiles_remade)
 
 .c.o:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
@@ -702,14 +753,17 @@ distdir-am: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-check: check-am
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(PROGRAMS) $(DATA) config.h
 installdirs:
 	for dir in "$(DESTDIR)$(bindir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-am
-install-exec: install-exec-am
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-am
+install-exec: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-exec-am
 install-data: install-data-am
 uninstall: uninstall-am
 
@@ -734,10 +788,13 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f kc/$(DEPDIR)/$(am__dirstamp)
+	-rm -f kc/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 clean: clean-am
 
 clean-am: clean-binPROGRAMS clean-generic clean-noinstPROGRAMS \
@@ -798,8 +855,16 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/timeq.Po
 	-rm -f ./$(DEPDIR)/tools.Po
 	-rm -f ./$(DEPDIR)/version.Po
+	-rm -f ./$(DEPDIR)/x3_kc_nosync.Po
 	-rm -f ./$(DEPDIR)/x3kc-test.Po
 	-rm -f ./$(DEPDIR)/x3ldap.Po
+	-rm -f kc/$(DEPDIR)/kc.Po
+	-rm -f kc/$(DEPDIR)/kc_base64.Po
+	-rm -f kc/$(DEPDIR)/kc_error_classify.Po
+	-rm -f kc/$(DEPDIR)/kc_http.Po
+	-rm -f kc/$(DEPDIR)/kc_jwt.Po
+	-rm -f kc/$(DEPDIR)/kc_keycloak.Po
+	-rm -f kc/$(DEPDIR)/kc_url.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -899,8 +964,16 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/timeq.Po
 	-rm -f ./$(DEPDIR)/tools.Po
 	-rm -f ./$(DEPDIR)/version.Po
+	-rm -f ./$(DEPDIR)/x3_kc_nosync.Po
 	-rm -f ./$(DEPDIR)/x3kc-test.Po
 	-rm -f ./$(DEPDIR)/x3ldap.Po
+	-rm -f kc/$(DEPDIR)/kc.Po
+	-rm -f kc/$(DEPDIR)/kc_base64.Po
+	-rm -f kc/$(DEPDIR)/kc_error_classify.Po
+	-rm -f kc/$(DEPDIR)/kc_http.Po
+	-rm -f kc/$(DEPDIR)/kc_jwt.Po
+	-rm -f kc/$(DEPDIR)/kc_keycloak.Po
+	-rm -f kc/$(DEPDIR)/kc_url.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -918,7 +991,7 @@ ps-am:
 
 uninstall-am: uninstall-binPROGRAMS
 
-.MAKE: all install-am install-strip
+.MAKE: all check install install-am install-exec install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-am clean \
 	clean-binPROGRAMS clean-generic clean-noinstPROGRAMS \
@@ -936,11 +1009,13 @@ uninstall-am: uninstall-binPROGRAMS
 
 .PRECIOUS: Makefile
 
+check-kc:
+	@$(SHELL) $(top_srcdir)/tools/check-kc.sh
 
 version.c: version.c.SH
 	${SHELL} ${srcdir}/version.c.SH
 
-.PHONY: version.c
+.PHONY: version.c check-kc
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -34,3 +34,6 @@ x3
 .vscode
 autom4te.cache/
 .claude/settings.local.json
+src/kc/*.o
+src/kc/.deps/
+src/kc/.dirstamp
