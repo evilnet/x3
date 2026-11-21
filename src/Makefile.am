@@ -50,6 +50,8 @@ EXTRA_x3_SOURCES = \
 	mod-python.c \
 	mod-qserver.c \
 	x3_kc_nosync.c \
+	x3_kc_adapter.c x3_kc_adapter.h \
+	x3kc.c x3kc.h \
 	kc/kc.c kc/kc.h \
 	kc/kc_base64.c kc/kc_base64.h \
 	kc/kc_error_classify.c kc/kc_error_classify.h \

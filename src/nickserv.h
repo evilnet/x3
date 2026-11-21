@@ -231,6 +231,34 @@ struct nickserv_config {
     unsigned int ldap_timeout;
     const char *ldap_filter;
 #endif
+    unsigned int keycloak_enable;
+#ifdef WITH_KEYCLOAK
+    /* keycloak_enable is on, but a rehash refused the Keycloak settings:
+     * Keycloak is not configured, every Keycloak call answers unreachable,
+     * and LDAP stays off, until a rehash brings a configuration X3
+     * accepts.  (At start-up a refusal exits instead.) */
+    unsigned int keycloak_refused;
+    /* The strings below are X3's own copies (a rehash that finds no
+     * nickserv block leaves them as they were). */
+    const char *keycloak_url;
+    const char *keycloak_realm;
+    const char *keycloak_client_id;
+    const char *keycloak_client_secret;
+    unsigned int keycloak_autocreate;
+    /* X3 may delete users and write the oper group and level attribute. */
+    unsigned int keycloak_writeback;
+    /* Web address for password, email and lost-password replies. */
+    const char *keycloak_account_url;
+    /* Web address for REGISTER; empty = keycloak_account_url. */
+    const char *keycloak_register_url;
+    /* A group path, leading '/'. */
+    const char *keycloak_oper_group;
+    unsigned int keycloak_oper_group_level;
+    const char *keycloak_field_oslevel;
+    unsigned int keycloak_timeout;      /* milliseconds, KEYCLOAK_TIMEOUT_MIN..MAX */
+    unsigned int keycloak_max_pending;
+    unsigned int sasl_announce;
+#endif
 };
 
 void init_nickserv(const char *nick);

@@ -30,6 +30,9 @@
 #include "mail.h"
 #include "timeq.h"
 #include "x3ldap.h"
+#ifdef WITH_KEYCLOAK
+#include "x3kc.h"
+#endif
 
 #include <tre/regex.h>
 
@@ -148,6 +151,25 @@
 #define KEY_LDAP_FIELD_GROUP_MEMBER "ldap_field_group_member"
 #define KEY_LDAP_TIMEOUT "ldap_timeout"
 #define KEY_LDAP_FILTER "ldap_filter"
+#endif
+
+#define KEY_KEYCLOAK_ENABLE "keycloak_enable"
+
+#ifdef WITH_KEYCLOAK
+#define KEY_KEYCLOAK_URL "keycloak_url"
+#define KEY_KEYCLOAK_REALM "keycloak_realm"
+#define KEY_KEYCLOAK_CLIENT_ID "keycloak_client_id"
+#define KEY_KEYCLOAK_CLIENT_SECRET "keycloak_client_secret"
+#define KEY_KEYCLOAK_AUTOCREATE "keycloak_autocreate"
+#define KEY_KEYCLOAK_WRITEBACK "keycloak_writeback"
+#define KEY_KEYCLOAK_ACCOUNT_URL "keycloak_account_url"
+#define KEY_KEYCLOAK_REGISTER_URL "keycloak_register_url"
+#define KEY_KEYCLOAK_OPER_GROUP "keycloak_oper_group"
+#define KEY_KEYCLOAK_OPER_GROUP_LEVEL "keycloak_oper_group_level"
+#define KEY_KEYCLOAK_FIELD_OSLEVEL "keycloak_field_oslevel"
+#define KEY_KEYCLOAK_TIMEOUT "keycloak_timeout"
+#define KEY_KEYCLOAK_MAX_PENDING "keycloak_max_pending"
+#define KEY_SASL_ANNOUNCE "sasl_announce"
 #endif
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
@@ -5584,13 +5606,38 @@ reclaim_action_from_string(const char *str) {
         return RECLAIM_NONE;
 }
 
+#ifdef WITH_KEYCLOAK
+/* keycloak_timeout's range, in milliseconds. */
+#define KEYCLOAK_TIMEOUT_MIN 500
+#define KEYCLOAK_TIMEOUT_MAX 60000
+
+/* Sets *field to X3's own copy of the nickserv block's string key ("" when
+ * absent), freeing the copy it held.  The conf's strings are freed by the
+ * next rehash, and one that finds no nickserv block returns before this
+ * runs: a copy never dangles. */
+static void
+nickserv_kc_conf_string(const char **field, dict_t conf_node, const char *key)
+{
+    const char *str = database_get_data(conf_node, key, RECDB_QSTRING);
+    char *copy = strdup(str ? str : "");
+
+    if (!copy)
+        return;                 /* the old copy stays */
+    free((char *)*field);
+    *field = copy;
+}
+#endif
 static void
 nickserv_conf_read(void)
 {
+    static int read_before;     /* a rehash, not the read at start-up */
     dict_t conf_node, child;
     const char *str;
     dict_iterator_t it;
     struct string_list *strlist;
+    /* The account backend before this read (a refused rehash keeps LDAP
+     * from being turned on by it). */
+    unsigned int was_ldap = nickserv_conf.ldap_enable;
 
     if (!(conf_node = conf_get_data(NICKSERV_CONF_NAME, RECDB_OBJECT))) {
 	log_module(NS_LOG, LOG_ERROR, "config node `%s' is missing or has wrong type.", NICKSERV_CONF_NAME);
@@ -5870,6 +5917,117 @@ nickserv_conf_read(void)
 
 #endif
 
+    /* Keycloak.  A refusal below exits at start-up.  On a rehash it is
+     * logged and X3 keeps running: Keycloak logins answer that the account
+     * server cannot be reached (keycloak_refused) until a rehash brings
+     * settings X3 accepts, and LDAP is not turned on in their place. */
+    str = database_get_data(conf_node, KEY_KEYCLOAK_ENABLE, RECDB_QSTRING);
+    nickserv_conf.keycloak_enable = str ? strtoul(str, NULL, 0) : 0;
+    (void)was_ldap;
+
+#ifndef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but Keycloak support is not compiled in (configure --with-keycloak)!");
+        if (!read_before)
+            exit(2);
+        /* This build has no Keycloak logins to answer "unreachable": the
+         * account backend stays what it was before the rehash. */
+        nickserv_conf.keycloak_enable = 0;
+        nickserv_conf.ldap_enable = was_ldap;
+        log_module(MAIN_LOG, LOG_ERROR, "Rehash: keycloak_enable ignored; account logins stay as they were (ldap_enable %u) until the configuration is fixed.",
+                   nickserv_conf.ldap_enable);
+    }
+#else
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_url, conf_node, KEY_KEYCLOAK_URL);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_realm, conf_node, KEY_KEYCLOAK_REALM);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_client_id, conf_node, KEY_KEYCLOAK_CLIENT_ID);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_client_secret, conf_node, KEY_KEYCLOAK_CLIENT_SECRET);
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_AUTOCREATE, RECDB_QSTRING);
+    nickserv_conf.keycloak_autocreate = str ? strtoul(str, NULL, 0) : 0;
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_WRITEBACK, RECDB_QSTRING);
+    nickserv_conf.keycloak_writeback = str ? strtoul(str, NULL, 0) : 0;
+
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_account_url, conf_node, KEY_KEYCLOAK_ACCOUNT_URL);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_register_url, conf_node, KEY_KEYCLOAK_REGISTER_URL);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_oper_group, conf_node, KEY_KEYCLOAK_OPER_GROUP);
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_OPER_GROUP_LEVEL, RECDB_QSTRING);
+    nickserv_conf.keycloak_oper_group_level = str ? strtoul(str, NULL, 0) : 99;
+
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_field_oslevel, conf_node, KEY_KEYCLOAK_FIELD_OSLEVEL);
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_TIMEOUT, RECDB_QSTRING);
+    nickserv_conf.keycloak_timeout = str ? strtoul(str, NULL, 0) : 2500;
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_MAX_PENDING, RECDB_QSTRING);
+    nickserv_conf.keycloak_max_pending = str ? strtoul(str, NULL, 0) : 64;
+
+    str = database_get_data(conf_node, KEY_SASL_ANNOUNCE, RECDB_QSTRING);
+    nickserv_conf.sasl_announce = str ? strtoul(str, NULL, 0) : 1;
+
+    nickserv_conf.keycloak_refused = 0;
+    if (nickserv_conf.keycloak_enable) {
+        /* { key, value }: each must be non-empty. */
+        const char *required[][2] = {
+            { KEY_KEYCLOAK_URL, nickserv_conf.keycloak_url },
+            { KEY_KEYCLOAK_REALM, nickserv_conf.keycloak_realm },
+            { KEY_KEYCLOAK_CLIENT_ID, nickserv_conf.keycloak_client_id },
+            { KEY_KEYCLOAK_CLIENT_SECRET, nickserv_conf.keycloak_client_secret },
+            { KEY_KEYCLOAK_ACCOUNT_URL, nickserv_conf.keycloak_account_url },
+        };
+        /* Room for every key name above, with separators. */
+        char missing[256];
+        unsigned int ii;
+        int refused = 0;
+        const char *curl_name;
+
+        if (nickserv_conf.ldap_enable) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable and ldap_enable are both on in config; turn one of them off!");
+            refused = 1;
+        }
+        missing[0] = '\0';
+        for (ii = 0; ii < ArrayLength(required); ii++) {
+            if (*required[ii][1])
+                continue;
+            if (missing[0])
+                strcat(missing, ", ");
+            strcat(missing, required[ii][0]);
+        }
+        if (missing[0]) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but these keys are empty or missing: %s!", missing);
+            refused = 1;
+        }
+        /* Below the minimum no login could be answered by Keycloak; above
+         * the maximum (or a negative number, which strtoul() wraps) a
+         * stalled request holds its slot, and its user, for minutes. */
+        if (nickserv_conf.keycloak_timeout < KEYCLOAK_TIMEOUT_MIN
+            || nickserv_conf.keycloak_timeout > KEYCLOAK_TIMEOUT_MAX) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but keycloak_timeout is %u; it must be %u to %u (milliseconds)!",
+                       nickserv_conf.keycloak_timeout, KEYCLOAK_TIMEOUT_MIN, KEYCLOAK_TIMEOUT_MAX);
+            refused = 1;
+        }
+        /* Every Keycloak request starts with a name look-up for the
+         * Keycloak host; libcurl without an asynchronous resolver makes it
+         * in the calling thread, which here is all of X3. */
+        if (!x3kc_async_dns(&curl_name)) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but this libcurl (%s) resolves names synchronously (no AsynchDNS): every name look-up for the Keycloak host would block all of X3. Use a libcurl built with the threaded resolver or c-ares!",
+                       curl_name);
+            refused = 1;
+        }
+        if (refused) {
+            if (!read_before)
+                exit(2);
+            nickserv_conf.keycloak_refused = 1;
+            nickserv_conf.ldap_enable = 0;
+            log_module(MAIN_LOG, LOG_ERROR, "Rehash: the keycloak_* settings above were refused; X3 keeps running, Keycloak logins answer that the account server cannot be reached and LDAP stays off, until a rehash with settings X3 accepts.");
+        }
+    }
+
+    x3kc_configure();
+#endif
+    read_before = 1;
 }
 
 static void
@@ -6274,7 +6432,11 @@ handle_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void 
 void
 nickserv_remove_user(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why), UNUSED_ARG(void *extra))
 {
-    dict_remove(nickserv_allow_auth_dict, user->nick);
+    /* NULL when a configuration refusal in init_nickserv()'s first
+     * nickserv_conf_read() exits: this is registered before the dict is
+     * made, and the exit functions remove every user. */
+    if (nickserv_allow_auth_dict)
+        dict_remove(nickserv_allow_auth_dict, user->nick);
     timeq_del(0, nickserv_reclaim_p, user, TIMEQ_IGNORE_WHEN);
     set_user_handle_info(user, NULL, 0);
 }
@@ -6868,6 +7030,9 @@ init_nickserv(const char *nick)
 
 #ifdef WITH_LDAP
     ldap_do_init(nickserv_conf);
+#endif
+#ifdef WITH_KEYCLOAK
+    x3kc_configure();
 #endif
 
     message_register_table(msgtab);

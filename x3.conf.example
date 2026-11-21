@@ -313,6 +313,62 @@
         //"ldap_field_group_member" "memberUid"; // what field group members are in
         //"ldap_timeout" "10"; // seconds
 
+        // Keycloak configuration
+        // Logins (AUTH, SASL PLAIN) are checked against a Keycloak realm
+        // instead of LDAP or the local password hashes.  Needs an X3 built
+        // with Keycloak support (configure --with-keycloak, automatic when
+        // libcurl, jansson and libcrypto are found); otherwise
+        // keycloak_enable 1 makes X3 refuse to start.  keycloak_enable and
+        // ldap_enable may not both be on.  With keycloak_enable 1, X3
+        // refuses to start (or, on a rehash, exits) when keycloak_url,
+        // keycloak_realm, keycloak_client_id, keycloak_client_secret or
+        // keycloak_account_url is empty or missing.  X3 never blocks on
+        // Keycloak: each request runs in the background.
+        //
+        // Keycloak side: X3 needs a confidential client of its own (not
+        // the ircd's) with direct access grants enabled and the "email"
+        // scope on its tokens, and a service account allowed to view,
+        // query and manage users (realm-management: view-users,
+        // query-users, manage-users).
+        //"keycloak_enable" "0";
+        //"keycloak_url" "https://keycloak.yournetwork.org"; // base address, no trailing slash
+        //"keycloak_realm" "afternet";
+        //"keycloak_client_id" "x3";
+        //"keycloak_client_secret" "xxxxxxxxxxx"; // never written to any log
+        //// Create the X3 account on the first successful Keycloak login
+        //// of a name X3 does not know (as ldap_autocreate).
+        //"keycloak_autocreate" "1";
+        //// Let X3 change Keycloak: delete the user when an account is
+        //// unregistered, and write the oper group and the level attribute
+        //// below.  0 = X3 only reads.  X3 never creates a Keycloak user
+        //// or changes a password or email address, whatever this says.
+        //"keycloak_writeback" "0";
+        //// Where users change their password and email address, and
+        //// recover a lost password: X3's replies to those commands give
+        //// this address.  Required.
+        //"keycloak_account_url" "https://keycloak.yournetwork.org/realms/afternet/account";
+        //// The address REGISTER answers with.  Empty = keycloak_account_url.
+        //"keycloak_register_url" "";
+        //// The Keycloak group (a path, with the leading /) that holds
+        //// accounts above keycloak_oper_group_level.  Empty = X3 writes
+        //// no group membership.  Needs keycloak_writeback.
+        //"keycloak_oper_group" "/opers";
+        //"keycloak_oper_group_level" "99"; // must be above this level to be put in the group
+        //// The user attribute that receives the account's OpServ level.
+        //// Empty = not written.  Needs keycloak_writeback.  The realm must
+        //// declare this attribute in its user profile with edit permission
+        //// for admins only, so that users cannot set their own level.
+        //"keycloak_field_oslevel" "x3_opserv_level";
+        //// Per-request limit, in milliseconds.  Keep it below the ircd's
+        //// login timeout (3 seconds by default).  0 = the client's own
+        //// default of 10 seconds.
+        //"keycloak_timeout" "2500";
+        //// Requests in flight before new ones are refused as busy.
+        //"keycloak_max_pending" "64";
+        //// Announce X3's SASL mechanism list to the network (the
+        //// "SASL * * M" line), once linked and when servers link.
+        //"sasl_announce" "1";
+
     };
 
     /* 

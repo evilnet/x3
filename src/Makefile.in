@@ -175,7 +175,8 @@ am__depfiles_remade = ./$(DEPDIR)/alloc-slab.Po \
 	./$(DEPDIR)/shun.Po ./$(DEPDIR)/slab-read.Po \
 	./$(DEPDIR)/spamserv.Po ./$(DEPDIR)/timeq.Po \
 	./$(DEPDIR)/tools.Po ./$(DEPDIR)/version.Po \
-	./$(DEPDIR)/x3_kc_nosync.Po ./$(DEPDIR)/x3kc-test.Po \
+	./$(DEPDIR)/x3_kc_adapter.Po ./$(DEPDIR)/x3_kc_nosync.Po \
+	./$(DEPDIR)/x3kc-test.Po ./$(DEPDIR)/x3kc.Po \
 	./$(DEPDIR)/x3ldap.Po kc/$(DEPDIR)/kc.Po \
 	kc/$(DEPDIR)/kc_base64.Po kc/$(DEPDIR)/kc_error_classify.Po \
 	kc/$(DEPDIR)/kc_http.Po kc/$(DEPDIR)/kc_jwt.Po \
@@ -383,6 +384,8 @@ EXTRA_x3_SOURCES = \
 	mod-python.c \
 	mod-qserver.c \
 	x3_kc_nosync.c \
+	x3_kc_adapter.c x3_kc_adapter.h \
+	x3kc.c x3kc.h \
 	kc/kc.c kc/kc.h \
 	kc/kc_base64.c kc/kc_base64.h \
 	kc/kc_error_classify.c kc/kc_error_classify.h \
@@ -635,8 +638,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeq.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/version.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3_kc_adapter.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3_kc_nosync.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3kc-test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3kc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3ldap.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@kc/$(DEPDIR)/kc_base64.Po@am__quote@ # am--include-marker
@@ -855,8 +860,10 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/timeq.Po
 	-rm -f ./$(DEPDIR)/tools.Po
 	-rm -f ./$(DEPDIR)/version.Po
+	-rm -f ./$(DEPDIR)/x3_kc_adapter.Po
 	-rm -f ./$(DEPDIR)/x3_kc_nosync.Po
 	-rm -f ./$(DEPDIR)/x3kc-test.Po
+	-rm -f ./$(DEPDIR)/x3kc.Po
 	-rm -f ./$(DEPDIR)/x3ldap.Po
 	-rm -f kc/$(DEPDIR)/kc.Po
 	-rm -f kc/$(DEPDIR)/kc_base64.Po
@@ -964,8 +971,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/timeq.Po
 	-rm -f ./$(DEPDIR)/tools.Po
 	-rm -f ./$(DEPDIR)/version.Po
+	-rm -f ./$(DEPDIR)/x3_kc_adapter.Po
 	-rm -f ./$(DEPDIR)/x3_kc_nosync.Po
 	-rm -f ./$(DEPDIR)/x3kc-test.Po
+	-rm -f ./$(DEPDIR)/x3kc.Po
 	-rm -f ./$(DEPDIR)/x3ldap.Po
 	-rm -f kc/$(DEPDIR)/kc.Po
 	-rm -f kc/$(DEPDIR)/kc_base64.Po
