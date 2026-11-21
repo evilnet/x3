@@ -72,7 +72,22 @@ CONF_LIST_VARS=" X3_AUTOJOIN_CHANNELS X3_SUPPORT_CHANNEL "
 #   X3_LDAP_FILTER          accounts are searched by name alone, with no
 #                           extra filter (x3ldap.c builds "(&%s(attr=name))")
 #   X3_SUPPORT_CHANNEL      an empty list: no support channels
-EMPTY_OK=" X3_AUTOJOIN_CHANNELS X3_AUTO_OPER X3_AUTO_OPER_PRIVS X3_GENERAL_BIND_ADDRESS X3_LDAP_ADMIN_DN X3_LDAP_ADMIN_PASS X3_LDAP_FIELD_OSLEVEL X3_LDAP_FILTER X3_SUPPORT_CHANNEL "
+#   The Keycloak strings: nickserv.c reads "" as the key being unset.
+#     X3_KEYCLOAK_URL, X3_KEYCLOAK_REALM, X3_KEYCLOAK_CLIENT_ID,
+#     X3_KEYCLOAK_CLIENT_SECRET, X3_KEYCLOAK_ACCOUNT_URL
+#                           unused while X3_KEYCLOAK_ENABLE=0; with it on,
+#                           X3 refuses to start while any of them is empty
+#                           and names the empty ones
+#     X3_KEYCLOAK_REGISTER_URL
+#                           REGISTER answers with X3_KEYCLOAK_ACCOUNT_URL
+#     X3_KEYCLOAK_OPER_GROUP
+#                           X3 writes no oper group membership to Keycloak
+#     X3_KEYCLOAK_FIELD_OSLEVEL
+#                           the OpServ level is not written to Keycloak
+#   X3_SASL_ANNOUNCE        the mechanism list is announced exactly when
+#                           X3_KEYCLOAK_ENABLE is on (nickserv.c reads an
+#                           empty sasl_announce as an absent one)
+EMPTY_OK=" X3_AUTOJOIN_CHANNELS X3_AUTO_OPER X3_AUTO_OPER_PRIVS X3_GENERAL_BIND_ADDRESS X3_LDAP_ADMIN_DN X3_LDAP_ADMIN_PASS X3_LDAP_FIELD_OSLEVEL X3_LDAP_FILTER X3_SUPPORT_CHANNEL X3_KEYCLOAK_URL X3_KEYCLOAK_REALM X3_KEYCLOAK_CLIENT_ID X3_KEYCLOAK_CLIENT_SECRET X3_KEYCLOAK_ACCOUNT_URL X3_KEYCLOAK_REGISTER_URL X3_KEYCLOAK_OPER_GROUP X3_KEYCLOAK_FIELD_OSLEVEL X3_SASL_ANNOUNCE "
 
 # conf_escape VALUE: set REPLY to VALUE escaped for use between the double
 # quotes of an x3.conf string.
@@ -318,6 +333,27 @@ if [ "$generate" = yes ]; then
     : "${X3_LDAP_FILTER=(objectClass=inetOrgPerson)}"
     : "${X3_LDAP_AUTOCREATE=1}"
     : "${X3_LDAP_TIMEOUT=10}"
+
+    # Keycloak defaults: off, and each the default nickserv.c's
+    # nickserv_conf_read() gives an absent key (so the generated conf makes
+    # X3 behave as with no keycloak_* keys at all).
+    : "${X3_KEYCLOAK_ENABLE=0}"
+    : "${X3_KEYCLOAK_URL=}"
+    : "${X3_KEYCLOAK_REALM=}"
+    : "${X3_KEYCLOAK_CLIENT_ID=}"
+    : "${X3_KEYCLOAK_CLIENT_SECRET=}"
+    : "${X3_KEYCLOAK_AUTOCREATE=0}"
+    : "${X3_KEYCLOAK_WRITEBACK=0}"
+    : "${X3_KEYCLOAK_ACCOUNT_URL=}"
+    : "${X3_KEYCLOAK_REGISTER_URL=}"
+    : "${X3_KEYCLOAK_OPER_GROUP=}"
+    : "${X3_KEYCLOAK_OPER_GROUP_LEVEL=99}"
+    : "${X3_KEYCLOAK_FIELD_OSLEVEL=}"
+    : "${X3_KEYCLOAK_TIMEOUT=2500}"
+    : "${X3_KEYCLOAK_MAX_PENDING=64}"
+    # Empty = the conf's "sasl_announce" "" = as if absent: on exactly
+    # when X3_KEYCLOAK_ENABLE is (nickserv.c reads an empty value so).
+    : "${X3_SASL_ANNOUNCE=}"
 
     # Put the value of every placeholder the template uses into conf syntax
     # (see CONF_LIST_VARS).  A value with a line break is refused: a conf

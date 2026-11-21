@@ -259,9 +259,16 @@
 
 
         // Keycloak identity: the ircd announces each login's Keycloak user id
-        // and the handle binds to it.  With keycloak_id_reset on, a login under
-        // a bound name that carries a DIFFERENT id (the user was recreated in
-        // Keycloak) resets the handle's data; off (the default), the mismatch
+        // and the handle binds to it -- except with keycloak_enable on (below),
+        // where no login binds a handle: tools/bind-keycloak-ids.py binds them
+        // at the switch, an oper's REBIND afterwards, and a login for a handle
+        // with no id is refused -- also one a server announces without an
+        // id, unless its account timestamp is the handle's registration
+        // date (X3's own stamp, replayed after a restart).  A handle that
+        // has an id accepts a login announced without one, as before.
+        // With keycloak_id_reset on, a login under a bound name that
+        // carries a DIFFERENT id (the user was recreated in Keycloak)
+        // resets the handle's data; off (the default), the mismatch
         // is logged and told to opers and the login is refused; once an oper
         // REBINDs the account, the user logs in after reconnecting (the
         // refused connection keeps the account at the ircd and cannot log
@@ -320,28 +327,91 @@
         // libcurl, jansson and libcrypto are found); otherwise
         // keycloak_enable 1 makes X3 refuse to start.  keycloak_enable and
         // ldap_enable may not both be on.  With keycloak_enable 1, X3
-        // refuses to start (or, on a rehash, exits) when keycloak_url,
-        // keycloak_realm, keycloak_client_id, keycloak_client_secret or
-        // keycloak_account_url is empty or missing.  X3 never blocks on
-        // Keycloak: each request runs in the background.
+        // refuses to start when keycloak_url, keycloak_realm,
+        // keycloak_client_id, keycloak_client_secret or keycloak_account_url
+        // is empty or missing, keycloak_timeout or keycloak_max_pending is
+        // out of range, or libcurl lacks asynchronous name resolution
+        // (AsynchDNS).  The same refusal on a rehash does not stop X3: it is
+        // logged, and until a rehash with settings X3 accepts every
+        // Keycloak login is answered as if the account server could not be
+        // reached (LDAP is not turned on in its place).
+        //
+        // X3 does not wait for Keycloak: each request runs in the
+        // background and is answered by keycloak_timeout, also when the
+        // lookup of the Keycloak host's name stalls: libcurl's resolver
+        // runs in a thread, and the request is given up without waiting for
+        // it.  Only on a libcurl older than 7.87.0 (at build or at run
+        // time; X3 logs a warning at start-up then) does a stalled lookup
+        // hold X3 up when its request is given up, until the lookup gives
+        // up too.  Make the name resolve reliably anyway, or logins fail at
+        // keycloak_timeout while it stalls -- a local resolver, or the
+        // address pinned in /etc/hosts (an address in keycloak_url works
+        // too, at the cost of certificate checks against a name).
+        //
+        // Security: X3 reads the user's id ("sub") and name from the ID
+        // token of the password grant without checking its signature, and
+        // trusts them because they came over the connection to Keycloak:
+        // keycloak_url should be https.  X3's client must not carry a
+        // pairwise subject mapper (the "sub" must be the user's id), and
+        // after a password grant X3 checks that the token's
+        // preferred_username is the name that was given (otherwise the
+        // login is refused and logged).  Accounts with a second factor
+        // (OTP) in Keycloak cannot log in through the password grant, so
+        // not through X3's AUTH, login-on-connect or SASL PLAIN either.
         //
         // Keycloak side: X3 needs a confidential client of its own (not
         // the ircd's) with direct access grants enabled and the "email"
-        // scope on its tokens, and a service account allowed to view,
-        // query and manage users (realm-management: view-users,
-        // query-users, manage-users).
+        // scope on its tokens, and a service account holding the
+        // realm-management role manage-users (it covers every read and
+        // write X3 makes; nothing wider is needed).  For the addresses
+        // below to be useful the realm should allow self-registration and
+        // password reset ("Forgot password").
+        //
+        // Accounts are bound to their Keycloak user by its id (kc_id in
+        // x3.db): every write X3 makes goes by that stored id, never by
+        // name.  An account with no stored id is X3's alone: nothing X3
+        // does to it touches Keycloak, and no login is accepted for it
+        // (the user is told to ask an oper; opers are told) until an oper
+        // binds it with REBIND -- a Keycloak user of the same name is not
+        // taken as proof that it is the same account.  Bind existing
+        // accounts with tools/bind-keycloak-ids.py before switching from
+        // LDAP: tools/README.bind-keycloak-ids describes the switch, step
+        // by step (first start with keycloak_writeback 0 and
+        // keycloak_id_reset off), and how to go back.  A user renamed in
+        // Keycloak gets a second account at the first login under the new
+        // name (X3 does not follow renames yet).
+        //
+        // Commands that change Keycloak-held data are off and answer with
+        // an address: REGISTER and OREGISTER (keycloak_register_url),
+        // PASS, SET PASSWORD, SET EMAIL with a value (keycloak_account_url),
+        // RESETPASS, AUTHCOOKIE, COOKIE (keycloak_account_url).  A user's
+        // own UNREGISTER, CHECKPASS and RENAME are refused.  RESETPASS,
+        // AUTHCOOKIE, COOKIE and SET EMAIL exist in Keycloak mode whatever
+        // email_enabled says; on a network whose AuthServ already has
+        // command bindings in x3.db, bind them once with OpServ
+        // (BIND AuthServ RESETPASS *nickserv.resetpass, and the same for
+        // AUTHCOOKIE and COOKIE).
         //"keycloak_enable" "0";
         //"keycloak_url" "https://keycloak.yournetwork.org"; // base address, no trailing slash
         //"keycloak_realm" "afternet";
         //"keycloak_client_id" "x3";
         //"keycloak_client_secret" "xxxxxxxxxxx"; // never written to any log
         //// Create the X3 account on the first successful Keycloak login
-        //// of a name X3 does not know (as ldap_autocreate).
+        //// of a name X3 does not know (as ldap_autocreate), or when a
+        //// server announces a login for such a name (X3 looks the name up
+        //// in Keycloak first).  An announced login with no Keycloak id
+        //// and a non-zero account timestamp (X3's own old stamp) never
+        //// creates an account.
         //"keycloak_autocreate" "1";
-        //// Let X3 change Keycloak: delete the user when an account is
-        //// unregistered, and write the oper group and the level attribute
-        //// below.  0 = X3 only reads.  X3 never creates a Keycloak user
-        //// or changes a password or email address, whatever this says.
+        //// Let X3 change Keycloak: delete the user (by its stored id)
+        //// when an account is unregistered by an oper (OUNREGISTER, MERGE,
+        //// SEARCH UNREGISTER) or expires, and write the oper group and the
+        //// level attribute below.  A delete is skipped while another
+        //// account holds the same Keycloak id.  0 = X3 only reads.  X3
+        //// never creates a Keycloak user or changes a password or email
+        //// address, whatever this says.  At the switch from LDAP, start
+        //// with 0: the first expiry pass with it on deletes the Keycloak
+        //// users of every account that has expired meanwhile.
         //"keycloak_writeback" "0";
         //// Where users change their password and email address, and
         //// recover a lost password: X3's replies to those commands give
@@ -355,29 +425,42 @@
         //// keycloak_field_oslevel set, an OpServ level change (ACCESS,
         //// OSET LEVEL) of an account bound to a Keycloak user is made in
         //// Keycloak first; the level in X3 changes only once Keycloak
-        //// confirmed (during an outage levels cannot be changed).
+        //// confirmed (during an outage levels cannot be changed).  A
+        //// promotion writes the attribute, then adds the group; a
+        //// demotion removes the group first.  Level changes are audited.
         //"keycloak_oper_group" "/opers";
         //"keycloak_oper_group_level" "99"; // must be above this level to be put in the group
         //// The user attribute that receives the account's OpServ level.
         //// Empty = not written.  Needs keycloak_writeback.  The realm must
         //// declare this attribute in its user profile with edit permission
         //// for admins only, so that users cannot set their own level.
+        //// Keycloak's API cannot write one attribute: X3 reads the user
+        //// and writes it back whole, so a change made to that user in
+        //// Keycloak between the two is overwritten.
         //"keycloak_field_oslevel" "x3_opserv_level";
         //// Every Keycloak call is answered within this many milliseconds
         //// (as unreachable, if Keycloak has not answered by then; one
-        //// limit for a call that makes several requests).  Keep it below
-        //// the ircd's login timeout (3 seconds by default).  0 = 10 seconds.
+        //// limit for a call that makes several requests).  500 to 60000;
+        //// anything else is refused.  Keep it below the login timeout of
+        //// every ircd that relays logins to X3 -- the LOC_TIMEOUT the
+        //// legacy servers really run with (3 seconds by default) -- or
+        //// their users see a failed login before X3's answer arrives.
         //"keycloak_timeout" "2500";
-        //// Requests in flight before new ones are refused as busy (a
-        //// look-up for a login a server announces waits its turn instead,
-        //// within keycloak_timeout, and such look-ups leave a quarter of
-        //// the slots free for logins).  At least 1.
+        //// Requests in flight before new ones are refused as busy.  Two
+        //// kinds wait their turn instead: look-ups for logins a server
+        //// announces and deletes beyond the limit (a bulk unregister or
+        //// expiry); each gets keycloak_timeout from when its request
+        //// starts, and waiting look-ups go first.  Together they use at most
+        //// max(1, keycloak_max_pending - max(1, keycloak_max_pending / 4))
+        //// slots, so a quarter (at least one, from 2 up) stays free for
+        //// logins.  At least 1; 0 is refused.
         //"keycloak_max_pending" "64";
         //// Announce X3's SASL mechanism list to the network (the
         //// "SASL * * M :PLAIN,EXTERNAL" line), once linked and once per
-        //// batch of servers linking.  Any account backend (LDAP,
-        //// Keycloak or neither).  0 = never sent.
-        //"sasl_announce" "1";
+        //// batch of servers linking.  Absent or empty: on exactly when
+        //// keycloak_enable is.  1 or 0 decides in any mode (LDAP,
+        //// Keycloak or neither).
+        //"sasl_announce" "";
 
     };
 

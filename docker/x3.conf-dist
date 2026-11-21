@@ -288,6 +288,30 @@
         "ldap_filter" "%X3_LDAP_FILTER%";
         "ldap_timeout" "%X3_LDAP_TIMEOUT%";
 
+        // Keycloak configuration (logins only: account management happens
+        // on Keycloak's own pages).  Needs a build with Keycloak support;
+        // keycloak_enable and ldap_enable may not both be on, and with
+        // keycloak_enable on, keycloak_url, keycloak_realm,
+        // keycloak_client_id, keycloak_client_secret and
+        // keycloak_account_url must be set.  x3.conf.example describes
+        // every key.  Empty strings mean the key is unset (an empty
+        // sasl_announce: on exactly when keycloak_enable is).
+        "keycloak_enable" "%X3_KEYCLOAK_ENABLE%";
+        "keycloak_url" "%X3_KEYCLOAK_URL%";
+        "keycloak_realm" "%X3_KEYCLOAK_REALM%";
+        "keycloak_client_id" "%X3_KEYCLOAK_CLIENT_ID%";
+        "keycloak_client_secret" "%X3_KEYCLOAK_CLIENT_SECRET%";
+        "keycloak_autocreate" "%X3_KEYCLOAK_AUTOCREATE%";
+        "keycloak_writeback" "%X3_KEYCLOAK_WRITEBACK%";
+        "keycloak_account_url" "%X3_KEYCLOAK_ACCOUNT_URL%";
+        "keycloak_register_url" "%X3_KEYCLOAK_REGISTER_URL%";
+        "keycloak_oper_group" "%X3_KEYCLOAK_OPER_GROUP%";
+        "keycloak_oper_group_level" "%X3_KEYCLOAK_OPER_GROUP_LEVEL%";
+        "keycloak_field_oslevel" "%X3_KEYCLOAK_FIELD_OSLEVEL%";
+        "keycloak_timeout" "%X3_KEYCLOAK_TIMEOUT%";
+        "keycloak_max_pending" "%X3_KEYCLOAK_MAX_PENDING%";
+        "sasl_announce" "%X3_SASL_ANNOUNCE%";
+
     };
 
     /* 
