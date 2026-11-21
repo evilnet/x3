@@ -23,6 +23,7 @@
 #include "conf.h"
 #include "config.h"
 #include "global.h"
+#include "kcid.h"
 #include "modcmd.h"
 #include "opserv.h" /* for gag_create(), opserv_bad_channel() */
 #include "saxdb.h"
@@ -2195,48 +2196,6 @@ static NICKSERV_FUNC(cmd_nickinfo)
     return 1;
 }
 
-/* 16 UUID bytes -> 22 unpadded base64url chars.  Mirrors nefarious's
- * account_id, the form the ircd announces and saxdb stores. */
-static const char kcid_b64[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-static int
-handle_kcid_from_uuid(const char *uuid, char out[23])
-{
-    unsigned char raw[16];
-    int digits = 0, hi = -1, i, o = 0;
-    const char *p;
-
-    if (!uuid)
-        return 0;
-    for (p = uuid; *p; p++) {
-        int v;
-        if (*p == '-')
-            continue;
-        if (*p >= '0' && *p <= '9') v = *p - '0';
-        else if (*p >= 'a' && *p <= 'f') v = *p - 'a' + 10;
-        else if (*p >= 'A' && *p <= 'F') v = *p - 'A' + 10;
-        else return 0;
-        if (digits == 32)
-            return 0;
-        if (hi < 0) hi = v; else { raw[digits/2] = (hi << 4) | v; hi = -1; }
-        digits++;
-    }
-    if (digits != 32)
-        return 0;
-    for (i = 0; i < 16; i += 3) {                 /* last group is 16%3==1 byte */
-        unsigned int n = raw[i] << 16;
-        int bytes = 1;
-        if (i + 1 < 16) { n |= raw[i+1] << 8; bytes = 2; }
-        if (i + 2 < 16) { n |= raw[i+2];      bytes = 3; }
-        out[o++] = kcid_b64[(n >> 18) & 63];
-        out[o++] = kcid_b64[(n >> 12) & 63];
-        if (bytes > 1) out[o++] = kcid_b64[(n >> 6) & 63];
-        if (bytes > 2) out[o++] = kcid_b64[n & 63];
-    }
-    out[o] = 0;
-    return o == 22;
-}
-
 /* The hostmasks an account starts with under a new owner, as a REGISTER,
  * an OREGISTER or a login-created account gets them: *@* with
  * default_hostmask, otherwise the owner's own host when a user of theirs
@@ -2380,7 +2339,7 @@ static NICKSERV_FUNC(cmd_rebind)
      * digits -- so the order does not matter. */
     if (handle_kcid_valid(argv[2])) {
         safestrncpy(compact, argv[2], sizeof(compact));
-    } else if (!handle_kcid_from_uuid(argv[2], compact)) {
+    } else if (!kcid_from_uuid(argv[2], compact)) {
         reply("NSMSG_REBIND_BADID");
         return 0;
     }

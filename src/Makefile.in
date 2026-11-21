@@ -92,7 +92,7 @@ host_triplet = @host@
 target_triplet = @target@
 bin_PROGRAMS = x3$(EXEEXT)
 noinst_PROGRAMS = slab-read$(EXEEXT)
-EXTRA_PROGRAMS = checkdb$(EXEEXT) globtest$(EXEEXT)
+EXTRA_PROGRAMS = checkdb$(EXEEXT) globtest$(EXEEXT) x3kc-test$(EXEEXT)
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -121,14 +121,17 @@ am_x3_OBJECTS = base64.$(OBJEXT) chanserv.$(OBJEXT) compat.$(OBJEXT) \
 	conf.$(OBJEXT) dict-splay.$(OBJEXT) eventhooks.$(OBJEXT) \
 	getopt.$(OBJEXT) getopt1.$(OBJEXT) gline.$(OBJEXT) \
 	global.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
-	helpfile.$(OBJEXT) ioset.$(OBJEXT) log.$(OBJEXT) \
-	main.$(OBJEXT) math.$(OBJEXT) md5.$(OBJEXT) modcmd.$(OBJEXT) \
-	modules.$(OBJEXT) nickserv.$(OBJEXT) opserv.$(OBJEXT) \
-	policer.$(OBJEXT) recdb.$(OBJEXT) sar.$(OBJEXT) \
-	saxdb.$(OBJEXT) spamserv.$(OBJEXT) shun.$(OBJEXT) \
-	timeq.$(OBJEXT) tools.$(OBJEXT) x3ldap.$(OBJEXT) \
-	version.$(OBJEXT)
+	helpfile.$(OBJEXT) ioset.$(OBJEXT) kcid.$(OBJEXT) \
+	log.$(OBJEXT) main.$(OBJEXT) math.$(OBJEXT) md5.$(OBJEXT) \
+	modcmd.$(OBJEXT) modules.$(OBJEXT) nickserv.$(OBJEXT) \
+	opserv.$(OBJEXT) policer.$(OBJEXT) recdb.$(OBJEXT) \
+	sar.$(OBJEXT) saxdb.$(OBJEXT) spamserv.$(OBJEXT) \
+	shun.$(OBJEXT) timeq.$(OBJEXT) tools.$(OBJEXT) \
+	x3ldap.$(OBJEXT) version.$(OBJEXT)
 x3_OBJECTS = $(am_x3_OBJECTS)
+am_x3kc_test_OBJECTS = x3kc-test.$(OBJEXT) kcid.$(OBJEXT)
+x3kc_test_OBJECTS = $(am_x3kc_test_OBJECTS)
+x3kc_test_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -155,9 +158,10 @@ am__depfiles_remade = ./$(DEPDIR)/alloc-slab.Po \
 	./$(DEPDIR)/heap.Po ./$(DEPDIR)/helpfile.Po \
 	./$(DEPDIR)/ioset-epoll.Po ./$(DEPDIR)/ioset-kevent.Po \
 	./$(DEPDIR)/ioset-select.Po ./$(DEPDIR)/ioset.Po \
-	./$(DEPDIR)/log.Po ./$(DEPDIR)/mail-common.Po \
-	./$(DEPDIR)/mail-sendmail.Po ./$(DEPDIR)/main-common.Po \
-	./$(DEPDIR)/main.Po ./$(DEPDIR)/math.Po ./$(DEPDIR)/md5.Po \
+	./$(DEPDIR)/kcid.Po ./$(DEPDIR)/log.Po \
+	./$(DEPDIR)/mail-common.Po ./$(DEPDIR)/mail-sendmail.Po \
+	./$(DEPDIR)/main-common.Po ./$(DEPDIR)/main.Po \
+	./$(DEPDIR)/math.Po ./$(DEPDIR)/md5.Po \
 	./$(DEPDIR)/mod-blacklist.Po ./$(DEPDIR)/mod-helpserv.Po \
 	./$(DEPDIR)/mod-memoserv.Po ./$(DEPDIR)/mod-python.Po \
 	./$(DEPDIR)/mod-qserver.Po ./$(DEPDIR)/mod-snoop.Po \
@@ -170,7 +174,7 @@ am__depfiles_remade = ./$(DEPDIR)/alloc-slab.Po \
 	./$(DEPDIR)/shun.Po ./$(DEPDIR)/slab-read.Po \
 	./$(DEPDIR)/spamserv.Po ./$(DEPDIR)/timeq.Po \
 	./$(DEPDIR)/tools.Po ./$(DEPDIR)/version.Po \
-	./$(DEPDIR)/x3ldap.Po
+	./$(DEPDIR)/x3kc-test.Po ./$(DEPDIR)/x3ldap.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -185,9 +189,10 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(checkdb_SOURCES) $(globtest_SOURCES) $(slab_read_SOURCES) \
-	$(x3_SOURCES) $(EXTRA_x3_SOURCES)
+	$(x3_SOURCES) $(EXTRA_x3_SOURCES) $(x3kc_test_SOURCES)
 DIST_SOURCES = $(checkdb_SOURCES) $(globtest_SOURCES) \
-	$(slab_read_SOURCES) $(x3_SOURCES) $(EXTRA_x3_SOURCES)
+	$(slab_read_SOURCES) $(x3_SOURCES) $(EXTRA_x3_SOURCES) \
+	$(x3kc_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -389,6 +394,7 @@ x3_SOURCES = \
 	heap.c heap.h \
 	helpfile.c helpfile.h \
 	ioset.c ioset.h ioset-impl.h \
+	kcid.c kcid.h \
 	log.c log.h \
 	mail.h \
 	main.c common.h \
@@ -410,6 +416,7 @@ x3_SOURCES = \
 	version.c version.h
 
 checkdb_SOURCES = checkdb.c common.h compat.c compat.h dict-splay.c dict.h recdb.c recdb.h saxdb.c saxdb.h tools.c conf.h log.h modcmd.h saxdb.h timeq.h
+x3kc_test_SOURCES = x3kc-test.c kcid.c kcid.h
 globtest_SOURCES = common.h compat.c compat.h dict-splay.c dict.h globtest.c tools.c
 slab_read_SOURCES = slab-read.c
 all: config.h
@@ -523,6 +530,10 @@ x3$(EXEEXT): $(x3_OBJECTS) $(x3_DEPENDENCIES) $(EXTRA_x3_DEPENDENCIES)
 	@rm -f x3$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(x3_OBJECTS) $(x3_LDADD) $(LIBS)
 
+x3kc-test$(EXEEXT): $(x3kc_test_OBJECTS) $(x3kc_test_DEPENDENCIES) $(EXTRA_x3kc_test_DEPENDENCIES) 
+	@rm -f x3kc-test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(x3kc_test_OBJECTS) $(x3kc_test_LDADD) $(LIBS)
+
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -550,6 +561,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ioset-kevent.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ioset-select.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ioset.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kcid.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/log.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mail-common.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mail-sendmail.Po@am__quote@ # am--include-marker
@@ -582,6 +594,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeq.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/version.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3kc-test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x3ldap.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -752,6 +765,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ioset-kevent.Po
 	-rm -f ./$(DEPDIR)/ioset-select.Po
 	-rm -f ./$(DEPDIR)/ioset.Po
+	-rm -f ./$(DEPDIR)/kcid.Po
 	-rm -f ./$(DEPDIR)/log.Po
 	-rm -f ./$(DEPDIR)/mail-common.Po
 	-rm -f ./$(DEPDIR)/mail-sendmail.Po
@@ -784,6 +798,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/timeq.Po
 	-rm -f ./$(DEPDIR)/tools.Po
 	-rm -f ./$(DEPDIR)/version.Po
+	-rm -f ./$(DEPDIR)/x3kc-test.Po
 	-rm -f ./$(DEPDIR)/x3ldap.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -851,6 +866,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ioset-kevent.Po
 	-rm -f ./$(DEPDIR)/ioset-select.Po
 	-rm -f ./$(DEPDIR)/ioset.Po
+	-rm -f ./$(DEPDIR)/kcid.Po
 	-rm -f ./$(DEPDIR)/log.Po
 	-rm -f ./$(DEPDIR)/mail-common.Po
 	-rm -f ./$(DEPDIR)/mail-sendmail.Po
@@ -883,6 +899,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/timeq.Po
 	-rm -f ./$(DEPDIR)/tools.Po
 	-rm -f ./$(DEPDIR)/version.Po
+	-rm -f ./$(DEPDIR)/x3kc-test.Po
 	-rm -f ./$(DEPDIR)/x3ldap.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

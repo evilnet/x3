@@ -8,7 +8,7 @@ PY_LIBS = @PY_LIBS@
 
 bin_PROGRAMS = x3
 noinst_PROGRAMS = slab-read
-EXTRA_PROGRAMS = checkdb globtest
+EXTRA_PROGRAMS = checkdb globtest x3kc-test
 noinst_DATA = \
 	chanserv.help \
 	global.help \
@@ -66,6 +66,7 @@ x3_SOURCES = \
 	heap.c heap.h \
 	helpfile.c helpfile.h \
 	ioset.c ioset.h ioset-impl.h \
+	kcid.c kcid.h \
 	log.c log.h \
 	mail.h \
 	main.c common.h \
@@ -87,6 +88,7 @@ x3_SOURCES = \
 	version.c version.h
 
 checkdb_SOURCES = checkdb.c common.h compat.c compat.h dict-splay.c dict.h recdb.c recdb.h saxdb.c saxdb.h tools.c conf.h log.h modcmd.h saxdb.h timeq.h
+x3kc_test_SOURCES = x3kc-test.c kcid.c kcid.h
 globtest_SOURCES = common.h compat.c compat.h dict-splay.c dict.h globtest.c tools.c
 slab_read_SOURCES = slab-read.c
 
