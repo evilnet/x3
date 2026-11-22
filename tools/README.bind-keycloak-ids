@@ -217,8 +217,10 @@ Before the day:
   DNS lookup stalls, logins fail at keycloak_timeout (and on a libcurl
   older than 7.87.0, which X3 warns about at start-up, the stalled lookup
   also holds X3 up); pin it in /etc/hosts if in doubt.
-- A user renamed in Keycloak later gets a second X3 account at the first
-  login under the new name (X3 does not follow renames yet): avoid renames.
+- X3 does not follow a rename made in Keycloak yet: avoid renames.  A
+  renamed user's login under the new name is refused (X3 makes no second
+  account for a Keycloak user another account is bound to) and opers are
+  told; rename the user back in Keycloak.
 
 The switch:
 1. Stop X3.

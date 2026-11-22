@@ -776,7 +776,7 @@ def bind(db, lookup, rule, rules, section='NickServ'):
         if present:
             if not ids:
                 # Keycloak has no user of that name any more: deleted, or
-                # renamed (a rename makes a second handle at its first login).
+                # renamed (X3 then refuses its logins under the new name).
                 report.bound_no_user.append(BoundNoUser(name, stored.value))
             elif len(ids) > 1:
                 report.ambiguous.append(Ambiguous(name, ids))

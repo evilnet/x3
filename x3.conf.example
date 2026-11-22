@@ -401,7 +401,9 @@
         //// server announces a login for such a name (X3 looks the name up
         //// in Keycloak first).  An announced login with no Keycloak id
         //// and a non-zero account timestamp (X3's own old stamp) never
-        //// creates an account.
+        //// creates an account, and neither does a Keycloak user whose id
+        //// another account is already bound to (a user renamed in
+        //// Keycloak: X3 cannot follow that rename yet; opers are told).
         //"keycloak_autocreate" "1";
         //// Let X3 change Keycloak: delete the user (by its stored id)
         //// when an account is unregistered by an oper (OUNREGISTER, MERGE,

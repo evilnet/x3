@@ -413,7 +413,9 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_KC_LEVEL_REJECTED", "The account server refused the level change for $b%s$b; check the account and its Keycloak binding (REBIND)." },
     { "NSMSG_KC_LEVEL_GONE", "Account $b%s$b was removed or rebound while the account server was being updated; no OpServ level was set in X3." },
     { "NSMSG_KC_UNBOUND_SAME", "Account $b%s$b is not bound to a Keycloak user, and its level is already %u; nothing was changed." },
-    { "NSMSG_REBIND_SHARED", "Keycloak id %s is also bound to account $b%s$b: unregistering either account keeps the Keycloak user while both hold it." },
+    { "NSMSG_REBIND_ELSEWHERE", "Keycloak id %s is already bound to account $b%s$b; nothing was changed. To move it, clear it there first (REBIND *%s *)." },
+    { "NSMSG_IDENTITY_ELSEWHERE", "Keycloak user $b%s$b (id %s) logged in, but account $b%s$b already holds that id (was the user renamed in Keycloak?): no account was created for the new name. Rename the user back in Keycloak, or clear the id from %s with REBIND." },
+    { "NSMSG_KC_ID_ELSEWHERE", "Your login is already linked to another account here; ask a network operator." },
     { "NSMSG_KC_RENAME_REFUSED", "Accounts cannot be renamed while X3 uses Keycloak." },
     { "NSMSG_KC_UNREGISTER_OFF", "Accounts are removed by network staff, not with this command." },
     { "NSMSG_RECLAIMED_NONE", "You cannot manually reclaim a nick." },
@@ -841,12 +843,13 @@ handle_kcid_forget_replaced(struct handle_info *hi)
 #ifdef WITH_KEYCLOAK
 /* Handles by Keycloak user: struct handle_info_list*, keyed by the UUID the
  * stored compact id stands for (dict keys compare without case, and a
- * compact id is case-sensitive; a UUID in hex is not).  Nothing keeps a
- * kc_id unique across handles -- REBIND binds any id, and auto-create
- * checks only the name, so a user renamed in Keycloak gets a second handle
- * -- and an unregister must not delete a Keycloak user another handle
- * still holds.  Kept up to date by handle_kcid_set(), through which every
- * change of a handle's kc_id goes (db load, LDAP-mode adopt, auto-create, reset,
+ * compact id is case-sensitive; a UUID in hex is not).  REBIND and
+ * auto-create refuse an id another handle holds (kcid_other_holder()), but
+ * a kc_id is still not unique across handles: a database can carry shared
+ * ones (loaded from before that check, LDAP mode's adopt, MERGEDB), so an
+ * unregister must not delete a Keycloak user another handle still holds.
+ * Kept up to date by handle_kcid_set(), through which every change of a
+ * handle's kc_id goes (db load, LDAP-mode adopt, auto-create, reset,
  * REBIND), and free_handle_info() (unregister, MERGE, reset, a db load
  * replacing a handle). */
 static dict_t nickserv_kcid_dict;
@@ -3045,6 +3048,10 @@ nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned
  * no id stored -- its first binding, or one after a REBIND * that removed
  * them already -- removes nothing, and neither does the id it has.
  *
+ * An id another handle holds is refused, naming that handle, and nothing
+ * changes: one Keycloak user, one handle (auto-create refuses the same).
+ * To move an id, clear it from the holder first.
+ *
  * Not an OSET option on purpose: SEARCH SET applies OSET options without
  * the outranking check that get_victim_oper enforces here. */
 static NICKSERV_FUNC(cmd_rebind)
@@ -3091,6 +3098,20 @@ static NICKSERV_FUNC(cmd_rebind)
         reply("NSMSG_REBIND_BADID");
         return 0;
     }
+#ifdef WITH_KEYCLOAK
+    {
+        /* One Keycloak user, one handle: an id another handle holds is
+         * refused, before anything changes, in every mode.  Moving an id
+         * from a stale handle to the right one is two steps: REBIND * on
+         * the stale one, then this. */
+        struct handle_info *other;
+
+        if ((other = kcid_other_holder(compact, hi))) {
+            reply("NSMSG_REBIND_ELSEWHERE", compact, other->handle, other->handle);
+            return 0;
+        }
+    }
+#endif
     if (!hi->kc_id || strcmp(hi->kc_id, compact)) {
         struct userNode *u;
         unsigned int detached = 0, sslfps = 0, masks = 0;
@@ -3122,18 +3143,6 @@ static NICKSERV_FUNC(cmd_rebind)
         }
     }
     reply("NSMSG_REBIND_SET", hi->handle);
-#ifdef WITH_KEYCLOAK
-    {
-        /* Still bound, as asked (an oper tool: moving an id from a stale
-         * handle to the right one passes through this), but said: while
-         * two handles hold one Keycloak user, unregistering either keeps
-         * it. */
-        struct handle_info *other;
-
-        if (nickserv_conf.keycloak_enable && (other = kcid_other_holder(hi->kc_id, hi)))
-            reply("NSMSG_REBIND_SHARED", hi->kc_id, other->handle);
-    }
-#endif
     return 1;
 }
 
@@ -3479,6 +3488,15 @@ nickserv_kc_refresh_email(struct handle_info *hi, const char *email)
  * account without an address is not created, as LDAP's auto-create
  * refuses one whose address it cannot read.  Nobody is logged in here.
  *
+ * Nor is a handle made for a Keycloak user another handle is already bound
+ * to: that is a user renamed in Keycloak, logging in under the new name,
+ * and a second handle would strand the first one's data under the old
+ * name.  Logged, told to opers (as the id refusals are, under their limit),
+ * and refused; the holder keeps the id.  X3 cannot follow a rename made in
+ * Keycloak yet: an oper renames the user back there, or clears the id
+ * from the holder with REBIND, after which the next login creates the
+ * handle.
+ *
  * Returns the handle, or NULL with *refusal (if given) set to the AuthServ
  * reply for the refusal; the refusal is logged here, once, naming who
  * (the user's nick, or LOC_WHO). */
@@ -3487,13 +3505,23 @@ nickserv_kc_autocreate(const char *name, const char *kcid, const char *email,
                        struct userNode *owner, const char *owner_userhost,
                        const char *who, const char **refusal)
 {
-    struct handle_info *hi;
+    struct handle_info *hi, *other;
 
     if (refusal)
         *refusal = NULL;
     if (!nickserv_conf.keycloak_enable || !nickserv_conf.keycloak_autocreate
         || !name || !kcid || !*kcid || dict_find(nickserv_handle_dict, name, NULL))
         return NULL;            /* callers check all of this; never create twice */
+    if ((other = kcid_other_holder(kcid, NULL))) {
+        log_module(NS_LOG, LOG_WARNING, "%s: Keycloak account %s (id %s) is already bound to account %s; no handle created for it (a user renamed in Keycloak?).",
+                   who, name, kcid, other->handle);
+        if (identity_notice_allowed())
+            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_ELSEWHERE",
+                                name, kcid, other->handle, other->handle);
+        if (refusal)
+            *refusal = "NSMSG_KC_ID_ELSEWHERE";
+        return NULL;
+    }
     if (!is_valid_handle(name) || strchr(name, '<') || strchr(name, '>')) {
         log_module(NS_LOG, LOG_WARNING, "%s: Keycloak account %s (id %s) has a name X3 does not allow for an account; no handle created.",
                    who, name, kcid);
