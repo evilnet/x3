@@ -2870,6 +2870,7 @@ static NICKSERV_FUNC(cmd_auth)
              char *mask;
              if(!(hi = nickserv_register(user, user, handle, passwd, 0))) {
                 reply("NSMSG_UNABLE_TO_ADD");
+                free(email);
                 return 0; /* couldn't add the user for some reason */
              }
              /* Add a *@* mask */
@@ -2882,14 +2883,13 @@ static NICKSERV_FUNC(cmd_auth)
                 char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
                 string_list_append(hi->masks, mask_canonicalized);
              }
-             if(email) {
+             if(email)
                 nickserv_set_email_addr(hi, email);
-                free(email);
-             }
              if(nickserv_conf.sync_log)
                 SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, email ? email : "@", user->info);
         }
         else {
+             free(email);
 #endif
              reply("NSMSG_HANDLE_NOT_FOUND");
              return 0;
@@ -2897,6 +2897,10 @@ static NICKSERV_FUNC(cmd_auth)
         }
 #endif
     }
+#ifdef WITH_LDAP
+    /* LDAP's address is used only by the auto-create above. */
+    free(email);
+#endif
     /* Responses from here on look up the language used by the handle they asked about. */
     if (!valid_user_for(user, hi)) {
         if (hi->email_addr && nickserv_conf.email_enabled)
@@ -6274,11 +6278,10 @@ handle_account(struct userNode *user, const char *stamp)
                 string_list_append(hi->masks, mask_canonicalized);
             }
 
-            if(email) {
+            if(email)
                 nickserv_set_email_addr(hi, email);
-                free(email);
-            }
         }
+        free(email);
     }
 #endif
 
