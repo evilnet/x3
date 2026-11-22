@@ -46,7 +46,7 @@ static int
 ioset_epoll_events(struct io_fd *fd)
 {
     return EPOLLHUP
-        | EPOLLIN
+        | (fd->no_reads ? 0 : EPOLLIN)
         | (fd_wants_writes(fd) ? EPOLLOUT : 0)
         ;
 }
@@ -112,10 +112,19 @@ ioset_epoll_loop(struct timeval *timeout)
         return 1;
     }
 
+    /* evts[] holds io_fd pointers.  One closed by an earlier event of this
+     * batch stays allocated until ioset_dispatch_end(), and ioset_events()
+     * skips it; if its fd number is reused meanwhile, the new io_fd is a
+     * new registration whose events come from the next epoll_wait(). */
+    ioset_dispatch_begin();
     for (ii = 0; ii < res; ++ii) {
         events = evts[ii].events;
-        ioset_events(evts[ii].data.ptr, (events & (EPOLLIN | EPOLLHUP)), (events & EPOLLOUT));
+        /* EPOLLERR counts as readable: the owner's read sees the error.
+         * epoll reports it whether asked for or not, and dropped it was
+         * reported again on every (level-triggered) wait. */
+        ioset_events(evts[ii].data.ptr, (events & (EPOLLIN | EPOLLHUP | EPOLLERR)), (events & EPOLLOUT));
     }
+    ioset_dispatch_end();
 
     return 0;
 }

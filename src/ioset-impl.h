@@ -25,7 +25,7 @@
 
 struct timeval;
 
-#define fd_wants_writes(FD) (((FD)->send.get != (FD)->send.put) || (FD)->state == IO_CONNECTING)
+#define fd_wants_writes(FD) (((FD)->send.get != (FD)->send.put) || (FD)->state == IO_CONNECTING || (FD)->writable_cb != NULL)
 
 struct io_engine {
     const char *name;
@@ -38,5 +38,13 @@ struct io_engine {
 };
 
 void ioset_events(struct io_fd *fd, int readable, int writable);
+
+/* Every engine loop brackets its dispatch of one batch of events with
+ * these.  An io_fd closed between them is unregistered at once but freed
+ * only by the matching ioset_dispatch_end(), and ioset_events() ignores
+ * it, so an event for it still pending in the batch touches no freed
+ * memory. */
+void ioset_dispatch_begin(void);
+void ioset_dispatch_end(void);
 
 #endif /* !defined(IOSET_IMPL_H) */

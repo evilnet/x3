@@ -317,7 +317,7 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-EXTRA_DIST = FAQ x3.conf.example sockcheck.conf.example autogen.sh
+EXTRA_DIST = FAQ x3.conf.example sockcheck.conf.example autogen.sh tools/check-kc.sh
 SUBDIRS = @MY_SUBDIRS@
 DIST_SUBDIRS = src rx
 all: all-recursive

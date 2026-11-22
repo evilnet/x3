@@ -1,0 +1,26 @@
+"gline" {
+};
+
+"OpServ" {
+"max_clients" { "max" "62"; "time" "1795036317"; };
+};
+
+"NickServ" {
+"alice" { "email_addr" "alice@example.org"; "flags" "c"; "info" "says \"hi\"\tand\\leaves"; "lastseen" "1786017497"; "masks" ("*@*", "*@example.org"); "passwd" "$6$x"; "register" "1785999495"; };
+"bob" { "flags" "c"; "kc_id" "DzwqEBERQiKDM0REVVVmZg"; "lastseen" "1786017497"; "register" "1785999495"; };
+"carol" { "kc_id" "mot8bQAAQACAAAAAAAAAAQ"; "lastseen" "1786017497"; "register" "1785999495"; };
+"old[one]" { "cookie" { "cookie" "abc"; "expires" "1786017497"; "type" "activation"; }; "lastseen" "1786017497"; "masks" (); "register" "1785999495"; };
+"dave" {
+	"email_addr" "dave@example.org";
+	"lastseen" "1786017497";
+	"register" "1785999495";
+};
+};
+
+"ChanServ" {
+"channels" {
+"#test" { "registrar" "alice"; "users" { "alice" { "level" "500"; "seen" "1786017497"; }; }; };
+};
+};
+
+"AuthServ" ("NickServ", "modcmd");

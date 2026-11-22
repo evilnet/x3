@@ -794,6 +794,7 @@ with_tre
 with_coredumper
 with_ssl
 with_ldap
+with_keycloak
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1467,6 +1468,9 @@ Optional Packages:
   --with-ssl=PATH      Base path to where openssl is installed
   --with-ldap=PATH    Base path to where the ldap library and headers are installed,
                       such that PATH/include/ldap.h and PATH/lib/libldap.so exist.
+  --with-keycloak         Build the Keycloak client (src/kc/); needs libcurl,
+                          jansson and libcrypto.  Default: built when all
+                          three are found.  --without-keycloak leaves it out
 
 Some influential environment variables:
   CC          C compiler command
@@ -8468,6 +8472,186 @@ fi
 
 
 
+# Check whether --with-keycloak was given.
+if test ${with_keycloak+y}
+then :
+  withval=$with_keycloak;
+else $as_nop
+  with_keycloak=check
+fi
+
+keycloak_message="Keycloak client:    disabled"
+if test "x$with_keycloak" != "xno"; then
+  kc_missing=""
+  ac_fn_c_check_header_compile "$LINENO" "curl/curl.h" "ac_cv_header_curl_curl_h" "$ac_includes_default"
+if test "x$ac_cv_header_curl_curl_h" = xyes
+then :
+  :
+else $as_nop
+  kc_missing="$kc_missing curl/curl.h"
+fi
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for curl_multi_socket_action in -lcurl" >&5
+printf %s "checking for curl_multi_socket_action in -lcurl... " >&6; }
+if test ${ac_cv_lib_curl_curl_multi_socket_action+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcurl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char curl_multi_socket_action ();
+int
+main (void)
+{
+return curl_multi_socket_action ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_curl_curl_multi_socket_action=yes
+else $as_nop
+  ac_cv_lib_curl_curl_multi_socket_action=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_curl_curl_multi_socket_action" >&5
+printf "%s\n" "$ac_cv_lib_curl_curl_multi_socket_action" >&6; }
+if test "x$ac_cv_lib_curl_curl_multi_socket_action" = xyes
+then :
+  :
+else $as_nop
+  kc_missing="$kc_missing libcurl"
+fi
+
+  ac_fn_c_check_header_compile "$LINENO" "jansson.h" "ac_cv_header_jansson_h" "$ac_includes_default"
+if test "x$ac_cv_header_jansson_h" = xyes
+then :
+  :
+else $as_nop
+  kc_missing="$kc_missing jansson.h"
+fi
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for json_loads in -ljansson" >&5
+printf %s "checking for json_loads in -ljansson... " >&6; }
+if test ${ac_cv_lib_jansson_json_loads+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ljansson  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char json_loads ();
+int
+main (void)
+{
+return json_loads ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_jansson_json_loads=yes
+else $as_nop
+  ac_cv_lib_jansson_json_loads=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_jansson_json_loads" >&5
+printf "%s\n" "$ac_cv_lib_jansson_json_loads" >&6; }
+if test "x$ac_cv_lib_jansson_json_loads" = xyes
+then :
+  :
+else $as_nop
+  kc_missing="$kc_missing libjansson"
+fi
+
+  ac_fn_c_check_header_compile "$LINENO" "openssl/evp.h" "ac_cv_header_openssl_evp_h" "$ac_includes_default"
+if test "x$ac_cv_header_openssl_evp_h" = xyes
+then :
+  :
+else $as_nop
+  kc_missing="$kc_missing openssl/evp.h"
+fi
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for EVP_DigestVerifyInit in -lcrypto" >&5
+printf %s "checking for EVP_DigestVerifyInit in -lcrypto... " >&6; }
+if test ${ac_cv_lib_crypto_EVP_DigestVerifyInit+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypto  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char EVP_DigestVerifyInit ();
+int
+main (void)
+{
+return EVP_DigestVerifyInit ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_crypto_EVP_DigestVerifyInit=yes
+else $as_nop
+  ac_cv_lib_crypto_EVP_DigestVerifyInit=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_EVP_DigestVerifyInit" >&5
+printf "%s\n" "$ac_cv_lib_crypto_EVP_DigestVerifyInit" >&6; }
+if test "x$ac_cv_lib_crypto_EVP_DigestVerifyInit" = xyes
+then :
+  :
+else $as_nop
+  kc_missing="$kc_missing libcrypto"
+fi
+
+  if test "x$kc_missing" = "x"; then
+
+printf "%s\n" "#define WITH_KEYCLOAK 1" >>confdefs.h
+
+    LIBS="-lcurl -ljansson -lcrypto $LIBS"
+    for kc_obj in kc kc_base64 kc_error_classify kc_http kc_jwt kc_keycloak kc_url ; do
+      MODULE_OBJS="$MODULE_OBJS kc/$kc_obj.\$(OBJEXT)"
+    done
+    MODULE_OBJS="$MODULE_OBJS x3_kc_nosync.\$(OBJEXT) x3_kc_adapter.\$(OBJEXT) x3kc.\$(OBJEXT) x3kc_pure.\$(OBJEXT)"
+    keycloak_message="Keycloak client:    enabled"
+  elif test "x$with_keycloak" = "xcheck"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Keycloak client not built; missing:$kc_missing" >&5
+printf "%s\n" "$as_me: Keycloak client not built; missing:$kc_missing" >&6;}
+  else
+    as_fn_error $? "--with-keycloak given, but missing:$kc_missing" "$LINENO" 5
+  fi
+fi
+
+
 if test "$python" = yes; then
         # Extract the first word of "python2", so it can be a program name with args.
 set dummy python2; ac_word=$2
@@ -10128,6 +10312,7 @@ X3 is now configured as follows:
   Regexp Library      TRE $tre_version
   Coredumper Library  Coredumper $core_version
   $ldap_message
+  $keycloak_message
   python: $python
 
   Install to:         $prefix

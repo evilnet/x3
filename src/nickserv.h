@@ -231,12 +231,45 @@ struct nickserv_config {
     unsigned int ldap_timeout;
     const char *ldap_filter;
 #endif
+    unsigned int keycloak_enable;
+#ifdef WITH_KEYCLOAK
+    /* keycloak_enable is on, but a rehash refused the Keycloak settings:
+     * Keycloak is not configured, every Keycloak call answers unreachable,
+     * and LDAP stays off, until a rehash brings a configuration X3
+     * accepts.  (At start-up a refusal exits instead.) */
+    unsigned int keycloak_refused;
+    /* The strings below are X3's own copies (a rehash that finds no
+     * nickserv block leaves them as they were). */
+    const char *keycloak_url;
+    const char *keycloak_realm;
+    const char *keycloak_client_id;
+    const char *keycloak_client_secret;
+    unsigned int keycloak_autocreate;
+    /* X3 may delete users and write the oper group and level attribute. */
+    unsigned int keycloak_writeback;
+    /* Web address for password, email and lost-password replies. */
+    const char *keycloak_account_url;
+    /* Web address for REGISTER; empty = keycloak_account_url. */
+    const char *keycloak_register_url;
+    /* A group path, leading '/'. */
+    const char *keycloak_oper_group;
+    unsigned int keycloak_oper_group_level;
+    const char *keycloak_field_oslevel;
+    unsigned int keycloak_timeout;      /* milliseconds, KEYCLOAK_TIMEOUT_MIN..MAX */
+    unsigned int keycloak_max_pending;
+#endif
+    /* Announce the SASL mechanism list on the network (any backend). */
+    unsigned int sasl_announce;
 };
 
 void init_nickserv(const char *nick);
 struct handle_info *get_handle_info(const char *handle);
 struct handle_info *smart_get_handle_info(struct userNode *service, struct userNode *user, const char *name);
-int oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level);
+/* Returns 1 when the level changed, or a Keycloak-mode change was
+ * started (applied when Keycloak confirms it); 0 for a refusal.  deferred
+ * (may be NULL): set to 1 when the oper was given the outcome here; the
+ * caller then shows no level. */
+int oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level, int *deferred);
 int oper_outranks(struct userNode *user, struct handle_info *hi);
 struct nick_info *get_nick_info(const char *nick);
 struct modeNode *find_handle_in_channel(struct chanNode *channel, struct handle_info *handle, struct userNode *except);
@@ -249,7 +282,13 @@ void nickserv_unbind_user(struct userNode *user);
 void nickserv_replace_pinned_fakehost(struct userNode *user, const char *account);
 
 struct handle_info *get_victim_oper(struct userNode *user, const char *target);
-struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *userhost);
+/* Login-on-connect and SASL through X3.  cb gets the handle, or NULL for a
+ * refusal, exactly once: before loc_auth_async() returns for every login
+ * that does not ask Keycloak (LDAP or local mode, a certificate login, no
+ * password), from the Keycloak answer otherwise.  Strings are copied. */
+typedef void (*loc_auth_cb)(struct handle_info *hi, void *data);
+void loc_auth_async(const char *sslfp, const char *handle, const char *password,
+                    const char *userhost, loc_auth_cb cb, void *data);
 
 typedef void (*user_mode_func_t)(struct userNode *user, const char *mode_change, void *extra);
 void reg_user_mode_func(user_mode_func_t func, void *extra);

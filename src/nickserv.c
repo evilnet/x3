@@ -23,12 +23,17 @@
 #include "conf.h"
 #include "config.h"
 #include "global.h"
+#include "kcid.h"
 #include "modcmd.h"
 #include "opserv.h" /* for gag_create(), opserv_bad_channel() */
 #include "saxdb.h"
 #include "mail.h"
 #include "timeq.h"
 #include "x3ldap.h"
+#include "x3kc.h"
+#ifdef WITH_KEYCLOAK
+#include "x3kc_pure.h"
+#endif
 
 #include <tre/regex.h>
 
@@ -148,6 +153,25 @@
 #define KEY_LDAP_TIMEOUT "ldap_timeout"
 #define KEY_LDAP_FILTER "ldap_filter"
 #endif
+
+#define KEY_KEYCLOAK_ENABLE "keycloak_enable"
+
+#ifdef WITH_KEYCLOAK
+#define KEY_KEYCLOAK_URL "keycloak_url"
+#define KEY_KEYCLOAK_REALM "keycloak_realm"
+#define KEY_KEYCLOAK_CLIENT_ID "keycloak_client_id"
+#define KEY_KEYCLOAK_CLIENT_SECRET "keycloak_client_secret"
+#define KEY_KEYCLOAK_AUTOCREATE "keycloak_autocreate"
+#define KEY_KEYCLOAK_WRITEBACK "keycloak_writeback"
+#define KEY_KEYCLOAK_ACCOUNT_URL "keycloak_account_url"
+#define KEY_KEYCLOAK_REGISTER_URL "keycloak_register_url"
+#define KEY_KEYCLOAK_OPER_GROUP "keycloak_oper_group"
+#define KEY_KEYCLOAK_OPER_GROUP_LEVEL "keycloak_oper_group_level"
+#define KEY_KEYCLOAK_FIELD_OSLEVEL "keycloak_field_oslevel"
+#define KEY_KEYCLOAK_TIMEOUT "keycloak_timeout"
+#define KEY_KEYCLOAK_MAX_PENDING "keycloak_max_pending"
+#endif
+#define KEY_SASL_ANNOUNCE "sasl_announce"
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
@@ -351,7 +375,7 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_RECLAIM_WARN", "%s is a registered nick - you must auth to account %s or change your nick." },
     { "NSMSG_RECLAIM_HOWTO", "To auth to account %s you must use /msg %s@%s AUTH %s <password>" },
     { "NSMSG_RECLAIM_KILL", "Unauthenticated user of nick." },
-    { "NSMSG_REBIND_CLEARED", "Keycloak id binding cleared for account %s; the next login will adopt one." },
+    { "NSMSG_REBIND_CLEARED", "Keycloak id binding cleared for account %s; with Keycloak logins on, nobody can log in to it until it is bound again with REBIND." },
     { "NSMSG_REBIND_SET", "Keycloak id set for account %s." },
     { "NSMSG_REBIND_DETACHED", "%d session(s) logged in under the previous id were detached." },
     { "NSMSG_REBIND_CREDENTIALS", "Removed the account's client certificate fingerprints (%u) and hostmasks (%u), which came with the previous id; hostmasks now: %s." },
@@ -361,6 +385,39 @@ static const struct message_entry msgtab[] = {
     { "NSMSG_IDENTITY_STALE", "Account $b%s$b was announced with the Keycloak id it had before (%s, now %s): login refused." },
     { "NSMSG_IDENTITY_MISMATCH", "Account $b%s$b was announced with a different Keycloak id (%s, stored %s): login refused. REBIND the account if the user was recreated." },
     { "NSMSG_IDENTITY_SUSPENDED", "Account $b%s$b was announced with a different Keycloak id (%s, stored %s): login refused. The account is suspended, so it was not reset." },
+    { "NSMSG_IDENTITY_UNBOUND", "Account $b%s$b is not linked to a Keycloak user: a login as Keycloak user %s was refused. REBIND the account if that user owns it." },
+    { "NSMSG_IDENTITY_UNBOUND_NO_ID", "Account $b%s$b is not linked to a Keycloak user: a login by %s, announced by its server without a Keycloak id, was refused. REBIND the account if its Keycloak user owns it." },
+    { "NSMSG_IDENTITY_HELD", "%u more Keycloak id refusal(s) in the last minute; see the log." },
+    { "NSMSG_KC_FAIL", "There was a problem contacting the account server. Please try again later." },
+    { "NSMSG_KC_NOT_LINKED", "Account $b%s$b is not linked to a Keycloak user yet; ask a network operator." },
+    { "NSMSG_KC_BUSY", "The account server is busy. Please try again in a moment." },
+    { "NSMSG_KC_DISABLED", "That account is disabled." },
+    { "NSMSG_KC_NOT_SET_UP", "That account is not fully set up: %s" },
+    { "NSMSG_KC_PENDING", "A login for this connection is already in progress." },
+    { "NSMSG_KC_NO_EMAIL", "Your account has no email address at the account server, and this network requires one. Add one there, then log in again." },
+    { "NSMSG_KC_NO_EMAIL_URL", "Your account has no email address at the account server, and this network requires one. Add one on the web: %s  Then log in again." },
+    { "NSMSG_KC_WEB_REGISTER", "Accounts are registered on the web: %s  Then log in here with AUTH." },
+    { "NSMSG_KC_WEB_ACCOUNT", "Passwords and email addresses are changed on the web: %s" },
+    { "NSMSG_KC_WEB_RESET", "A lost password is reset on the web: %s" },
+    { "NSMSG_KC_UNBOUND", "Account $b%s$b is not bound to a Keycloak user; only X3 was changed." },
+    { "NSMSG_KC_DELETE_FAILED", "Account %s was removed from X3, but the account server did not confirm deleting its Keycloak user; check for it there." },
+    { "NSMSG_KC_DELETE_NOT_SENT", "Account %s was removed from X3, but its Keycloak user was not deleted (the account server was busy); delete it there." },
+    { "NSMSG_KC_ID_SHARED", "Account $b%s$b shares its Keycloak user with $b%s$b; the Keycloak user was kept." },
+    { "NSMSG_KC_CHECKPASS_OFF", "Passwords are checked by the account server; X3 keeps none to compare." },
+    { "NSMSG_KC_LEVEL_PENDING", "Updating the account server for $b%s$b..." },
+    { "NSMSG_KC_LEVEL_SET", "OpServ level of $b%s$b is now %u." },
+    { "NSMSG_KC_LEVEL_IN_PROGRESS", "A level change for $b%s$b is already in progress; try again once it has finished." },
+    { "NSMSG_KC_LEVEL_IN_PROGRESS_SHARED", "A level change for the Keycloak user of $b%s$b (via $b%s$b) is already in progress." },
+    { "NSMSG_KC_LEVEL_STILL_FINISHING", "An earlier level change for $b%s$b is still being finished by the account server; try again in a moment." },
+    { "NSMSG_KC_LEVEL_UNCONFIRMED", "The account server did not confirm the level change for $b%s$b; it may be partly made there. Repeat the command, or set the old level again." },
+    { "NSMSG_KC_LEVEL_REJECTED", "The account server refused the level change for $b%s$b; check the account and its Keycloak binding (REBIND)." },
+    { "NSMSG_KC_LEVEL_GONE", "Account $b%s$b was removed or rebound while the account server was being updated; no OpServ level was set in X3." },
+    { "NSMSG_KC_UNBOUND_SAME", "Account $b%s$b is not bound to a Keycloak user, and its level is already %u; nothing was changed." },
+    { "NSMSG_REBIND_ELSEWHERE", "Keycloak id %s is already bound to account $b%s$b; nothing was changed. To move it, clear it there first (REBIND *%s *)." },
+    { "NSMSG_IDENTITY_ELSEWHERE", "Keycloak user $b%s$b (id %s) logged in, but account $b%s$b already holds that id (was the user renamed in Keycloak?): no account was created for the new name. Rename the user back in Keycloak, or clear the id from %s with REBIND." },
+    { "NSMSG_KC_ID_ELSEWHERE", "Your login is already linked to another account here; ask a network operator." },
+    { "NSMSG_KC_RENAME_REFUSED", "Accounts cannot be renamed while X3 uses Keycloak." },
+    { "NSMSG_KC_UNREGISTER_OFF", "Accounts are removed by network staff, not with this command." },
     { "NSMSG_RECLAIMED_NONE", "You cannot manually reclaim a nick." },
     { "NSMSG_RECLAIMED_WARN", "Sent a request for %s to change their nick." },
     { "NSMSG_RECLAIMED_SVSNICK", "Forcibly changed %s's nick." },
@@ -570,23 +627,24 @@ nickserv_free_cookie(void *data)
     free(cookie);
 }
 
-/* A compact Keycloak id as the ircd sends it: exactly 22 characters of
- * base64url, no padding (nefarious account_id_valid).  The alphabet is
- * spelled out rather than isalnum(), which follows the locale. */
-static int
-handle_kcid_valid(const char *id)
+/* A Keycloak id read from x3.db (kc_id or kc_id_prev), as X3 keeps it: a
+ * compact id in its canonical form (kcid_canonical()), so ids compare
+ * equal exactly when they name one user.  One whose last character had
+ * spare bits set is put right and logged; anything else is kept as
+ * written (it matches no id a login can carry) and logged.  Returns id or
+ * buf. */
+static const char *
+handle_kcid_loaded(const char *handle, const char *id, char buf[23])
 {
-    int i;
-
-    if (!id)
-        return 0;
-    for (i = 0; id[i]; i++) {
-        int c = (unsigned char)id[i];
-        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
-              || (c >= '0' && c <= '9') || c == '-' || c == '_'))
-            return 0;
+    if (!kcid_canonical(id, buf)) {
+        log_module(NS_LOG, LOG_WARNING, "Account %s: stored Keycloak id \"%s\" is no compact Keycloak id; kept as it is, and no login will match it (REBIND the account).",
+                   handle, id);
+        return id;
     }
-    return i == 22;
+    if (strcmp(buf, id))
+        log_module(NS_LOG, LOG_WARNING, "Account %s: stored Keycloak id %s is not in canonical form; read as %s.",
+                   handle, id, buf);
+    return buf;
 }
 
 /* The ids a handle's binding replaced (hi->kc_id_replaced): newest first,
@@ -600,6 +658,140 @@ handle_kcid_was_replaced(const struct handle_info *hi, const char *id)
         if (!strcmp(hi->kc_id_replaced[i], id))
             return 1;
     return 0;
+}
+
+/* What a login carrying Keycloak id `id` for this handle does (see
+ * kcid_decide()): handle_account() for an id an ircd announced, AUTH,
+ * login-on-connect and SASL PLAIN for the id of their own password grant.
+ * One function, so the paths cannot drift. */
+static enum kcid_verdict
+handle_kcid_decide(const struct handle_info *hi, const char *id)
+{
+    return kcid_decide(hi->kc_id, handle_kcid_was_replaced(hi, id),
+                       nickserv_conf.kc_id_reset,
+                       HANDLE_FLAGGED(hi, SUSPENDED) ? 1 : 0,
+                       nickserv_conf.keycloak_enable ? 1 : 0, id);
+}
+
+/* The oper notices for refused ids go through one rate limit (see
+ * kcid_notice_take()): a burst full of refusals gives opers one notice and
+ * then a count per minute.  Each refusal is logged on its own. */
+static struct kcid_notice_limit identity_notice_limit;
+
+static void
+identity_notice_flush(UNUSED_ARG(void *data))
+{
+    unsigned int held = kcid_notice_flush(&identity_notice_limit, now);
+
+    if (held)
+        global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_HELD", held);
+}
+
+/* 1: send this refusal's notice now; 0: held, and counted for the line
+ * identity_notice_flush() sends at the end of the minute. */
+static int
+identity_notice_allowed(void)
+{
+    if (kcid_notice_take(&identity_notice_limit, now))
+        return 1;
+    if (identity_notice_limit.held == 1)
+        timeq_add(kcid_notice_due(&identity_notice_limit), identity_notice_flush, NULL);
+    return 0;
+}
+
+#ifdef WITH_PROTOCOL_P10
+static struct handle_info *nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
+                                                 struct userNode *claimant, const char *claimant_name,
+                                                 const char *claimant_userhost);
+#endif
+
+/* Logs a refused verdict and tells the opers, in handle_account()'s words.
+ * who: the user's nick, or what stands for it on a path with no user yet;
+ * burst: the user arrived in a burst.  account: the name as the login gave
+ * it.  For KCID_REFUSE_* only. */
+static void
+handle_kcid_refused(const char *who, int burst, const char *account, const char *id,
+                    const struct handle_info *hi, enum kcid_verdict verdict)
+{
+    switch (verdict) {
+    case KCID_REFUSE_STALE: {
+        /* A session from before the id was replaced (a burst replay, an
+         * alias attach, the ircd's login cache): the previous owner's,
+         * not the handle's.  Refused, and not taken for yet another
+         * recreate either.  This holds with no id stored too -- after
+         * REBIND * -- or the handle would adopt the id it was just cleared
+         * of.  (A replaced id is never the current one.) */
+        const char *now_id = hi->kc_id ? hi->kc_id : "none";
+
+        log_module(MAIN_LOG, LOG_WARNING,
+                   "%s announced account %s with the Keycloak id it had before%s "
+                   "(%s, now %s): bind refused",
+                   who, account, burst ? " during a burst" : "", id, now_id);
+        if (identity_notice_allowed())
+            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_STALE",
+                                account, id, now_id);
+        break;
+    }
+    case KCID_REFUSE_SUSPENDED:
+        /* A suspended handle is not reset: the fresh record would not
+         * be suspended, so deleting and recreating the Keycloak user
+         * would be a way out of a suspension.  Refuse the bind as the
+         * default mode does, before anything is destroyed, and say
+         * why.  The handle keeps its data, its stored id and its
+         * suspension; lifting the suspension lets the next such login
+         * reset it, REBIND binds it to the new id as it is. */
+        log_module(MAIN_LOG, LOG_WARNING,
+                   "%s announced account %s with a different Keycloak id%s "
+                   "(%s, stored %s): bind refused, and the account is "
+                   "suspended so keycloak_id_reset does not apply",
+                   who, account, burst ? " during a burst" : "", id, hi->kc_id);
+        if (identity_notice_allowed())
+            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_SUSPENDED",
+                                account, id, hi->kc_id);
+        break;
+    case KCID_REFUSE_MISMATCH:
+        /* The default: the login is not talking about this handle.  Log
+         * it, tell opers, keep the stored id and the data, and refuse
+         * the bind.  The reset (KCID_RESET) is the recreated-user rule,
+         * kept behind keycloak_id_reset for a network that wants it. */
+        log_module(MAIN_LOG, LOG_WARNING,
+                   "%s announced account %s with a different Keycloak id%s "
+                   "(%s, stored %s): bind refused (keycloak_id_reset is off)",
+                   who, account, burst ? " during a burst" : "", id, hi->kc_id);
+        if (identity_notice_allowed())
+            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_MISMATCH",
+                                account, id, hi->kc_id);
+        break;
+    case KCID_REFUSE_UNBOUND:
+        /* Keycloak mode, no id stored: the binding script found no
+         * Keycloak user for this handle at the switch, or an oper unbound
+         * it (REBIND *).  A Keycloak user of the same name now is no proof
+         * that it is the same account, so nothing is bound by name; an
+         * oper REBINDs the handle if that user owns it.  No id (NULL or
+         * ""): an account stamp that carried none (kcid_decide_no_id()),
+         * said in its own words. */
+        if (!id || !id[0]) {
+            log_module(MAIN_LOG, LOG_WARNING,
+                       "%s was announced logged in to account %s with no Keycloak id%s, "
+                       "but the account is not linked to a Keycloak user: refused "
+                       "(an oper binds it with REBIND)",
+                       who, account, burst ? " during a burst" : "");
+            if (identity_notice_allowed())
+                global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_UNBOUND_NO_ID",
+                                    account, who);
+            break;
+        }
+        log_module(MAIN_LOG, LOG_WARNING,
+                   "%s logged in to account %s as Keycloak user %s%s, but the account "
+                   "is not linked to a Keycloak user: refused (an oper binds it with REBIND)",
+                   who, account, id, burst ? " during a burst" : "");
+        if (identity_notice_allowed())
+            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_UNBOUND",
+                                account, id);
+        break;
+    default:
+        break;
+    }
 }
 
 /* Take id off the replaced list, if it is there.  id must not be one of
@@ -648,6 +840,100 @@ handle_kcid_forget_replaced(struct handle_info *hi)
     }
 }
 
+#ifdef WITH_KEYCLOAK
+/* Handles by Keycloak user: struct handle_info_list*, keyed by the UUID the
+ * stored compact id stands for (dict keys compare without case, and a
+ * compact id is case-sensitive; a UUID in hex is not).  REBIND and
+ * auto-create refuse an id another handle holds (kcid_other_holder()), but
+ * a kc_id is still not unique across handles: a database can carry shared
+ * ones (loaded from before that check, LDAP mode's adopt, MERGEDB), so an
+ * unregister must not delete a Keycloak user another handle still holds.
+ * Kept up to date by handle_kcid_set(), through which every change of a
+ * handle's kc_id goes (db load, LDAP-mode adopt, auto-create, reset,
+ * REBIND), and free_handle_info() (unregister, MERGE, reset, a db load
+ * replacing a handle). */
+static dict_t nickserv_kcid_dict;
+
+/* key: 37 bytes. */
+static void
+kcid_index_key(const char *kcid, char *key)
+{
+    if (!kcid_to_uuid(kcid, key))
+        snprintf(key, 37, "?%.35s", kcid);   /* no id: still one entry per string */
+}
+
+static void
+kcid_index_del(struct handle_info *hi)
+{
+    struct handle_info_list *hil;
+    char key[37];
+
+    if (!hi->kc_id || !nickserv_kcid_dict)
+        return;
+    kcid_index_key(hi->kc_id, key);
+    if ((hil = dict_find(nickserv_kcid_dict, key, NULL))) {
+        handle_info_list_remove(hil, hi);
+        if (!hil->used)
+            dict_remove(nickserv_kcid_dict, hil->tag);
+    }
+}
+
+static void
+kcid_index_add(struct handle_info *hi)
+{
+    struct handle_info_list *hil;
+    char key[37];
+
+    if (!hi->kc_id || !nickserv_kcid_dict)
+        return;
+    kcid_index_key(hi->kc_id, key);
+    if (!(hil = dict_find(nickserv_kcid_dict, key, NULL))) {
+        hil = calloc(1, sizeof(*hil));
+        hil->tag = strdup(key);
+        handle_info_list_init(hil);
+        dict_insert(nickserv_kcid_dict, hil->tag, hil);
+    }
+    handle_info_list_append(hil, hi);
+}
+
+/* A handle other than `except` that holds the Keycloak user kcid names,
+ * or NULL. */
+static struct handle_info *
+kcid_other_holder(const char *kcid, const struct handle_info *except)
+{
+    struct handle_info_list *hil;
+    char key[37];
+    unsigned int i;
+
+    if (!kcid || !nickserv_kcid_dict)
+        return NULL;
+    kcid_index_key(kcid, key);
+    if (!(hil = dict_find(nickserv_kcid_dict, key, NULL)))
+        return NULL;
+    for (i = 0; i < hil->used; i++)
+        if (hil->list[i] != except)
+            return hil->list[i];
+    return NULL;
+}
+#endif /* WITH_KEYCLOAK */
+
+/* Sets (id: a string to copy) or clears (NULL) the handle's Keycloak id.
+ * Every change of hi->kc_id goes through here. */
+static void
+handle_kcid_set(struct handle_info *hi, const char *id)
+{
+    char *old = hi->kc_id;
+
+#ifdef WITH_KEYCLOAK
+    kcid_index_del(hi);
+#endif
+    hi->kc_id = id ? strdup(id) : NULL;
+    free(old);
+#ifdef WITH_KEYCLOAK
+    kcid_index_add(hi);
+#endif
+}
+
 static void
 free_handle_info(void *vhi)
 {
@@ -664,7 +950,7 @@ free_handle_info(void *vhi)
     free(hi->epithet);
     free(hi->note);
     free(hi->fakehost);
-    free(hi->kc_id);
+    handle_kcid_set(hi, NULL);
     handle_kcid_forget_replaced(hi);
     if (hi->cookie) {
         timeq_del(hi->cookie->expires, nickserv_free_cookie, hi->cookie, 0);
@@ -681,11 +967,404 @@ free_handle_info(void *vhi)
 
 static void set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp);
 
+#ifdef WITH_KEYCLOAK
+/* Keycloak mode turns off the commands that would create an account or
+ * change a password or an email address (REGISTER, OREGISTER, PASS, SET /
+ * OSET PASSWORD and EMAIL with a value, RESETPASS, AUTHCOOKIE, COOKIE) and
+ * a user's own UNREGISTER: each answers -- before any other check, having
+ * masked the arguments its working path masks -- with where it is done
+ * instead, and changes nothing.  This holds whatever keycloak_writeback
+ * says: X3 never creates a Keycloak user nor changes a password or an
+ * address there. */
+static const char *
+nickserv_kc_register_url(void)
+{
+    return *nickserv_conf.keycloak_register_url ? nickserv_conf.keycloak_register_url
+                                                 : nickserv_conf.keycloak_account_url;
+}
+
+/* The Keycloak delete an unregister sends (keycloak_writeback on) once the
+ * handle is gone from X3.  The record holds the oper who asked, not a
+ * numeric (see struct auth_pending); nickserv_remove_user() detaches them
+ * (`asker` NULL) when they quit, and expiry has no asker at all.  The seam
+ * answers exactly once; a failure other than "no such user" is logged and
+ * told to the asker if still there.  The handle is gone by then: the record
+ * keeps its name and id. */
+struct kc_delete_pending {
+    struct kc_delete_pending *prev, *next;
+    struct userNode *asker;     /* NULL: nobody to tell */
+    struct userNode *bot;       /* the service asked; NULL: gone, answer as nickserv */
+    char *handle;
+    char kcid[23];
+};
+
+static struct kc_delete_pending *kc_delete_head;
+
+static void
+kc_delete_unlink(struct kc_delete_pending *dp)
+{
+    if (dp->next)
+        dp->next->prev = dp->prev;
+    if (dp->prev)
+        dp->prev->next = dp->next;
+    else if (kc_delete_head == dp)
+        kc_delete_head = dp->next;
+    dp->prev = dp->next = NULL;
+}
+
+static void
+kc_delete_free(struct kc_delete_pending *dp)
+{
+    free(dp->handle);
+    free(dp);
+}
+
+/* A user (or a service) is going away: no delete's answer may reach it. */
+static void
+kc_delete_forget(struct userNode *user)
+{
+    struct kc_delete_pending *dp;
+
+    for (dp = kc_delete_head; dp; dp = dp->next) {
+        if (dp->asker == user)
+            dp->asker = NULL;
+        if (dp->bot == user)
+            dp->bot = NULL;
+    }
+}
+
+/* Failed deletes are logged quietly: an expiry or SEARCH UNREGISTER run
+ * can unregister thousands of handles at once.  The seam queues the deletes
+ * past its share of the slots, so a failure is an outage (X3KC_UNREACHABLE:
+ * not confirmed, and Keycloak may still carry it out -- "may still exist"),
+ * a refusal (X3KC_REJECTED), or a delete still queued when a rehash
+ * restarted Keycloak (X3KC_BUSY: never sent).  None is retried: X3's handle
+ * is gone; a Keycloak user that stays gets a fresh handle at its next
+ * login.  Each failure is logged at INFO with the Keycloak id, for an
+ * operator to clean up; at WARNING, the first of a run gets its own line,
+ * then at most one line per KC_DELETE_SUMMARY_SECS with the count since. */
+#define KC_DELETE_SUMMARY_SECS 10
+static unsigned int kc_delete_quiet;
+static int kc_delete_summary_armed;
+
+static void
+kc_delete_summary(UNUSED_ARG(void *data))
+{
+    kc_delete_summary_armed = 0;
+    if (!kc_delete_quiet)
+        return;                 /* the run is over */
+    log_module(NS_LOG, LOG_WARNING, "In the last %us, %u more unregistered account(s) could not be deleted in Keycloak; those Keycloak users may still exist.",
+               KC_DELETE_SUMMARY_SECS, kc_delete_quiet);
+    kc_delete_quiet = 0;
+    timeq_add(now + KC_DELETE_SUMMARY_SECS, kc_delete_summary, NULL);
+    kc_delete_summary_armed = 1;
+}
+
+static const char *
+kc_delete_why(enum x3kc_result res)
+{
+    switch (res) {
+    case X3KC_BUSY: return "never sent: still waiting its turn when Keycloak was restarted";
+    case X3KC_UNREACHABLE: return "no answer in time, or an error status";
+    case X3KC_REJECTED: return "Keycloak refused it";
+    default: return "unexpected answer";
+    }
+}
+
+static void
+kc_delete_done(enum x3kc_result res, void *data)
+{
+    struct kc_delete_pending *dp = data;
+
+    kc_delete_unlink(dp);
+    if (res == X3KC_OK) {
+        log_module(NS_LOG, LOG_INFO, "Unregistered account %s: Keycloak user %s deleted.", dp->handle, dp->kcid);
+    } else if (res == X3KC_NOT_FOUND) {
+        log_module(NS_LOG, LOG_INFO, "Unregistered account %s: Keycloak user %s was already gone.", dp->handle, dp->kcid);
+    } else {
+        log_module(NS_LOG, LOG_INFO, "Unregistered account %s: Keycloak user %s %s (%s, result %d).",
+                   dp->handle, dp->kcid, res == X3KC_BUSY ? "not deleted" : "maybe not deleted",
+                   kc_delete_why(res), (int)res);
+        if (kc_delete_summary_armed) {
+            kc_delete_quiet++;
+        } else {
+            log_module(NS_LOG, LOG_WARNING, "Account %s was unregistered in X3, but its Keycloak user %s could not be deleted (%s) and may still exist; further such failures are counted, one line per %us.",
+                       dp->handle, dp->kcid, kc_delete_why(res), KC_DELETE_SUMMARY_SECS);
+            timeq_add(now + KC_DELETE_SUMMARY_SECS, kc_delete_summary, NULL);
+            kc_delete_summary_armed = 1;
+        }
+        if (dp->asker)
+            send_message(dp->asker, dp->bot ? dp->bot : nickserv,
+                         res == X3KC_BUSY ? "NSMSG_KC_DELETE_NOT_SENT" : "NSMSG_KC_DELETE_FAILED", dp->handle);
+    }
+    kc_delete_free(dp);
+}
+
+/* Sends the Keycloak delete for a handle X3 has just removed.  By the
+ * stored id only: a name is never looked up, so a Keycloak user that merely
+ * shares the name of an unbound handle is never touched. */
+static void
+kc_delete_begin(const char *handle, const char *kcid, struct userNode *asker, struct userNode *bot)
+{
+    struct kc_delete_pending *dp;
+
+    if (!(dp = calloc(1, sizeof(*dp))) || !(dp->handle = strdup(handle))) {
+        free(dp);
+        log_module(NS_LOG, LOG_ERROR, "Account %s was unregistered in X3, but its Keycloak user %s could not be deleted (out of memory) and still exists.",
+                   handle, kcid);
+        if (asker)
+            send_message(asker, bot ? bot : nickserv, "NSMSG_KC_DELETE_FAILED", handle);
+        return;
+    }
+    safestrncpy(dp->kcid, kcid, sizeof(dp->kcid));
+    dp->asker = asker;
+    dp->bot = bot;
+    dp->next = kc_delete_head;
+    if (kc_delete_head)
+        kc_delete_head->prev = dp;
+    kc_delete_head = dp;
+    /* The answer may come before this returns (Keycloak off, a bad id). */
+    x3kc_delete(dp->kcid, kc_delete_done, dp);
+}
+
+/* An OpServ level change of a bound handle in Keycloak mode (keycloak_
+ * writeback on, keycloak_oper_group or keycloak_field_oslevel set):
+ * Keycloak first (the oper group, then the level attribute, by the stored
+ * id), and X3's level only once Keycloak confirmed.  The record holds the
+ * oper who asked (nickserv_remove_user() detaches them when they quit; the
+ * change is still applied, nobody is told) and the target's handle name,
+ * looked up again at the answer: the handle may be gone, or rebound to
+ * another Keycloak user, by then.  At most one change per handle, and per
+ * Keycloak user, is in flight (a second is refused at once): two handles
+ * bound to the same Keycloak user share its group and attribute, which
+ * show the last change Keycloak confirmed. */
+struct kc_level_pending {
+    struct kc_level_pending *prev, *next;
+    struct userNode *asker;     /* NULL: gone, nobody to tell */
+    struct userNode *bot;       /* the service asked; NULL: gone, answer as nickserv */
+    char *oper;                 /* the asker's account, for the log */
+    char *handle;               /* the target */
+    char kcid[23];              /* the id Keycloak was changed for */
+    char kckey[37];             /* kcid_index_key(kcid) */
+    unsigned int level;
+};
+
+static struct kc_level_pending *kc_level_head;
+
+static void
+kc_level_unlink(struct kc_level_pending *lp)
+{
+    if (lp->next)
+        lp->next->prev = lp->prev;
+    if (lp->prev)
+        lp->prev->next = lp->next;
+    else if (kc_level_head == lp)
+        kc_level_head = lp->next;
+    lp->prev = lp->next = NULL;
+}
+
+static void
+kc_level_free(struct kc_level_pending *lp)
+{
+    free(lp->oper);
+    free(lp->handle);
+    free(lp);
+}
+
+/* A user (or a service) is going away: no level change's answer may reach
+ * it. */
+static void
+kc_level_forget(struct userNode *user)
+{
+    struct kc_level_pending *lp;
+
+    for (lp = kc_level_head; lp; lp = lp->next) {
+        if (lp->asker == user)
+            lp->asker = NULL;
+        if (lp->bot == user)
+            lp->bot = NULL;
+    }
+}
+
+/* The change in flight for this handle or its Keycloak user, if any. */
+static struct kc_level_pending *
+kc_level_in_flight(const struct handle_info *hi, const char *kckey)
+{
+    struct kc_level_pending *lp;
+
+    for (lp = kc_level_head; lp; lp = lp->next)
+        if (!irccasecmp(lp->handle, hi->handle) || !strcmp(lp->kckey, kckey))
+            return lp;
+    return NULL;
+}
+
+/* The oper's reply for a level change Keycloak did not make. */
+static const char *
+kc_level_failure_reply(enum x3kc_result res)
+{
+    switch (res) {
+    case X3KC_BUSY:             /* nothing was sent */
+        return "NSMSG_KC_BUSY";
+    case X3KC_REJECTED:         /* nothing was written (x3kc_set_oper()) */
+    case X3KC_NOT_FOUND:
+        return "NSMSG_KC_LEVEL_REJECTED";
+    default:                    /* no answer, or a failure after a write */
+        return "NSMSG_KC_LEVEL_UNCONFIRMED";
+    }
+}
+
+static void
+kc_level_done(enum x3kc_result res, void *data)
+{
+    struct kc_level_pending *lp = data;
+    struct userNode *bot = lp->bot ? lp->bot : nickserv;
+    struct handle_info *hi;
+    char key[37];
+
+    kc_level_unlink(lp);
+    if (res == X3KC_OK) {
+        /* By name, then checked against the id Keycloak was changed for:
+         * a handle of that name bound to another Keycloak user (or to
+         * none) is not the account this change was made for. */
+        hi = get_handle_info(lp->handle);
+        if (hi && hi->kc_id)
+            kcid_index_key(hi->kc_id, key);
+        if (hi && hi->kc_id && !strcmp(key, lp->kckey)) {
+            if (hi->opserv_level != lp->level) {
+                log_module(NS_LOG, LOG_INFO, "Account %s setting oper level for account %s to %d (from %d).",
+                           lp->oper, hi->handle, lp->level, hi->opserv_level);
+                hi->opserv_level = lp->level;
+            } else {
+                log_module(NS_LOG, LOG_INFO, "Account %s re-synced oper level %u of account %s with Keycloak user %s (unchanged in X3).",
+                           lp->oper, lp->level, hi->handle, lp->kcid);
+            }
+            if (lp->asker)
+                send_message(lp->asker, bot, "NSMSG_KC_LEVEL_SET", hi->handle, lp->level);
+        } else {
+            log_module(NS_LOG, LOG_WARNING, "Account %s setting oper level for account %s to %u: Keycloak user %s was updated (oper group, level attribute), but the account is gone or no longer bound to that user, so no level was set in X3; check that Keycloak user.",
+                       lp->oper, lp->handle, lp->level, lp->kcid);
+            if (lp->asker)
+                send_message(lp->asker, bot, "NSMSG_KC_LEVEL_GONE", lp->handle);
+        }
+    } else {
+        if (res == X3KC_BUSY)
+            log_module(NS_LOG, LOG_INFO, "Account %s setting oper level for account %s to %u: the account server was busy; nothing was sent, nothing changed.",
+                       lp->oper, lp->handle, lp->level);
+        else if (res == X3KC_REJECTED || res == X3KC_NOT_FOUND)
+            log_module(NS_LOG, LOG_WARNING, "Account %s setting oper level for account %s to %u: Keycloak refused it (result %d; a missing group or user, or a bad id) before anything was written; nothing changed. Check Keycloak user %s and the account's binding.",
+                       lp->oper, lp->handle, lp->level, (int)res, lp->kcid);
+        else
+            /* With the seam's order a promotion adds the group last and a
+             * demotion removes it first, so a partial change never leaves
+             * the group ahead of X3; the attribute may be. */
+            log_module(NS_LOG, LOG_WARNING, "Account %s setting oper level for account %s to %u: Keycloak did not confirm it (result %d), so the level in X3 is unchanged; Keycloak user %s may be partly changed until the change is repeated or the old level set again.",
+                       lp->oper, lp->handle, lp->level, (int)res, lp->kcid);
+        if (lp->asker) {
+            const char *reply = kc_level_failure_reply(res);
+
+            if (res == X3KC_BUSY)
+                send_message(lp->asker, bot, reply);
+            else
+                send_message(lp->asker, bot, reply, lp->handle);
+        }
+    }
+    kc_level_free(lp);
+}
+
+/* Starts the Keycloak side of a level change of a bound handle and tells
+ * the oper; X3's level is set by kc_level_done() on Keycloak's OK.
+ * Returns 1 if the change was started (the seam may have answered it
+ * already, BUSY or a failure: the command was still given), 0 if it was
+ * refused here (one in flight for the handle or its Keycloak user, or out
+ * of memory).  Either way the oper has been told. */
 static int
-nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, struct userNode *bot)
+kc_level_begin(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level)
+{
+    struct kc_level_pending *lp;
+    char key[37];
+
+    kcid_index_key(target->kc_id, key);
+    if ((lp = kc_level_in_flight(target, key))) {
+        if (!irccasecmp(lp->handle, target->handle))
+            send_message(user, bot, "NSMSG_KC_LEVEL_IN_PROGRESS", lp->handle);
+        else
+            send_message(user, bot, "NSMSG_KC_LEVEL_IN_PROGRESS_SHARED", target->handle, lp->handle);
+        return 0;
+    }
+    /* The previous change for this Keycloak user was answered (at its
+     * deadline) but kc still holds its request: the seam would answer
+     * BUSY; say why. */
+    if (x3kc_oper_in_flight(target->kc_id)) {
+        send_message(user, bot, "NSMSG_KC_LEVEL_STILL_FINISHING", target->handle);
+        return 0;
+    }
+    if (!(lp = calloc(1, sizeof(*lp))) || !(lp->handle = strdup(target->handle))
+        || !(lp->oper = strdup(user->handle_info->handle))) {
+        if (lp)
+            kc_level_free(lp);
+        log_module(NS_LOG, LOG_ERROR, "Account %s setting oper level for account %s: out of memory; nothing changed.",
+                   user->handle_info->handle, target->handle);
+        send_message(user, bot, "NSMSG_KC_FAIL");
+        return 0;
+    }
+    lp->asker = user;
+    lp->bot = bot;
+    safestrncpy(lp->kcid, target->kc_id, sizeof(lp->kcid));
+    memcpy(lp->kckey, key, sizeof(lp->kckey));
+    lp->level = new_level;
+    lp->next = kc_level_head;
+    if (kc_level_head)
+        kc_level_head->prev = lp;
+    kc_level_head = lp;
+    send_message(user, bot, "NSMSG_KC_LEVEL_PENDING", target->handle);
+    /* The answer may come before this returns (busy, Keycloak off). */
+    x3kc_set_oper(lp->kcid, new_level > nickserv_conf.keycloak_oper_group_level, new_level,
+                  kc_level_done, lp);
+    return 1;
+}
+#endif /* WITH_KEYCLOAK */
+
+/* Removes the handle.  notify gets the "unregistered" reply (and the
+ * unregister hooks see it); asker is who asked for the removal, told about
+ * the Keycloak side in Keycloak mode -- the same user as notify, except for
+ * MERGE (asker only) and expiry (neither). */
+static int
+nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, struct userNode *bot,
+                           struct userNode *asker)
 {
     unsigned int n;
     struct userNode *uNode;
+#ifdef WITH_KEYCLOAK
+    char *kc_handle = NULL, *kc_sharer = NULL;
+    char kc_id[23];
+    int kc_delete = 0;
+    struct handle_info *other;
+
+    /* Keycloak mode: X3's handle goes first, as now, then the Keycloak
+     * user (in the background).  The other way round, a failed delete
+     * would leave a handle that outlives its Keycloak user, which is how a
+     * name gets reused; a Keycloak user that outlives its handle just gets
+     * a fresh one at its next login. */
+    if (nickserv_conf.keycloak_enable && nickserv_conf.keycloak_writeback) {
+        kc_handle = strdup(hi->handle);
+        if (!hi->kc_id) {
+            kc_delete = -1;     /* unbound: X3 only */
+        } else if ((other = kcid_other_holder(hi->kc_id, hi))) {
+            /* Another handle (MERGE's target, say) still holds the same
+             * Keycloak user: deleting it would take that account's login
+             * away.  Only X3's handle goes. */
+            kc_delete = -2;
+            kc_sharer = strdup(other->handle);
+            log_module(NS_LOG, LOG_WARNING, "Unregistering account %s: its Keycloak user %s is also bound to account %s, so it is kept.",
+                       hi->handle, hi->kc_id, other->handle);
+        } else {
+            safestrncpy(kc_id, hi->kc_id, sizeof(kc_id));
+            kc_delete = 1;
+        }
+    }
+#else
+    (void)asker;
+#endif
 
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn) {
@@ -720,6 +1399,18 @@ nickserv_unregister_handle(struct handle_info *hi, struct userNode *notify, stru
         SyncLog("UNREGISTER %s", hi->handle);
 
     dict_remove(nickserv_handle_dict, hi->handle);
+#ifdef WITH_KEYCLOAK
+    /* hi is freed now. */
+    if (kc_delete == 1)
+        kc_delete_begin(kc_handle ? kc_handle : "(unknown)", kc_id, asker, bot);
+    else if (kc_delete == -1 && asker)
+        send_message(asker, bot ? bot : nickserv, "NSMSG_KC_UNBOUND", kc_handle ? kc_handle : "(unknown)");
+    else if (kc_delete == -2 && asker)
+        send_message(asker, bot ? bot : nickserv, "NSMSG_KC_ID_SHARED", kc_handle ? kc_handle : "(unknown)",
+                     kc_sharer ? kc_sharer : "(unknown)");
+    free(kc_handle);
+    free(kc_sharer);
+#endif
     return true;
 }
 
@@ -1295,13 +1986,19 @@ set_user_handle_info(struct userNode *user, struct handle_info *hi, int stamp)
     }
 }
 
+/* nickserv_register() and nickserv_register_local(): ldap_add says whether
+ * the directory step (ldap_writeback) runs. */
 static struct handle_info*
-nickserv_register(struct userNode *user, struct userNode *settee, const char *handle, const char *passwd, int no_auth)
+nickserv_register_common(struct userNode *user, struct userNode *settee, const char *handle,
+                         const char *passwd, int no_auth, int ldap_add)
 {
     struct handle_info *hi;
     struct nick_info *ni;
     char crypted[MD5_CRYPT_LENGTH] = "";
 
+#ifndef WITH_LDAP
+    (void)ldap_add;
+#endif
     if ((hi = dict_find(nickserv_handle_dict, handle, NULL))) {
         if(user)
 	  send_message(user, nickserv, "NSMSG_HANDLE_EXISTS", handle);
@@ -1327,7 +2024,7 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
      * If the user already exists in LDAP (e.g., from LDAP login flow),
      * LDAP_ALREADY_EXISTS is returned and we continue normally.
      */
-    if(nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
+    if(ldap_add && nickserv_conf.ldap_enable && nickserv_conf.ldap_admin_dn && nickserv_conf.ldap_writeback) {
         int rc;
         rc = ldap_do_add(handle, (no_auth || !passwd ? NULL : crypted), NULL);
         if(LDAP_SUCCESS != rc && LDAP_ALREADY_EXISTS != rc ) {
@@ -1389,6 +2086,31 @@ nickserv_register(struct userNode *user, struct userNode *settee, const char *ha
       }
     }
     return hi;
+}
+
+#ifdef WITH_KEYCLOAK
+/* Registers handle in X3 alone: what nickserv_register() does, without the
+ * directory step (no LDAP add).  The registration date is now (the LDAP
+ * creation time is read only with ldap_enable, which Keycloak mode never
+ * has).  A NULL passwd gives the handle an empty hash -- which no password
+ * matches -- and skips the password rules: Keycloak mode's auto-create,
+ * where the password is Keycloak's.  With user and settee NULL nothing is
+ * sent to anyone and nobody is logged in. */
+static struct handle_info *
+nickserv_register_local(struct userNode *user, struct userNode *settee, const char *handle,
+                        const char *passwd, int no_auth)
+{
+    return nickserv_register_common(user, settee, handle, passwd, no_auth, 0);
+}
+#endif
+
+/* REGISTER / OREGISTER and LDAP's auto-create: nickserv_register_local()
+ * plus, with ldap_enable and ldap_writeback, the directory add (before the
+ * handle is made; a failure there refuses the registration). */
+static struct handle_info*
+nickserv_register(struct userNode *user, struct userNode *settee, const char *handle, const char *passwd, int no_auth)
+{
+    return nickserv_register_common(user, settee, handle, passwd, no_auth, 1);
 }
 
 static void
@@ -1564,6 +2286,14 @@ static NICKSERV_FUNC(cmd_register)
     char syncpass[MD5_CRYPT_LENGTH];
     int no_auth, weblink;
 
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        if (argc > 2)
+            argv[2] = "****";
+        reply("NSMSG_KC_WEB_REGISTER", nickserv_kc_register_url());
+        return 0;
+    }
+#endif
     if (checkDefCon(DEFCON_NO_NEW_NICKS) && !IsOper(user)) {
         reply("NSMSG_DEFCON_NO_NEW_NICKS", nickserv_conf.disable_nicks ? "accounts" : "nicknames");
         return 0;
@@ -1723,6 +2453,14 @@ static NICKSERV_FUNC(cmd_oregister)
     char* mask = NULL;
     char* nick = NULL;
 
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        if (argc > 2)
+            argv[2] = "****";
+        reply("NSMSG_KC_WEB_REGISTER", nickserv_kc_register_url());
+        return 0;
+    }
+#endif
     NICKSERV_MIN_PARMS(3);
    
     account = argv[1];
@@ -2195,56 +2933,18 @@ static NICKSERV_FUNC(cmd_nickinfo)
     return 1;
 }
 
-/* 16 UUID bytes -> 22 unpadded base64url chars.  Mirrors nefarious's
- * account_id, the form the ircd announces and saxdb stores. */
-static const char kcid_b64[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-static int
-handle_kcid_from_uuid(const char *uuid, char out[23])
-{
-    unsigned char raw[16];
-    int digits = 0, hi = -1, i, o = 0;
-    const char *p;
-
-    if (!uuid)
-        return 0;
-    for (p = uuid; *p; p++) {
-        int v;
-        if (*p == '-')
-            continue;
-        if (*p >= '0' && *p <= '9') v = *p - '0';
-        else if (*p >= 'a' && *p <= 'f') v = *p - 'a' + 10;
-        else if (*p >= 'A' && *p <= 'F') v = *p - 'A' + 10;
-        else return 0;
-        if (digits == 32)
-            return 0;
-        if (hi < 0) hi = v; else { raw[digits/2] = (hi << 4) | v; hi = -1; }
-        digits++;
-    }
-    if (digits != 32)
-        return 0;
-    for (i = 0; i < 16; i += 3) {                 /* last group is 16%3==1 byte */
-        unsigned int n = raw[i] << 16;
-        int bytes = 1;
-        if (i + 1 < 16) { n |= raw[i+1] << 8; bytes = 2; }
-        if (i + 2 < 16) { n |= raw[i+2];      bytes = 3; }
-        out[o++] = kcid_b64[(n >> 18) & 63];
-        out[o++] = kcid_b64[(n >> 12) & 63];
-        if (bytes > 1) out[o++] = kcid_b64[(n >> 6) & 63];
-        if (bytes > 2) out[o++] = kcid_b64[n & 63];
-    }
-    out[o] = 0;
-    return o == 22;
-}
-
 /* The hostmasks an account starts with under a new owner, as a REGISTER,
  * an OREGISTER or a login-created account gets them: *@* with
  * default_hostmask, otherwise the owner's own host when a user of theirs
- * is at hand.  With neither (default_hostmask off, no user), none: AUTH,
- * which takes any host while an account has no hostmask, then adds the
- * one it is used from, and LOC and SASL through X3 refuse until then. */
+ * is at hand -- or, for a login-on-connect or SASL login that has no user
+ * yet (Keycloak mode), the same mask made from the "ident@host:ip" the
+ * request carries (owner_userhost).  With none of these (default_hostmask
+ * off, no user, nothing usable), none: AUTH, which takes any host while an
+ * account has no hostmask, then adds the one it is used from, and LOC and
+ * SASL through X3 refuse until then. */
 static void
-nickserv_new_owner_masks(struct handle_info *hi, struct userNode *owner)
+nickserv_new_owner_masks(struct handle_info *hi, struct userNode *owner,
+                         const char *owner_userhost)
 {
     char *mask = NULL;
 
@@ -2252,6 +2952,16 @@ nickserv_new_owner_masks(struct handle_info *hi, struct userNode *owner)
         mask = strdup("*@*");
     else if (owner)
         mask = generate_hostmask(owner, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+#ifdef WITH_KEYCLOAK
+    else if (owner_userhost) {
+        char buf[300];
+
+        if (x3kc_loc_mask(owner_userhost, buf, sizeof(buf)))
+            mask = strdup(buf);
+    }
+#else
+    (void)owner_userhost;
+#endif
     if (mask)
         string_list_append(hi->masks, canonicalize_hostmask(mask));
 }
@@ -2283,7 +2993,7 @@ nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned
         string_list_delete(hi->sslfps, 0);
     while (hi->masks->used)
         string_list_delete(hi->masks, 0);
-    nickserv_new_owner_masks(hi, NULL);
+    nickserv_new_owner_masks(hi, NULL, NULL);
 
     if (hi->cookie) {
         timeq_del(hi->cookie->expires, nickserv_free_cookie, hi->cookie, 0);
@@ -2307,10 +3017,12 @@ nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned
  * from the stored one is refused and reported to opers (handle_account;
  * with keycloak_id_reset on it resets the account instead), so this is
  * for correcting a binding so that the user can log in on their next
- * connection, or clearing one so the next login adopts whatever it
- * carries.  The connection whose login was refused is not bound by this:
- * the ircd holds the account on it, so it cannot log in again, and it is
- * nobody to X3 until the user reconnects.
+ * connection, or for clearing one (in LDAP or local mode the next login
+ * that announces an id is then adopted; in Keycloak mode a handle with no
+ * id is never bound by a login, only by this command).  The connection
+ * whose login was refused is not bound by this: the ircd holds the
+ * account on it, so it cannot log in again, and it is nobody to X3 until
+ * the user reconnects.
  *
  * Setting an id other than the stored one, or clearing a stored one (*),
  * detaches the sessions logged in at the time and remembers the id as a
@@ -2336,6 +3048,10 @@ nickserv_drop_credentials(struct handle_info *hi, unsigned int *sslfps, unsigned
  * no id stored -- its first binding, or one after a REBIND * that removed
  * them already -- removes nothing, and neither does the id it has.
  *
+ * An id another handle holds is refused, naming that handle, and nothing
+ * changes: one Keycloak user, one handle (auto-create refuses the same).
+ * To move an id, clear it from the holder first.
+ *
  * Not an OSET option on purpose: SEARCH SET applies OSET options without
  * the outranking check that get_victim_oper enforces here. */
 static NICKSERV_FUNC(cmd_rebind)
@@ -2355,8 +3071,8 @@ static NICKSERV_FUNC(cmd_rebind)
 
             /* The list takes the string over.  With no id stored there is
              * nothing to clear, and nobody logged in under one. */
-            handle_kcid_remember(hi, hi->kc_id);
-            hi->kc_id = NULL;
+            handle_kcid_remember(hi, strdup(hi->kc_id));
+            handle_kcid_set(hi, NULL);
             while ((u = hi->users)) {
                 set_user_handle_info(u, NULL, 0);
                 detached++;
@@ -2378,12 +3094,24 @@ static NICKSERV_FUNC(cmd_rebind)
      * 22-character compact id X3 itself prints (ACCOUNTINFO, the mismatch
      * notices that say to REBIND).  No string is both -- a UUID has 32 hex
      * digits -- so the order does not matter. */
-    if (handle_kcid_valid(argv[2])) {
-        safestrncpy(compact, argv[2], sizeof(compact));
-    } else if (!handle_kcid_from_uuid(argv[2], compact)) {
+    if (!kcid_canonical(argv[2], compact) && !kcid_from_uuid(argv[2], compact)) {
         reply("NSMSG_REBIND_BADID");
         return 0;
     }
+#ifdef WITH_KEYCLOAK
+    {
+        /* One Keycloak user, one handle: an id another handle holds is
+         * refused, before anything changes, in every mode.  Moving an id
+         * from a stale handle to the right one is two steps: REBIND * on
+         * the stale one, then this. */
+        struct handle_info *other;
+
+        if ((other = kcid_other_holder(compact, hi))) {
+            reply("NSMSG_REBIND_ELSEWHERE", compact, other->handle, other->handle);
+            return 0;
+        }
+    }
+#endif
     if (!hi->kc_id || strcmp(hi->kc_id, compact)) {
         struct userNode *u;
         unsigned int detached = 0, sslfps = 0, masks = 0;
@@ -2397,11 +3125,11 @@ static NICKSERV_FUNC(cmd_rebind)
          * longer a replaced one, if it was. */
         handle_kcid_unremember(hi, compact);
         if (hi->kc_id) {
-            handle_kcid_remember(hi, hi->kc_id);
+            handle_kcid_remember(hi, strdup(hi->kc_id));
             nickserv_drop_credentials(hi, &sslfps, &masks);
             dropped = 1;
         }
-        hi->kc_id = strdup(compact);
+        handle_kcid_set(hi, compact);
         while ((u = hi->users)) {
             set_user_handle_info(u, NULL, 0);
             detached++;
@@ -2425,6 +3153,14 @@ static NICKSERV_FUNC(cmd_rename_handle)
     char *old_handle;
     unsigned int nn;
 
+#ifdef WITH_KEYCLOAK
+    /* The Keycloak user keeps its name: a renamed handle would no longer
+     * match it. */
+    if (nickserv_conf.keycloak_enable) {
+        reply("NSMSG_KC_RENAME_REFUSED");
+        return 0;
+    }
+#endif
     NICKSERV_MIN_PARMS(3);
     if(nickserv_conf.force_handles_lowercase)
         irc_strtolower(argv[2]);
@@ -2517,110 +3253,15 @@ struct handle_info *find_handleinfo_by_sslfp(char *sslfp)
     return NULL;
 }
 
-/*
- * Return hi if the handle/pass pair matches, NULL if it doesnt.
- *
- * called by nefariouses enhanced AC login-on-connect code
- *
- */
-struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *userhost)
+/* What loc_auth() checked once the credentials were good: the hostmask,
+ * suspension, max logins.  hi, or NULL when one of them refuses. */
+static struct handle_info *
+loc_auth_checks(struct handle_info *hi, const char *userhost)
 {
-    int wildmask = 0, auth = 0;
+    int wildmask = 0;
     int used, maxlogins;
     unsigned int ii;
-    struct handle_info *hi = NULL;
     struct userNode *other;
-#ifdef WITH_LDAP
-    int ldap_result = LDAP_SUCCESS;
-    char *email = NULL;
-#endif
-    
-    if (handle != NULL)
-        hi = dict_find(nickserv_handle_dict, handle, NULL);
-    if (!hi && (sslfp != NULL)) {
-        hi = find_handleinfo_by_sslfp(sslfp);
-        if (!handle && (hi != NULL))
-            handle = hi->handle;
-    }
-    
-    /* Ensure handle is valid if not found in internal DB */
-    if (!hi && (!handle || !is_valid_handle(handle)))
-        return 0;
-
-#ifdef WITH_LDAP
-    if (nickserv_conf.ldap_enable && (password != NULL)) {
-        ldap_result = ldap_check_auth(handle, password);
-        if (!hi && (ldap_result != LDAP_SUCCESS))
-            return NULL;
-        if (ldap_result == LDAP_SUCCESS) {
-            /* Mark auth as successful */
-            auth++;
-        }
-    
-        if (!hi && (ldap_result == LDAP_SUCCESS) && nickserv_conf.ldap_autocreate) {
-            /* user not found, but authed to ldap successfully..
-             * create the account.
-             */
-            char *mask;
-            int rc;
-            
-            /* Add a *@* mask */
-            /* TODO if userhost is not null, build mask based on that. */
-            if(nickserv_conf.default_hostmask)
-               mask = "*@*";
-            else
-               return NULL; /* They dont have a *@* mask so they can't loc */
-    
-            if(!(hi = nickserv_register(NULL, NULL, handle, password, 0))) {
-               return 0; /* couldn't add the user for some reason */
-            }
-    
-            if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
-            {
-               if(nickserv_conf.email_required) {
-                   return 0;
-               }
-            }
-            if(email) {
-               nickserv_set_email_addr(hi, email);
-               free(email);
-            }
-            if(mask) {
-               char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
-               string_list_append(hi->masks, mask_canonicalized);
-            }
-            if(nickserv_conf.sync_log)
-               SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, "@", handle);
-        }
-    }
-#endif
-
-    /* hi should now be a valid handle, if not return NULL */
-    if (!hi)
-        return NULL;
-
-#ifdef WITH_LDAP
-    if (password && *password && !nickserv_conf.ldap_enable) {
-#else
-    if (password && *password) {
-#endif
-        if (checkpass(password, hi->passwd))
-            auth++;
-    }
-    
-    if (!auth && sslfp && *sslfp && hi->sslfps->used) {
-        /* If any SSL fingerprint matches, allow it. */
-        for (ii=0; ii<hi->sslfps->used; ii++) {
-            if (!irccasecmp(sslfp, hi->sslfps->list[ii])) {
-                auth++;
-                break;
-            }
-        }
-    }
-    
-    /* Auth should have succeeded by this point */
-    if (!auth)
-        return NULL;
 
     /* We don't know the users hostname, or anything because they
      * havn't registered yet. So we can only allow LOC if your
@@ -2710,6 +3351,374 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
     return hi;
 }
 
+/*
+ * Return hi if the handle/pass pair matches, NULL if it doesnt.
+ *
+ * called by nefariouses enhanced AC login-on-connect code
+ *
+ * This is loc_auth() as it was, minus the checks after the password
+ * (loc_auth_checks()).  loc_auth_async() runs it for every login that
+ * does not ask Keycloak; in Keycloak mode only without a password, so the
+ * stored hash is never consulted there.
+ */
+static struct handle_info *
+loc_auth_now(const char *sslfp, const char *handle, const char *password, const char *userhost)
+{
+    int auth = 0;
+    unsigned int ii;
+    struct handle_info *hi = NULL;
+#ifdef WITH_LDAP
+    int ldap_result = LDAP_SUCCESS;
+    char *email = NULL;
+#endif
+    
+    if (handle != NULL)
+        hi = dict_find(nickserv_handle_dict, handle, NULL);
+    if (!hi && (sslfp != NULL)) {
+        hi = find_handleinfo_by_sslfp((char *)sslfp);
+        if (!handle && (hi != NULL))
+            handle = hi->handle;
+    }
+    
+    /* Ensure handle is valid if not found in internal DB */
+    if (!hi && (!handle || !is_valid_handle(handle)))
+        return 0;
+
+#ifdef WITH_LDAP
+    if (nickserv_conf.ldap_enable && (password != NULL)) {
+        ldap_result = ldap_check_auth(handle, password);
+        if (!hi && (ldap_result != LDAP_SUCCESS))
+            return NULL;
+        if (ldap_result == LDAP_SUCCESS) {
+            /* Mark auth as successful */
+            auth++;
+        }
+    
+        if (!hi && (ldap_result == LDAP_SUCCESS) && nickserv_conf.ldap_autocreate) {
+            /* user not found, but authed to ldap successfully..
+             * create the account.
+             */
+            char *mask;
+            int rc;
+            
+            /* Add a *@* mask */
+            /* TODO if userhost is not null, build mask based on that. */
+            if(nickserv_conf.default_hostmask)
+               mask = "*@*";
+            else
+               return NULL; /* They dont have a *@* mask so they can't loc */
+    
+            if(!(hi = nickserv_register(NULL, NULL, handle, password, 0))) {
+               return 0; /* couldn't add the user for some reason */
+            }
+    
+            if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
+            {
+               if(nickserv_conf.email_required) {
+                   return 0;
+               }
+            }
+            if(email) {
+               nickserv_set_email_addr(hi, email);
+               free(email);
+            }
+            if(mask) {
+               char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+               string_list_append(hi->masks, mask_canonicalized);
+            }
+            if(nickserv_conf.sync_log)
+               SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, "@", handle);
+        }
+    }
+#endif
+
+    /* hi should now be a valid handle, if not return NULL */
+    if (!hi)
+        return NULL;
+
+#ifdef WITH_LDAP
+    if (password && *password && !nickserv_conf.ldap_enable) {
+#else
+    if (password && *password) {
+#endif
+        if (checkpass(password, hi->passwd))
+            auth++;
+    }
+    
+    if (!auth && sslfp && *sslfp && hi->sslfps->used) {
+        /* If any SSL fingerprint matches, allow it. */
+        for (ii=0; ii<hi->sslfps->used; ii++) {
+            if (!irccasecmp(sslfp, hi->sslfps->list[ii])) {
+                auth++;
+                break;
+            }
+        }
+    }
+    
+    /* Auth should have succeeded by this point */
+    if (!auth)
+        return NULL;
+    return loc_auth_checks(hi, userhost);
+}
+
+#ifdef WITH_KEYCLOAK
+/* Keycloak mode only: after a password login X3 checked with Keycloak, the
+ * address in the ID token replaces the stored one when it differs.  A
+ * token without one leaves the stored address alone. */
+static void
+nickserv_kc_refresh_email(struct handle_info *hi, const char *email)
+{
+    if (!email || (hi->email_addr && !strcmp(hi->email_addr, email)))
+        return;
+    nickserv_set_email_addr(hi, email);
+    if (nickserv_conf.sync_log)
+        SyncLog("EMAILCHANGE %s %s", hi->handle, email);
+}
+
+/* Auto-create (keycloak_autocreate): Keycloak has confirmed that the
+ * account `name` exists, as the user with id kcid -- it accepted a
+ * password for it, or answered a look-up for a stamp with it -- and X3 has
+ * no handle of that name.  The handle is made under exactly that name if
+ * X3's own rules allow it (is_valid_handle(): length, characters,
+ * valid_handle_regex, reserved names), bound to kcid at once, with
+ * Keycloak's email address (already checked by the seam) and no password
+ * hash; its hostmask is a new owner's (nickserv_new_owner_masks(): *@* with
+ * default_hostmask, else the owner's host -- owner, or for a login that has
+ * no user yet the request's owner_userhost).  With email_required, an
+ * account without an address is not created, as LDAP's auto-create
+ * refuses one whose address it cannot read.  Nobody is logged in here.
+ *
+ * Nor is a handle made for a Keycloak user another handle is already bound
+ * to: that is a user renamed in Keycloak, logging in under the new name,
+ * and a second handle would strand the first one's data under the old
+ * name.  Logged, told to opers (as the id refusals are, under their limit),
+ * and refused; the holder keeps the id.  X3 cannot follow a rename made in
+ * Keycloak yet: an oper renames the user back there, or clears the id
+ * from the holder with REBIND, after which the next login creates the
+ * handle.
+ *
+ * Returns the handle, or NULL with *refusal (if given) set to the AuthServ
+ * reply for the refusal; the refusal is logged here, once, naming who
+ * (the user's nick, or LOC_WHO). */
+static struct handle_info *
+nickserv_kc_autocreate(const char *name, const char *kcid, const char *email,
+                       struct userNode *owner, const char *owner_userhost,
+                       const char *who, const char **refusal)
+{
+    struct handle_info *hi, *other;
+
+    if (refusal)
+        *refusal = NULL;
+    if (!nickserv_conf.keycloak_enable || !nickserv_conf.keycloak_autocreate
+        || !name || !kcid || !*kcid || dict_find(nickserv_handle_dict, name, NULL))
+        return NULL;            /* callers check all of this; never create twice */
+    if ((other = kcid_other_holder(kcid, NULL))) {
+        log_module(NS_LOG, LOG_WARNING, "%s: Keycloak account %s (id %s) is already bound to account %s; no handle created for it (a user renamed in Keycloak?).",
+                   who, name, kcid, other->handle);
+        if (identity_notice_allowed())
+            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_ELSEWHERE",
+                                name, kcid, other->handle, other->handle);
+        if (refusal)
+            *refusal = "NSMSG_KC_ID_ELSEWHERE";
+        return NULL;
+    }
+    if (!is_valid_handle(name) || strchr(name, '<') || strchr(name, '>')) {
+        log_module(NS_LOG, LOG_WARNING, "%s: Keycloak account %s (id %s) has a name X3 does not allow for an account; no handle created.",
+                   who, name, kcid);
+        if (refusal)
+            *refusal = "NSMSG_BAD_HANDLE";
+        return NULL;
+    }
+    if (nickserv_conf.email_required && !email) {
+        log_module(NS_LOG, LOG_WARNING, "%s: Keycloak account %s (id %s) has no email address and email_required is on; no handle created.",
+                   who, name, kcid);
+        if (refusal)
+            *refusal = "NSMSG_KC_NO_EMAIL";
+        return NULL;
+    }
+    /* As LDAP's auto-create: for a connected user (AUTH, a stamp) the
+     * user's own registration notices and, without disable_nicks, its
+     * current nick registered to the handle; for a login that has no user
+     * yet (login-on-connect, SASL) the account name as a nick, if it can
+     * be one.  Nobody is logged in here (no_auth for the user). */
+    if (!(hi = owner ? nickserv_register_local(owner, owner, name, NULL, 1)
+                     : nickserv_register_local(NULL, NULL, name, NULL, 0))) {
+        log_module(NS_LOG, LOG_WARNING, "%s: could not create the handle for Keycloak account %s (id %s).",
+                   who, name, kcid);
+        if (refusal)
+            *refusal = "NSMSG_BAD_HANDLE";
+        return NULL;
+    }
+    nickserv_new_owner_masks(hi, owner, owner_userhost);
+    handle_kcid_set(hi, kcid);
+    if (email)
+        nickserv_set_email_addr(hi, email);
+    /* As the reset's REGISTER line: * for the hash X3 does not have, @ for
+     * no address, the owner's info line last. */
+    if (nickserv_conf.sync_log)
+        SyncLog("REGISTER %s * %s %s", hi->handle, email ? email : "@", owner ? owner->info : "*");
+    log_module(NS_LOG, LOG_INFO, "%s: created handle %s for Keycloak account %s (id %s).",
+               who, hi->handle, name, kcid);
+    return hi;
+}
+
+/* A login-on-connect or SASL PLAIN login waiting for Keycloak.  There is no
+ * user yet: cb and data say where the answer goes (the caller looks its own
+ * party up again when it comes).  No copy of the password. */
+struct loc_pending {
+    struct loc_pending *prev, *next;
+    char *handle;               /* the account name the password was for */
+    char *userhost;             /* "ident@host:ip" from the ircd, or NULL */
+    loc_auth_cb cb;
+    void *data;
+};
+
+static struct loc_pending *loc_pending_head;
+
+/* Names a login-on-connect or SASL login in log lines (it has no nick). */
+#define LOC_WHO "A login through X3 (login-on-connect or SASL)"
+
+static void
+loc_pending_unlink(struct loc_pending *lp)
+{
+    if (lp->next)
+        lp->next->prev = lp->prev;
+    if (lp->prev)
+        lp->prev->next = lp->next;
+    else if (loc_pending_head == lp)
+        loc_pending_head = lp->next;
+    lp->prev = lp->next = NULL;
+}
+
+static void
+loc_pending_free(struct loc_pending *lp)
+{
+    free(lp->handle);
+    free(lp->userhost);
+    free(lp);
+}
+
+/* Whether a client certificate alone logs this in: the handle
+ * loc_auth_now() would find, and one of its fingerprints.  Such a login
+ * never asks Keycloak, in either mode. */
+static int
+loc_auth_by_cert(const char *sslfp, const char *handle)
+{
+    struct handle_info *hi = NULL;
+    unsigned int ii;
+
+    if (!sslfp || !*sslfp)
+        return 0;
+    if (handle)
+        hi = dict_find(nickserv_handle_dict, handle, NULL);
+    if (!hi)
+        hi = find_handleinfo_by_sslfp((char *)sslfp);
+    if (!hi)
+        return 0;
+    for (ii = 0; ii < hi->sslfps->used; ii++)
+        if (!irccasecmp(sslfp, hi->sslfps->list[ii]))
+            return 1;
+    return 0;
+}
+
+/* Keycloak accepted the password for lp->handle as the user with id kcid:
+ * the handle by name again, the id decision (a handle with no id is
+ * refused: KCID_REFUSE_UNBOUND), then loc_auth()'s checks; the email
+ * refreshed only when the login goes through.  hi or NULL. */
+static struct handle_info *
+loc_auth_kc_accepted(struct loc_pending *lp, const char *kcid, const char *email)
+{
+    struct handle_info *hi;
+    enum kcid_verdict verdict;
+
+    /* No handle (any more, or yet): Keycloak has just confirmed the
+     * account, so with keycloak_autocreate it is made now, bound to kcid
+     * (the id decision below then passes).  A second login for the same
+     * new name finds it here and goes the normal way. */
+    if (!(hi = dict_find(nickserv_handle_dict, lp->handle, NULL))
+        && !(hi = nickserv_kc_autocreate(lp->handle, kcid, email, NULL, lp->userhost,
+                                         LOC_WHO, NULL)))
+        return NULL;
+    verdict = handle_kcid_decide(hi, kcid);
+    switch (verdict) {
+    case KCID_PASS:
+        break;
+    case KCID_RESET:
+        hi = nickserv_reset_handle(hi, kcid, NULL, LOC_WHO, lp->userhost);
+        break;
+    default:
+        /* KCID_ADOPT is LDAP or local mode's, never this path's. */
+        handle_kcid_refused(LOC_WHO, 0, lp->handle, kcid, hi, verdict);
+        return NULL;
+    }
+    if (!(hi = loc_auth_checks(hi, lp->userhost)))
+        return NULL;
+    nickserv_kc_refresh_email(hi, email);
+    return hi;
+}
+
+/* Keycloak's answer for a login-on-connect or SASL PLAIN login.  Only
+ * X3KC_OK can log anyone in; every other answer is a refusal (the caller
+ * turns it into AC D or D F). */
+static void
+loc_kc_done(enum x3kc_result res, const char *kcid, const char *email,
+            UNUSED_ARG(const char *reason), void *data)
+{
+    struct loc_pending *lp = data;
+    struct handle_info *hi = NULL;
+
+    loc_pending_unlink(lp);
+    if (res == X3KC_OK && kcid)
+        hi = loc_auth_kc_accepted(lp, kcid, email);
+    else
+        log_module(NS_LOG, LOG_DEBUG, "LOC: Keycloak refused %s (result %d)", lp->handle, (int)res);
+    lp->cb(hi, lp->data);
+    loc_pending_free(lp);
+}
+#endif /* WITH_KEYCLOAK */
+
+/* Login-on-connect (AC C/H/S) and SASL PLAIN / EXTERNAL through X3.
+ * Calls cb exactly once with the handle, or NULL for a refusal.  Every
+ * login that does not ask Keycloak -- LDAP or local mode, a certificate
+ * login, no password -- is answered before this returns, with what
+ * loc_auth() answered.  In Keycloak mode a password login asks Keycloak
+ * (never the stored hash) and is answered from the completion, at the
+ * latest at keycloak_timeout. */
+void
+loc_auth_async(const char *sslfp, const char *handle, const char *password,
+               const char *userhost, loc_auth_cb cb, void *data)
+{
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        struct loc_pending *lp;
+        struct handle_info *hi;
+
+        if (!password || !*password || loc_auth_by_cert(sslfp, handle)) {
+            cb(loc_auth_now(sslfp, handle, NULL, userhost), data);
+            return;
+        }
+        hi = handle ? dict_find(nickserv_handle_dict, handle, NULL) : NULL;
+        if (!handle || (!hi && (!is_valid_handle(handle) || !nickserv_conf.keycloak_autocreate))) {
+            cb(NULL, data);
+            return;
+        }
+        lp = calloc(1, sizeof(*lp));
+        lp->handle = strdup(handle);
+        lp->userhost = userhost ? strdup(userhost) : NULL;
+        lp->cb = cb;
+        lp->data = data;
+        lp->next = loc_pending_head;
+        if (loc_pending_head)
+            loc_pending_head->prev = lp;
+        loc_pending_head = lp;
+        /* kc copies the password into its request; nothing here keeps it. */
+        x3kc_login(handle, password, loc_kc_done, lp);
+        return;
+    }
+#endif
+    cb(loc_auth_now(sslfp, handle, password, userhost), data);
+}
+
 void nickserv_do_autoauth(struct userNode *user)
 {
     struct handle_info *hi;
@@ -2730,7 +3739,8 @@ void nickserv_do_autoauth(struct userNode *user)
 
     /* User doesn't match host masks */
     if (!valid_user_for(user, hi)) {
-        if (hi->email_addr && nickserv_conf.email_enabled)
+        /* (Not in Keycloak mode: AUTHCOOKIE is off there.) */
+        if (!nickserv_conf.keycloak_enable && hi->email_addr && nickserv_conf.email_enabled)
             send_message_type(4, user, nickserv,
                               handle_find_message(hi, "NSMSG_USE_AUTHCOOKIE"),
                               hi->handle);
@@ -2759,7 +3769,8 @@ void nickserv_do_autoauth(struct userNode *user)
     }
 
     set_user_handle_info(user, hi, 1);
-    if (nickserv_conf.email_required && !hi->email_addr)
+    /* (Not in Keycloak mode: SET EMAIL is off there.) */
+    if (!nickserv_conf.keycloak_enable && nickserv_conf.email_required && !hi->email_addr)
         send_message_type(4, user, nickserv,
                           handle_find_message(hi, "NSMSG_PLEASE_SET_EMAIL"));
 
@@ -2775,14 +3786,429 @@ void nickserv_do_autoauth(struct userNode *user)
         irc_umode(user, "+x");
 }
 
+#ifdef WITH_KEYCLOAK
+/* An AUTH waiting for Keycloak; a user has one at most.  It holds the
+ * user, not a numeric: X3's users have no serial and a numeric is reused
+ * after a quit.  Every path that frees a userNode goes through DelUser(),
+ * whose del-user hooks run nickserv_remove_user(), which clears `user`
+ * here (and `bot`, should the service go); the answer is then dropped.
+ * No copy of the password. */
+struct auth_pending {
+    struct auth_pending *prev, *next;
+    struct userNode *user;      /* NULL: the user is gone, drop the answer */
+    struct userNode *bot;       /* the service asked; NULL: gone, answer as nickserv */
+    char *handle;               /* the account name the password was for */
+    char *command;              /* the command up to the password, for the audit log */
+};
+
+static struct auth_pending *auth_pending_head;
+
+static struct auth_pending *
+auth_pending_find(struct userNode *user)
+{
+    struct auth_pending *ap;
+
+    for (ap = auth_pending_head; ap; ap = ap->next)
+        if (ap->user == user)
+            return ap;
+    return NULL;
+}
+
+static void
+auth_pending_unlink(struct auth_pending *ap)
+{
+    if (ap->next)
+        ap->next->prev = ap->prev;
+    if (ap->prev)
+        ap->prev->next = ap->next;
+    else if (auth_pending_head == ap)
+        auth_pending_head = ap->next;
+    ap->prev = ap->next = NULL;
+}
+
+static void
+auth_pending_free(struct auth_pending *ap)
+{
+    free(ap->handle);
+    free(ap->command);
+    free(ap);
+}
+
+/* A user (or a service) is going away: no pending AUTH may reach it. */
+static void
+auth_pending_forget(struct userNode *user)
+{
+    struct auth_pending *ap;
+
+    for (ap = auth_pending_head; ap; ap = ap->next) {
+        if (ap->user == user)
+            ap->user = NULL;
+        if (ap->bot == user)
+            ap->bot = NULL;
+    }
+}
+#endif /* WITH_KEYCLOAK */
+
+/* AUTH after the password check, in the order it always ran: the handle
+ * (looked up by name again), the hostmask, the password verdict, the
+ * suspension, max logins, then the login.  Replies come from bot.
+ *
+ * res is the password check: LDAP's (X3KC_OK or X3KC_BAD_PASSWORD), or in
+ * Keycloak mode Keycloak's answer; with neither, X3's stored hash is
+ * checked here against passwd.  passwd is NULL exactly for a Keycloak-mode
+ * AUTH (it marks one), and X3KC_OK without a kcid is a certificate login
+ * that never asked Keycloak.
+ * email is LDAP's (for its autocreate) or the token's (Keycloak mode);
+ * reason is Keycloak's text for X3KC_NOT_SET_UP.
+ *
+ * Returns the word that stands in for the password in the audit log, or
+ * NULL when the attempt is not logged (as before: no such account, LDAP
+ * down). */
+static const char *
+auth_finish(struct userNode *user, struct userNode *bot, const char *handle,
+            const char *passwd, enum x3kc_result res, const char *kcid,
+            const char *email, const char *reason)
+{
+    struct handle_info *hi;
+    struct userNode *other;
+    int used, maxlogins, bad_password;
+    int sslfpauth = 0;
+    int kc_mode = 0;
+
+#ifdef WITH_KEYCLOAK
+    /* Keycloak's answer, by the absence of a password rather than by the
+     * setting: a rehash that turns Keycloak off answers what is in flight
+     * as an outage, and that must not be read as LDAP's or the hash's. */
+    if (!passwd) {
+        const char *msg;
+
+        kc_mode = 1;
+        /* The answer may come a while after the AUTH: look again. */
+        if (user->handle_info) {
+            send_message(user, bot, "NSMSG_ALREADY_AUTHED", user->handle_info->handle);
+            return NULL;
+        }
+        if (IsStamped(user)) {
+            send_message(user, bot, "NSMSG_STAMPED_AUTH");
+            return NULL;
+        }
+        /* Busy, an outage, a disabled or half-set-up account: told so,
+         * and none of them is a failed password. */
+        if ((msg = x3kc_login_reply(res))) {
+            if (res == X3KC_NOT_SET_UP)
+                send_message(user, bot, msg, reason ? reason : "no reason given");
+            else
+                send_message(user, bot, msg);
+            if (res == X3KC_DISABLED)
+                return "DISABLED";
+            if (res == X3KC_NOT_SET_UP)
+                return "NOTSETUP";
+            return NULL;
+        }
+    }
+#else
+    (void)kcid;
+    (void)reason;
+#endif
+
+    hi = dict_find(nickserv_handle_dict, handle, NULL);
+    if (!hi) {
+#ifdef WITH_LDAP
+        if(!kc_mode && nickserv_conf.ldap_enable && res == X3KC_OK && nickserv_conf.ldap_autocreate) {
+           /* user not found, but authed to ldap successfully..
+            * create the account.
+            */
+             char *mask;
+             if(!(hi = nickserv_register(user, user, handle, passwd, 0))) {
+                send_message(user, bot, "NSMSG_UNABLE_TO_ADD");
+                return NULL; /* couldn't add the user for some reason */
+             }
+             /* Add a *@* mask */
+             if(nickserv_conf.default_hostmask)
+                mask = "*@*";
+             else
+                mask = generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+
+             if(mask) {
+                char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+                string_list_append(hi->masks, mask_canonicalized);
+             }
+             if(email) {
+                nickserv_set_email_addr(hi, email);
+             }
+             if(nickserv_conf.sync_log)
+                SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, email ? email : "@", user->info);
+        }
+        else {
+#endif
+#ifdef WITH_KEYCLOAK
+             /* Keycloak accepted the password for an account X3 has no
+              * handle for: with keycloak_autocreate it is made now, bound
+              * to kcid (the id decision below then passes).  A second AUTH
+              * for the same new name finds it above and goes the normal
+              * way. */
+             if (kc_mode && res == X3KC_OK && kcid && nickserv_conf.keycloak_autocreate) {
+                 const char *refusal;
+
+                 hi = nickserv_kc_autocreate(handle, kcid, email, user, NULL, user->nick, &refusal);
+                 if (!hi) {
+                     if (refusal && !strcmp(refusal, "NSMSG_BAD_HANDLE"))
+                         send_message(user, bot, refusal, handle);
+                     else if (refusal && !strcmp(refusal, "NSMSG_KC_NO_EMAIL")
+                              && nickserv_conf.keycloak_account_url && *nickserv_conf.keycloak_account_url)
+                         send_message(user, bot, "NSMSG_KC_NO_EMAIL_URL", nickserv_conf.keycloak_account_url);
+                     else
+                         send_message(user, bot, refusal ? refusal : "NSMSG_HANDLE_NOT_FOUND");
+                     return NULL;
+                 }
+             } else
+#endif
+             {
+                 send_message(user, bot, "NSMSG_HANDLE_NOT_FOUND");
+                 return NULL;
+             }
+#ifdef WITH_LDAP
+        }
+#endif
+    }
+
+#ifdef WITH_KEYCLOAK
+    /* The identity, as handle_account() decides it for an announced id. */
+    if (kc_mode && res == X3KC_OK) {
+        if (!kcid) {
+            /* Only the certificate login comes without an id. */
+            if (!valid_user_sslfp(user, hi)) {
+                send_message(user, bot, "NSMSG_KC_FAIL");
+                return NULL;
+            }
+        } else {
+            enum kcid_verdict verdict = handle_kcid_decide(hi, kcid);
+
+            switch (verdict) {
+            case KCID_PASS:
+                break;
+            case KCID_RESET:
+                hi = nickserv_reset_handle(hi, kcid, user, NULL, NULL);
+                break;
+            case KCID_REFUSE_UNBOUND:
+                /* No id stored: never bound by name (an oper REBINDs). */
+                handle_kcid_refused(user->nick, user->uplink->burst, handle, kcid, hi, verdict);
+                send_message_type(4, user, bot,
+                                  handle_find_message(hi, "NSMSG_KC_NOT_LINKED"), hi->handle);
+                return "UNLINKED";
+            default:
+                /* (KCID_ADOPT is LDAP or local mode's, never Keycloak's.) */
+                handle_kcid_refused(user->nick, user->uplink->burst, handle, kcid, hi, verdict);
+                send_message_type(4, user, bot,
+                                  handle_find_message(hi, verdict == KCID_REFUSE_SUSPENDED
+                                                      ? "NSMSG_HANDLE_SUSPENDED" : "NSMSG_NO_ACCESS"));
+                return "BADID";
+            }
+        }
+    }
+#endif
+
+    /* Responses from here on look up the language used by the handle they asked about. */
+    if (!valid_user_for(user, hi)) {
+        /* (Not in Keycloak mode: AUTHCOOKIE is off there.) */
+        if (!kc_mode && hi->email_addr && nickserv_conf.email_enabled)
+            send_message_type(4, user, bot,
+                              handle_find_message(hi, "NSMSG_USE_AUTHCOOKIE"),
+                              hi->handle);
+        else
+            send_message_type(4, user, bot,
+                              handle_find_message(hi, "NSMSG_HOSTMASK_INVALID"),
+                              hi->handle);
+        return "BADMASK";
+    }
+
+    if (valid_user_sslfp(user, hi))
+        sslfpauth = 1;
+
+#ifdef WITH_KEYCLOAK
+    if (kc_mode)
+        bad_password = x3kc_failed_password(res);
+    else
+#endif
+#ifdef WITH_LDAP
+    if (nickserv_conf.ldap_enable)
+        bad_password = (res == X3KC_BAD_PASSWORD);
+    else
+#endif
+        bad_password = !checkpass(passwd, hi->passwd);
+
+    /* In Keycloak mode a certificate never overrides Keycloak's refusal:
+     * a certificate login does not ask it in the first place. */
+    if (bad_password && (kc_mode || !sslfpauth)) {
+        const char *word = "BADPASS";
+        unsigned int n;
+        send_message_type(4, user, bot,
+                          handle_find_message(hi, "NSMSG_PASSWORD_INVALID"));
+        for (n=0; n<failpw_func_used; n++)
+            failpw_func_list[n](user, hi, failpw_func_list_extra[n]);
+        if (nickserv_conf.autogag_enabled) {
+            if (!user->auth_policer.params) {
+                user->auth_policer.last_req = now;
+                user->auth_policer.params = nickserv_conf.auth_policer_params;
+            }
+            if (!policer_conforms(&user->auth_policer, now, 1.0)) {
+                char *hostmask;
+                hostmask = generate_hostmask(user, GENMASK_STRICT_HOST|GENMASK_BYIP|GENMASK_NO_HIDING);
+                log_module(NS_LOG, LOG_INFO, "%s auto-gagged for repeated password guessing.", hostmask);
+                gag_create(hostmask, nickserv->nick, "Repeated password guessing.", now+nickserv_conf.autogag_duration);
+                free(hostmask);
+                word = "GAGGED";
+            }
+        }
+        return word;
+    }
+    if (HANDLE_FLAGGED(hi, SUSPENDED)) {
+        send_message_type(4, user, bot,
+                          handle_find_message(hi, "NSMSG_HANDLE_SUSPENDED"));
+        return "SUSPENDED";
+    }
+    maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
+    for (used = 0, other = hi->users; other; other = other->next_authed) {
+        if (++used >= maxlogins) {
+            send_message_type(4, user, bot,
+                              handle_find_message(hi, "NSMSG_MAX_LOGINS"),
+                              maxlogins);
+            return "MAXLOGINS";
+        }
+    }
+
+#ifdef WITH_KEYCLOAK
+    if (kc_mode)
+        nickserv_kc_refresh_email(hi, email);
+#endif
+    set_user_handle_info(user, hi, 1);
+    /* Not in Keycloak mode: email and password are Keycloak's there, and
+     * X3 keeps no password hash. */
+    if (!kc_mode) {
+        if (nickserv_conf.email_required && !hi->email_addr)
+            send_message(user, bot, "NSMSG_PLEASE_SET_EMAIL");
+        if (!sslfpauth && !is_secure_password(hi->handle, passwd, NULL))
+            send_message(user, bot, "NSMSG_WEAK_PASSWORD");
+        if (!sslfpauth && (hi->passwd[0] != '$'))
+            cryptpass(passwd, hi->passwd);
+    }
+
+   /* If a channel was waiting for this user to auth, 
+    * finish adding them */
+    process_adduser_pending(user);
+
+    send_message(user, bot, "NSMSG_AUTH_SUCCESS");
+
+    
+    /* Set +x if autohide is on */
+    if(HANDLE_FLAGGED(hi, AUTOHIDE))
+        irc_umode(user, "+x");
+
+    if (!hi->masks->used) {
+        irc_in_addr_t ip;
+        string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
+        if (irc_in_addr_is_valid(user->ip) && irc_pton(&ip, NULL, user->hostname))
+            string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_BYIP|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
+    }
+
+    /* Wipe out the pass for the logs */
+    return "****";
+}
+
+#ifdef WITH_KEYCLOAK
+/* Keycloak's answer to an AUTH.  Dropped when the user went away
+ * meanwhile; else the rest of AUTH runs, and its audit line -- which
+ * modcmd writes for an AUTH answered at once -- is written here. */
+static void
+auth_kc_done(enum x3kc_result res, const char *kcid, const char *email,
+             const char *reason, void *data)
+{
+    struct auth_pending *ap = data;
+    const char *word;
+
+    if (!ap->user) {
+        log_module(NS_LOG, LOG_DEBUG, "AUTH %s: the user left before Keycloak answered (result %d); answer dropped",
+                   ap->handle, (int)res);
+    } else {
+        /* Still listed while the rest of AUTH runs: should anything in it
+         * remove the user, the record hears of it. */
+        word = auth_finish(ap->user, ap->bot ? ap->bot : nickserv, ap->handle, NULL,
+                           res, kcid, email, reason);
+        if (word && ap->user) {
+            char line[MAXLEN];
+
+            snprintf(line, sizeof(line), "%s %s", ap->command, word);
+            log_audit(nickserv_module->clog, LOG_COMMAND, ap->user, ap->bot ? ap->bot : nickserv,
+                      "", AUDIT_HOSTMASK, line);
+        }
+    }
+    auth_pending_unlink(ap);
+    auth_pending_free(ap);
+}
+
+/* AUTH in Keycloak mode, after the argument checks: a certificate the
+ * handle has logs in at once, as it always has; a password goes to
+ * Keycloak and is answered by auth_kc_done().  Returns what cmd_auth
+ * returns. */
+static int
+auth_begin_keycloak(struct userNode *user, struct svccmd *cmd, char **argv, int pw_arg,
+                    struct handle_info *hi, const char *handle, const char *passwd)
+{
+    struct auth_pending *ap;
+    const char *word;
+    char command[MAXLEN];
+
+#ifndef WITH_LDAP
+    /* The checks the LDAP build makes above, in every mode. */
+    if(strchr(handle, '<') || strchr(handle, '>')) {
+        reply("NSMSG_NO_ANGLEBRACKETS");
+        return 0;
+    }
+    if (!is_valid_handle(handle)) {
+        reply("NSMSG_BAD_HANDLE", handle);
+        return 0;
+    }
+#endif
+    if (hi && valid_user_sslfp(user, hi)) {
+        word = auth_finish(user, cmd->parent->bot, handle, NULL, X3KC_OK, NULL, NULL, NULL);
+        argv[pw_arg] = "****";
+        if (!word)
+            return 0;
+        argv[pw_arg] = (char *)word;
+        return 1;
+    }
+    if (!hi && !nickserv_conf.keycloak_autocreate) {
+        argv[pw_arg] = "****";
+        reply("NSMSG_HANDLE_NOT_FOUND");
+        return 0;
+    }
+    unsplit_string(argv, pw_arg, command);
+    ap = calloc(1, sizeof(*ap));
+    ap->user = user;
+    ap->bot = cmd->parent->bot;
+    ap->handle = strdup(handle);
+    ap->command = strdup(command);
+    ap->next = auth_pending_head;
+    if (auth_pending_head)
+        auth_pending_head->prev = ap;
+    auth_pending_head = ap;
+    /* kc copies the password into its request; nothing here keeps it.  The
+     * answer may come before this returns (busy, Keycloak off). */
+    x3kc_login(handle, passwd, auth_kc_done, ap);
+    argv[pw_arg] = "****";
+    /* Nothing for modcmd to log: auth_kc_done() writes the audit line. */
+    return 0;
+}
+#endif /* WITH_KEYCLOAK */
+
 static NICKSERV_FUNC(cmd_auth)
 {
-    int pw_arg, used, maxlogins;
-    int sslfpauth = 0;
+    int pw_arg;
     struct handle_info *hi;
     const char *passwd;
     const char *handle;
-    struct userNode *other;
+    const char *word;
+    enum x3kc_result res = X3KC_OK;
 #ifdef WITH_LDAP
     int ldap_result = LDAP_OTHER;
     char *email = NULL;
@@ -2799,6 +4225,12 @@ static NICKSERV_FUNC(cmd_auth)
         reply("NSMSG_STAMPED_AUTH");
         return 0;
     }
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable && auth_pending_find(user)) {
+        reply("NSMSG_KC_PENDING");
+        return 0;
+    }
+#endif
     if (argc == 3) {
         passwd = argv[2];
         handle = argv[1];
@@ -2861,132 +4293,27 @@ static NICKSERV_FUNC(cmd_auth)
     }
 #endif
 
-    if (!hi) {
-#ifdef WITH_LDAP
-        if(nickserv_conf.ldap_enable && ldap_result == LDAP_SUCCESS && nickserv_conf.ldap_autocreate) {
-           /* user not found, but authed to ldap successfully..
-            * create the account.
-            */
-             char *mask;
-             if(!(hi = nickserv_register(user, user, handle, passwd, 0))) {
-                reply("NSMSG_UNABLE_TO_ADD");
-                return 0; /* couldn't add the user for some reason */
-             }
-             /* Add a *@* mask */
-             if(nickserv_conf.default_hostmask)
-                mask = "*@*";
-             else
-                mask = generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
-
-             if(mask) {
-                char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
-                string_list_append(hi->masks, mask_canonicalized);
-             }
-             if(email) {
-                nickserv_set_email_addr(hi, email);
-                free(email);
-             }
-             if(nickserv_conf.sync_log)
-                SyncLog("REGISTER %s %s %s %s", hi->handle, hi->passwd, email ? email : "@", user->info);
-        }
-        else {
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable)
+        return auth_begin_keycloak(user, cmd, argv, pw_arg, hi, handle, passwd);
 #endif
-             reply("NSMSG_HANDLE_NOT_FOUND");
-             return 0;
 #ifdef WITH_LDAP
-        }
+    if (nickserv_conf.ldap_enable)
+        res = (ldap_result == LDAP_SUCCESS) ? X3KC_OK : X3KC_BAD_PASSWORD;
 #endif
-    }
-    /* Responses from here on look up the language used by the handle they asked about. */
-    if (!valid_user_for(user, hi)) {
-        if (hi->email_addr && nickserv_conf.email_enabled)
-            send_message_type(4, user, cmd->parent->bot,
-                              handle_find_message(hi, "NSMSG_USE_AUTHCOOKIE"),
-                              hi->handle);
-        else
-            send_message_type(4, user, cmd->parent->bot,
-                              handle_find_message(hi, "NSMSG_HOSTMASK_INVALID"),
-                              hi->handle);
-        argv[pw_arg] = "BADMASK";
-        return 1;
-    }
-
-    if (valid_user_sslfp(user, hi))
-        sslfpauth = 1;
-
+    word = auth_finish(user, cmd->parent->bot, handle, passwd, res, NULL,
 #ifdef WITH_LDAP
-    if(( ( nickserv_conf.ldap_enable && ldap_result == LDAP_INVALID_CREDENTIALS )  ||
-        ( (!nickserv_conf.ldap_enable) && (!checkpass(passwd, hi->passwd)) ) ) && !sslfpauth) {
+                       email,
 #else
-    if (!checkpass(passwd, hi->passwd) && !sslfpauth) {
+                       NULL,
 #endif
-        unsigned int n;
-        send_message_type(4, user, cmd->parent->bot,
-                          handle_find_message(hi, "NSMSG_PASSWORD_INVALID"));
-        argv[pw_arg] = "BADPASS";
-        for (n=0; n<failpw_func_used; n++)
-            failpw_func_list[n](user, hi, failpw_func_list_extra[n]);
-        if (nickserv_conf.autogag_enabled) {
-            if (!user->auth_policer.params) {
-                user->auth_policer.last_req = now;
-                user->auth_policer.params = nickserv_conf.auth_policer_params;
-            }
-            if (!policer_conforms(&user->auth_policer, now, 1.0)) {
-                char *hostmask;
-                hostmask = generate_hostmask(user, GENMASK_STRICT_HOST|GENMASK_BYIP|GENMASK_NO_HIDING);
-                log_module(NS_LOG, LOG_INFO, "%s auto-gagged for repeated password guessing.", hostmask);
-                gag_create(hostmask, nickserv->nick, "Repeated password guessing.", now+nickserv_conf.autogag_duration);
-                free(hostmask);
-                argv[pw_arg] = "GAGGED";
-            }
-        }
-        return 1;
-    }
-    if (HANDLE_FLAGGED(hi, SUSPENDED)) {
-        send_message_type(4, user, cmd->parent->bot,
-                          handle_find_message(hi, "NSMSG_HANDLE_SUSPENDED"));
-        argv[pw_arg] = "SUSPENDED";
-        return 1;
-    }
-    maxlogins = hi->maxlogins ? hi->maxlogins : nickserv_conf.default_maxlogins;
-    for (used = 0, other = hi->users; other; other = other->next_authed) {
-        if (++used >= maxlogins) {
-            send_message_type(4, user, cmd->parent->bot,
-                              handle_find_message(hi, "NSMSG_MAX_LOGINS"),
-                              maxlogins);
-            argv[pw_arg] = "MAXLOGINS";
-            return 1;
-        }
-    }
-
-    set_user_handle_info(user, hi, 1);
-    if (nickserv_conf.email_required && !hi->email_addr)
-        reply("NSMSG_PLEASE_SET_EMAIL");
-    if (!sslfpauth && !is_secure_password(hi->handle, passwd, NULL))
-        reply("NSMSG_WEAK_PASSWORD");
-    if (!sslfpauth && (hi->passwd[0] != '$'))
-        cryptpass(passwd, hi->passwd);
-
-   /* If a channel was waiting for this user to auth, 
-    * finish adding them */
-    process_adduser_pending(user);
-
-    reply("NSMSG_AUTH_SUCCESS");
-
-    
-    /* Set +x if autohide is on */
-    if(HANDLE_FLAGGED(hi, AUTOHIDE))
-        irc_umode(user, "+x");
-
-    if (!hi->masks->used) {
-        irc_in_addr_t ip;
-        string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
-        if (irc_in_addr_is_valid(user->ip) && irc_pton(&ip, NULL, user->hostname))
-            string_list_append(hi->masks, generate_hostmask(user, GENMASK_OMITNICK|GENMASK_BYIP|GENMASK_NO_HIDING|GENMASK_ANY_IDENT));
-    }
-
-    /* Wipe out the pass for the logs */
-    argv[pw_arg] = "****";
+                       NULL);
+#ifdef WITH_LDAP
+    free(email);
+#endif
+    if (!word)
+        return 0;
+    argv[pw_arg] = (char *)word;
     return 1;
 }
 
@@ -3054,7 +4381,8 @@ static NICKSERV_FUNC(cmd_allowauth)
         dict_insert(nickserv_allow_auth_dict, target->nick, hi);
         reply("NSMSG_AUTH_ALLOWED", target->nick, hi->handle);
         send_message(target, nickserv, "NSMSG_AUTH_ALLOWED_MSG", hi->handle, hi->handle);
-        if (nickserv_conf.email_enabled)
+        /* (It points at SET EMAIL and AUTHCOOKIE, both off in Keycloak mode.) */
+        if (nickserv_conf.email_enabled && !nickserv_conf.keycloak_enable)
             send_message(target, nickserv, "NSMSG_AUTH_ALLOWED_EMAIL");
     } else {
         if (dict_remove(nickserv_allow_auth_dict, target->nick))
@@ -3071,6 +4399,12 @@ static NICKSERV_FUNC(cmd_authcookie)
 {
     struct handle_info *hi;
 
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        reply("NSMSG_KC_WEB_RESET", nickserv_conf.keycloak_account_url);
+        return 0;
+    }
+#endif
     NICKSERV_MIN_PARMS(2);
     if (user->handle_info) {
         reply("NSMSG_ALREADY_AUTHED", user->handle_info->handle);
@@ -3172,6 +4506,14 @@ static NICKSERV_FUNC(cmd_resetpass)
     char crypted[MD5_CRYPT_LENGTH];
     int weblink;
 
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        if (argc > 2)
+            argv[2] = "****";
+        reply("NSMSG_KC_WEB_RESET", nickserv_conf.keycloak_account_url);
+        return 0;
+    }
+#endif
     NICKSERV_MIN_PARMS(3);
     if(argc >= 4 && !strcmp(argv[3], "WEBLINK"))
         weblink = 1;
@@ -3207,6 +4549,12 @@ static NICKSERV_FUNC(cmd_cookie)
     struct handle_info *hi;
     const char *cookie;
 
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        reply("NSMSG_KC_WEB_RESET", nickserv_conf.keycloak_account_url);
+        return 0;
+    }
+#endif
     if ((argc == 2) && (hi = user->handle_info) && hi->cookie && (hi->cookie->type == EMAIL_CHANGE)) {
         cookie = argv[1];
     } else {
@@ -3382,6 +4730,16 @@ static NICKSERV_FUNC(cmd_pass)
     int ldap_result;
 #endif
 
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        if (argc > 1)
+            argv[1] = "****";
+        if (argc > 2)
+            argv[2] = "****";
+        reply("NSMSG_KC_WEB_ACCOUNT", nickserv_conf.keycloak_account_url);
+        return 0;
+    }
+#endif
     NICKSERV_MIN_PARMS(3);
     hi = user->handle_info;
     old_pass = argv[1];
@@ -3884,6 +5242,17 @@ static OPTION_FUNC(opt_password)
     if(argc < 2) {
        return 0;
     }
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        /* (The working path does not mask it: an OSET that sets a
+         * password logs it.  This answer is never logged, but masks it
+         * all the same.) */
+        argv[1] = "****";
+        if (!(noreply))
+            reply("NSMSG_KC_WEB_ACCOUNT", nickserv_conf.keycloak_account_url);
+        return 0;
+    }
+#endif
     if (!override) {
         if (!(noreply))
 	    reply("NSMSG_USE_CMD_PASS");
@@ -3939,6 +5308,13 @@ static OPTION_FUNC(opt_flags)
 
 static OPTION_FUNC(opt_email)
 {
+#ifdef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable && argc > 1) {
+        if (!(noreply))
+            reply("NSMSG_KC_WEB_ACCOUNT", nickserv_conf.keycloak_account_url);
+        return 0;
+    }
+#endif
     if (argc > 1) {
         const char *str;
         if (!valid_email(argv[1])) {
@@ -4057,9 +5433,19 @@ static OPTION_FUNC(opt_karma)
     return 1;
 }
 
-/* Called from opserv from cmd_access */
+/* Called from opserv from cmd_access, and from opt_level (OSET, SEARCH
+ * SET).  Returns 1 if the level changed now, or -- Keycloak mode, a bound
+ * handle -- if the change was started in Keycloak (the level changes when
+ * Keycloak confirms it): either way the command was carried out and its
+ * caller's return makes modcmd audit it.  0 for a refusal.  *deferred
+ * (when deferred is not NULL) is set to 1 when this has given the oper the
+ * outcome itself -- a Keycloak change started here (reported when Keycloak
+ * answers), or refused because one is in flight -- so the caller adds no
+ * level line (it would show the old level). */
 int
-oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level) {
+oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_info *target, unsigned int new_level, int *deferred) {
+    if (deferred)
+        *deferred = 0;
     if (!oper_has_access(user, bot, nickserv_conf.modoper_level, 0))
         return 0;
     if ((user->handle_info->opserv_level < target->opserv_level)
@@ -4078,6 +5464,24 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
         send_message(user, bot, "MSG_STUPID_ACCESS_CHANGE");
         return 0;
     }
+#ifdef WITH_KEYCLOAK
+    /* Keycloak first, X3 once Keycloak confirmed (even for the level X3
+     * has already: that puts Keycloak back in step).  A handle with no
+     * Keycloak id changes in X3 only, as with no directory; a name is
+     * never looked up. */
+    if (nickserv_conf.keycloak_enable && nickserv_conf.keycloak_writeback
+        && (*nickserv_conf.keycloak_oper_group || *nickserv_conf.keycloak_field_oslevel)) {
+        if (target->kc_id) {
+            if (deferred)
+                *deferred = 1;
+            return kc_level_begin(user, bot, target, new_level);
+        }
+        if (target->opserv_level == new_level)
+            send_message(user, bot, "NSMSG_KC_UNBOUND_SAME", target->handle, new_level);
+        else
+            send_message(user, bot, "NSMSG_KC_UNBOUND", target->handle);
+    }
+#endif
 #ifdef WITH_LDAP
     if(nickserv_conf.ldap_enable && *(nickserv_conf.ldap_oper_group_dn) && *(nickserv_conf.ldap_admin_dn)) {
         int rc;
@@ -4108,7 +5512,7 @@ oper_try_set_access(struct userNode *user, struct userNode *bot, struct handle_i
 
 static OPTION_FUNC(opt_level)
 {
-    int res;
+    int res, deferred = 0;
 
     if (!override) {
         if (!(noreply))
@@ -4116,8 +5520,8 @@ static OPTION_FUNC(opt_level)
 	return 0;
     }
 
-    res = (argc > 1) ? oper_try_set_access(user, nickserv, hi, strtoul(argv[1], NULL, 0)) : 0;
-    if (!(noreply))
+    res = (argc > 1) ? oper_try_set_access(user, nickserv, hi, strtoul(argv[1], NULL, 0), &deferred) : 0;
+    if (!(noreply) && !deferred)
         reply("NSMSG_SET_LEVEL", hi->opserv_level);
     return res;
 }
@@ -4450,12 +5854,22 @@ static NICKSERV_FUNC(cmd_unregister)
     struct handle_info *hi;
     char *passwd;
 
+#ifdef WITH_KEYCLOAK
+    /* Off in Keycloak mode: X3 checks no password of its own there, and
+     * staff remove accounts (OUNREGISTER). */
+    if (nickserv_conf.keycloak_enable) {
+        if (argc > 1)
+            argv[1] = "****";
+        reply("NSMSG_KC_UNREGISTER_OFF");
+        return 0;
+    }
+#endif
     NICKSERV_MIN_PARMS(2);
     hi = user->handle_info;
     passwd = argv[1];
     argv[1] = "****";
     if (checkpass(passwd, hi->passwd)) {
-        if(nickserv_unregister_handle(hi, user, cmd->parent->bot))
+        if(nickserv_unregister_handle(hi, user, cmd->parent->bot, user))
             return 1;
         else
             return 0;
@@ -4491,7 +5905,7 @@ static NICKSERV_FUNC(cmd_ounregister)
     }
     snprintf(reason, sizeof(reason), "%s unregistered account %s.", user->handle_info->handle, hi->handle);
     global_message(MESSAGE_RECIPIENT_STAFF, reason);
-    if(nickserv_unregister_handle(hi, user, cmd->parent->bot))
+    if(nickserv_unregister_handle(hi, user, cmd->parent->bot, user))
         return 1;
     else
         return 0;
@@ -4823,7 +6237,7 @@ static NICKSERV_FUNC(cmd_merge)
                         user->handle_info->handle, hi_from->handle, hi_to->handle);
 
     /* Unregister the "from" handle. */
-    nickserv_unregister_handle(hi_from, NULL, cmd->parent->bot);
+    nickserv_unregister_handle(hi_from, NULL, cmd->parent->bot, user);
     /* TODO: fix it so that if the ldap delete in nickserv_unregister_handle fails, 
      * the process isn't completed.
      */
@@ -5130,7 +6544,7 @@ static void
 search_unregister_func (struct userNode *source, struct handle_info *match, UNUSED_ARG(struct nickserv_discrim *discrim))
 {
     if (oper_has_access(source, nickserv, match->opserv_level, 0))
-        nickserv_unregister_handle(match, source, nickserv); // XXX nickserv hard coded
+        nickserv_unregister_handle(match, source, nickserv, source); // XXX nickserv hard coded
 }
 
 #ifdef WITH_LDAP
@@ -5245,6 +6659,20 @@ static NICKSERV_FUNC(cmd_search)
     if (!discrim)
         return 0;
 
+#ifdef WITH_KEYCLOAK
+    /* SET PASSWORD / EMAIL refuse each match quietly (noreply) in Keycloak
+     * mode: say it once, and do not walk the accounts. */
+    if (nickserv_conf.keycloak_enable && (action == search_set_func) && discrim->setwhat && discrim->setval) {
+        option_func_t *opt = dict_find(nickserv_opt_dict, discrim->setwhat, NULL);
+
+        if (opt == opt_password || opt == opt_email) {
+            reply("NSMSG_KC_WEB_ACCOUNT", nickserv_conf.keycloak_account_url);
+            free(discrim);
+            return 0;
+        }
+    }
+#endif
+
     if (action == search_print_func)
         reply("NSMSG_ACCOUNT_SEARCH_RESULTS");
     else if (action == search_count_func)
@@ -5267,6 +6695,17 @@ static MODCMD_FUNC(cmd_checkpass)
 {
     struct handle_info *hi;
 
+#ifdef WITH_KEYCLOAK
+    /* Off in Keycloak mode: X3 keeps no hash of a Keycloak password (an
+     * older handle's is never consulted), and "No." would be a false
+     * answer for a correct one. */
+    if (nickserv_conf.keycloak_enable) {
+        if (argc > 2)
+            argv[2] = "****";
+        reply("NSMSG_KC_CHECKPASS_OFF");
+        return 0;
+    }
+#endif
     NICKSERV_MIN_PARMS(3);
     if (!(hi = get_handle_info(argv[1]))) {
         reply("MSG_HANDLE_UNKNOWN", argv[1]);
@@ -5312,6 +6751,7 @@ nickserv_db_read_handle(char *handle, dict_t obj)
     dict_t subdb;
     char *setter, *note;
     time_t date;
+    char kcid_buf[23];
 
     str = database_get_data(obj, KEY_ID, RECDB_QSTRING);
     id = str ? strtoul(str, NULL, 0) : 0;
@@ -5358,7 +6798,7 @@ nickserv_db_read_handle(char *handle, dict_t obj)
         hi->infoline = strdup(str);
     str = database_get_data(obj, KEY_KC_ID, RECDB_QSTRING);
     if (str)
-        hi->kc_id = strdup(str);
+        handle_kcid_set(hi, handle_kcid_loaded(handle, str, kcid_buf));
     /* The replaced ids: a list, newest first; a record written by a
      * single-id X3 holds one string under the same key. */
     slist = database_get_data(obj, KEY_KC_ID_PREV, RECDB_STRING_LIST);
@@ -5368,9 +6808,9 @@ nickserv_db_read_handle(char *handle, dict_t obj)
          * wrote: the oldest beyond this build's room are dropped, and are
          * gone from the next write). */
         for (ii = slist->used; ii > 0; ii--)
-            handle_kcid_remember(hi, strdup(slist->list[ii - 1]));
+            handle_kcid_remember(hi, strdup(handle_kcid_loaded(handle, slist->list[ii - 1], kcid_buf)));
     } else if ((str = database_get_data(obj, KEY_KC_ID_PREV, RECDB_QSTRING)))
-        handle_kcid_remember(hi, strdup(str));
+        handle_kcid_remember(hi, strdup(handle_kcid_loaded(handle, str, kcid_buf)));
     str = database_get_data(obj, KEY_REGISTER_ON, RECDB_QSTRING);
     hi->registered = str ? (time_t)strtoul(str, NULL, 0) : now;
     str = database_get_data(obj, KEY_LAST_SEEN, RECDB_QSTRING);
@@ -5553,7 +6993,7 @@ expire_handles(UNUSED_ARG(void *data))
         expiry = hi->channels ? nickserv_conf.handle_expire_delay : nickserv_conf.nochan_handle_expire_delay;
         if ((now - hi->lastseen) > expiry) {
             log_module(NS_LOG, LOG_INFO, "Expiring account %s for inactivity.", hi->handle);
-            nickserv_unregister_handle(hi, NULL, NULL);
+            nickserv_unregister_handle(hi, NULL, NULL, NULL);
         }
     }
 
@@ -5625,13 +7065,92 @@ reclaim_action_from_string(const char *str) {
         return RECLAIM_NONE;
 }
 
+/* The SASL mechanisms X3 serves (sasl_packet()), in LDAP mode, Keycloak
+ * mode and a build without Keycloak alike.  The network is told this list
+ * (nickserv_sasl_announce()), and an unknown mechanism is answered with
+ * it (sasl_packet()).  Fork servers store it only when it is
+ * comma-separated mechanism names that fit in 126 bytes. */
+static const char *
+nickserv_sasl_mechs(void)
+{
+    return "PLAIN,EXTERNAL";
+}
+
+/* Whether a nickserv_sasl_announce() is queued. */
+static int nickserv_sasl_announce_armed;
+
+/* Tell the network the mechanism list ("SASL * * M"), once per batch of
+ * links: queued by nickserv_sasl_announce_arm().  Nothing with
+ * sasl_announce off (it may have been turned off since), or while X3's own
+ * link is not up (its uplink's end of burst queues it again). */
+static void
+nickserv_sasl_announce(UNUSED_ARG(void *data))
+{
+    nickserv_sasl_announce_armed = 0;
+    if (!nickserv_conf.sasl_announce)
+        return;
+    if (!cManager.uplink || cManager.uplink->state != CONNECTED)
+        return;
+    irc_sasl_mechs_broadcast(nickserv_sasl_mechs());
+    log_module(NS_LOG, LOG_DEBUG, "SASL: announced mechanisms %s", nickserv_sasl_mechs());
+}
+
+/* Queue one announcement two seconds from now, unless one is queued:
+ * the links of a net join, or several servers linking together, give one
+ * line. */
+static void
+nickserv_sasl_announce_arm(void)
+{
+    if (nickserv_sasl_announce_armed || !nickserv_conf.sasl_announce)
+        return;
+    nickserv_sasl_announce_armed = 1;
+    timeq_add(now + 2, nickserv_sasl_announce, NULL);
+}
+
+/* A server's end of burst, X3's uplink included (X3's own link is then
+ * up): a server that linked has not seen the list -- a hub that does not
+ * store it cannot hand it on. */
+static int
+nickserv_sasl_server_link(UNUSED_ARG(struct server *server), UNUSED_ARG(void *extra))
+{
+    nickserv_sasl_announce_arm();
+    return 0;
+}
+
+#ifdef WITH_KEYCLOAK
+/* keycloak_timeout's range, in milliseconds. */
+#define KEYCLOAK_TIMEOUT_MIN 500
+#define KEYCLOAK_TIMEOUT_MAX 60000
+
+/* Sets *field to X3's own copy of the nickserv block's string key ("" when
+ * absent), freeing the copy it held.  The conf's strings are freed by the
+ * next rehash, and one that finds no nickserv block returns before this
+ * runs: a copy never dangles. */
+static void
+nickserv_kc_conf_string(const char **field, dict_t conf_node, const char *key)
+{
+    const char *str = database_get_data(conf_node, key, RECDB_QSTRING);
+    char *copy = strdup(str ? str : "");
+
+    if (!copy)
+        return;                 /* the old copy stays */
+    free((char *)*field);
+    *field = copy;
+}
+#endif
+
 static void
 nickserv_conf_read(void)
 {
+    static int read_before;     /* a rehash, not the read at start-up */
     dict_t conf_node, child;
     const char *str;
     dict_iterator_t it;
     struct string_list *strlist;
+    unsigned int was_announcing = nickserv_conf.sasl_announce;
+    /* The account backend before this read (a refused rehash keeps LDAP
+     * from being turned on by it). */
+    unsigned int was_ldap = nickserv_conf.ldap_enable;
 
     if (!(conf_node = conf_get_data(NICKSERV_CONF_NAME, RECDB_OBJECT))) {
 	log_module(NS_LOG, LOG_ERROR, "config node `%s' is missing or has wrong type.", NICKSERV_CONF_NAME);
@@ -5911,6 +7430,131 @@ nickserv_conf_read(void)
 
 #endif
 
+    /* Keycloak.  A refusal below exits at start-up.  On a rehash it is
+     * logged and X3 keeps running: Keycloak logins answer that the account
+     * server cannot be reached (keycloak_refused) until a rehash brings
+     * settings X3 accepts, and LDAP is not turned on in their place. */
+    str = database_get_data(conf_node, KEY_KEYCLOAK_ENABLE, RECDB_QSTRING);
+    nickserv_conf.keycloak_enable = str ? strtoul(str, NULL, 0) : 0;
+    (void)was_ldap;
+
+#ifndef WITH_KEYCLOAK
+    if (nickserv_conf.keycloak_enable) {
+        log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but Keycloak support is not compiled in (configure --with-keycloak)!");
+        if (!read_before)
+            exit(2);
+        /* This build has no Keycloak logins to answer "unreachable": the
+         * account backend stays what it was before the rehash. */
+        nickserv_conf.keycloak_enable = 0;
+        nickserv_conf.ldap_enable = was_ldap;
+        log_module(MAIN_LOG, LOG_ERROR, "Rehash: keycloak_enable ignored; account logins stay as they were (ldap_enable %u) until the configuration is fixed.",
+                   nickserv_conf.ldap_enable);
+    }
+#else
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_url, conf_node, KEY_KEYCLOAK_URL);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_realm, conf_node, KEY_KEYCLOAK_REALM);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_client_id, conf_node, KEY_KEYCLOAK_CLIENT_ID);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_client_secret, conf_node, KEY_KEYCLOAK_CLIENT_SECRET);
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_AUTOCREATE, RECDB_QSTRING);
+    nickserv_conf.keycloak_autocreate = str ? strtoul(str, NULL, 0) : 0;
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_WRITEBACK, RECDB_QSTRING);
+    nickserv_conf.keycloak_writeback = str ? strtoul(str, NULL, 0) : 0;
+
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_account_url, conf_node, KEY_KEYCLOAK_ACCOUNT_URL);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_register_url, conf_node, KEY_KEYCLOAK_REGISTER_URL);
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_oper_group, conf_node, KEY_KEYCLOAK_OPER_GROUP);
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_OPER_GROUP_LEVEL, RECDB_QSTRING);
+    nickserv_conf.keycloak_oper_group_level = str ? strtoul(str, NULL, 0) : 99;
+
+    nickserv_kc_conf_string(&nickserv_conf.keycloak_field_oslevel, conf_node, KEY_KEYCLOAK_FIELD_OSLEVEL);
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_TIMEOUT, RECDB_QSTRING);
+    nickserv_conf.keycloak_timeout = str ? strtoul(str, NULL, 0) : 2500;
+
+    str = database_get_data(conf_node, KEY_KEYCLOAK_MAX_PENDING, RECDB_QSTRING);
+    nickserv_conf.keycloak_max_pending = str ? strtoul(str, NULL, 0) : 64;
+
+    nickserv_conf.keycloak_refused = 0;
+    if (nickserv_conf.keycloak_enable) {
+        /* { key, value }: each must be non-empty. */
+        const char *required[][2] = {
+            { KEY_KEYCLOAK_URL, nickserv_conf.keycloak_url },
+            { KEY_KEYCLOAK_REALM, nickserv_conf.keycloak_realm },
+            { KEY_KEYCLOAK_CLIENT_ID, nickserv_conf.keycloak_client_id },
+            { KEY_KEYCLOAK_CLIENT_SECRET, nickserv_conf.keycloak_client_secret },
+            { KEY_KEYCLOAK_ACCOUNT_URL, nickserv_conf.keycloak_account_url },
+        };
+        /* Room for every key name above, with separators. */
+        char missing[256];
+        unsigned int ii;
+        int refused = 0;
+        const char *curl_name;
+
+        if (nickserv_conf.ldap_enable) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable and ldap_enable are both on in config; turn one of them off!");
+            refused = 1;
+        }
+        missing[0] = '\0';
+        for (ii = 0; ii < ArrayLength(required); ii++) {
+            if (*required[ii][1])
+                continue;
+            if (missing[0])
+                strcat(missing, ", ");
+            strcat(missing, required[ii][0]);
+        }
+        if (missing[0]) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but these keys are empty or missing: %s!", missing);
+            refused = 1;
+        }
+        /* 0 would answer every Keycloak call "busy". */
+        if (nickserv_conf.keycloak_max_pending == 0) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but keycloak_max_pending is 0; it must be at least 1!");
+            refused = 1;
+        }
+        /* Below the minimum no login could be answered by Keycloak; above
+         * the maximum (or a negative number, which strtoul() wraps) a
+         * stalled request holds its slot, and its user, for minutes. */
+        if (nickserv_conf.keycloak_timeout < KEYCLOAK_TIMEOUT_MIN
+            || nickserv_conf.keycloak_timeout > KEYCLOAK_TIMEOUT_MAX) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but keycloak_timeout is %u; it must be %u to %u (milliseconds)!",
+                       nickserv_conf.keycloak_timeout, KEYCLOAK_TIMEOUT_MIN, KEYCLOAK_TIMEOUT_MAX);
+            refused = 1;
+        }
+        /* Every Keycloak request starts with a name look-up for the
+         * Keycloak host; libcurl without an asynchronous resolver makes it
+         * in the calling thread, which here is all of X3. */
+        if (!x3kc_async_dns(&curl_name)) {
+            log_module(MAIN_LOG, LOG_ERROR, "keycloak_enable is on in config, but this libcurl (%s) resolves names synchronously (no AsynchDNS): every name look-up for the Keycloak host would block all of X3. Use a libcurl built with the threaded resolver or c-ares!",
+                       curl_name);
+            refused = 1;
+        }
+        if (refused) {
+            if (!read_before)
+                exit(2);
+            nickserv_conf.keycloak_refused = 1;
+            nickserv_conf.ldap_enable = 0;
+            log_module(MAIN_LOG, LOG_ERROR, "Rehash: the keycloak_* settings above were refused; X3 keeps running, Keycloak logins answer that the account server cannot be reached and LDAP stays off, until a rehash with settings X3 accepts.");
+        }
+    }
+
+    x3kc_configure();
+#endif
+
+    /* Whatever the account backend (LDAP, Keycloak, neither). */
+    /* Absent or empty: on exactly when Keycloak logins are (the default
+     * follows keycloak_enable; an explicit 0 or 1 wins in any mode). */
+    str = database_get_data(conf_node, KEY_SASL_ANNOUNCE, RECDB_QSTRING);
+    nickserv_conf.sasl_announce = (str && *str) ? strtoul(str, NULL, 0)
+                                                : (nickserv_conf.keycloak_enable ? 1 : 0);
+    /* Turned on by a rehash: tell the network now.  Turned off: nothing
+     * more is sent (a queued announcement sends nothing), and no empty
+     * list either -- fork servers drop services' list when X3 leaves. */
+    if (read_before && !was_announcing && nickserv_conf.sasl_announce)
+        nickserv_sasl_announce_arm();
+    read_before = 1;
 }
 
 static void
@@ -5994,13 +7638,227 @@ new_user_event(struct userNode *user, void *extra) {
     return check_user_nick(user, extra);
 }
 
+#if defined(WITH_KEYCLOAK) && defined(WITH_PROTOCOL_P10)
+void handle_account(struct userNode *user, const char *stamp);
+
+/* An account stamp (AC R / AC M, or +r in a burst) for a name X3 has no
+ * handle for, with keycloak_autocreate on: Keycloak is asked whether the
+ * account exists (a queued look-up: a stamp has nobody to answer, and a
+ * netjoin can bring many) before anything is created.  The record holds
+ * the user, not a numeric (see struct auth_pending), and is detached --
+ * `user` set to NULL -- when the user goes (nickserv_remove_user()), when
+ * the ircd stamps the user again (handle_account(): the new stamp is
+ * decided on its own) and when it takes the account away (AC U / AC M:
+ * nickserv_unbind_user()).  The seam answers exactly once; the answer for
+ * a detached record is dropped.  The stamp itself is kept as it came, to be
+ * handed to handle_account() again should a handle of that name exist by
+ * the time Keycloak answers. */
+struct stamp_pending {
+    struct stamp_pending *prev, *next;
+    struct userNode *user;      /* NULL: gone or superseded, drop the answer */
+    char *account;              /* the stamped name */
+    unsigned long timestamp;    /* the stamp's, 0 = none */
+    char wire_id[23];           /* the announced Keycloak id, "" = none */
+};
+
+static struct stamp_pending *stamp_pending_head;
+
+static void
+stamp_pending_unlink(struct stamp_pending *sp)
+{
+    if (sp->next)
+        sp->next->prev = sp->prev;
+    if (sp->prev)
+        sp->prev->next = sp->next;
+    else if (stamp_pending_head == sp)
+        stamp_pending_head = sp->next;
+    sp->prev = sp->next = NULL;
+}
+
+static void
+stamp_pending_free(struct stamp_pending *sp)
+{
+    free(sp->account);
+    free(sp);
+}
+
+/* No stamp look-up in flight may reach this user any more. */
+static void
+stamp_pending_forget(struct userNode *user)
+{
+    struct stamp_pending *sp;
+
+    for (sp = stamp_pending_head; sp; sp = sp->next)
+        if (sp->user == user)
+            sp->user = NULL;
+}
+
+/* Stamps that leave a user unbound in bulk are logged quietly: a netjoin
+ * can bring hundreds.  Two kinds: look-ups that got no answer (an outage,
+ * the deadline), and X3's own old stamps (no id, a non-zero timestamp) for
+ * a handle X3 no longer has.  The first of a run gets its own line, then
+ * at most one line per STAMP_SUMMARY_SECS with the counts since. */
+#define STAMP_SUMMARY_SECS 10
+enum stamp_unbound { STAMP_UNANSWERED, STAMP_OLD };
+static unsigned int stamp_quiet[2];
+static int stamp_summary_armed;
+
+static void
+stamp_summary(UNUSED_ARG(void *data))
+{
+    stamp_summary_armed = 0;
+    if (!stamp_quiet[STAMP_UNANSWERED] && !stamp_quiet[STAMP_OLD])
+        return;                 /* the run is over */
+    log_module(MAIN_LOG, LOG_WARNING, "In the last %us, %u more account stamp(s) could not be checked with Keycloak and %u more carried the account timestamp of a handle X3 no longer has; those users stay unbound in X3.",
+               STAMP_SUMMARY_SECS, stamp_quiet[STAMP_UNANSWERED], stamp_quiet[STAMP_OLD]);
+    stamp_quiet[STAMP_UNANSWERED] = stamp_quiet[STAMP_OLD] = 0;
+    timeq_add(now + STAMP_SUMMARY_SECS, stamp_summary, NULL);
+    stamp_summary_armed = 1;
+}
+
+static void
+stamp_unbound_note(enum stamp_unbound kind, const char *account, unsigned long timestamp,
+                   struct userNode *user, enum x3kc_result res)
+{
+    if (stamp_summary_armed) {
+        stamp_quiet[kind]++;
+        return;
+    }
+    if (kind == STAMP_UNANSWERED)
+        log_module(MAIN_LOG, LOG_WARNING, "Keycloak could not be asked about the account stamp %s of %s (result %d): left unbound in X3 until the user logs in again or is stamped again; further such stamps are counted, one line per %us.",
+                   account, user->nick, (int)res, STAMP_SUMMARY_SECS);
+    else
+        log_module(MAIN_LOG, LOG_WARNING, "%s using account %s but timestamp does not match: wire=%lu and X3 has no such handle (deleted since?); no handle created, left unbound; further such stamps are counted, one line per %us.",
+                   user->nick, account, timestamp, STAMP_SUMMARY_SECS);
+    timeq_add(now + STAMP_SUMMARY_SECS, stamp_summary, NULL);
+    stamp_summary_armed = 1;
+}
+
+/* Keycloak's answer to a stamp's look-up (x3kc_stamp_step() decides). */
+static void
+stamp_lookup_done(enum x3kc_result res, const char *kcid, const char *email, void *data)
+{
+    struct stamp_pending *sp = data;
+    struct userNode *user = sp->user;
+    struct handle_info *hi;
+    enum x3kc_stamp_step step;
+    char stamp[MAXLEN];
+
+    stamp_pending_unlink(sp);
+    if (user && user->dead)
+        user = NULL;
+    hi = dict_find(nickserv_handle_dict, sp->account, NULL);
+    step = x3kc_stamp_step(res, user != NULL, user && user->handle_info,
+                           sp->wire_id, sp->timestamp, kcid, hi != NULL);
+    switch (step) {
+    case X3KC_STAMP_DROP:
+        log_module(MAIN_LOG, LOG_DEBUG, "Account stamp %s: the user left, was stamped again or logged in before Keycloak answered (result %d); answer dropped.",
+                   sp->account, (int)res);
+        break;
+    case X3KC_STAMP_UNKNOWN:
+        log_module(MAIN_LOG, LOG_WARNING, "%s had unknown account stamp %s.", user->nick, sp->account);
+        break;
+    case X3KC_STAMP_RETRY_LATER:
+        stamp_unbound_note(STAMP_UNANSWERED, sp->account, sp->timestamp, user, res);
+        break;
+    case X3KC_STAMP_OLD:
+        /* (stamp_lookup_begin() does not ask for these; kept for safety.) */
+        stamp_unbound_note(STAMP_OLD, sp->account, sp->timestamp, user, res);
+        break;
+    case X3KC_STAMP_ID_MISMATCH:
+        log_module(MAIN_LOG, LOG_WARNING, "%s was stamped with account %s and Keycloak id %s, but Keycloak's user of that name has id %s; stamp ignored.",
+                   user->nick, sp->account, sp->wire_id, kcid);
+        break;
+    case X3KC_STAMP_KNOWN:
+    case X3KC_STAMP_BIND_LOOKED_UP:
+        /* A handle of that name appeared meanwhile (a login Keycloak
+         * confirmed made it): the stamp exactly as it came goes the way
+         * of a stamp for a known handle -- handle_account(), with its
+         * account-timestamp check (the delete detector), its id decision
+         * for an announced id, its suspension check.  An id X3 looked up
+         * itself by name is never put into the stamp: it proves nothing
+         * about the session that was stamped.
+         *
+         * BIND_LOOKED_UP (no id announced, Keycloak gave one): only a
+         * handle bound to that very id goes on; one bound to another id is
+         * not touched (logged), and one with no id is refused as any login
+         * for an unlinked handle is (KCID_REFUSE_UNBOUND: logged, opers
+         * told, the user stays unbound). */
+        if (step == X3KC_STAMP_BIND_LOOKED_UP) {
+            enum kcid_verdict verdict = handle_kcid_decide(hi, kcid);
+
+            if (verdict == KCID_REFUSE_UNBOUND) {
+                handle_kcid_refused(user->nick, user->uplink->burst, sp->account, kcid, hi, verdict);
+                break;
+            }
+            if (verdict != KCID_PASS) {
+                log_module(MAIN_LOG, LOG_WARNING, "%s was stamped with account %s (no Keycloak id given); Keycloak's user of that name, looked up by X3, has id %s, which handle %s is not bound to (it has %s); not bound.",
+                           user->nick, sp->account, kcid, hi->handle, hi->kc_id ? hi->kc_id : "none, and that id was replaced");
+                break;
+            }
+        }
+        if (sp->wire_id[0])
+            snprintf(stamp, sizeof(stamp), "%s:%lu:%s", sp->account, sp->timestamp, sp->wire_id);
+        else if (sp->timestamp)
+            snprintf(stamp, sizeof(stamp), "%s:%lu", sp->account, sp->timestamp);
+        else
+            safestrncpy(stamp, sp->account, sizeof(stamp));
+        handle_account(user, stamp);
+        break;
+    case X3KC_STAMP_CREATE:
+        if ((hi = nickserv_kc_autocreate(sp->account, kcid, email, user, NULL, user->nick, NULL)))
+            set_user_handle_info(user, hi, 0);
+        break;
+    }
+    stamp_pending_free(sp);
+}
+
+/* handle_account() for a name X3 has no handle for, in Keycloak mode with
+ * keycloak_autocreate: start the look-up and return.  Names X3 would not
+ * register are not looked up. */
+static void
+stamp_lookup_begin(struct userNode *user, const char *account, unsigned long timestamp,
+                   const char *wire_id)
+{
+    struct stamp_pending *sp;
+
+    if (!is_valid_handle(account) || strchr(account, '<') || strchr(account, '>')) {
+        log_module(NS_LOG, LOG_WARNING, "%s: account stamp %s is a name X3 does not allow for an account; no handle created.",
+                   user->nick, account);
+        return;
+    }
+    /* X3's own stamp (no id, a non-zero timestamp) for a handle X3 no
+     * longer has: the account timestamp says the handle it named is gone;
+     * nothing Keycloak could answer makes a new one the same account. */
+    if (!x3kc_stamp_may_create(wire_id, timestamp)) {
+        stamp_unbound_note(STAMP_OLD, account, timestamp, user, X3KC_NOT_FOUND);
+        return;
+    }
+    sp = calloc(1, sizeof(*sp));
+    sp->user = user;
+    sp->account = strdup(account);
+    sp->timestamp = timestamp;
+    safestrncpy(sp->wire_id, wire_id, sizeof(sp->wire_id));
+    sp->next = stamp_pending_head;
+    if (stamp_pending_head)
+        stamp_pending_head->prev = sp;
+    stamp_pending_head = sp;
+    /* Queued, never refused as busy; may be answered before it returns. */
+    x3kc_lookup(account, 1, stamp_lookup_done, sp);
+}
+#endif /* WITH_KEYCLOAK && WITH_PROTOCOL_P10 */
+
 /* Drop the user's handle binding because the ircd removed or changed the
  * account (AC U / AC M).  FLAGS_STAMPED is the caller's: AC U clears it,
  * since the ircd no longer holds an account for the user; AC M keeps it,
- * since the ircd holds the new one. */
+ * since the ircd holds the new one.  A stamp look-up still in flight for
+ * the user is for the account it no longer has: dropped. */
 void
 nickserv_unbind_user(struct userNode *user)
 {
+#if defined(WITH_KEYCLOAK) && defined(WITH_PROTOCOL_P10)
+    stamp_pending_forget(user);
+#endif
     if (user->handle_info)
         set_user_handle_info(user, NULL, 0);
 }
@@ -6029,10 +7887,15 @@ nickserv_replace_pinned_fakehost(struct userNode *user, const char *account)
  * disconnect nobody: the users logged in to the old handle are detached
  * (they authenticated as the previous owner; the ircd still has them logged
  * in, X3 no longer knows them) and only the claimant is bound, by the
- * caller.  Same in and out of a burst.  Returns the fresh handle. */
+ * caller.  Same in and out of a burst.  Returns the fresh handle.
+ * claimant is NULL for a login that has no user yet (login-on-connect, SASL
+ * through X3); claimant_name then names it in the log, and the fresh
+ * handle's hostmask is the default one or the one made from the request's
+ * claimant_userhost, as AUTH would have made it for a connected user. */
 static struct handle_info *
 nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
-                      struct userNode *claimant)
+                      struct userNode *claimant, const char *claimant_name,
+                      const char *claimant_userhost)
 {
     struct userNode *u;
     struct handle_info *fresh;
@@ -6051,8 +7914,8 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
     log_module(MAIN_LOG, LOG_WARNING,
                "%s announced account %s with a different Keycloak id%s "
                "(%s, was %s): account data reset (opserv level was %d)",
-               claimant->nick, name,
-               claimant->uplink->burst ? " during a burst" : "",
+               claimant ? claimant->nick : claimant_name, name,
+               claimant && claimant->uplink->burst ? " during a burst" : "",
                wire_id, old_id, hi->opserv_level);
     global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_RESET",
                         name, wire_id, old_id);
@@ -6088,9 +7951,9 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
      * in the line OREGISTER writes with no address), and the claimant's
      * info line comes last, as REGISTER writes the registering user's. */
     if (nickserv_conf.sync_log)
-        SyncLog("REGISTER %s * @ %s", name, claimant->info);
+        SyncLog("REGISTER %s * @ %s", name, claimant ? claimant->info : "*");
     fresh->masks = alloc_string_list(1);
-    nickserv_new_owner_masks(fresh, claimant);
+    nickserv_new_owner_masks(fresh, claimant, claimant_userhost);
     fresh->sslfps = alloc_string_list(1);
     fresh->ignores = alloc_string_list(1);
     fresh->users = NULL;
@@ -6098,7 +7961,7 @@ nickserv_reset_handle(struct handle_info *hi, const char *wire_id,
     fresh->lastseen = now;
     fresh->registered = now;
     fresh->flags = HI_DEFAULT_FLAGS;
-    fresh->kc_id = strdup(wire_id);
+    handle_kcid_set(fresh, wire_id);
     /* Sessions that logged in before the recreate still carry the old id on
      * the ircd (a burst replay, an alias attach, the ircd's login cache);
      * remembering it tells them apart from yet another recreate: they are
@@ -6123,16 +7986,20 @@ handle_account(struct userNode *user, const char *stamp)
     char wire_id[23] = "";            /* compact Keycloak id, "" = none */
     char *colon2;
 
+#ifdef WITH_KEYCLOAK
+    /* A new stamp is decided on its own: a look-up still in flight for an
+     * earlier one of this user's is dropped when it answers. */
+    stamp_pending_forget(user);
+#endif
     colon = strchr(stamp, ':');
     if(colon && colon[1])
     {
         /* Second colon, if any, begins the Keycloak id: account:ts:id.
-         * One that is not a compact id is no id at all. */
+         * One that is not a compact id is no id at all; one is taken in
+         * its canonical form (kcid_canonical()). */
         colon2 = strchr(colon + 1, ':');
         if (colon2 && colon2[1]) {
-            if (handle_kcid_valid(colon2 + 1))
-                safestrncpy(wire_id, colon2 + 1, sizeof(wire_id));
-            else
+            if (!kcid_canonical(colon2 + 1, wire_id))
                 log_module(MAIN_LOG, LOG_DEBUG, "%s: malformed Keycloak id in "
                            "account stamp %s; taken as no id", user->nick, stamp);
         }
@@ -6148,74 +8015,50 @@ handle_account(struct userNode *user, const char *stamp)
      * nothing below may refuse the login that caused it, so the timestamp
      * check is skipped for it (the fresh record is not suspended, and the
      * autocreate does not apply to a handle that exists).  An id equal to
-     * the stored one skips the timestamp check too (see there).  No id on
-     * the wire, or none stored yet, checks nothing here (fail open; an id
-     * is adopted once the login goes through). */
-    if (hi && wire_id[0] && handle_kcid_was_replaced(hi, wire_id)) {
-        /* A session from before the id was replaced (a burst replay, an
-         * alias attach, the ircd's login cache): the previous owner's,
-         * not the handle's.  Refused, and not taken for yet another
-         * recreate either.  This holds with no id stored too -- after
-         * REBIND * -- or the handle would adopt the id it was just cleared
-         * of.  (A replaced id is never the current one.) */
-        const char *now_id = hi->kc_id ? hi->kc_id : "none";
+     * the stored one skips the timestamp check too (see there).  None
+     * stored: LDAP and local mode adopt the announced id once the login
+     * goes through; Keycloak mode refuses (KCID_REFUSE_UNBOUND), as for
+     * every login: the handle is linked by REBIND, never by a namesake's
+     * id.
+     *
+     * No id on the wire (kcid_decide_no_id(), after the timestamp check
+     * below, so a stale timestamp is refused as one): with an id stored,
+     * nothing is checked here (fail open, as before); in LDAP and local
+     * mode, nothing either.  In Keycloak mode, for a handle with no id
+     * stored, the stamp is refused (KCID_REFUSE_UNBOUND, logged and told
+     * to opers like the refusals here) unless its timestamp is non-zero
+     * and equal to the handle's registration date: that is X3's own stamp
+     * (X3 stamps a login it makes as name:registered, with no id, and a
+     * burst replays it after a restart).  A no-id stamp with timestamp 0 is an
+     * ircd's own login (EXTENDED_ACCOUNTS off, an ID token without a UUID
+     * sub, an impersonated SASL_TRUSTED_AUTHZID login, AC R with no
+     * timestamp slot), and a Keycloak user of the handle's name is no
+     * proof that it owns the handle (user ruling 2026-11-21 23:14).  The
+     * user stays logged in at the ircd and is nobody to X3; an oper binds
+     * the handle with REBIND.  A name X3 has no handle for is not decided
+     * here: auto-create looks it up in Keycloak (stamp_lookup_begin()). */
+    if (hi && wire_id[0]) {
+        enum kcid_verdict verdict = handle_kcid_decide(hi, wire_id);
 
-        log_module(MAIN_LOG, LOG_WARNING,
-                   "%s announced account %s with the Keycloak id it had before%s "
-                   "(%s, now %s): bind refused",
-                   user->nick, stamp,
-                   user->uplink->burst ? " during a burst" : "",
-                   wire_id, now_id);
-        global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_STALE",
-                            stamp, wire_id, now_id);
-        return;
-    }
-    if (hi && wire_id[0] && hi->kc_id && strcmp(hi->kc_id, wire_id)) {
-        if (nickserv_conf.kc_id_reset && HANDLE_FLAGGED(hi, SUSPENDED)) {
-            /* A suspended handle is not reset: the fresh record would not
-             * be suspended, so deleting and recreating the Keycloak user
-             * would be a way out of a suspension.  Refuse the bind as the
-             * default mode does, before anything is destroyed, and say
-             * why.  The handle keeps its data, its stored id and its
-             * suspension; lifting the suspension lets the next such login
-             * reset it, REBIND binds it to the new id as it is. */
-            log_module(MAIN_LOG, LOG_WARNING,
-                       "%s announced account %s with a different Keycloak id%s "
-                       "(%s, stored %s): bind refused, and the account is "
-                       "suspended so keycloak_id_reset does not apply",
-                       user->nick, stamp,
-                       user->uplink->burst ? " during a burst" : "",
-                       wire_id, hi->kc_id);
-            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_SUSPENDED",
-                                stamp, wire_id, hi->kc_id);
-            return;
-        }
-        else if (nickserv_conf.kc_id_reset) {
-            hi = nickserv_reset_handle(hi, wire_id, user);
+        switch (verdict) {
+        case KCID_PASS:
+        case KCID_ADOPT:          /* LDAP or local mode: adopted below, once the login goes through */
+            break;
+        case KCID_RESET:
+            hi = nickserv_reset_handle(hi, wire_id, user, NULL, NULL);
             /* The wire timestamp was the old record's, or was not X3's at
              * all; the fresh record's date is this instant and no login
              * has carried it yet.  Comparing the two would refuse the very
              * login the handle was just reset for, and leave the name
              * wiped with nobody on it. */
             timestamp = 0;
-        }
-        else {
-            /* The default: the wire is not talking about this handle.  Log
-             * it, tell opers, keep the stored id and the data, and refuse
-             * the bind -- the user stays logged in at the ircd but is nobody
+            break;
+        default:
+            /* Refused: the user stays logged in at the ircd but is nobody
              * to X3 on this connection; once an oper REBINDs or the id is
              * cleared, the user's login after reconnecting goes through
-             * (this connection cannot log in again).  The reset
-             * above is the recreated-user rule, kept behind keycloak_id_reset
-             * for a network that wants it. */
-            log_module(MAIN_LOG, LOG_WARNING,
-                       "%s announced account %s with a different Keycloak id%s "
-                       "(%s, stored %s): bind refused (keycloak_id_reset is off)",
-                       user->nick, stamp,
-                       user->uplink->burst ? " during a burst" : "",
-                       wire_id, hi->kc_id);
-            global_message_args(MESSAGE_RECIPIENT_OPERS, "NSMSG_IDENTITY_MISMATCH",
-                                stamp, wire_id, hi->kc_id);
+             * (this connection cannot log in again). */
+            handle_kcid_refused(user->nick, user->uplink->burst, stamp, wire_id, hi, verdict);
             return;
         }
     }
@@ -6242,6 +8085,16 @@ handle_account(struct userNode *user, const char *stamp)
                    "wire=%lu saxdb=%lu",
                    user->nick, stamp, (unsigned long)timestamp,
                    (unsigned long)hi->registered);
+        return;
+    }
+    /* No id on the wire: refused in Keycloak mode for a handle with no id
+     * stored, unless it is X3's own stamp (see the comment above the id
+     * decision). */
+    if (hi && !wire_id[0]
+        && kcid_decide_no_id(hi->kc_id, nickserv_conf.keycloak_enable ? 1 : 0,
+                             (unsigned long)timestamp, (unsigned long)hi->registered)
+           == KCID_REFUSE_UNBOUND) {
+        handle_kcid_refused(user->nick, user->uplink->burst, stamp, NULL, hi, KCID_REFUSE_UNBOUND);
         return;
     }
 #else
@@ -6282,16 +8135,28 @@ handle_account(struct userNode *user, const char *stamp)
     }
 #endif
 
+#if defined(WITH_KEYCLOAK) && defined(WITH_PROTOCOL_P10)
+    /* Keycloak mode, a name X3 has no handle for: with keycloak_autocreate
+     * Keycloak is asked first, and the handle is made, bound to the user's
+     * Keycloak id, only when it confirms the account (stamp_lookup_done()).
+     * Meanwhile the user is logged in at the ircd and nobody to X3. */
+    if (!hi && nickserv_conf.keycloak_enable && nickserv_conf.keycloak_autocreate) {
+        stamp_lookup_begin(user, stamp, (unsigned long)timestamp, wire_id);
+        return;
+    }
+#endif
+
     if (hi) {
         if (HANDLE_FLAGGED(hi, SUSPENDED)) {
             return;
         }
 #ifdef WITH_PROTOCOL_P10
-        /* Adopt the announced id only now that the login goes through: on
-         * first use, or for a handle the LDAP autocreate made just now.  A
+        /* LDAP or local mode (Keycloak mode refused this above): adopt the
+         * announced id only now that the login goes through -- on first
+         * use, or for a handle the LDAP autocreate made just now.  A
          * refused login (timestamp, suspension) must not bind the handle. */
         if (!hi->kc_id && wire_id[0])
-            hi->kc_id = strdup(wire_id);
+            handle_kcid_set(hi, wire_id);
 #endif
         set_user_handle_info(user, hi, 0);
     } else {
@@ -6315,8 +8180,23 @@ handle_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void 
 void
 nickserv_remove_user(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why), UNUSED_ARG(void *extra))
 {
-    dict_remove(nickserv_allow_auth_dict, user->nick);
+    /* NULL when a configuration refusal in init_nickserv()'s first
+     * nickserv_conf_read() exits: this is registered before the dict is
+     * made, and the exit functions remove every user. */
+    if (nickserv_allow_auth_dict)
+        dict_remove(nickserv_allow_auth_dict, user->nick);
     timeq_del(0, nickserv_reclaim_p, user, TIMEQ_IGNORE_WHEN);
+#ifdef WITH_KEYCLOAK
+    /* Before the userNode is freed: an AUTH still waiting for Keycloak
+     * must not reach it, nor whoever gets its numeric next; nor a stamp
+     * look-up, nor an unregister's Keycloak delete. */
+    auth_pending_forget(user);
+    kc_delete_forget(user);
+    kc_level_forget(user);
+#ifdef WITH_PROTOCOL_P10
+    stamp_pending_forget(user);
+#endif
+#endif
     set_user_handle_info(user, NULL, 0);
 }
 
@@ -6360,9 +8240,46 @@ struct SASLSession
     char *sslclifp;
     char *hostmask;
     int flags;
+    unsigned int pending;       /* a PLAIN login is waiting for its answer */
+    struct sasl_login *login;   /* that login, while pending */
+};
+
+/* A SASL PLAIN login handed to loc_auth_async().  It names its session by
+ * uid and its server by numeric, and the completion looks both up again:
+ * the session may be gone (sasl_delete_session() marks the login dead),
+ * the server split.  What the PLAIN payload said is copied, except the
+ * password. */
+struct sasl_login {
+    char uid[128];
+    char source[8];             /* numeric of the server that relays the exchange */
+    char *authzid;              /* "" for none */
+    char *authcid;
+    unsigned int dead : 1;      /* the session went away: drop the answer */
+    unsigned int started : 1;   /* loc_auth_async() returned without an answer */
+    unsigned int answered : 1;  /* it answered before returning: hi below */
+    struct handle_info *hi;
 };
 
 struct SASLSession *saslsessions = NULL;
+
+/* A SASL buffer may hold a password (a PLAIN payload, raw or base64):
+ * zeroed before it is freed. */
+static void
+sasl_wipe_free(char *buf, size_t len)
+{
+    if (!buf)
+        return;
+    memset(buf, 0, len);
+    free(buf);
+}
+
+static void
+sasl_login_free(struct sasl_login *sl)
+{
+    free(sl->authzid);
+    free(sl->authcid);
+    free(sl);
+}
 
 void
 sasl_delete_session(struct SASLSession *session)
@@ -6370,8 +8287,7 @@ sasl_delete_session(struct SASLSession *session)
     if (!session)
         return;
 
-    if (session->buf)
-        free(session->buf);
+    sasl_wipe_free(session->buf, session->buflen);
     session->buf = NULL;
 
     if (session->sslclifp)
@@ -6381,6 +8297,11 @@ sasl_delete_session(struct SASLSession *session)
     if (session->hostmask)
         free(session->hostmask);
     session->hostmask = NULL;
+
+    /* A login still waiting for Keycloak: its answer is dropped. */
+    if (session->login)
+        session->login->dead = 1;
+    session->login = NULL;
 
     if (session->next)
         session->next->prev = session->prev;
@@ -6406,6 +8327,14 @@ sasl_delete_stale(UNUSED_ARG(void *data))
     {
         nextsess = sess->next;
 
+        /* A login waiting for its answer is live: the answer comes within
+         * keycloak_timeout, and then the session goes. */
+        if (sess->pending)
+        {
+            remcount++;
+            continue;
+        }
+
         if (sess->flags & SDFLAG_STALE)
         {
             delcount++;
@@ -6422,6 +8351,18 @@ sasl_delete_stale(UNUSED_ARG(void *data))
         log_module(NS_LOG, LOG_DEBUG, "SASL: Deleted %d stale sessions, %d remaining", delcount, remcount);
     if (remcount)
         timeq_add(now + 30, sasl_delete_stale, NULL);
+}
+
+/* The session for uid, or NULL; never creates one. */
+static struct SASLSession *
+sasl_find_session(const char *uid)
+{
+    struct SASLSession *sess;
+
+    for (sess = saslsessions; sess; sess = sess->next)
+        if (!strncmp(sess->uid, uid, 128))
+            return sess;
+    return NULL;
 }
 
 struct SASLSession*
@@ -6455,7 +8396,123 @@ sasl_get_session(const char *uid)
     return sess;
 }
 
-void
+/* sasl_packet()'s EXTERNAL login: loc_auth_async() answers it before
+ * returning (a certificate login never waits). */
+static void
+sasl_external_done(struct handle_info *hi, void *data)
+{
+    *(struct handle_info **)data = hi;
+}
+
+/* The answer to a SASL PLAIN login, to the server dest for session uid:
+ * as sasl_packet() always answered it -- D F for a refusal; L (and I for
+ * an impersonation) then D S for a login.  hi NULL means refused. */
+static void
+sasl_plain_reply(struct server *dest, const char *uid, struct sasl_login *sl,
+                 struct handle_info *hi)
+{
+    struct handle_info *hii = NULL;
+    static char buffer[256];
+
+    if (!hi)
+    {
+        log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
+        irc_sasl(dest, uid, "D", "F");
+        return;
+    }
+    if (*sl->authzid && irccasecmp(sl->authzid, sl->authcid))
+    {
+        if (HANDLE_FLAGGED(hi, IMPERSONATE))
+        {
+            hii = hi;
+            hi = get_handle_info(sl->authzid);
+        }
+        else
+        {
+            log_module(NS_LOG, LOG_DEBUG, "SASL: Impersonation unauthorized");
+            hi = NULL;
+        }
+    }
+    if (hi)
+    {
+        if (hii)
+        {
+            log_module(NS_LOG, LOG_DEBUG, "SASL: %s is ipersonating %s", hii->handle, hi->handle);
+            snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hii->handle, hii->registered);
+            irc_sasl(dest, uid, "I", buffer);
+        }
+        log_module(NS_LOG, LOG_DEBUG, "SASL: Valid credentials supplied");
+        snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hi->handle, hi->registered);
+        irc_sasl(dest, uid, "L", buffer);
+        irc_sasl(dest, uid, "D", "S");
+    }
+    else
+    {
+        log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
+        irc_sasl(dest, uid, "D", "F");
+    }
+}
+
+/* loc_auth_async()'s answer to a SASL PLAIN login.  Before it returned:
+ * only noted, sasl_packet() replies.  Later: the session and its server
+ * are looked up again and the answer dropped if either is gone; else the
+ * reply goes out and the session ends. */
+static void
+sasl_plain_done(struct handle_info *hi, void *data)
+{
+    struct sasl_login *sl = data;
+    struct SASLSession *sess;
+    struct server *dest;
+
+    if (!sl->started) {
+        sl->answered = 1;
+        sl->hi = hi;
+        return;
+    }
+    if (sl->dead || !(sess = sasl_find_session(sl->uid)) || sess->login != sl) {
+        log_module(NS_LOG, LOG_DEBUG, "SASL: session %s ended before its login was answered (%s); answer dropped",
+                   sl->uid, hi ? "accepted" : "refused");
+        sasl_login_free(sl);
+        return;
+    }
+    sess->pending = 0;
+    sess->login = NULL;
+    if ((dest = GetServerN(sl->source)))
+        sasl_plain_reply(dest, sl->uid, sl, hi);
+    else
+        log_module(NS_LOG, LOG_DEBUG, "SASL: server %s of session %s is gone; answer dropped", sl->source, sl->uid);
+    sasl_login_free(sl);
+    sasl_delete_session(sess);
+}
+
+/* The list an unknown mechanism is answered with: nickserv_sasl_mechs(),
+ * without EXTERNAL when the connection has no certificate. */
+static void
+sasl_mechs_for(char *buf, size_t size, int has_cert)
+{
+    const char *p = nickserv_sasl_mechs();
+    size_t used = 0;
+
+    buf[0] = '\0';
+    while (*p) {
+        size_t len = strcspn(p, ",");
+
+        if ((has_cert || len != 8 || strncmp(p, "EXTERNAL", 8))
+            && used + (used ? 1 : 0) + len < size) {
+            if (used)
+                buf[used++] = ',';
+            memcpy(buf + used, p, len);
+            used += len;
+            buf[used] = '\0';
+        }
+        p += len;
+        if (*p == ',')
+            p++;
+    }
+}
+
+/* Returns 1 if it deleted the session, 0 if the session lives on. */
+static int
 sasl_packet(struct SASLSession *session)
 {
     log_module(NS_LOG, LOG_DEBUG, "SASL: Got packet containing: %s", session->buf);
@@ -6464,13 +8521,13 @@ sasl_packet(struct SASLSession *session)
     {
         log_module(NS_LOG, LOG_DEBUG, "SASL: No mechanism stored yet, using %s", session->buf);
         if (strcmp(session->buf, "PLAIN") && (strcmp(session->buf, "EXTERNAL") || !session->sslclifp)) {
-            if (!session->sslclifp)
-                irc_sasl(session->source, session->uid, "M", "PLAIN");
-            else
-                irc_sasl(session->source, session->uid, "M", "PLAIN,EXTERNAL");
+            char mechs[128];
+
+            sasl_mechs_for(mechs, sizeof(mechs), session->sslclifp != NULL);
+            irc_sasl(session->source, session->uid, "M", mechs);
             irc_sasl(session->source, session->uid, "D", "F");
             sasl_delete_session(session);
-            return;
+            return 1;
         }
 
         strncpy(session->mech, session->buf, 10);
@@ -6486,8 +8543,12 @@ sasl_packet(struct SASLSession *session)
 
         base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
 
-        if (rawlen != 0)
+        if (rawlen != 0) {
+            /* base64_decode_alloc() does not terminate its output. */
+            raw = (char *)realloc(raw, rawlen+1);
+            raw[rawlen] = '\0';
             authzid = raw;
+        }
 
         log_module(NS_LOG, LOG_DEBUG, "SASL: Checking supplied credentials");
 
@@ -6495,7 +8556,10 @@ sasl_packet(struct SASLSession *session)
             log_module(NS_LOG, LOG_DEBUG, "SASL: Incomplete credentials supplied");
             irc_sasl(session->source, session->uid, "D", "F");
         } else {
-            if (!(hi = loc_auth(session->sslclifp, authzid, NULL, session->hostmask)))
+            /* A certificate login: answered before loc_auth_async() returns,
+             * in every mode, and never asks Keycloak. */
+            loc_auth_async(session->sslclifp, authzid, NULL, session->hostmask, sasl_external_done, &hi);
+            if (!hi)
             {
                 log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
                 irc_sasl(session->source, session->uid, "D", "F");
@@ -6512,7 +8576,7 @@ sasl_packet(struct SASLSession *session)
         sasl_delete_session(session);
 
         free(raw);
-        return;
+        return 1;
     }
     else
     {
@@ -6523,14 +8587,21 @@ sasl_packet(struct SASLSession *session)
         char *passwd = NULL;
         char *r = NULL;
         unsigned int i = 0, c = 0;
-        struct handle_info *hi = NULL;
-        struct handle_info *hii = NULL;
-        static char buffer[256];
+        struct sasl_login *sl;
 
         base64_decode_alloc(session->buf, session->buflen, &raw, &rawlen);
 
-        raw = (char *)realloc(raw, rawlen+1);
-        raw[rawlen] = '\0';
+        {
+            /* Terminated in a copy, not by realloc(), which could leave
+             * the password behind in the block it moved from. */
+            char *term = malloc(rawlen + 1);
+
+            if (rawlen)
+                memcpy(term, raw, rawlen);
+            term[rawlen] = '\0';
+            sasl_wipe_free(raw, rawlen);
+            raw = term;
+        }
 
         authzid = raw;
         r = raw;
@@ -6551,58 +8622,52 @@ sasl_packet(struct SASLSession *session)
         {
             log_module(NS_LOG, LOG_DEBUG, "SASL: Incomplete credentials supplied");
             irc_sasl(session->source, session->uid, "D", "F");
-        }
-        else
-        {
-            if (!(hi = loc_auth(session->sslclifp, authcid, passwd, session->hostmask)))
-            {
-                log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
-                irc_sasl(session->source, session->uid, "D", "F");
-            }
-            else
-            {
-                if (*authzid && irccasecmp(authzid, authcid))
-                {
-                    if (HANDLE_FLAGGED(hi, IMPERSONATE))
-                    {
-                        hii = hi;
-                        hi = get_handle_info(authzid);
-                    }
-                    else
-                    {
-                        log_module(NS_LOG, LOG_DEBUG, "SASL: Impersonation unauthorized");
-                        hi = NULL;
-                    }
-                }
-                if (hi)
-                {
-                    if (hii)
-                    {
-                        log_module(NS_LOG, LOG_DEBUG, "SASL: %s is ipersonating %s", hii->handle, hi->handle);
-                        snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hii->handle, hii->registered);
-                        irc_sasl(session->source, session->uid, "I", buffer);
-                    }
-                    log_module(NS_LOG, LOG_DEBUG, "SASL: Valid credentials supplied");
-                    snprintf(buffer, sizeof(buffer), "%s "FMT_TIME_T, hi->handle, hi->registered);
-                    irc_sasl(session->source, session->uid, "L", buffer);
-                    irc_sasl(session->source, session->uid, "D", "S");
-                }
-                else
-                {
-                    log_module(NS_LOG, LOG_DEBUG, "SASL: Invalid credentials supplied");
-                    irc_sasl(session->source, session->uid, "D", "F");
-                }
-            }
+            sasl_delete_session(session);
+            sasl_wipe_free(raw, rawlen);
+            return 1;
         }
 
+        sl = calloc(1, sizeof(*sl));
+        safestrncpy(sl->uid, session->uid, sizeof(sl->uid));
+        safestrncpy(sl->source, session->source->numeric, sizeof(sl->source));
+        sl->authzid = strdup(authzid);
+        sl->authcid = strdup(authcid);
+        session->pending = 1;
+        session->login = sl;
+        loc_auth_async(session->sslclifp, authcid, passwd, session->hostmask, sasl_plain_done, sl);
+        /* The password is not kept: kc copied it into its request. */
+        sasl_wipe_free(raw, rawlen);
+        if (!sl->answered) {
+            /* Waiting for Keycloak: the session lives, and the sweep
+             * leaves it alone until the answer (sasl_plain_done()). */
+            sl->started = 1;
+            session->flags &= ~SDFLAG_STALE;
+            return 0;
+        }
+        /* Answered before loc_auth_async() returned. */
+        session->pending = 0;
+        session->login = NULL;
+        sasl_plain_reply(session->source, session->uid, sl, sl->hi);
+        sasl_login_free(sl);
         sasl_delete_session(session);
-
-        free(raw);
-        return;
+        return 1;
     }
 
     /* clear stale state */
     session->flags &= ~SDFLAG_STALE;
+    return 0;
+}
+
+/* Hand a complete payload to sasl_packet(), then reset the buffer for the
+ * next one if the session is still alive. */
+static void
+sasl_end_packet(struct SASLSession *sess)
+{
+    if (sasl_packet(sess))
+        return; /* sess was freed */
+    sasl_wipe_free(sess->buf, sess->buflen);
+    sess->buflen = 0;
+    sess->buf = sess->p = NULL;
 }
 
 void
@@ -6628,6 +8693,28 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
     if (strcmp(subcmd, "S") && strcmp(subcmd, "C"))
         return;
 
+    /* A login is waiting for its answer: one at a time.  The exchange is
+     * refused now, once, and the waiting answer dropped. */
+    if (sess->pending)
+    {
+        log_module(NS_LOG, LOG_DEBUG, "SASL: %s sent more while its login was pending; refused", uid);
+        irc_sasl(source, uid, "D", "F");
+        sasl_delete_session(sess);
+        return;
+    }
+
+    /* The exchange is live: the stale sweep must not delete it between
+     * the chunks of a payload. */
+    sess->flags &= ~SDFLAG_STALE;
+
+    /* After a 400-byte chunk, "+" is an empty chunk: it ends a payload
+     * that is an exact multiple of 400 bytes. (On its own, "+" is an
+     * empty response, which sasl_packet() decodes as such.) */
+    if (sess->p != NULL && !strcmp(data, "+")) {
+        sasl_end_packet(sess);
+        return;
+    }
+
     if (len == 0)
         return;
 
@@ -6646,36 +8733,90 @@ handle_sasl_input(struct server* source ,const char *uid, const char *subcmd, co
             return;
         }
 
-        sess->buf = (char *)realloc(sess->buf, sess->buflen + len + 1);
+        {
+            /* Grown by copying, not realloc(), which could leave the
+             * payload so far in the block it moved from. */
+            char *grown = (char *)malloc(sess->buflen + len + 1);
+
+            memcpy(grown, sess->buf, sess->buflen);
+            sasl_wipe_free(sess->buf, sess->buflen);
+            sess->buf = grown;
+        }
         sess->p = sess->buf + sess->buflen;
         sess->buflen += len;
     }
 
     memcpy(sess->p, data, len);
-    sess->buf[len] = '\0';
+    sess->buf[sess->buflen] = '\0';
 
     if (ext != NULL)
         sess->sslclifp = strdup(ext);
 
     /* Messages not exactly 400 bytes are the end of a packet. */
     if(len < 400)
-    {
-        sasl_packet(sess);
-        sess->buflen = 0;
-        if (sess->buf != NULL)
-          free(sess->buf);
-        sess->buf = sess->p = NULL;
-    }
+        sasl_end_packet(sess);
 }
 
 static void
 nickserv_db_cleanup(UNUSED_ARG(void* extra))
 {
+#ifdef WITH_KEYCLOAK
+    /* The seam's exit ran first and answers nothing now: what still
+     * waits for Keycloak is freed here. */
+    while (auth_pending_head) {
+        struct auth_pending *ap = auth_pending_head;
+        auth_pending_unlink(ap);
+        auth_pending_free(ap);
+    }
+    while (kc_delete_head) {
+        struct kc_delete_pending *dp = kc_delete_head;
+        kc_delete_unlink(dp);
+        kc_delete_free(dp);
+    }
+    while (kc_level_head) {
+        struct kc_level_pending *lp = kc_level_head;
+        kc_level_unlink(lp);
+        kc_level_free(lp);
+    }
+    timeq_del(0, kc_delete_summary, NULL, TIMEQ_IGNORE_WHEN);
+    kc_delete_summary_armed = 0;
+    kc_delete_quiet = 0;
+    /* SASL sessions first: a pending one marks its login dead. */
+    while (saslsessions)
+        sasl_delete_session(saslsessions);
+    while (loc_pending_head) {
+        struct loc_pending *lp = loc_pending_head;
+        loc_pending_unlink(lp);
+        /* A SASL login's data is ours; a login-on-connect's is
+         * proto-p10's, which frees it in its own cleanup. */
+        if (lp->cb == sasl_plain_done)
+            sasl_login_free(lp->data);
+        loc_pending_free(lp);
+    }
+#ifdef WITH_PROTOCOL_P10
+    while (stamp_pending_head) {
+        struct stamp_pending *sp = stamp_pending_head;
+        stamp_pending_unlink(sp);
+        stamp_pending_free(sp);
+    }
+    timeq_del(0, stamp_summary, NULL, TIMEQ_IGNORE_WHEN);
+    stamp_summary_armed = 0;
+    stamp_quiet[STAMP_UNANSWERED] = stamp_quiet[STAMP_OLD] = 0;
+#endif
+#endif
+    timeq_del(0, identity_notice_flush, NULL, TIMEQ_IGNORE_WHEN);
+    timeq_del(0, nickserv_sasl_announce, NULL, TIMEQ_IGNORE_WHEN);
+    nickserv_sasl_announce_armed = 0;
     unreg_del_user_func(nickserv_remove_user, NULL);
     unreg_sasl_input_func(handle_sasl_input, NULL);
     userList_clean(&curr_helpers);
     policer_params_delete(nickserv_conf.auth_policer_params);
     dict_delete(nickserv_handle_dict);
+#ifdef WITH_KEYCLOAK
+    /* After the handles, which leave it as they are freed. */
+    dict_delete(nickserv_kcid_dict);
+    nickserv_kcid_dict = NULL;
+#endif
     dict_delete(nickserv_nick_dict);
     dict_delete(nickserv_opt_dict);
     dict_delete(nickserv_allow_auth_dict);
@@ -6748,6 +8889,7 @@ init_nickserv(const char *nick)
     reg_account_func(handle_account);
     reg_auth_func(handle_loc_auth_oper, NULL);
     reg_sasl_input_func(handle_sasl_input, NULL);
+    reg_server_link_func(nickserv_sasl_server_link, NULL);
 
     /* set up handle_inverse_flags */
     memset(handle_inverse_flags, 0, sizeof(handle_inverse_flags));
@@ -6765,6 +8907,12 @@ init_nickserv(const char *nick)
 
     dict_set_free_keys(nickserv_email_dict, free);
     dict_set_free_data(nickserv_email_dict, nickserv_free_email_addr);
+#ifdef WITH_KEYCLOAK
+    /* (Before any handle is read: every kc_id goes in as it is set.) */
+    nickserv_kcid_dict = dict_new();
+    dict_set_free_keys(nickserv_kcid_dict, free);
+    dict_set_free_data(nickserv_kcid_dict, nickserv_free_email_addr);
+#endif
 
     nickserv_module = module_register("NickServ", NS_LOG, "nickserv.help", NULL);
 /* Removed qualified_host as default requirement for AUTH, REGISTER, PASS, etc. nets 
@@ -6811,6 +8959,20 @@ init_nickserv(const char *nick)
         nickserv_define_func("ODELCOOKIE", cmd_odelcookie, 0, 1, 0);
         dict_insert(nickserv_opt_dict, "EMAIL", opt_email);
     }
+#ifdef WITH_KEYCLOAK
+    else if (nickserv_conf.keycloak_enable) {
+        /* In Keycloak mode these exist whatever email_enabled says: they
+         * answer with the web address of what they used to do (and SET
+         * EMAIL with no value shows the address Keycloak's tokens keep
+         * up to date).  A service that already has bindings does not pick
+         * up new commands: an operator binds them once, e.g.
+         * /msg O3 BIND AuthServ RESETPASS *nickserv.resetpass. */
+        nickserv_define_func("AUTHCOOKIE", cmd_authcookie, -1, 0, 0);
+        nickserv_define_func("RESETPASS", cmd_resetpass, -1, 0, 0);
+        nickserv_define_func("COOKIE", cmd_cookie, -1, 0, 0);
+        dict_insert(nickserv_opt_dict, "EMAIL", opt_email);
+    }
+#endif
     nickserv_define_func("GHOST", cmd_ghost, -1, 1, 0);
     /* ignore commands */
     nickserv_define_func("ADDIGNORE", cmd_addignore, -1, 1, 0);
@@ -6870,6 +9032,11 @@ init_nickserv(const char *nick)
     }
     saxdb_register("NickServ", nickserv_saxdb_read, nickserv_saxdb_write);
     reg_exit_func(nickserv_db_cleanup, NULL);
+#ifdef WITH_KEYCLOAK
+    /* After nickserv_db_cleanup, so it runs before it (exit functions run
+     * in reverse order): the seam lets go of its callers' data first. */
+    x3kc_init();
+#endif
     if(nickserv_conf.handle_expire_frequency)
         timeq_add(now + nickserv_conf.handle_expire_frequency, expire_handles, NULL);
     if(nickserv_conf.nick_expire_frequency && nickserv_conf.expire_nicks)
@@ -6884,6 +9051,9 @@ init_nickserv(const char *nick)
 
 #ifdef WITH_LDAP
     ldap_do_init(nickserv_conf);
+#endif
+#ifdef WITH_KEYCLOAK
+    x3kc_configure();
 #endif
 
     message_register_table(msgtab);

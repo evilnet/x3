@@ -123,8 +123,10 @@ ioset_select_loop(struct timeval *timeout)
         if (!(fd = fds[nn]))
             continue;
         max_fd = nn;
-        FD_SET(nn, &read_fds);
-        FD_SET(nn, &except_fds);
+        if (!fd->no_reads) {
+            FD_SET(nn, &read_fds);
+            FD_SET(nn, &except_fds);
+        }
         if (fd_wants_writes(fd))
             FD_SET(nn, &write_fds);
     }
@@ -142,10 +144,18 @@ ioset_select_loop(struct timeval *timeout)
         return 1;
     }
 
-    /* Call back anybody that has connect or read activity and wants to know. */
+    /* Call back anybody that has connect or read activity and wants to know.
+     * Results are looked up by fd number.  Closing an fd during the pass
+     * clears its slot in fds[] and its bits in all three sets (see
+     * ioset_select_remove()), so an io_fd added under the same number
+     * later in the pass sees no events until the next select().  fds and
+     * fds_size are re-read each step: an add during the pass may grow
+     * them. */
+    ioset_dispatch_begin();
     for (nn=0; nn<fds_size; nn++) {
         ioset_events(fds[nn], FD_ISSET(nn, &read_fds) | FD_ISSET(nn, &except_fds), FD_ISSET(nn, &write_fds));
     }
+    ioset_dispatch_end();
     return 0;
 }
 

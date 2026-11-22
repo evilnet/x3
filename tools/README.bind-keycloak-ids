@@ -1,0 +1,259 @@
+bind-keycloak-ids.py -- give existing X3 accounts their Keycloak ids
+=====================================================================
+
+What it is for
+--------------
+When X3 switches to its Keycloak login backend, every X3 account
+("handle") should carry the id of its Keycloak user (the "kc_id" entry in
+x3.db).  Accounts made before the switch have none.  This script fills them
+in, offline, while X3 is down for the switch: for each account with no
+kc_id and exactly one Keycloak user of the same name (compared under IRC
+case folding, as X3 compares names), it adds
+
+    "kc_id" "<22-character id>";
+
+to that account.  It changes nothing else: accounts that already have a
+kc_id are never touched, and every account it is unsure about is left as it
+is and listed in the report.
+
+This matters more than it may look: with Keycloak logins on, X3 never binds
+an account by a login.  An account the script leaves without a kc_id cannot
+be logged in to at all (AUTH tells the user to ask a network operator, SASL
+and login-on-connect fail, a login a server announces leaves the user
+logged out in X3) until an oper binds it with REBIND.  A Keycloak user of
+the same name is not taken as proof that it is the same account.
+
+It needs only Python 3 (standard library); nothing to install.
+
+Rules
+-----
+- Stop X3 first.  X3 rewrites x3.db while it runs.
+- Run it on a COPY of x3.db, and keep the original until the new build has
+  run happily for a while.
+- Run it in report mode first; read the report; then run it again with
+  --out.
+- The script never writes its input.  --out must name a new file (it
+  refuses an existing file, the --db file and the --conf file); so must
+  --json.  After
+  writing, it reads the new file back and checks that it equals the input
+  plus exactly the reported kc_id entries; on any other difference it
+  deletes the new file and exits 1.  It also exits 1 if the input changed
+  while it ran (X3 still running).  A failed write (a full disk, say), any
+  other failure while writing or checking, or Ctrl-C also deletes the new
+  file; if even that deletion fails, the message names the partial file
+  to delete by hand.  A file that was already there is never touched.
+- The new file gets the input's mode, and its owner and group where the
+  script may set them (run as root, or as the input's owner).  Where it
+  may not, it prints a WARNING naming the chown to run: X3 must be able to
+  read and rewrite the file, and one it cannot open makes it start with no
+  accounts at all.
+
+Keycloak access
+---------------
+It uses the same Keycloak settings as X3: keycloak_url, keycloak_realm,
+keycloak_client_id and keycloak_client_secret in x3.conf's
+"services" / "nickserv" block.  Flags override them:
+
+    --keycloak-url U --realm R --client-id C --client-secret-file F
+
+The secret is never taken from the command line: put it in a file (mode
+600) and pass --client-secret-file, or let it come from x3.conf.  It is
+never printed.
+
+The client's service account needs to view users (realm-management role
+"view-users"; "manage-users", which X3's client has, includes it).  The
+script also reads the realm's user profile for the username rules (see
+below); on Keycloak 26.4.7 a service account holding only manage-users can
+read it.  If it cannot, the script says so and uses its defaults.  The
+script only reads from Keycloak.
+
+Running it
+----------
+    tools/bind-keycloak-ids.py --db x3.db.copy --conf x3.conf [--json report.json]
+    tools/bind-keycloak-ids.py --db x3.db.copy --conf x3.conf --out x3.db.bound
+
+The accounts are read from the x3.db section x3.conf names for NickServ
+(dbs / NickServ / mondo_section, normally "NickServ").  If x3.conf gives
+NickServ a file of its own, pass that file as --db.
+
+Each account takes one Keycloak request, except names holding any of
+the characters [ ] \ ^ { } | ~.  IRC case folding makes [ and {, ] and },
+\ and |, ^ and ~ the same letter, but Keycloak's own search does not, so
+the script asks for every spelling: 2 requests for one such character, 4
+for two, and so on.  A name with more than 6 of them (over 64 requests)
+is not looked up; it is listed under errors.
+
+Exit status: 0 finished and nothing needs a look; 2 finished but some
+lists below are not empty; 1 a usage error, a file that does not parse
+(the message gives the line), a Keycloak setting missing or refused, or a
+failed verification.
+
+The report
+----------
+Each list names the accounts in it; the summary at the end gives the
+counts: handles total, bound now, already bound, bound with no Keycloak
+user of that name, shared id, mismatched, replaced id, ambiguous, errors,
+no Keycloak user (split by whether Keycloak would accept the name, and how
+many have an OpServ level), outside the current name rule, and the rules
+that were used.  --json writes the same report, with the bound accounts
+and their ids.
+
+bound now
+    No kc_id, exactly one Keycloak user of that name: gets that user's id.
+    Nothing to do.
+
+already bound
+    Already has a kc_id, and Keycloak's user of that name has the same id.
+    Left as it is.
+
+bound, no Keycloak user of that name
+    Already has a kc_id, but Keycloak has no user of that name: the user
+    was deleted (then nobody can log in to the account through Keycloak),
+    or renamed (then its first login under the new name makes a second X3
+    account, since X3 does not follow renames yet).  Left as it is; look
+    the id up in Keycloak and decide.
+
+shared id
+    Two or more accounts hold the same kc_id (an oper's REBIND can do
+    that).  A login as that Keycloak user only reaches the account of its
+    name, and while several hold it X3 never deletes the Keycloak user
+    when one of them is unregistered.  Decide which account the user
+    belongs to and REBIND the others.
+
+mismatched
+    Already has a kc_id, but Keycloak's user of that name has another id.
+    Left as it is.  Usually the Keycloak user was deleted and made again,
+    or renamed; decide which user the account belongs to, by hand.
+
+replaced id
+    No kc_id, and the one Keycloak user of that name has an id listed in
+    the account's kc_id_prev.  This handle was detached from that Keycloak
+    user on purpose (an oper's REBIND * moves kc_id into kc_id_prev), and
+    X3 refuses a replaced id as the account's id, so the script does not
+    bind it.  Left as it is.  If the account should belong to that user
+    again, an oper must REBIND it once the new build runs.
+
+ambiguous
+    More than one Keycloak user matches the name under IRC case folding
+    (for example "foo[1]" and "foo{1}").  Left as it is; settle it by hand
+    in Keycloak, then run the script again.
+
+errors
+    The lookup failed (Keycloak down, refused, a strange answer), the
+    account's Keycloak user is already the kc_id of another account, the
+    account appears twice in the file, its kc_id is not a plain string,
+    its kc_id_prev is neither a string nor a list of strings, or its name
+    has too many bracket characters to look up (see above).
+    Left as it is.  After five failed lookups in a row the script stops
+    asking and lists the remaining accounts here.  Fix the cause and run
+    the script again (on the original copy, or on the new file: accounts
+    bound by the first run then count as already bound).
+
+no Keycloak user
+    No Keycloak user of that name, so no kc_id is added.  Such an account
+    keeps its channels, notes and the rest in X3, but nobody can log in
+    to it through Keycloak until an oper binds it with REBIND (X3 never
+    binds an account by a login in Keycloak mode).  Each entry says
+    whether Keycloak would accept the name at all, and the account's
+    OpServ level when x3.db has one; accounts with a level are listed
+    first, since an oper locked out matters most.
+
+    An account that exists in X3 and LDAP but not in Keycloak usually has
+    a name Keycloak refuses; with X3's shipped valid_account_regex
+    (^[-_a-z0-9A-Z]{2,15}$) every new name is one Keycloak accepts, so
+    this list should be short.  For each entry, decide:
+    - The user should keep the account: make (or find) the Keycloak user
+      -- under the same name, if Keycloak accepts it -- and run the script
+      again, so it binds the account before the switch; after the switch,
+      an oper binds it instead: /msg AuthServ REBIND *account <the
+      user's id from the Keycloak admin console>.
+    - The account is abandoned: leave it.  It expires as X3's other
+      accounts do (with keycloak_writeback on, expiry deletes no Keycloak
+      user for it: it has none), or an oper OUNREGISTERs it.
+    - The name is one Keycloak refuses: nobody can log in under it (X3
+      checks that the Keycloak user's name is the name given).  Give the
+      user a Keycloak user under an acceptable name; with
+      keycloak_autocreate its first login makes a new X3 account, and an
+      oper can MERGE the old account into that one.
+
+outside the current name rule
+    Accounts whose names the current valid_handle_regex /
+    valid_account_regex (or, with neither, X3's built-in letters, digits,
+    "-" and "_") would refuse today.  Only that pattern is checked, not
+    X3's length limit or bad-word list.  Informational: such accounts keep
+    working, but nobody could register the name now.  If X3's pattern
+    uses something Python reads differently (POSIX classes such as
+    [[:alnum:]], backslashes in brackets, ...), the script stops and names
+    the pattern.
+
+Keycloak's username rules
+    Read from the realm's user profile (the username attribute's
+    validators): the length limits and any pattern are applied as the
+    realm sets them; Keycloak's prohibited characters only when the realm
+    lists that validator (the script carries Keycloak 26.4's list: it
+    refuses < > & " ' $ % ! # ? § , ; : * ~ / \ | ^ = [ ] { } ( ) ` ,
+    whitespace and control characters).  Any other validator is named as
+    "not checked by this script".  If the profile cannot be read, the
+    script uses --name-min / --name-max (default 2 and 30) and the
+    prohibited list, and says so.  These rules only label the
+    "no Keycloak user" entries; they never decide a binding.
+
+At the switch
+-------------
+Before the day:
+- Keycloak: X3's own confidential client (direct access grants, the email
+  and profile scopes, a service account with realm-management
+  manage-users), and NO pairwise subject mapper on it: X3 takes the ID
+  token's "sub" as the user's id.  keycloak_url should be https: X3 reads
+  the id and the name from the token without checking its signature and
+  trusts them because they came over that connection.
+- Users with a second factor (OTP) cannot log in through the password
+  grant, so not through AUTH, login-on-connect or SASL PLAIN via X3;
+  tell them, or keep OTP off for accounts that log in through X3.
+- keycloak_timeout below the LOC_TIMEOUT the legacy servers really run
+  with (3 seconds by default; check their ircd.conf), or their users see
+  a failed login before X3's answer arrives.
+- The Keycloak host's name must resolve reliably from X3's host: while a
+  DNS lookup stalls, logins fail at keycloak_timeout (and on a libcurl
+  older than 7.87.0, which X3 warns about at start-up, the stalled lookup
+  also holds X3 up); pin it in /etc/hosts if in doubt.
+- X3 does not follow a rename made in Keycloak yet: avoid renames.  A
+  renamed user's login under the new name is refused (X3 makes no second
+  account for a Keycloak user another account is bound to) and opers are
+  told; rename the user back in Keycloak.
+
+The switch:
+1. Stop X3.
+2. Copy x3.db, keeping its owner and mode, and keep the original
+   untouched: cp -p x3.db x3.db.copy (as root, or as the user X3 runs as).
+3. Report: tools/bind-keycloak-ids.py --db x3.db.copy --conf x3.conf
+   Read it; deal with what needs dealing with (see the lists above: an
+   account left without a kc_id cannot be logged in to until an oper
+   REBINDs it); repeat.
+4. Write: tools/bind-keycloak-ids.py --db x3.db.copy --conf x3.conf --out x3.db.bound
+   (not x3.db.new: X3 writes its own temporary file under that name).
+   Watch for a WARNING about the owner.
+5. Check x3.db.bound's owner, group and mode against the original x3.db
+   (ls -l); fix them if they differ.  Put x3.db.bound in place as X3's
+   x3.db (keep the original elsewhere).
+6. In x3.conf: ldap_enable 0, keycloak_enable 1 and the keycloak_* keys,
+   keycloak_writeback 0 for the first start (with it on, the first
+   expiry pass deletes the Keycloak users of every account that expired
+   meanwhile), keycloak_id_reset 0.
+7. Start the new build.  In its log, look for "Keycloak logins on" -- and
+   for "Unable to open database file" (x3.db unreadable: stop X3 at once,
+   fix the owner or mode, start again; a running X3 that could not read
+   its database starts with no accounts and would write that out).
+8. Once logins work and the expiry pass has run, turn keycloak_writeback
+   on if X3 should delete Keycloak users and write oper levels (rehash).
+
+Going back (rollback):
+1. Stop X3.
+2. Put the original x3.db back (the one kept in step 2/5), with its owner
+   and mode.
+3. Restore the LDAP configuration: ldap_enable 1 and its keys,
+   keycloak_enable 0.
+4. Start the previous build (or this one: with keycloak_enable 0 it runs
+   as before).  Accounts made in Keycloak mode since the switch exist only
+   in the x3.db that was replaced; anything users changed meanwhile in X3
+   is lost with it.

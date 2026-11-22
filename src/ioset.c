@@ -91,6 +91,11 @@ int do_reopen;
 int do_exit;
 static struct io_engine *engine;
 static struct io_fd *active_fd;
+static ioset_idle_func idle_func;
+/* Depth of engine dispatch passes in progress, and the io_fds closed
+ * during them, waiting to be freed when the outermost pass ends. */
+static unsigned int dispatch_depth;
+static struct io_fd *closed_fds;
 
 static void
 ioq_init(struct ioq *ioq, int size) {
@@ -333,7 +338,29 @@ ioset_connect(struct sockaddr *local, unsigned int sa_size, const char *peer, un
 }
 
 void ioset_update(struct io_fd *fd) {
+    /* A closed fd is no longer registered, and its fd number may already
+     * belong to a newer io_fd: an update would hijack that registration. */
+    if (fd->closed)
+        return;
     engine->update(fd);
+}
+
+void
+ioset_dispatch_begin(void) {
+    dispatch_depth++;
+}
+
+void
+ioset_dispatch_end(void) {
+    struct io_fd *fdp;
+
+    assert(dispatch_depth > 0);
+    if (dispatch_depth == 0 || --dispatch_depth > 0)
+        return;
+    while ((fdp = closed_fds) != NULL) {
+        closed_fds = fdp->closed_next;
+        free(fdp);
+    }
 }
 
 static void
@@ -358,6 +385,9 @@ ioset_try_write(struct io_fd *fd) {
 void
 ioset_close(struct io_fd *fdp, int os_close) {
     if (!fdp)
+        return;
+    /* Already closed earlier in this event pass, waiting to be freed. */
+    if (fdp->closed)
         return;
     if (active_fd == fdp)
         active_fd = NULL;
@@ -393,7 +423,22 @@ ioset_close(struct io_fd *fdp, int os_close) {
         close(fdp->fd);
     engine->remove(fdp, os_close & 1);
 #endif
-    free(fdp);
+    if (dispatch_depth > 0) {
+        /* An engine is dispatching a batch of events that may still hold
+         * this io_fd.  It is unregistered now; free it when the batch is
+         * done.  Leave it looking closed and empty, so that ioset_events()
+         * skips it and an owner still holding it during this pass reads
+         * end-of-file from ioset_line_read() instead of freed memory. */
+        fdp->closed = 1;
+        fdp->state = IO_CLOSED;
+        fdp->line_len = 0;
+        memset(&fdp->send, 0, sizeof(fdp->send));
+        memset(&fdp->recv, 0, sizeof(fdp->recv));
+        fdp->closed_next = closed_fds;
+        closed_fds = fdp;
+    } else {
+        free(fdp);
+    }
 }
 
 static void
@@ -529,7 +574,8 @@ ioset_line_read(struct io_fd *fd, char *dest, int max) {
 void
 ioset_events(struct io_fd *fd, int readable, int writable)
 {
-    if (!fd || (!readable && !writable))
+    /* fd->closed: closed earlier in this pass, the event is stale. */
+    if (!fd || fd->closed || (!readable && !writable))
         return;
     active_fd = fd;
     switch (fd->state) {
@@ -569,8 +615,19 @@ ioset_events(struct io_fd *fd, int readable, int writable)
         }
 
         assert(active_fd == NULL || active_fd == fd);
-        if (active_fd && writable)
-            ioset_try_write(fd);
+        if (active_fd && writable) {
+            if (fd->writable_cb)
+                fd->writable_cb(fd);
+            else if (fd->send.get != fd->send.put)
+                ioset_try_write(fd);
+            else {
+                /* Nothing to send: the write interest is stale (a
+                 * writable_cb cleared, or a queue drained, after the
+                 * engine collected this event).  Drop it rather than
+                 * send() zero bytes on a socket we may not own. */
+                engine->update(fd);
+            }
+        }
         break;
     }
 }
@@ -580,10 +637,15 @@ ioset_run(void) {
     extern struct io_fd *socket_io_fd;
     struct timeval timeout;
     time_t wakey;
+    long idle_ms;
 
     while (!quit_services) {
         while (!socket_io_fd)
             uplink_connect();
+
+        /* Run the idle function first: it may do work that changes what
+         * the timeq holds, and it says when it must run again. */
+        idle_ms = idle_func ? idle_func() : -1;
 
         /* How long to sleep? (fill in select_timeout) */
         wakey = timeq_next();
@@ -592,6 +654,19 @@ ioset_run(void) {
         else
             timeout.tv_sec = wakey - now;
         timeout.tv_usec = 0;
+
+        /* Wait no longer than the idle function asked for.  Compared in
+         * whole seconds first, so a far-off timeq wait cannot overflow. */
+        if (idle_ms >= 0) {
+            time_t idle_sec = idle_ms / 1000;
+            long idle_usec = (idle_ms % 1000) * 1000;
+
+            if (idle_sec < timeout.tv_sec
+                || (idle_sec == timeout.tv_sec && idle_usec < timeout.tv_usec)) {
+                timeout.tv_sec = idle_sec;
+                timeout.tv_usec = idle_usec;
+            }
+        }
 
         /* Call any timeq events we need to call. */
         if (!engine->loop(&timeout))
@@ -624,6 +699,9 @@ ioset_run(void) {
 void
 ioset_write(struct io_fd *fd, const char *buf, unsigned int nbw) {
     unsigned int avail;
+    /* Closed earlier in this event pass: its queues are gone. */
+    if (fd->closed)
+        return;
     while (ioq_used(&fd->send) + nbw >= fd->send.size)
         ioq_grow(&fd->send);
     avail = ioq_put_avail(&fd->send);
@@ -658,4 +736,9 @@ void
 ioset_set_time(unsigned long new_now) {
     clock_skew = new_now - time(NULL);
     now = new_now;
+}
+
+void
+ioset_set_idle_func(ioset_idle_func func) {
+    idle_func = func;
 }
