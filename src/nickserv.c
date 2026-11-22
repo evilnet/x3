@@ -6458,11 +6458,15 @@ sasl_get_session(const char *uid)
 void
 sasl_packet(struct SASLSession *session)
 {
-    log_module(NS_LOG, LOG_DEBUG, "SASL: Got packet containing: %s", session->buf);
+    /* Never the content: a PLAIN payload is the password in base64. */
+    log_module(NS_LOG, LOG_DEBUG, "SASL: Got a packet of %d bytes (mechanism %s)",
+               session->buflen, session->mech[0] ? session->mech : "not chosen yet");
 
     if (!session->mech[0])
     {
-        log_module(NS_LOG, LOG_DEBUG, "SASL: No mechanism stored yet, using %s", session->buf);
+        /* The first packet names the mechanism; cut short in case a
+         * client sent its credentials instead. */
+        log_module(NS_LOG, LOG_DEBUG, "SASL: No mechanism stored yet, using %.20s", session->buf);
         if (strcmp(session->buf, "PLAIN") && (strcmp(session->buf, "EXTERNAL") || !session->sslclifp)) {
             if (!session->sslclifp)
                 irc_sasl(session->source, session->uid, "M", "PLAIN");
