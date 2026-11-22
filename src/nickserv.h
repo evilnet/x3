@@ -257,8 +257,9 @@ struct nickserv_config {
     const char *keycloak_field_oslevel;
     unsigned int keycloak_timeout;      /* milliseconds, KEYCLOAK_TIMEOUT_MIN..MAX */
     unsigned int keycloak_max_pending;
-    unsigned int sasl_announce;
 #endif
+    /* Announce the SASL mechanism list on the network (any backend). */
+    unsigned int sasl_announce;
 };
 
 void init_nickserv(const char *nick);

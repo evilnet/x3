@@ -170,8 +170,8 @@
 #define KEY_KEYCLOAK_FIELD_OSLEVEL "keycloak_field_oslevel"
 #define KEY_KEYCLOAK_TIMEOUT "keycloak_timeout"
 #define KEY_KEYCLOAK_MAX_PENDING "keycloak_max_pending"
-#define KEY_SASL_ANNOUNCE "sasl_announce"
 #endif
+#define KEY_SASL_ANNOUNCE "sasl_announce"
 
 #define NICKSERV_VALID_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
@@ -7037,6 +7037,58 @@ reclaim_action_from_string(const char *str) {
         return RECLAIM_NONE;
 }
 
+/* The SASL mechanisms X3 serves (sasl_packet()), in LDAP mode, Keycloak
+ * mode and a build without Keycloak alike.  The network is told this list
+ * (nickserv_sasl_announce()), and an unknown mechanism is answered with
+ * it (sasl_packet()).  Fork servers store it only when it is
+ * comma-separated mechanism names that fit in 126 bytes. */
+static const char *
+nickserv_sasl_mechs(void)
+{
+    return "PLAIN,EXTERNAL";
+}
+
+/* Whether a nickserv_sasl_announce() is queued. */
+static int nickserv_sasl_announce_armed;
+
+/* Tell the network the mechanism list ("SASL * * M"), once per batch of
+ * links: queued by nickserv_sasl_announce_arm().  Nothing with
+ * sasl_announce off (it may have been turned off since), or while X3's own
+ * link is not up (its uplink's end of burst queues it again). */
+static void
+nickserv_sasl_announce(UNUSED_ARG(void *data))
+{
+    nickserv_sasl_announce_armed = 0;
+    if (!nickserv_conf.sasl_announce)
+        return;
+    if (!cManager.uplink || cManager.uplink->state != CONNECTED)
+        return;
+    irc_sasl_mechs_broadcast(nickserv_sasl_mechs());
+    log_module(NS_LOG, LOG_DEBUG, "SASL: announced mechanisms %s", nickserv_sasl_mechs());
+}
+
+/* Queue one announcement two seconds from now, unless one is queued:
+ * the links of a net join, or several servers linking together, give one
+ * line. */
+static void
+nickserv_sasl_announce_arm(void)
+{
+    if (nickserv_sasl_announce_armed || !nickserv_conf.sasl_announce)
+        return;
+    nickserv_sasl_announce_armed = 1;
+    timeq_add(now + 2, nickserv_sasl_announce, NULL);
+}
+
+/* A server's end of burst, X3's uplink included (X3's own link is then
+ * up): a server that linked has not seen the list -- a hub that does not
+ * store it cannot hand it on. */
+static int
+nickserv_sasl_server_link(UNUSED_ARG(struct server *server), UNUSED_ARG(void *extra))
+{
+    nickserv_sasl_announce_arm();
+    return 0;
+}
+
 #ifdef WITH_KEYCLOAK
 /* keycloak_timeout's range, in milliseconds. */
 #define KEYCLOAK_TIMEOUT_MIN 500
@@ -7058,6 +7110,7 @@ nickserv_kc_conf_string(const char **field, dict_t conf_node, const char *key)
     *field = copy;
 }
 #endif
+
 static void
 nickserv_conf_read(void)
 {
@@ -7066,6 +7119,7 @@ nickserv_conf_read(void)
     const char *str;
     dict_iterator_t it;
     struct string_list *strlist;
+    unsigned int was_announcing = nickserv_conf.sasl_announce;
     /* The account backend before this read (a refused rehash keeps LDAP
      * from being turned on by it). */
     unsigned int was_ldap = nickserv_conf.ldap_enable;
@@ -7395,9 +7449,6 @@ nickserv_conf_read(void)
     str = database_get_data(conf_node, KEY_KEYCLOAK_MAX_PENDING, RECDB_QSTRING);
     nickserv_conf.keycloak_max_pending = str ? strtoul(str, NULL, 0) : 64;
 
-    str = database_get_data(conf_node, KEY_SASL_ANNOUNCE, RECDB_QSTRING);
-    nickserv_conf.sasl_announce = str ? strtoul(str, NULL, 0) : 1;
-
     nickserv_conf.keycloak_refused = 0;
     if (nickserv_conf.keycloak_enable) {
         /* { key, value }: each must be non-empty. */
@@ -7463,6 +7514,18 @@ nickserv_conf_read(void)
 
     x3kc_configure();
 #endif
+
+    /* Whatever the account backend (LDAP, Keycloak, neither). */
+    /* Absent or empty: on exactly when Keycloak logins are (the default
+     * follows keycloak_enable; an explicit 0 or 1 wins in any mode). */
+    str = database_get_data(conf_node, KEY_SASL_ANNOUNCE, RECDB_QSTRING);
+    nickserv_conf.sasl_announce = (str && *str) ? strtoul(str, NULL, 0)
+                                                : (nickserv_conf.keycloak_enable ? 1 : 0);
+    /* Turned on by a rehash: tell the network now.  Turned off: nothing
+     * more is sent (a queued announcement sends nothing), and no empty
+     * list either -- fork servers drop services' list when X3 leaves. */
+    if (read_before && !was_announcing && nickserv_conf.sasl_announce)
+        nickserv_sasl_announce_arm();
     read_before = 1;
 }
 
@@ -8394,6 +8457,32 @@ sasl_plain_done(struct handle_info *hi, void *data)
     sasl_delete_session(sess);
 }
 
+/* The list an unknown mechanism is answered with: nickserv_sasl_mechs(),
+ * without EXTERNAL when the connection has no certificate. */
+static void
+sasl_mechs_for(char *buf, size_t size, int has_cert)
+{
+    const char *p = nickserv_sasl_mechs();
+    size_t used = 0;
+
+    buf[0] = '\0';
+    while (*p) {
+        size_t len = strcspn(p, ",");
+
+        if ((has_cert || len != 8 || strncmp(p, "EXTERNAL", 8))
+            && used + (used ? 1 : 0) + len < size) {
+            if (used)
+                buf[used++] = ',';
+            memcpy(buf + used, p, len);
+            used += len;
+            buf[used] = '\0';
+        }
+        p += len;
+        if (*p == ',')
+            p++;
+    }
+}
+
 /* Returns 1 if it deleted the session, 0 if the session lives on. */
 static int
 sasl_packet(struct SASLSession *session)
@@ -8404,10 +8493,10 @@ sasl_packet(struct SASLSession *session)
     {
         log_module(NS_LOG, LOG_DEBUG, "SASL: No mechanism stored yet, using %s", session->buf);
         if (strcmp(session->buf, "PLAIN") && (strcmp(session->buf, "EXTERNAL") || !session->sslclifp)) {
-            if (!session->sslclifp)
-                irc_sasl(session->source, session->uid, "M", "PLAIN");
-            else
-                irc_sasl(session->source, session->uid, "M", "PLAIN,EXTERNAL");
+            char mechs[128];
+
+            sasl_mechs_for(mechs, sizeof(mechs), session->sslclifp != NULL);
+            irc_sasl(session->source, session->uid, "M", mechs);
             irc_sasl(session->source, session->uid, "D", "F");
             sasl_delete_session(session);
             return 1;
@@ -8688,6 +8777,8 @@ nickserv_db_cleanup(UNUSED_ARG(void* extra))
 #endif
 #endif
     timeq_del(0, identity_notice_flush, NULL, TIMEQ_IGNORE_WHEN);
+    timeq_del(0, nickserv_sasl_announce, NULL, TIMEQ_IGNORE_WHEN);
+    nickserv_sasl_announce_armed = 0;
     unreg_del_user_func(nickserv_remove_user, NULL);
     unreg_sasl_input_func(handle_sasl_input, NULL);
     userList_clean(&curr_helpers);
@@ -8770,6 +8861,7 @@ init_nickserv(const char *nick)
     reg_account_func(handle_account);
     reg_auth_func(handle_loc_auth_oper, NULL);
     reg_sasl_input_func(handle_sasl_input, NULL);
+    reg_server_link_func(nickserv_sasl_server_link, NULL);
 
     /* set up handle_inverse_flags */
     memset(handle_inverse_flags, 0, sizeof(handle_inverse_flags));

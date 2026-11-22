@@ -1335,6 +1335,15 @@ irc_sasl(struct server* dest, const char *identifier, const char *subcmd, const 
     putsock("%s " P10_SASL " %s %s %s %s", self->numeric, dest->numeric, identifier, subcmd, data);
 }
 
+/* The SASL mechanisms X3 serves, to every server: "SASL * * M :<mechs>".
+ * Every server relays it unchanged; fork servers store it for the sasl=
+ * cap value. */
+void
+irc_sasl_mechs_broadcast(const char *mechs)
+{
+    putsock("%s " P10_SASL " * * M :%s", self->numeric, mechs);
+}
+
 static void send_burst(void);
 
 static void

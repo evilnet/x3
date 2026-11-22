@@ -374,7 +374,9 @@
         //// the slots free for logins).  At least 1.
         //"keycloak_max_pending" "64";
         //// Announce X3's SASL mechanism list to the network (the
-        //// "SASL * * M" line), once linked and when servers link.
+        //// "SASL * * M :PLAIN,EXTERNAL" line), once linked and once per
+        //// batch of servers linking.  Any account backend (LDAP,
+        //// Keycloak or neither).  0 = never sent.
         //"sasl_announce" "1";
 
     };
