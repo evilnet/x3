@@ -6315,7 +6315,11 @@ handle_nick_change(struct userNode *user, const char *old_nick, UNUSED_ARG(void 
 void
 nickserv_remove_user(struct userNode *user, UNUSED_ARG(struct userNode *killer), UNUSED_ARG(const char *why), UNUSED_ARG(void *extra))
 {
-    dict_remove(nickserv_allow_auth_dict, user->nick);
+    /* NULL when a configuration refusal in init_nickserv()'s first
+     * nickserv_conf_read() exits: this is registered before the dict is
+     * made, and the exit functions remove every user. */
+    if (nickserv_allow_auth_dict)
+        dict_remove(nickserv_allow_auth_dict, user->nick);
     timeq_del(0, nickserv_reclaim_p, user, TIMEQ_IGNORE_WHEN);
     set_user_handle_info(user, NULL, 0);
 }
