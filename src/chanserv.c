@@ -7394,7 +7394,9 @@ static CHANSERV_FUNC(cmd_set)
 {
     struct svccmd *subcmd;
     char buf[MAXLEN];
+    char *set_cmd, *set_option;
     unsigned int ii;
+    int res;
 
     /* Check if we need to (re-)initialize set_shows_list. */
     if(!set_shows_list.used)
@@ -7445,9 +7447,17 @@ static CHANSERV_FUNC(cmd_set)
         return 0;
     }
 
+    /* The option's function is called as the command "set <option>",
+     * named by buf.  svccmd_invoke() logs argv after this returns, when
+     * buf is gone, so the caller's words are put back first. */
+    set_cmd = argv[0];
+    set_option = argv[1];
     argv[0] = "";
     argv[1] = buf;
-    return subcmd->command->func(user, channel, argc - 1, argv + 1, subcmd);
+    res = subcmd->command->func(user, channel, argc - 1, argv + 1, subcmd);
+    argv[0] = set_cmd;
+    argv[1] = set_option;
+    return res;
 }
 
 static int
