@@ -2575,7 +2575,7 @@ struct handle_info *loc_auth(char *sslfp, char *handle, char *password, char *us
                return 0; /* couldn't add the user for some reason */
             }
     
-            if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
+            if((rc = ldap_get_user_info(handle, &email)) != LDAP_SUCCESS)
             {
                if(nickserv_conf.email_required) {
                    return 0;
@@ -2846,7 +2846,7 @@ static NICKSERV_FUNC(cmd_auth)
         /* Get the users email address and update it */
         if(ldap_result == LDAP_SUCCESS) {
            int rc;
-           if((rc = ldap_get_user_info(handle, &email) != LDAP_SUCCESS))
+           if((rc = ldap_get_user_info(handle, &email)) != LDAP_SUCCESS)
            {
                 if(nickserv_conf.email_required) {
                     reply("NSMSG_LDAP_FAIL_GET_EMAIL", ldap_err2string(rc));
