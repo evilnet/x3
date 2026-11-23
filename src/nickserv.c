@@ -1721,6 +1721,7 @@ static NICKSERV_FUNC(cmd_oregister)
     char* pass = NULL;
     char* email = NULL;
     char* mask = NULL;
+    char* generated_mask = NULL;
     char* nick = NULL;
 
     NICKSERV_MIN_PARMS(3);
@@ -1773,7 +1774,7 @@ static NICKSERV_FUNC(cmd_oregister)
         if (nickserv_conf.default_hostmask)
             mask = "*@*";
         else if (settee)
-            mask = generate_hostmask(settee, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
+            mask = generated_mask = generate_hostmask(settee, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
         else {
             reply("NSMSG_REGISTER_BAD_NICKMASK");
             return 0;
@@ -1781,6 +1782,7 @@ static NICKSERV_FUNC(cmd_oregister)
     }
 
     if (!(hi = nickserv_register(user, settee, account, pass, 0))) {
+        free(generated_mask);
         return 0; /* error reply handled by above */
     }
     if (email) {
@@ -1807,6 +1809,7 @@ static NICKSERV_FUNC(cmd_oregister)
         if (mask_canonicalized)
             string_list_append(hi->masks, mask_canonicalized);
     }
+    free(generated_mask);
 
     argv[2] = "****";
 
@@ -2874,12 +2877,12 @@ static NICKSERV_FUNC(cmd_auth)
              }
              /* Add a *@* mask */
              if(nickserv_conf.default_hostmask)
-                mask = "*@*";
+                mask = strdup("*@*");
              else
                 mask = generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
 
              if(mask) {
-                char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+                char* mask_canonicalized = canonicalize_hostmask(mask);
                 string_list_append(hi->masks, mask_canonicalized);
              }
              if(email) {
@@ -6265,12 +6268,12 @@ handle_account(struct userNode *user, const char *stamp)
         /* Now try to register the handle */
         if (cont && (hi = nickserv_register(user, user, stamp, NULL, 1))) {
             if(nickserv_conf.default_hostmask)
-                mask = "*@*";
+                mask = strdup("*@*");
             else
                 mask = generate_hostmask(user, GENMASK_OMITNICK|GENMASK_NO_HIDING|GENMASK_ANY_IDENT);
 
             if(mask) {
-                char* mask_canonicalized = canonicalize_hostmask(strdup(mask));
+                char* mask_canonicalized = canonicalize_hostmask(mask);
                 string_list_append(hi->masks, mask_canonicalized);
             }
 
