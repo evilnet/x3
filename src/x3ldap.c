@@ -136,15 +136,21 @@ unsigned int ldap_check_auth( const char *account, const char *pass)
 
 }
 
-int ldap_search_user(const char *account, LDAPMessage **entry)
+/* Searches the directory for account.  On LDAP_SUCCESS, *result is the
+ * search result, holding exactly one entry (read it with ldap_first_entry()),
+ * and the caller frees it with ldap_msgfree().  On any other return,
+ * *result is NULL and there is nothing to free.
+ */
+int ldap_search_user(const char *account, LDAPMessage **result)
 {
 
    char filter[MAXLEN+1];
    int rc;
-   LDAPMessage *res;
+   LDAPMessage *res = NULL;
 
    struct timeval timeout;
 
+   *result = NULL;
    memset(filter, 0, MAXLEN+1);
    snprintf(filter, MAXLEN, "(&%s(%s=%s))", nickserv_conf.ldap_filter, nickserv_conf.ldap_field_account, account);
    /*
@@ -159,15 +165,19 @@ int ldap_search_user(const char *account, LDAPMessage **entry)
    //if( (rc = ldap_search_st(ld, nickserv_conf.ldap_base, LDAP_SCOPE_ONELEVEL, filter, NULL, 0, &timeout, &res)) != LDAP_SUCCESS) {
    if( (rc = ldap_search_st(ld, nickserv_conf.ldap_base, LDAP_SCOPE_SUBTREE, filter, NULL, 0, &timeout, &res)) != LDAP_SUCCESS) {
        log_module(MAIN_LOG, LOG_ERROR, "search failed: %s   %s: %s", nickserv_conf.ldap_base, filter, ldap_err2string(rc));
+       /* A failed search can still hand back a result message. */
+       if(res)
+          ldap_msgfree(res);
        return(rc);
    }
    log_module(MAIN_LOG, LOG_DEBUG, "Search successfull!  %s    %s\n", nickserv_conf.ldap_base, filter);
    if(ldap_count_entries(ld, res) != 1) {
       log_module(MAIN_LOG, LOG_DEBUG, "LDAP search got %d entries when looking for %s", ldap_count_entries(ld, res), account);
+      ldap_msgfree(res);
       return(LDAP_OTHER); /* Search was a success, but user not found.. */
    }
    log_module(MAIN_LOG, LOG_DEBUG, "LDAP search got %d entries", ldap_count_entries(ld, res));
-   *entry = ldap_first_entry(ld, res);
+   *result = res;
    return(rc);
 }
 
@@ -189,12 +199,14 @@ int ldap_get_user_info(const char *account, char **email)
         entry = ldap_first_entry(ld, res);
         value = ldap_get_values_len(ld, entry, nickserv_conf.ldap_field_email);
         if(!value) {
+           ldap_msgfree(res);
            return(LDAP_OTHER);
         }
         if(email)
           *email = strdup(value[0]->bv_val);
         log_module(MAIN_LOG, LOG_DEBUG, "%s: %s\n", nickserv_conf.ldap_field_email, value[0]->bv_val);
         ldap_value_free_len(value);
+        ldap_msgfree(res);
         /*
         value = ldap_get_values(ld, entry, "description");
         log_module(MAIN_LOG, LOG_DEBUG, "Description: %s\n", value[0]);
@@ -690,6 +702,8 @@ int ldap_user_exists(const char *account)
   LDAPMessage *res;
 
   rc = ldap_search_user(account, &res);
+  if(res)
+    ldap_msgfree(res);
 
   return rc;
 }
@@ -727,7 +741,7 @@ time_t ldap_get_user_create_time(const char *account)
 {
     int rc;
     char filter[MAXLEN+1];
-    LDAPMessage *res, *entry;
+    LDAPMessage *res = NULL, *entry;
     struct berval **values;
     struct timeval timeout;
     time_t result = 0;
@@ -751,6 +765,8 @@ time_t ldap_get_user_create_time(const char *account)
     if (rc != LDAP_SUCCESS) {
         log_module(MAIN_LOG, LOG_ERROR, "ldap_get_user_create_time: search failed for %s: %s",
                    account, ldap_err2string(rc));
+        if (res)
+            ldap_msgfree(res);
         return 0;
     }
 
