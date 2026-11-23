@@ -497,6 +497,9 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
     }
     if (!size || !(msg_type & MSG_TYPE_MULTILINE))
         size = DEFAULT_LINE_SIZE;
+    /* A line is sent as a string, so line[] keeps a byte for its NUL. */
+    if (size > sizeof(line) - 1)
+        size = sizeof(line) - 1;
     switch (msg_type & 3) {
         case 0:
             if(message_dest && message_dest->no_notice)
@@ -547,9 +550,12 @@ vsend_message(const char *dest, struct userNode *src, struct handle_info *handle
             pos -= ipos - new_ipos;
             if (new_ipos == newline_ipos) {
                 /* Single word was too big to fit on one line; skip
-                 * forward to its end and print it as a whole.
+                 * forward to its end and print it as a whole, or as
+                 * much of it as line[] holds; the rest goes on the
+                 * next line.
                  */
-                while (input.list[new_ipos]
+                while ((pos < sizeof(line) - 1)
+                       && input.list[new_ipos]
                        && (input.list[new_ipos] != ' ')
                        && (input.list[new_ipos] != '\n')
                        && (input.list[new_ipos] != '$'))
